@@ -9,6 +9,9 @@ cycling-app/dist/
 cycling-app/vite.config.ts.timestamp-*.mjs
 cycling-app/tsconfig.tsbuildinfo
 
+# AI Context file for Claude for future development
+ai-context.md
+
 # Database (large binary — regenerate with: python3 pipeline/build_db.py)
 pipeline/cycling.db
 
