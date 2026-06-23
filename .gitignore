@@ -1,0 +1,19 @@
+# Dependencies
+cycling-app/node_modules/
+
+# Build output (regenerate with: cd cycling-app && npm run build)
+cycling-app/build/
+cycling-app/dist/
+
+# Vite dev-server temp files
+cycling-app/vite.config.ts.timestamp-*.mjs
+cycling-app/tsconfig.tsbuildinfo
+
+# Database (large binary — regenerate with: python3 pipeline/build_db.py)
+pipeline/cycling.db
+
+# Raw scraped data (large — only needed to rebuild the DB from scratch)
+pipeline/tdf_*.json
+
+# macOS
+.DS_Store

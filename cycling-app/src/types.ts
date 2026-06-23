@@ -1,0 +1,30 @@
+export interface StageInfo {
+  stage_number: number;
+  start_location: string | null;
+  finish_location: string | null;
+  distance_km: number | null;
+  vertical_meters: number | null;
+  route_type: string | null; // 'F' | 'H' | 'M' | 'TT' | 'TTT'
+}
+
+export interface RiderStagePoint {
+  stage: number;
+  gcRank: number | null;
+  gcGapSeconds: number | null;
+  status: string;
+  cumulativePoints: number;
+}
+
+export interface RiderSeries {
+  id: string;
+  name: string;
+  nationality: string | null;
+  team: string | null;
+  finalRank: number;
+  byStage: RiderStagePoint[];
+}
+
+export interface GcDataset {
+  stages: StageInfo[];
+  riders: RiderSeries[];
+}

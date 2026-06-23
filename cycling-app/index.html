@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pro Cycling Analytics — Tour de France</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <h1>
+          Tour de France
+          <select id="year-select" class="year-select"></select>
+          —
+          <select id="metric-select" class="year-select">
+            <option value="gc">GC Position</option>
+            <option value="points">Points</option>
+          </select>
+          by Stage
+        </h1>
+        <p class="subtitle">
+          Each line is a rider's overall (general classification) rank after each stage.
+          Lower on the chart = better position. Lines end where a rider finished, retired, or
+          did not start.
+        </p>
+      </header>
+
+      <div class="layout">
+        <aside class="sidebar">
+          <div class="control-block">
+            <label for="search">Find a rider</label>
+            <input id="search" type="text" placeholder="e.g. Pogačar" autocomplete="off" />
+          </div>
+
+          <div class="control-block">
+            <span class="control-label">Quick select</span>
+            <div class="button-row">
+              <button data-preset="10">Top 10</button>
+              <button data-preset="20" class="active">Top 20</button>
+              <button data-preset="all">All riders</button>
+              <button data-preset="none">None</button>
+            </div>
+          </div>
+
+          <div class="control-block legend-block">
+            <span class="control-label">Riders (click to toggle)</span>
+            <div id="legend" class="legend"></div>
+          </div>
+        </aside>
+
+        <main class="chart-area">
+          <div id="chart"></div>
+          <div id="tooltip" class="tooltip" hidden></div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
