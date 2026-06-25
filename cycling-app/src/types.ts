@@ -1,5 +1,6 @@
 export interface StageInfo {
   stage_number: number;
+  stage_label: string;
   start_location: string | null;
   finish_location: string | null;
   distance_km: number | null;

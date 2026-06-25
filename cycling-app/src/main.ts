@@ -34,6 +34,8 @@ let colorScale: d3.ScaleOrdinal<string, string>;
 let pointsRankAtStage = new Map<number, Map<string, number>>();
 // finalPointsRank: riderId → rank at last stage (used for "Top N" preset)
 let finalPointsRank = new Map<string, number>();
+// ridersAtFinalPointsRank: rank → { riders, points } for tie display
+let ridersAtFinalPointsRank = new Map<number, { riders: RiderSeries[]; points: number }>();
 
 const chartEl = document.getElementById("chart") as HTMLDivElement;
 const legendEl = document.getElementById("legend") as HTMLDivElement;
@@ -42,6 +44,10 @@ const chartAreaEl = tooltipEl.parentElement as HTMLDivElement;
 const searchEl = document.getElementById("search") as HTMLInputElement;
 const yearSelectEl = document.getElementById("year-select") as HTMLSelectElement;
 const metricSelectEl = document.getElementById("metric-select") as HTMLSelectElement;
+
+function stageLabel(stageNum: number): string {
+  return dataset?.stages.find((s) => s.stage_number === stageNum)?.stage_label ?? String(stageNum);
+}
 
 function fmtGap(seconds: number | null): string {
   if (seconds === null || seconds === undefined) return "—";
@@ -84,8 +90,11 @@ function buildMetricSelect() {
   metricSelectEl.value = currentMetric;
   metricSelectEl.addEventListener("change", () => {
     currentMetric = metricSelectEl.value as "gc" | "points";
-    // re-apply default selection for new metric
-    applyDefaultSelection();
+    applyDefaultSelection(20);
+    document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
+      b.classList.remove("active"),
+    );
+    document.querySelector<HTMLButtonElement>('.button-row button[data-preset="20"]')?.classList.add("active");
     buildLegend();
     drawChart();
   });
@@ -126,6 +135,18 @@ function computePointsRankings() {
   // Final points rank = rank at the last stage
   const lastStageNum = dataset.stages[dataset.stages.length - 1]?.stage_number;
   finalPointsRank = new Map(pointsRankAtStage.get(lastStageNum ?? -1) ?? []);
+
+  // Build reverse map: final rank → { riders, points } for tie-count labels
+  ridersAtFinalPointsRank = new Map();
+  for (const rider of dataset.riders) {
+    const rank = finalPointsRank.get(rider.id);
+    if (rank === undefined) continue;
+    const pts = rider.byStage.find((p) => p.stage === lastStageNum)?.cumulativePoints ?? 0;
+    if (!ridersAtFinalPointsRank.has(rank)) {
+      ridersAtFinalPointsRank.set(rank, { riders: [], points: pts });
+    }
+    ridersAtFinalPointsRank.get(rank)!.riders.push(rider);
+  }
 }
 
 /** Return the "active" rank for a rider at a given stage under the current metric. */
@@ -304,6 +325,7 @@ function drawChart() {
   const innerHeight = height - margin.top - margin.bottom;
 
   const stages = dataset.stages;
+  const minStage = d3.min(stages, (s) => s.stage_number) ?? 0;
   const maxStage = d3.max(stages, (s) => s.stage_number) ?? 21;
 
   // Determine y-axis domain from the display points of all riders
@@ -314,7 +336,7 @@ function drawChart() {
     }
   }
 
-  xScale = d3.scaleLinear().domain([1, maxStage]).range([0, innerWidth]);
+  xScale = d3.scaleLinear().domain([minStage, maxStage]).range([0, innerWidth]);
   yScale = d3.scaleLinear().domain([1, maxRank]).range([0, innerHeight]);
 
   const svg = d3
@@ -345,10 +367,13 @@ function drawChart() {
     .call(
       d3
         .axisBottom(xScale)
-        .tickValues(d3.range(1, maxStage + 1))
+        .tickValues(d3.range(minStage, maxStage + 1))
         .tickSize(-innerHeight)
         .tickFormat(() => ""),
     );
+
+  const stagesByNumber = new Map(stages.map((s) => [s.stage_number, s]));
+  const stageLabelFmt = (d: d3.NumberValue) => stagesByNumber.get(+d)?.stage_label ?? String(d);
 
   // x axis — bottom
   g.append("g")
@@ -358,7 +383,7 @@ function drawChart() {
       d3
         .axisBottom(xScale)
         .ticks(maxStage)
-        .tickFormat((d) => String(d)),
+        .tickFormat(stageLabelFmt),
     );
 
   // x axis — top (with stage-info hover)
@@ -369,10 +394,8 @@ function drawChart() {
       d3
         .axisTop(xScale)
         .ticks(maxStage)
-        .tickFormat((d) => String(d)),
+        .tickFormat(stageLabelFmt),
     );
-
-  const stagesByNumber = new Map(stages.map((s) => [s.stage_number, s]));
   xAxisTop
     .selectAll<SVGGElement, number>(".tick")
     .style("cursor", (d) => (stagesByNumber.has(d) ? "help" : null))
@@ -486,7 +509,35 @@ function drawChart() {
       return last ? yScale(last.rank as number) + 3 : -100;
     })
     .style("font-size", "10px")
-    .text((r) => lastName(r.name));
+    .text((r) => {
+      if (currentMetric === "points") {
+        const group = ridersAtFinalPointsRank.get(finalPointsRank.get(r.id)!);
+        if (group && group.riders.length > 1) return `(${group.riders.length}) ${lastName(r.name)}`;
+      }
+      return lastName(r.name);
+    })
+    .style("cursor", (r) => currentMetric === "points" ? "pointer" : "default")
+    .on("mouseover", (event: MouseEvent, r: RiderSeries) => {
+      if (currentMetric !== "points") return;
+      const rank = finalPointsRank.get(r.id);
+      if (rank === undefined) return;
+      const group = ridersAtFinalPointsRank.get(rank);
+      if (!group) return;
+      const names = group.riders.map((rd) => rd.name).join("<br>");
+      tooltipEl.innerHTML = `
+        <div class="t-name">Final Points Rank #${rank}</div>
+        <div class="t-team">${group.points} pts</div>
+        <div>${names}</div>
+      `;
+      tooltipEl.hidden = false;
+      const areaRect = chartAreaEl.getBoundingClientRect();
+      tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
+      const tw = tooltipEl.offsetWidth;
+      tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+        ? `${event.clientX - areaRect.left - tw - 10}px`
+        : `${event.clientX - areaRect.left + 24}px`;
+    })
+    .on("mouseout", () => { tooltipEl.hidden = true; });
 
   updateLineClasses();
 
@@ -557,7 +608,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
     tooltipEl.innerHTML = `
       <div class="t-name">${rider.name}</div>
       <div class="t-team">${rider.team ?? ""}</div>
-      <div>Stage ${point.stage} &middot; GC #${point.gcRank ?? "—"}</div>
+      <div>Stage ${stageLabel(point.stage)} &middot; GC #${point.gcRank ?? "—"}</div>
       <div>Gap: ${fmtGap(point.gcGapSeconds)}</div>
       ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
     `;
@@ -571,7 +622,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
     tooltipEl.innerHTML = `
       <div class="t-name">${rider.name}</div>
       <div class="t-team">${rider.team ?? ""}</div>
-      <div>Stage ${point.stage} &middot; Points rank #${ptsRank ?? "—"}</div>
+      <div>Stage ${stageLabel(point.stage)} &middot; Points rank #${ptsRank ?? "—"}</div>
       <div>Cumulative pts: ${point.cumulativePoints}</div>
       ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
     `;

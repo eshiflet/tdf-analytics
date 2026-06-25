@@ -40,7 +40,7 @@ def export_year(year, out_path):
     edition_id = row["edition_id"]
 
     cur.execute(
-        """SELECT stage_id, stage_number, start_location, finish_location,
+        """SELECT stage_id, stage_number, stage_date, start_location, finish_location,
                   distance_km, vertical_meters, route_type
            FROM stages WHERE edition_id = ? ORDER BY stage_number""",
         (edition_id,),
@@ -50,6 +50,27 @@ def export_year(year, out_path):
 
     # Build stage_number → index lookup for sprint_points array alignment
     stage_num_to_idx = {s["stage_number"]: i for i, s in enumerate(stages)}
+
+    # Compute display labels: same-date stages get "Na"/"Nb"; stage_number 0 = "P"; others "N"
+    from collections import defaultdict
+    date_groups = defaultdict(list)
+    for i, s in enumerate(stages):
+        date_groups[s.get("stage_date") or f"__nodate_{i}"].append(i)
+    stage_labels = [""] * len(stages)
+    day_counter = 0
+    for date in sorted(date_groups.keys()):
+        indices = date_groups[date]
+        if len(indices) == 1:
+            i = indices[0]
+            if stages[i]["stage_number"] == 0:
+                stage_labels[i] = "P"
+            else:
+                day_counter += 1
+                stage_labels[i] = str(day_counter)
+        else:
+            day_counter += 1
+            for j, i in enumerate(indices):
+                stage_labels[i] = f"{day_counter}{'abcde'[j]}"
 
     # Load real sprint points for this year (array indexed by stage position)
     sprint_pts_by_year = load_sprint_points().get(str(year), [])
@@ -128,13 +149,14 @@ def export_year(year, out_path):
         "stages": [
             {
                 "stage_number": s["stage_number"],
+                "stage_label": stage_labels[i],
                 "start_location": s["start_location"],
                 "finish_location": s["finish_location"],
                 "distance_km": s["distance_km"],
                 "vertical_meters": s["vertical_meters"],
                 "route_type": s["route_type"],
             }
-            for s in stages
+            for i, s in enumerate(stages)
         ],
         "riders": riders_out,
     }
