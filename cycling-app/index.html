@@ -9,25 +9,37 @@
   <body>
     <div id="app">
       <header class="topbar">
-        <h1>
-          Tour de France
-          <select id="year-select" class="year-select"></select>
-          —
-          <select id="metric-select" class="year-select">
-            <option value="gc">GC Position</option>
-            <option value="points">Points</option>
-          </select>
-          by Stage
-        </h1>
-        <p class="subtitle">
+        <div class="topbar-row">
+          <h1>
+            Tour de France
+            <select id="year-select" class="year-select"></select>
+          </h1>
+          <nav class="view-nav">
+            <button id="view-stage" class="view-btn active">
+              <select id="metric-select" class="metric-inline">
+                <option value="gc">GC Position</option>
+                <option value="points">Sprint Points</option>
+                <option value="kom">KOM Points</option>
+              </select>
+              by Stage
+            </button>
+            <button id="view-overview" class="view-btn">Race Overview</button>
+          </nav>
+          <div id="overview-summary" class="overview-summary" hidden></div>
+        </div>
+        <p class="subtitle" id="subtitle-stage">
           Each line is a rider's overall (general classification) rank after each stage.
           Lower on the chart = better position. Lines end where a rider finished, retired, or
           did not start.
         </p>
+        <p class="subtitle" id="subtitle-overview" hidden>
+          Stage-by-stage route characteristics: distance, elevation gain, and difficulty score.
+          Bars are colored by stage type. Hover a bar for details.
+        </p>
       </header>
 
       <div class="layout">
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
           <div class="control-block">
             <label for="search">Find a rider</label>
             <input id="search" type="text" placeholder="e.g. Pogačar" autocomplete="off" />
@@ -51,6 +63,7 @@
 
         <main class="chart-area">
           <div id="chart"></div>
+          <div id="overview-chart"></div>
           <div id="tooltip" class="tooltip" hidden></div>
         </main>
       </div>

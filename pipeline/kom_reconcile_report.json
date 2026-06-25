@@ -1,0 +1,3764 @@
+[
+  {
+    "year": 1960,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.732,
+    "match_rate_pct": 88,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Imerio Massignan",
+        "ref": 56,
+        "ours": 56,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Marcel Rohrbach",
+        "ref": 52,
+        "ours": 51,
+        "pct_off": 1.9
+      },
+      {
+        "name": "Graziano Battistini",
+        "ref": 44,
+        "ours": 44,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Kurt Gimmi (Switzerland), Gastone Nencini",
+        "ref": 36,
+        "ours": 37,
+        "pct_off": 2.8
+      },
+      {
+        "name": "Fernando Manzaneque",
+        "ref": 28,
+        "ours": 28,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Martin Van Den Borgh",
+        "ref": 22,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Martin van der Borgh",
+        "ref": 22,
+        "ours": 22,
+        "pct_off": 0.0
+      },
+      {
+        "name": "René Marigil",
+        "ref": 21,
+        "ours": 21,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1961,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.706,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Imerio Massignan",
+        "ref": 95,
+        "ours": 96,
+        "pct_off": 1.1
+      },
+      {
+        "name": "Charly Gaul",
+        "ref": 61,
+        "ours": 61,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Hans Junkermann",
+        "ref": 48,
+        "ours": 47,
+        "pct_off": 2.1
+      },
+      {
+        "name": "Marcel Queheille",
+        "ref": 46,
+        "ours": 46,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Eddy Pauwels",
+        "ref": 29,
+        "ours": 29,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Manuel Busto",
+        "ref": 28,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Guy Ignolin",
+        "ref": 26,
+        "ours": 26,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jacques Anquetil",
+        "ref": 26,
+        "ours": 26,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1962,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.48,
+    "match_rate_pct": 75,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Federico Bahamontes",
+        "ref": 137,
+        "ours": 137,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Imerio Massignan",
+        "ref": 77,
+        "ours": 77,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 70,
+        "ours": 71,
+        "pct_off": 1.4
+      },
+      {
+        "name": "Charly Gaul",
+        "ref": 58,
+        "ours": 58,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Josef Planckaert",
+        "ref": 37,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Jef Planckaert",
+        "ref": 37,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Eddy Pauwels",
+        "ref": 35,
+        "ours": 35,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Rolf Wolfshohl",
+        "ref": 33,
+        "ours": 32,
+        "pct_off": 3.0
+      }
+    ]
+  },
+  {
+    "year": 1963,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.812,
+    "match_rate_pct": 38,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Federico Bahamontes",
+        "ref": 147,
+        "ours": 117,
+        "pct_off": 20.4
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 70,
+        "ours": 50,
+        "pct_off": 28.6
+      },
+      {
+        "name": "Guy Ignolin",
+        "ref": 68,
+        "ours": 68,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Claude Mattio",
+        "ref": 51,
+        "ours": 46,
+        "pct_off": 9.8
+      },
+      {
+        "name": "Jacques Anquetil",
+        "ref": 47,
+        "ours": 34,
+        "pct_off": 27.7
+      },
+      {
+        "name": "Eddy Pauwels",
+        "ref": 46,
+        "ours": 34,
+        "pct_off": 26.1
+      },
+      {
+        "name": "Guy Epaud",
+        "ref": 38,
+        "ours": 38,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Renzo Fontona",
+        "ref": 33,
+        "ours": 33,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1964,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.571,
+    "match_rate_pct": 88,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Federico Bahamontes",
+        "ref": 173,
+        "ours": 175,
+        "pct_off": 1.2
+      },
+      {
+        "name": "Julio Jiménez",
+        "ref": 167,
+        "ours": 167,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 89,
+        "ours": 88,
+        "pct_off": 1.1
+      },
+      {
+        "name": "Hans Junkermann",
+        "ref": 47,
+        "ours": 47,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Henry Anglade",
+        "ref": 44,
+        "ours": 44,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Henri Anglade",
+        "ref": 43,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Jacques Anquetil",
+        "ref": 34,
+        "ours": 34,
+        "pct_off": 0.0
+      },
+      {
+        "name": "André Foucher",
+        "ref": 33,
+        "ours": 33,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1965,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.771,
+    "match_rate_pct": 75,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Julio Jiménez",
+        "ref": 133,
+        "ours": 134,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Frans Brands",
+        "ref": 74,
+        "ours": 73,
+        "pct_off": 1.4
+      },
+      {
+        "name": "Joaquin Galera",
+        "ref": 68,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Felice Gimondi",
+        "ref": 55,
+        "ours": 54,
+        "pct_off": 1.8
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 48,
+        "ours": 47,
+        "pct_off": 2.1
+      },
+      {
+        "name": "Henry Anglade",
+        "ref": 47,
+        "ours": 46,
+        "pct_off": 2.1
+      },
+      {
+        "name": "Henri Anglade",
+        "ref": 47,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Gianni Motta",
+        "ref": 45,
+        "ours": 45,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1966,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.291,
+    "match_rate_pct": 50,
+    "reference_riders": 12,
+    "verification": [
+      {
+        "name": "Julio Jiménez",
+        "ref": 123,
+        "ours": 122,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Joaquin Galera",
+        "ref": 98,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Joaquim Galera",
+        "ref": 98,
+        "ours": 99,
+        "pct_off": 1.0
+      },
+      {
+        "name": "Aurelio Gonzalez",
+        "ref": 51,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 49,
+        "ours": 50,
+        "pct_off": 2.0
+      },
+      {
+        "name": "Franco Bitossi",
+        "ref": 48,
+        "ours": 47,
+        "pct_off": 2.1
+      },
+      {
+        "name": "Edy Schutz",
+        "ref": 47,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Martin Van Den Bossche",
+        "ref": 34,
+        "ours": 0,
+        "pct_off": 100.0
+      }
+    ]
+  },
+  {
+    "year": 1967,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.003,
+    "match_rate_pct": 62,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Julio Jiménez",
+        "ref": 122,
+        "ours": 106,
+        "pct_off": 13.1
+      },
+      {
+        "name": "Franco Balmamion",
+        "ref": 68,
+        "ours": 66,
+        "pct_off": 2.9
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 53,
+        "ours": 53,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Felice Gimondi",
+        "ref": 45,
+        "ours": 48,
+        "pct_off": 6.7
+      },
+      {
+        "name": "Roger Pingeon",
+        "ref": 44,
+        "ours": 49,
+        "pct_off": 11.4
+      },
+      {
+        "name": "Jan Janssen",
+        "ref": 33,
+        "ours": 33,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Désiré Letort",
+        "ref": 32,
+        "ours": 32,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Fernando Manzaneque",
+        "ref": 32,
+        "ours": 32,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1968,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.807,
+    "match_rate_pct": 0,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Aurelio González",
+        "ref": 96,
+        "ours": 79,
+        "pct_off": 17.7
+      },
+      {
+        "name": "Franco Bitossi",
+        "ref": 84,
+        "ours": 79,
+        "pct_off": 6.0
+      },
+      {
+        "name": "Julio Jiménez",
+        "ref": 72,
+        "ours": 57,
+        "pct_off": 20.8
+      },
+      {
+        "name": "Roger Pingeon",
+        "ref": 65,
+        "ours": 53,
+        "pct_off": 18.5
+      },
+      {
+        "name": "Andres Gandarias",
+        "ref": 57,
+        "ours": 37,
+        "pct_off": 35.1
+      },
+      {
+        "name": "Barry Hoban",
+        "ref": 50,
+        "ours": 41,
+        "pct_off": 18.0
+      },
+      {
+        "name": "Gregorio San Miguel",
+        "ref": 30,
+        "ours": 22,
+        "pct_off": 26.7
+      },
+      {
+        "name": "Jean-Pierre Ducasse",
+        "ref": 28,
+        "ours": 11,
+        "pct_off": 60.7
+      }
+    ]
+  },
+  {
+    "year": 1969,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.478,
+    "match_rate_pct": 75,
+    "reference_riders": 12,
+    "verification": [
+      {
+        "name": "Eddy Merckx",
+        "ref": 155,
+        "ours": 154,
+        "pct_off": 0.6
+      },
+      {
+        "name": "Rog er Pingeon",
+        "ref": 94,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Roger Pingeon",
+        "ref": 94,
+        "ours": 94,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joaquin Galera",
+        "ref": 80,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Joaquim Galera",
+        "ref": 80,
+        "ours": 81,
+        "pct_off": 1.2
+      },
+      {
+        "name": "Paul Gutty",
+        "ref": 68,
+        "ours": 67,
+        "pct_off": 1.5
+      },
+      {
+        "name": "Andres Gandarias",
+        "ref": 54,
+        "ours": 54,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Felice Gimondi",
+        "ref": 51,
+        "ours": 51,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1970,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.705,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Eddy Merckx",
+        "ref": 128,
+        "ours": 130,
+        "pct_off": 1.6
+      },
+      {
+        "name": "Andrés Gandarias",
+        "ref": 94,
+        "ours": 94,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Martin Vandenbossche",
+        "ref": 85,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Silvano Schiavon",
+        "ref": 68,
+        "ours": 68,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Lucien Van Impe",
+        "ref": 65,
+        "ours": 65,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Primo Mori",
+        "ref": 64,
+        "ours": 64,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Gösta Pettersson",
+        "ref": 59,
+        "ours": 60,
+        "pct_off": 1.7
+      },
+      {
+        "name": "Raymond Delisle",
+        "ref": 57,
+        "ours": 57,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1971,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.775,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Lucien van Impe",
+        "ref": 228,
+        "ours": 228,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 180,
+        "ours": 180,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Eddy Merckx",
+        "ref": 137,
+        "ours": 137,
+        "pct_off": 0.0
+      },
+      {
+        "name": "José-Manuel Fuente",
+        "ref": 89,
+        "ours": 88,
+        "pct_off": 1.1
+      },
+      {
+        "name": "Cyrille Guimard",
+        "ref": 74,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Joaquim Agostinho",
+        "ref": 68,
+        "ours": 67,
+        "pct_off": 1.5
+      },
+      {
+        "name": "Bernard Thévenet",
+        "ref": 48,
+        "ours": 48,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Vicente Lopez-Carril",
+        "ref": 47,
+        "ours": 47,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1972,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.936,
+    "match_rate_pct": 25,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Lucien van Impe",
+        "ref": 229,
+        "ours": 208,
+        "pct_off": 9.2
+      },
+      {
+        "name": "Eddy Merckx",
+        "ref": 211,
+        "ours": 187,
+        "pct_off": 11.4
+      },
+      {
+        "name": "Joaquim Agostinho",
+        "ref": 138,
+        "ours": 151,
+        "pct_off": 9.4
+      },
+      {
+        "name": "Mathieu Pustjens",
+        "ref": 109,
+        "ours": 105,
+        "pct_off": 3.7
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 104,
+        "ours": 98,
+        "pct_off": 5.8
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 79,
+        "ours": 65,
+        "pct_off": 17.7
+      },
+      {
+        "name": "Raymond Delisle",
+        "ref": 55,
+        "ours": 55,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Bernard Thévenet",
+        "ref": 49,
+        "ours": 91,
+        "pct_off": 85.7
+      }
+    ]
+  },
+  {
+    "year": 1973,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.898,
+    "match_rate_pct": 12,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Pedro Torres",
+        "ref": 225,
+        "ours": 195,
+        "pct_off": 13.3
+      },
+      {
+        "name": "José-Manuel Fuente",
+        "ref": 216,
+        "ours": 160,
+        "pct_off": 25.9
+      },
+      {
+        "name": "Luis Ocaña",
+        "ref": 192,
+        "ours": 157,
+        "pct_off": 18.2
+      },
+      {
+        "name": "Bernard Thévenet",
+        "ref": 119,
+        "ours": 107,
+        "pct_off": 10.1
+      },
+      {
+        "name": "Lucien Van Impe",
+        "ref": 107,
+        "ours": 106,
+        "pct_off": 0.9
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 83,
+        "ours": 89,
+        "pct_off": 7.2
+      },
+      {
+        "name": "Vicente Lopez-Carril",
+        "ref": 80,
+        "ours": 33,
+        "pct_off": 58.8
+      },
+      {
+        "name": "Joaquim Agostinho",
+        "ref": 46,
+        "ours": 57,
+        "pct_off": 23.9
+      }
+    ]
+  },
+  {
+    "year": 1974,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.923,
+    "match_rate_pct": 25,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Domingo Perurena",
+        "ref": 171,
+        "ours": 161,
+        "pct_off": 5.8
+      },
+      {
+        "name": "Eddy Merckx",
+        "ref": 133,
+        "ours": 125,
+        "pct_off": 6.0
+      },
+      {
+        "name": "José-Luis Abilleira",
+        "ref": 108,
+        "ours": 95,
+        "pct_off": 12.0
+      },
+      {
+        "name": "Gonzalo Aja",
+        "ref": 104,
+        "ours": 106,
+        "pct_off": 1.9
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 93,
+        "ours": 78,
+        "pct_off": 16.1
+      },
+      {
+        "name": "Vicente Lopez-Carril",
+        "ref": 84,
+        "ours": 77,
+        "pct_off": 8.3
+      },
+      {
+        "name": "Andres Oliva",
+        "ref": 80,
+        "ours": 80,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Wladimiro Panizza",
+        "ref": 55,
+        "ours": 49,
+        "pct_off": 10.9
+      }
+    ]
+  },
+  {
+    "year": 1975,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.642,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Lucien van Impe",
+        "ref": 285,
+        "ours": 283,
+        "pct_off": 0.7
+      },
+      {
+        "name": "Eddy Merckx",
+        "ref": 206,
+        "ours": 207,
+        "pct_off": 0.5
+      },
+      {
+        "name": "Bernard Thévenet",
+        "ref": 166,
+        "ours": 166,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 161,
+        "ours": 161,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Felice Gimondi",
+        "ref": 78,
+        "ours": 78,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Pedro Torres",
+        "ref": 63,
+        "ours": 62,
+        "pct_off": 1.6
+      },
+      {
+        "name": "Vicente López Carril",
+        "ref": 58,
+        "ours": 58,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Luis Balagué",
+        "ref": 57,
+        "ours": 57,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1976,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.041,
+    "match_rate_pct": 75,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Giancarlo Bellini",
+        "ref": 170,
+        "ours": 170,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Lucien van Impe",
+        "ref": 169,
+        "ours": 169,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 119,
+        "ours": 119,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Francisco Galdos",
+        "ref": 85,
+        "ours": 85,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Raymond Poulidor",
+        "ref": 81,
+        "ours": 81,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Pedro Torres",
+        "ref": 65,
+        "ours": 81,
+        "pct_off": 24.6
+      },
+      {
+        "name": "Raymond Delisle",
+        "ref": 63,
+        "ours": 63,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Antonio Menendez",
+        "ref": 59,
+        "ours": 97,
+        "pct_off": 64.4
+      }
+    ]
+  },
+  {
+    "year": 1977,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.031,
+    "match_rate_pct": 88,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Lucien van Impe",
+        "ref": 244,
+        "ours": 240,
+        "pct_off": 1.6
+      },
+      {
+        "name": "Hennie Kuiper",
+        "ref": 174,
+        "ours": 174,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Pedro Torres",
+        "ref": 143,
+        "ours": 142,
+        "pct_off": 0.7
+      },
+      {
+        "name": "Bernard Thévenet",
+        "ref": 114,
+        "ours": 114,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 80,
+        "ours": 100,
+        "pct_off": 25.0
+      },
+      {
+        "name": "Francisco Galdos",
+        "ref": 53,
+        "ours": 51,
+        "pct_off": 3.8
+      },
+      {
+        "name": "Antonio Menendez",
+        "ref": 52,
+        "ours": 52,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joaquim Agostinho",
+        "ref": 42,
+        "ours": 42,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1978,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.999,
+    "match_rate_pct": 50,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Mariano Martínez",
+        "ref": 187,
+        "ours": 182,
+        "pct_off": 2.7
+      },
+      {
+        "name": "Bernard Hinault",
+        "ref": 176,
+        "ours": 189,
+        "pct_off": 7.4
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 155,
+        "ours": 151,
+        "pct_off": 2.6
+      },
+      {
+        "name": "Christian Seznec",
+        "ref": 90,
+        "ours": 74,
+        "pct_off": 17.8
+      },
+      {
+        "name": "Joaquim Agostinho",
+        "ref": 73,
+        "ours": 87,
+        "pct_off": 19.2
+      },
+      {
+        "name": "Sven-Åke Nilsson",
+        "ref": 70,
+        "ours": 67,
+        "pct_off": 4.3
+      },
+      {
+        "name": "Paul Wellens",
+        "ref": 68,
+        "ours": 62,
+        "pct_off": 8.8
+      },
+      {
+        "name": "René Bittinger",
+        "ref": 63,
+        "ours": 63,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1979,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.962,
+    "match_rate_pct": 50,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Giovanni Battaglin",
+        "ref": 239,
+        "ours": 259,
+        "pct_off": 8.4
+      },
+      {
+        "name": "Bernard Hinault",
+        "ref": 196,
+        "ours": 173,
+        "pct_off": 11.7
+      },
+      {
+        "name": "Mariano Martinez",
+        "ref": 158,
+        "ours": 156,
+        "pct_off": 1.3
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 141,
+        "ours": 119,
+        "pct_off": 15.6
+      },
+      {
+        "name": "Lucien van Impe",
+        "ref": 118,
+        "ours": 118,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Hennie Kuiper",
+        "ref": 108,
+        "ours": 105,
+        "pct_off": 2.8
+      },
+      {
+        "name": "Joaquim Agostinho",
+        "ref": 96,
+        "ours": 98,
+        "pct_off": 2.1
+      },
+      {
+        "name": "Jean-René Bernaudeau",
+        "ref": 67,
+        "ours": 83,
+        "pct_off": 23.9
+      }
+    ]
+  },
+  {
+    "year": 1980,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.929,
+    "match_rate_pct": 50,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Raymond Martin",
+        "ref": 223,
+        "ours": 205,
+        "pct_off": 8.1
+      },
+      {
+        "name": "Ludo Loos",
+        "ref": 162,
+        "ours": 157,
+        "pct_off": 3.1
+      },
+      {
+        "name": "Ludo Peeters",
+        "ref": 147,
+        "ours": 112,
+        "pct_off": 23.8
+      },
+      {
+        "name": "Sven-Ake Nilsson",
+        "ref": 145,
+        "ours": 141,
+        "pct_off": 2.8
+      },
+      {
+        "name": "Joop Zoetemelk",
+        "ref": 137,
+        "ours": 126,
+        "pct_off": 8.0
+      },
+      {
+        "name": "Jostein Wilmann",
+        "ref": 116,
+        "ours": 120,
+        "pct_off": 3.4
+      },
+      {
+        "name": "Vicente Belda",
+        "ref": 99,
+        "ours": 91,
+        "pct_off": 8.1
+      },
+      {
+        "name": "Lucien Van Impe",
+        "ref": 97,
+        "ours": 93,
+        "pct_off": 4.1
+      }
+    ]
+  },
+  {
+    "year": 1981,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.015,
+    "match_rate_pct": 50,
+    "reference_riders": 9,
+    "verification": [
+      {
+        "name": "Lucien van Impe",
+        "ref": 284,
+        "ours": 277,
+        "pct_off": 2.5
+      },
+      {
+        "name": "Bernard Hinault",
+        "ref": 222,
+        "ours": 216,
+        "pct_off": 2.7
+      },
+      {
+        "name": "Jean-René Bernaudeau",
+        "ref": 168,
+        "ours": 158,
+        "pct_off": 6.0
+      },
+      {
+        "name": "Robert Alban",
+        "ref": 134,
+        "ours": 147,
+        "pct_off": 9.7
+      },
+      {
+        "name": "Sven-Ake Nilsson",
+        "ref": 95,
+        "ours": 112,
+        "pct_off": 17.9
+      },
+      {
+        "name": "Phil Anderson",
+        "ref": 79,
+        "ours": 73,
+        "pct_off": 7.6
+      },
+      {
+        "name": "Peter Winnen",
+        "ref": 70,
+        "ours": 70,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Raymond Martin",
+        "ref": 63,
+        "ours": 63,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1982,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.98,
+    "match_rate_pct": 75,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Bernard Vallet",
+        "ref": 278,
+        "ours": 277,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Jean-René Bernaudeau",
+        "ref": 237,
+        "ours": 218,
+        "pct_off": 8.0
+      },
+      {
+        "name": "Beat Breu",
+        "ref": 205,
+        "ours": 205,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Bernard Hinault",
+        "ref": 141,
+        "ours": 138,
+        "pct_off": 2.1
+      },
+      {
+        "name": "Peter Winnen",
+        "ref": 113,
+        "ours": 111,
+        "pct_off": 1.8
+      },
+      {
+        "name": "Pascal Simon",
+        "ref": 112,
+        "ours": 112,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Robert Alban",
+        "ref": 103,
+        "ours": 103,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Marino Lejarreta",
+        "ref": 86,
+        "ours": 81,
+        "pct_off": 5.8
+      }
+    ]
+  },
+  {
+    "year": 1983,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.966,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Lucien van Impe",
+        "ref": 272,
+        "ours": 270,
+        "pct_off": 0.7
+      },
+      {
+        "name": "Patrocinio Jimenez",
+        "ref": 195,
+        "ours": 191,
+        "pct_off": 2.1
+      },
+      {
+        "name": "Robert Millar",
+        "ref": 157,
+        "ours": 157,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Pedro Delgado",
+        "ref": 133,
+        "ours": 128,
+        "pct_off": 3.8
+      },
+      {
+        "name": "Jean-René Bernaudeau",
+        "ref": 125,
+        "ours": 108,
+        "pct_off": 13.6
+      },
+      {
+        "name": "Angel Arroyo",
+        "ref": 121,
+        "ours": 121,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jacques Michaud",
+        "ref": 117,
+        "ours": 117,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Edgar Corredor",
+        "ref": 110,
+        "ours": 110,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1984,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.809,
+    "match_rate_pct": 38,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Robert Millar",
+        "ref": 284,
+        "ours": 284,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Laurent Fignon",
+        "ref": 212,
+        "ours": 199,
+        "pct_off": 6.1
+      },
+      {
+        "name": "Angel Arroyo",
+        "ref": 140,
+        "ours": 142,
+        "pct_off": 1.4
+      },
+      {
+        "name": "Luis Alberto Herrera",
+        "ref": 108,
+        "ours": 101,
+        "pct_off": 6.5
+      },
+      {
+        "name": "José Patrocinio Jimémez",
+        "ref": 92,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "José Patrocinio Jiménez",
+        "ref": 92,
+        "ours": 89,
+        "pct_off": 3.3
+      },
+      {
+        "name": "Bernard Hinault",
+        "ref": 89,
+        "ours": 76,
+        "pct_off": 14.6
+      },
+      {
+        "name": "Pascal Simon",
+        "ref": 79,
+        "ours": 85,
+        "pct_off": 7.6
+      }
+    ]
+  },
+  {
+    "year": 1985,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.5,
+    "match_rate_pct": 0,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Luis Herrera",
+        "ref": 440,
+        "ours": 875,
+        "pct_off": 98.9
+      },
+      {
+        "name": "Pedro Delgado",
+        "ref": 274,
+        "ours": 477,
+        "pct_off": 74.1
+      },
+      {
+        "name": "Robert Millar",
+        "ref": 270,
+        "ours": 513,
+        "pct_off": 90.0
+      },
+      {
+        "name": "Greg LeMond",
+        "ref": 214,
+        "ours": 427,
+        "pct_off": 99.5
+      },
+      {
+        "name": "Reynel Montoya",
+        "ref": 190,
+        "ours": 380,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Bernard Hinault",
+        "ref": 165,
+        "ours": 319,
+        "pct_off": 93.3
+      },
+      {
+        "name": "Claudio Fasolo",
+        "ref": 136,
+        "ours": 250,
+        "pct_off": 83.8
+      },
+      {
+        "name": "Fabio Parra",
+        "ref": 133,
+        "ours": 266,
+        "pct_off": 100.0
+      }
+    ]
+  },
+  {
+    "year": 1986,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.984,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Bernard Hinault",
+        "ref": 351,
+        "ours": 336,
+        "pct_off": 4.3
+      },
+      {
+        "name": "Luis Herrera",
+        "ref": 270,
+        "ours": 267,
+        "pct_off": 1.1
+      },
+      {
+        "name": "Greg LeMond",
+        "ref": 265,
+        "ours": 259,
+        "pct_off": 2.3
+      },
+      {
+        "name": "Urs Zimmermann",
+        "ref": 191,
+        "ours": 191,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Eduardo Chozas",
+        "ref": 172,
+        "ours": 172,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Samuel Cabrera",
+        "ref": 162,
+        "ours": 159,
+        "pct_off": 1.9
+      },
+      {
+        "name": "Ronan Pensec",
+        "ref": 139,
+        "ours": 133,
+        "pct_off": 4.3
+      },
+      {
+        "name": "Andrew Hampsten",
+        "ref": 133,
+        "ours": 133,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1987,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.992,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Luis Herrera",
+        "ref": 452,
+        "ours": 447,
+        "pct_off": 1.1
+      },
+      {
+        "name": "Anselmo Fuerte",
+        "ref": 314,
+        "ours": 314,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Raúl Alcalá",
+        "ref": 277,
+        "ours": 268,
+        "pct_off": 3.2
+      },
+      {
+        "name": "Pedro Delgado",
+        "ref": 224,
+        "ours": 224,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Fabio Parra",
+        "ref": 180,
+        "ours": 180,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Stephen Roche",
+        "ref": 173,
+        "ours": 172,
+        "pct_off": 0.6
+      },
+      {
+        "name": "Jean-François Bernard",
+        "ref": 170,
+        "ours": 163,
+        "pct_off": 4.1
+      },
+      {
+        "name": "Jesús Hernández Úbeda",
+        "ref": 147,
+        "ours": 0,
+        "pct_off": 100.0
+      }
+    ]
+  },
+  {
+    "year": 1988,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.626,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Steven Rooks",
+        "ref": 326,
+        "ours": 325,
+        "pct_off": 0.3
+      },
+      {
+        "name": "Gert-Jan Theunisse",
+        "ref": 248,
+        "ours": 247,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Pedro Delgado",
+        "ref": 223,
+        "ours": 223,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Ronan Pensec",
+        "ref": 130,
+        "ours": 129,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Jérôme Simon",
+        "ref": 127,
+        "ours": 127,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Fabio Parra",
+        "ref": 123,
+        "ours": 124,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Laudelino Cubino",
+        "ref": 101,
+        "ours": 101,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alvaro Pino",
+        "ref": 98,
+        "ours": 97,
+        "pct_off": 1.0
+      }
+    ]
+  },
+  {
+    "year": 1989,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.729,
+    "match_rate_pct": 88,
+    "reference_riders": 12,
+    "verification": [
+      {
+        "name": "Gert-Jan Theinisse",
+        "ref": 441,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Gert-Jan Theunisse",
+        "ref": 441,
+        "ours": 442,
+        "pct_off": 0.2
+      },
+      {
+        "name": "Pedro Delgado",
+        "ref": 311,
+        "ours": 311,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Steven Rooks",
+        "ref": 257,
+        "ours": 259,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Robert Millar",
+        "ref": 241,
+        "ours": 240,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Laurent Fignon",
+        "ref": 219,
+        "ours": 219,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Greg LeMond",
+        "ref": 197,
+        "ours": 198,
+        "pct_off": 0.5
+      },
+      {
+        "name": "Marino Lejarreta",
+        "ref": 164,
+        "ours": 164,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1990,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.968,
+    "match_rate_pct": 75,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Thierry Claveyrolat",
+        "ref": 321,
+        "ours": 318,
+        "pct_off": 0.9
+      },
+      {
+        "name": "Claudio Chiappucci",
+        "ref": 179,
+        "ours": 155,
+        "pct_off": 13.4
+      },
+      {
+        "name": "Roberto Conti",
+        "ref": 160,
+        "ours": 159,
+        "pct_off": 0.6
+      },
+      {
+        "name": "Miguel Induráin",
+        "ref": 153,
+        "ours": 153,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Greg LeMond",
+        "ref": 135,
+        "ours": 135,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Johan Bruyneel",
+        "ref": 124,
+        "ours": 119,
+        "pct_off": 4.0
+      },
+      {
+        "name": "Dmitri Konychev",
+        "ref": 118,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Reynel Montoya",
+        "ref": 105,
+        "ours": 105,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1991,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.491,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Claudio Chiappucci",
+        "ref": 312,
+        "ours": 312,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Thierry Claveyrolat",
+        "ref": 277,
+        "ours": 278,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Luc Leblanc",
+        "ref": 164,
+        "ours": 163,
+        "pct_off": 0.6
+      },
+      {
+        "name": "Gianni Bugno",
+        "ref": 157,
+        "ours": 157,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Miguel Indurain",
+        "ref": 141,
+        "ours": 141,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Andrew Hampsten",
+        "ref": 128,
+        "ours": 128,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Charly Mottet",
+        "ref": 122,
+        "ours": 122,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Pascal Richard",
+        "ref": 118,
+        "ours": 118,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1992,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.759,
+    "match_rate_pct": 88,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Claudio Chiappucci",
+        "ref": 410,
+        "ours": 411,
+        "pct_off": 0.2
+      },
+      {
+        "name": "Richard Virenque",
+        "ref": 245,
+        "ours": 246,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Franco Chioccioli",
+        "ref": 209,
+        "ours": 209,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Miguel Indurain",
+        "ref": 152,
+        "ours": 152,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Andrew Hempsten",
+        "ref": 140,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Andrew Hampsten",
+        "ref": 140,
+        "ours": 140,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Gianni Bugno",
+        "ref": 131,
+        "ours": 132,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Franco Vona",
+        "ref": 122,
+        "ours": 122,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1993,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.463,
+    "match_rate_pct": 75,
+    "reference_riders": 12,
+    "verification": [
+      {
+        "name": "Tony Rominger",
+        "ref": 449,
+        "ours": 448,
+        "pct_off": 0.2
+      },
+      {
+        "name": "Toni Rominger",
+        "ref": 449,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Claudio Chiappucci",
+        "ref": 301,
+        "ours": 302,
+        "pct_off": 0.3
+      },
+      {
+        "name": "Oliviero Rincón",
+        "ref": 286,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Miguel Indurain",
+        "ref": 239,
+        "ours": 238,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Richard Virenque",
+        "ref": 191,
+        "ours": 191,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alvaro Mejia",
+        "ref": 187,
+        "ours": 186,
+        "pct_off": 0.5
+      },
+      {
+        "name": "Davide Cassani",
+        "ref": 155,
+        "ours": 156,
+        "pct_off": 0.6
+      }
+    ]
+  },
+  {
+    "year": 1994,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.556,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Richard Virenque",
+        "ref": 392,
+        "ours": 392,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Marco Pantani",
+        "ref": 243,
+        "ours": 243,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Piotr Ugrumov",
+        "ref": 219,
+        "ours": 219,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Miguel Induráin",
+        "ref": 215,
+        "ours": 216,
+        "pct_off": 0.5
+      },
+      {
+        "name": "Peter De Clercq",
+        "ref": 192,
+        "ours": 193,
+        "pct_off": 0.5
+      },
+      {
+        "name": "Luc Leblanc",
+        "ref": 176,
+        "ours": 177,
+        "pct_off": 0.6
+      },
+      {
+        "name": "Oscar Pelliccioli",
+        "ref": 151,
+        "ours": 151,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Roberto Conti",
+        "ref": 147,
+        "ours": 148,
+        "pct_off": 0.7
+      }
+    ]
+  },
+  {
+    "year": 1995,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.377,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Richard Virenque",
+        "ref": 438,
+        "ours": 438,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Claudio Chiappucci",
+        "ref": 214,
+        "ours": 214,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alex Zülle",
+        "ref": 205,
+        "ours": 205,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Miguel Induráin",
+        "ref": 198,
+        "ours": 198,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Hernán Buenahora",
+        "ref": 177,
+        "ours": 176,
+        "pct_off": 0.6
+      },
+      {
+        "name": "Marco Pantani",
+        "ref": 142,
+        "ours": 142,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Laurent Dufaux",
+        "ref": 132,
+        "ours": 132,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Fernando Escartín",
+        "ref": 121,
+        "ours": 121,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1996,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.815,
+    "match_rate_pct": 12,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Richard Virenque",
+        "ref": 383,
+        "ours": 317,
+        "pct_off": 17.2
+      },
+      {
+        "name": "Bjarne Riis",
+        "ref": 274,
+        "ours": 219,
+        "pct_off": 20.1
+      },
+      {
+        "name": "Laurent Dufaux",
+        "ref": 176,
+        "ours": 136,
+        "pct_off": 22.7
+      },
+      {
+        "name": "Laurent Brochard",
+        "ref": 168,
+        "ours": 144,
+        "pct_off": 14.3
+      },
+      {
+        "name": "Luc Leblanc",
+        "ref": 158,
+        "ours": 119,
+        "pct_off": 24.7
+      },
+      {
+        "name": "Tony Rominger",
+        "ref": 148,
+        "ours": 130,
+        "pct_off": 12.2
+      },
+      {
+        "name": "Jan Ullrich",
+        "ref": 131,
+        "ours": 108,
+        "pct_off": 17.6
+      },
+      {
+        "name": "Pascal Hervé",
+        "ref": 110,
+        "ours": 110,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1997,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.795,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Richard Virenque",
+        "ref": 579,
+        "ours": 578,
+        "pct_off": 0.2
+      },
+      {
+        "name": "Jan Ullrich",
+        "ref": 328,
+        "ours": 329,
+        "pct_off": 0.3
+      },
+      {
+        "name": "Francesco Casagrande",
+        "ref": 309,
+        "ours": 308,
+        "pct_off": 0.3
+      },
+      {
+        "name": "Marco Pantani",
+        "ref": 269,
+        "ours": 268,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Laurent Brochard",
+        "ref": 241,
+        "ours": 241,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Laurent Dufaux",
+        "ref": 212,
+        "ours": 213,
+        "pct_off": 0.5
+      },
+      {
+        "name": "Pascal Hervé",
+        "ref": 176,
+        "ours": 177,
+        "pct_off": 0.6
+      },
+      {
+        "name": "Fernando Escartín",
+        "ref": 141,
+        "ours": 141,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1998,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.986,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Christophe Rinero",
+        "ref": 200,
+        "ours": 200,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Marco Pantani",
+        "ref": 175,
+        "ours": 175,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alberto Elli",
+        "ref": 165,
+        "ours": 162,
+        "pct_off": 1.8
+      },
+      {
+        "name": "Cédric Vasseur",
+        "ref": 156,
+        "ours": 146,
+        "pct_off": 6.4
+      },
+      {
+        "name": "Stéphane Heulot",
+        "ref": 152,
+        "ours": 152,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jan Ullrich",
+        "ref": 126,
+        "ours": 126,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Bobby Julich",
+        "ref": 98,
+        "ours": 98,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Michael Boogerd",
+        "ref": 92,
+        "ours": 92,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 1999,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.806,
+    "match_rate_pct": 75,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Richard Virenque",
+        "ref": 279,
+        "ours": 271,
+        "pct_off": 2.9
+      },
+      {
+        "name": "Alberto Elli",
+        "ref": 226,
+        "ours": 204,
+        "pct_off": 9.7
+      },
+      {
+        "name": "Mariano Piccoli",
+        "ref": 205,
+        "ours": 196,
+        "pct_off": 4.4
+      },
+      {
+        "name": "Fernando Escartin",
+        "ref": 194,
+        "ours": 194,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Lance Armstrong",
+        "ref": 193,
+        "ours": 1,
+        "pct_off": 99.5
+      },
+      {
+        "name": "Alex Zülle",
+        "ref": 152,
+        "ours": 152,
+        "pct_off": 0.0
+      },
+      {
+        "name": "José Luis Arrieta",
+        "ref": 141,
+        "ours": 141,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Laurent Dufaux",
+        "ref": 141,
+        "ours": 140,
+        "pct_off": 0.7
+      }
+    ]
+  },
+  {
+    "year": 2000,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.214,
+    "match_rate_pct": 62,
+    "reference_riders": 12,
+    "verification": [
+      {
+        "name": "Santiago Botero",
+        "ref": 347,
+        "ours": 348,
+        "pct_off": 0.3
+      },
+      {
+        "name": "Javier Ochoa",
+        "ref": 283,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Javier Otxoa",
+        "ref": 283,
+        "ours": 284,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Richard Virenque",
+        "ref": 267,
+        "ours": 266,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Pacal Hervé",
+        "ref": 234,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Pascal Hervé",
+        "ref": 234,
+        "ours": 234,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Nico Mattan",
+        "ref": 164,
+        "ours": 164,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Lance Armstrong",
+        "ref": 162,
+        "ours": 0,
+        "pct_off": 100.0
+      }
+    ]
+  },
+  {
+    "year": 2001,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.612,
+    "match_rate_pct": 88,
+    "reference_riders": 12,
+    "verification": [
+      {
+        "name": "Laurent Jalabert",
+        "ref": 258,
+        "ours": 258,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jan Ullrich",
+        "ref": 211,
+        "ours": 212,
+        "pct_off": 0.5
+      },
+      {
+        "name": "Laurent Roux",
+        "ref": 200,
+        "ours": 200,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Lance Armstrong",
+        "ref": 195,
+        "ours": 195,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Stefano Garzelli",
+        "ref": 164,
+        "ours": 163,
+        "pct_off": 0.6
+      },
+      {
+        "name": "Robert Laiseka",
+        "ref": 147,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Roberto Laiseka",
+        "ref": 147,
+        "ours": 147,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joseba Beloki",
+        "ref": 145,
+        "ours": 145,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2002,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.751,
+    "match_rate_pct": 88,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Laurent Jalabert",
+        "ref": 262,
+        "ours": 261,
+        "pct_off": 0.4
+      },
+      {
+        "name": "Mario Aerts",
+        "ref": 178,
+        "ours": 178,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Santiago Botero",
+        "ref": 162,
+        "ours": 162,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Lance Armstrong",
+        "ref": 159,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Axel Merckx",
+        "ref": 121,
+        "ours": 121,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joseba Beloki",
+        "ref": 115,
+        "ours": 115,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Michael Boogerd",
+        "ref": 113,
+        "ours": 113,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Richard Virenque",
+        "ref": 107,
+        "ours": 106,
+        "pct_off": 0.9
+      }
+    ]
+  },
+  {
+    "year": 2003,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.423,
+    "match_rate_pct": 100,
+    "reference_riders": 9,
+    "verification": [
+      {
+        "name": "Richard Virenque",
+        "ref": 324,
+        "ours": 323,
+        "pct_off": 0.3
+      },
+      {
+        "name": "Laurent Dufaux",
+        "ref": 187,
+        "ours": 187,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Christophe Moreau",
+        "ref": 137,
+        "ours": 137,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Juan Miguel Mercado",
+        "ref": 136,
+        "ours": 135,
+        "pct_off": 0.7
+      },
+      {
+        "name": "Iban Mayo",
+        "ref": 130,
+        "ours": 130,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Haimar Zubeldia",
+        "ref": 125,
+        "ours": 126,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Jan Ullrich",
+        "ref": 124,
+        "ours": 124,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Tyler Hamilton",
+        "ref": 116,
+        "ours": 116,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2004,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.571,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Richard Virenque",
+        "ref": 226,
+        "ours": 226,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Lance Armstrong",
+        "ref": 172,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Michael Rasmussen",
+        "ref": 119,
+        "ours": 119,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Ivan Basso",
+        "ref": 119,
+        "ours": 120,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Jan Ullrich",
+        "ref": 115,
+        "ours": 114,
+        "pct_off": 0.9
+      },
+      {
+        "name": "Christophe Moreau",
+        "ref": 115,
+        "ours": 115,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Andreas Klöden",
+        "ref": 112,
+        "ours": 112,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Francisco Mancebo",
+        "ref": 77,
+        "ours": 77,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2005,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.824,
+    "match_rate_pct": 50,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Michael Rasmussen",
+        "ref": 185,
+        "ours": 185,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Óscar Pereiro",
+        "ref": 155,
+        "ours": 145,
+        "pct_off": 6.5
+      },
+      {
+        "name": "Lance Armstrong",
+        "ref": 99,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Christophe Moreau",
+        "ref": 93,
+        "ours": 93,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Michael Boogerd",
+        "ref": 90,
+        "ours": 90,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Santiago Botero",
+        "ref": 88,
+        "ours": 89,
+        "pct_off": 1.1
+      },
+      {
+        "name": "Alexander Vinokourov",
+        "ref": 75,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Laurent Brochard",
+        "ref": 75,
+        "ours": 88,
+        "pct_off": 17.3
+      }
+    ]
+  },
+  {
+    "year": 2006,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.996,
+    "match_rate_pct": 0,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Michael Rasmussen",
+        "ref": 166,
+        "ours": 141,
+        "pct_off": 15.1
+      },
+      {
+        "name": "David de La Fuente",
+        "ref": 113,
+        "ours": 125,
+        "pct_off": 10.6
+      },
+      {
+        "name": "Carlos Sastre",
+        "ref": 99,
+        "ours": 113,
+        "pct_off": 14.1
+      },
+      {
+        "name": "Frank Schleck",
+        "ref": 96,
+        "ours": 85,
+        "pct_off": 11.5
+      },
+      {
+        "name": "Michael Boogerd",
+        "ref": 93,
+        "ours": 76,
+        "pct_off": 18.3
+      },
+      {
+        "name": "Damiano Cunego",
+        "ref": 80,
+        "ours": 94,
+        "pct_off": 17.5
+      },
+      {
+        "name": "Cyril Dessel",
+        "ref": 72,
+        "ours": 93,
+        "pct_off": 29.2
+      },
+      {
+        "name": "Levi Leipheimer",
+        "ref": 66,
+        "ours": 3,
+        "pct_off": 95.5
+      }
+    ]
+  },
+  {
+    "year": 2007,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.832,
+    "match_rate_pct": 38,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Mauricio Soler",
+        "ref": 206,
+        "ours": 154,
+        "pct_off": 25.2
+      },
+      {
+        "name": "Alberto Contador",
+        "ref": 128,
+        "ours": 88,
+        "pct_off": 31.2
+      },
+      {
+        "name": "Yaroslav Popovych",
+        "ref": 105,
+        "ours": 77,
+        "pct_off": 26.7
+      },
+      {
+        "name": "Cadel Evans",
+        "ref": 92,
+        "ours": 76,
+        "pct_off": 17.4
+      },
+      {
+        "name": "Laurent Lefèvre",
+        "ref": 85,
+        "ours": 85,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Juan Manuel Gárate",
+        "ref": 77,
+        "ours": 77,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Carlos Sastre",
+        "ref": 74,
+        "ours": 49,
+        "pct_off": 33.8
+      },
+      {
+        "name": "Juan José Cobo",
+        "ref": 68,
+        "ours": 68,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2008,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.629,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Bernhard Kohl",
+        "ref": 128,
+        "ours": 128,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Carlos Sastre",
+        "ref": 80,
+        "ours": 80,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Fränk Schleck",
+        "ref": 80,
+        "ours": 80,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Thomas Voeckler",
+        "ref": 65,
+        "ours": 64,
+        "pct_off": 1.5
+      },
+      {
+        "name": "Sebastian Lang",
+        "ref": 62,
+        "ours": 62,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Stefan Schumacher",
+        "ref": 61,
+        "ours": 61,
+        "pct_off": 0.0
+      },
+      {
+        "name": "John-Lee Augustyn",
+        "ref": 61,
+        "ours": 61,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alejandro Valverde",
+        "ref": 58,
+        "ours": 58,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2009,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.841,
+    "match_rate_pct": 62,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Franco Pellizotti",
+        "ref": 210,
+        "ours": 210,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Egoi Martínez",
+        "ref": 135,
+        "ours": 92,
+        "pct_off": 31.9
+      },
+      {
+        "name": "Alberto Contador",
+        "ref": 126,
+        "ours": 111,
+        "pct_off": 11.9
+      },
+      {
+        "name": "Andy Schleck",
+        "ref": 111,
+        "ours": 111,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Pierrick Fédrigo",
+        "ref": 99,
+        "ours": 99,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Christophe Kern",
+        "ref": 89,
+        "ours": 43,
+        "pct_off": 51.7
+      },
+      {
+        "name": "Fränk Schleck",
+        "ref": 88,
+        "ours": 88,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Mikel Astarloza",
+        "ref": 86,
+        "ours": 86,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2010,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.463,
+    "match_rate_pct": 88,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Anthony Charteau",
+        "ref": 143,
+        "ours": 142,
+        "pct_off": 0.7
+      },
+      {
+        "name": "Christophe Moreau",
+        "ref": 128,
+        "ours": 128,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Andy Schleck",
+        "ref": 116,
+        "ours": 116,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alberto Contador",
+        "ref": 112,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Damiano Cunego",
+        "ref": 99,
+        "ours": 98,
+        "pct_off": 1.0
+      },
+      {
+        "name": "Samuel Sánchez",
+        "ref": 96,
+        "ours": 95,
+        "pct_off": 1.0
+      },
+      {
+        "name": "Sandy Casar",
+        "ref": 93,
+        "ours": 93,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jérôme Pineau",
+        "ref": 92,
+        "ours": 92,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2011,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.0,
+    "match_rate_pct": 100,
+    "reference_riders": 11,
+    "verification": [
+      {
+        "name": "Samuel Sánchez",
+        "ref": 108,
+        "ours": 108,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Andy Schleck",
+        "ref": 98,
+        "ours": 98,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jelle Vanendert",
+        "ref": 74,
+        "ours": 74,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Cadel Evans",
+        "ref": 58,
+        "ours": 58,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Fränk Schleck",
+        "ref": 56,
+        "ours": 56,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alberto Contador",
+        "ref": 51,
+        "ours": 51,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jérémy Roy",
+        "ref": 45,
+        "ours": 45,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Pierre Rolland",
+        "ref": 44,
+        "ours": 44,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2012,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.665,
+    "match_rate_pct": 75,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Thomas Voeckler",
+        "ref": 135,
+        "ours": 135,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Fredrik Kessiakoff",
+        "ref": 123,
+        "ours": 123,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Chris Anker Sørensen",
+        "ref": 77,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Pierre Rolland",
+        "ref": 63,
+        "ours": 63,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alejandro Valverde",
+        "ref": 51,
+        "ours": 51,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Chris Froome",
+        "ref": 48,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Egoi Martínez",
+        "ref": 43,
+        "ours": 43,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Thibaut Pinot",
+        "ref": 40,
+        "ours": 40,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2013,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.436,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Nairo Quintana",
+        "ref": 147,
+        "ours": 148,
+        "pct_off": 0.7
+      },
+      {
+        "name": "Chris Froome",
+        "ref": 136,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Pierre Rolland",
+        "ref": 119,
+        "ours": 120,
+        "pct_off": 0.8
+      },
+      {
+        "name": "Joaquim Rodríguez",
+        "ref": 99,
+        "ours": 99,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Christophe Riblon",
+        "ref": 98,
+        "ours": 98,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Mikel Nieve",
+        "ref": 98,
+        "ours": 98,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Moreno Moser",
+        "ref": 72,
+        "ours": 72,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Richie Porte",
+        "ref": 72,
+        "ours": 72,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2014,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.594,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Rafał Majka",
+        "ref": 181,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Vincenzo Nibali",
+        "ref": 168,
+        "ours": 168,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joaquim Rodríguez",
+        "ref": 112,
+        "ours": 111,
+        "pct_off": 0.9
+      },
+      {
+        "name": "Thibaut Pinot",
+        "ref": 89,
+        "ours": 89,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jean-Christophe Péraud",
+        "ref": 85,
+        "ours": 85,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alessandro De Marchi",
+        "ref": 78,
+        "ours": 78,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Thomas Voeckler",
+        "ref": 61,
+        "ours": 61,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Giovanni Visconti",
+        "ref": 54,
+        "ours": 54,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2015,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.628,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Chris Froome",
+        "ref": 119,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Nairo Quintana",
+        "ref": 108,
+        "ours": 108,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Romain Bardet",
+        "ref": 90,
+        "ours": 89,
+        "pct_off": 1.1
+      },
+      {
+        "name": "Thibaut Pinot",
+        "ref": 82,
+        "ours": 82,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Joaquim Rodríguez",
+        "ref": 78,
+        "ours": 77,
+        "pct_off": 1.3
+      },
+      {
+        "name": "Pierre Rolland",
+        "ref": 74,
+        "ours": 74,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Alejandro Valverde",
+        "ref": 72,
+        "ours": 72,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jakob Fuglsang",
+        "ref": 64,
+        "ours": 64,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2016,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.833,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Rafał Majka",
+        "ref": 209,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Thomas De Gendt",
+        "ref": 130,
+        "ours": 130,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jarlinson Pantano",
+        "ref": 121,
+        "ours": 121,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Ilnur Zakarin",
+        "ref": 84,
+        "ours": 84,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Rui Costa",
+        "ref": 76,
+        "ours": 76,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Serge Pauwels",
+        "ref": 62,
+        "ours": 62,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Stef Clement",
+        "ref": 53,
+        "ours": 53,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Vincenzo Nibali",
+        "ref": 36,
+        "ours": 36,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2017,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.833,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Warren Barguil",
+        "ref": 169,
+        "ours": 169,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Primož Roglič",
+        "ref": 80,
+        "ours": 80,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Thomas De Gendt",
+        "ref": 64,
+        "ours": 64,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Darwin Atapuma",
+        "ref": 55,
+        "ours": 55,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Chris Froome",
+        "ref": 51,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Romain Bardet",
+        "ref": 47,
+        "ours": 47,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Mikel Landa",
+        "ref": 45,
+        "ours": 45,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Bauke Mollema",
+        "ref": 37,
+        "ours": 37,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2018,
+    "strategy": "scale_pcs",
+    "pcs_coverage": 0.598,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Julian Alaphilippe",
+        "ref": 170,
+        "ours": 170,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Warren Barguil",
+        "ref": 91,
+        "ours": 90,
+        "pct_off": 1.1
+      },
+      {
+        "name": "Rafał Majka",
+        "ref": 76,
+        "ours": 0,
+        "pct_off": 100.0
+      },
+      {
+        "name": "Geraint Thomas",
+        "ref": 74,
+        "ours": 75,
+        "pct_off": 1.4
+      },
+      {
+        "name": "Tom Dumoulin",
+        "ref": 63,
+        "ours": 64,
+        "pct_off": 1.6
+      },
+      {
+        "name": "Primož Roglič",
+        "ref": 56,
+        "ours": 55,
+        "pct_off": 1.8
+      },
+      {
+        "name": "Dan Martin",
+        "ref": 41,
+        "ours": 41,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Nairo Quintana",
+        "ref": 40,
+        "ours": 40,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2019,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.998,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Romain Bardet",
+        "ref": 86,
+        "ours": 86,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Egan Bernal",
+        "ref": 78,
+        "ours": 78,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Tim Wellens",
+        "ref": 75,
+        "ours": 74,
+        "pct_off": 1.3
+      },
+      {
+        "name": "Damiano Caruso",
+        "ref": 67,
+        "ours": 67,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Vincenzo Nibali",
+        "ref": 59,
+        "ours": 59,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Simon Yates",
+        "ref": 59,
+        "ours": 59,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Nairo Quintana",
+        "ref": 58,
+        "ours": 57,
+        "pct_off": 1.7
+      },
+      {
+        "name": "Alexey Lutsenko",
+        "ref": 45,
+        "ours": 0,
+        "pct_off": 100.0
+      }
+    ]
+  },
+  {
+    "year": 2020,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.0,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Tadej Pogačar",
+        "ref": 82,
+        "ours": 82,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Richard Carapaz",
+        "ref": 74,
+        "ours": 74,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Primož Roglič",
+        "ref": 67,
+        "ours": 67,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Marc Hirschi",
+        "ref": 62,
+        "ours": 62,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Miguel Ángel López",
+        "ref": 51,
+        "ours": 51,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Benoît Cosnefroy",
+        "ref": 36,
+        "ours": 36,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Pierre Rolland",
+        "ref": 36,
+        "ours": 36,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Richie Porte",
+        "ref": 36,
+        "ours": 36,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2021,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.0,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Tadej Pogačar",
+        "ref": 107,
+        "ours": 107,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Wout Poels",
+        "ref": 88,
+        "ours": 88,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jonas Vingegaard",
+        "ref": 82,
+        "ours": 82,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Wout van Aert",
+        "ref": 68,
+        "ours": 68,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Nairo Quintana",
+        "ref": 66,
+        "ours": 66,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Richard Carapaz",
+        "ref": 56,
+        "ours": 56,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Ben O'Connor",
+        "ref": 44,
+        "ours": 44,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Bauke Mollema",
+        "ref": 41,
+        "ours": 41,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2022,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.0,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Jonas Vingegaard",
+        "ref": 72,
+        "ours": 72,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Simon Geschke",
+        "ref": 65,
+        "ours": 65,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Giulio Ciccone",
+        "ref": 61,
+        "ours": 61,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Tadej Pogačar",
+        "ref": 61,
+        "ours": 61,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Wout van Aert",
+        "ref": 59,
+        "ours": 59,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Thibaut Pinot",
+        "ref": 52,
+        "ours": 52,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Louis Meintjes",
+        "ref": 39,
+        "ours": 39,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Neilson Powless",
+        "ref": 37,
+        "ours": 37,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2023,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.0,
+    "match_rate_pct": 100,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Giulio Ciccone",
+        "ref": 106,
+        "ours": 106,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Felix Gall",
+        "ref": 92,
+        "ours": 92,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jonas Vingegaard",
+        "ref": 89,
+        "ours": 89,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Neilson Powless",
+        "ref": 58,
+        "ours": 58,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Tadej Pogačar",
+        "ref": 55,
+        "ours": 55,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Simon Yates",
+        "ref": 44,
+        "ours": 44,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Tobias Halland Johannessen",
+        "ref": 38,
+        "ours": 38,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jai Hindley",
+        "ref": 31,
+        "ours": 31,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2024,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.977,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Richard Carapaz",
+        "ref": 127,
+        "ours": 127,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Tadej Pogačar",
+        "ref": 102,
+        "ours": 97,
+        "pct_off": 4.9
+      },
+      {
+        "name": "Jonas Vingegaard",
+        "ref": 70,
+        "ours": 68,
+        "pct_off": 2.9
+      },
+      {
+        "name": "Matteo Jorgenson",
+        "ref": 54,
+        "ours": 54,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Remco Evenepoel",
+        "ref": 50,
+        "ours": 47,
+        "pct_off": 6.0
+      },
+      {
+        "name": "Wilco Kelderman",
+        "ref": 43,
+        "ours": 43,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Oier Lazkano",
+        "ref": 41,
+        "ours": 41,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Jonas Abrahamsen",
+        "ref": 36,
+        "ours": 36,
+        "pct_off": 0.0
+      }
+    ]
+  },
+  {
+    "year": 2025,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 1.011,
+    "match_rate_pct": 88,
+    "reference_riders": 10,
+    "verification": [
+      {
+        "name": "Tadej Pogačar",
+        "ref": 119,
+        "ours": 117,
+        "pct_off": 1.7
+      },
+      {
+        "name": "Jonas Vingegaard",
+        "ref": 104,
+        "ours": 104,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Lenny Martinez",
+        "ref": 97,
+        "ours": 105,
+        "pct_off": 8.2
+      },
+      {
+        "name": "Thymen Arensman",
+        "ref": 85,
+        "ours": 85,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Ben O'Connor",
+        "ref": 51,
+        "ours": 51,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Valentin Paret-Peintre",
+        "ref": 51,
+        "ours": 51,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Felix Gall",
+        "ref": 46,
+        "ours": 46,
+        "pct_off": 0.0
+      },
+      {
+        "name": "Primož Roglič",
+        "ref": 43,
+        "ours": 43,
+        "pct_off": 0.0
+      }
+    ]
+  }
+]

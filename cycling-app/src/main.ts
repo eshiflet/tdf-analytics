@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import type { GcDataset, RiderSeries, StageInfo } from "./types";
+import type { GcDataset, RiderSeries, RiderStagePoint, StageInfo } from "./types";
 
 const PALETTE = [
   "#ffce00", "#ff6b6b", "#4dabf7", "#69db7c", "#da77f2",
@@ -22,28 +22,46 @@ for (const [path, data] of Object.entries(yearModules)) {
 }
 const YEARS = Object.keys(DATASETS_BY_YEAR).sort().reverse();
 let currentYear = YEARS[0];
-let currentMetric: "gc" | "points" = "gc";
+let currentMetric: "gc" | "points" | "kom" = "gc";
 
 let dataset: GcDataset;
 let selected: Set<string> = new Set();
 let highlighted: string | null = null;
 let colorScale: d3.ScaleOrdinal<string, string>;
 
-// Per-dataset points rankings, recomputed on year change.
-// pointsRankAtStage: stageNumber → riderId → rank (1 = most points)
+// Per-dataset points/KOM rankings, recomputed on year change.
 let pointsRankAtStage = new Map<number, Map<string, number>>();
-// finalPointsRank: riderId → rank at last stage (used for "Top N" preset)
 let finalPointsRank = new Map<string, number>();
-// ridersAtFinalPointsRank: rank → { riders, points } for tie display
 let ridersAtFinalPointsRank = new Map<number, { riders: RiderSeries[]; points: number }>();
 
+let komRankAtStage = new Map<number, Map<string, number>>();
+let finalKomRank = new Map<string, number>();
+let ridersAtFinalKomRank = new Map<number, { riders: RiderSeries[]; points: number }>();
+
 const chartEl = document.getElementById("chart") as HTMLDivElement;
+const overviewChartEl = document.getElementById("overview-chart") as HTMLDivElement;
 const legendEl = document.getElementById("legend") as HTMLDivElement;
+const sidebarEl = document.getElementById("sidebar") as HTMLElement;
 const tooltipEl = document.getElementById("tooltip") as HTMLDivElement;
 const chartAreaEl = tooltipEl.parentElement as HTMLDivElement;
 const searchEl = document.getElementById("search") as HTMLInputElement;
 const yearSelectEl = document.getElementById("year-select") as HTMLSelectElement;
 const metricSelectEl = document.getElementById("metric-select") as HTMLSelectElement;
+const viewStageBtn = document.getElementById("view-stage") as HTMLButtonElement;
+const viewOverviewBtn = document.getElementById("view-overview") as HTMLButtonElement;
+const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
+const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement;
+const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
+
+let currentView: "stage" | "overview" = "stage";
+
+function fmtTotalTime(seconds: number | null): string {
+  if (!seconds) return "—";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
 function stageLabel(stageNum: number): string {
   return dataset?.stages.find((s) => s.stage_number === stageNum)?.stage_label ?? String(stageNum);
@@ -57,6 +75,166 @@ function fmtGap(seconds: number | null): string {
   const s = seconds % 60;
   const parts = h > 0 ? [h, m, s] : [m, s];
   return "+" + parts.map((p, i) => (i === 0 ? String(p) : String(p).padStart(2, "0"))).join(":");
+}
+
+// ─── Route type colors & difficulty ──────────────────────────────────────────
+
+const ROUTE_COLOR: Record<string, string> = {
+  P:   "#9b59b6",  // prologue — purple
+  TT:  "#7f8c8d",  // time trial — gray
+  TTT: "#95a5a6",  // team TT — light gray
+  F:   "#27ae60",  // flat — green
+  H:   "#e67e22",  // hilly — orange
+  M:   "#e74c3c",  // mountain — red
+};
+
+const ROUTE_LABEL: Record<string, string> = {
+  P: "Prologue", TT: "Time Trial", TTT: "Team TT",
+  F: "Flat", H: "Hilly", M: "Mountain",
+};
+
+const ROUTE_MULTIPLIER: Record<string, number> = {
+  P: 0.3, TT: 0.5, TTT: 0.6, F: 1.0, H: 1.3, M: 1.8,
+};
+
+function difficultyScore(stage: StageInfo): number {
+  const vm = stage.vertical_meters ?? 0;
+  const dk = stage.distance_km ?? 0;
+  if (dk === 0) return 0;
+  const mult = ROUTE_MULTIPLIER[stage.route_type ?? "F"] ?? 1.0;
+  return (vm * vm) / (dk * 1000) * mult;
+}
+
+function drawOverview() {
+  overviewChartEl.innerHTML = "";
+  const stages = dataset.stages;
+  if (!stages.length) return;
+
+  // Totals summary in the topbar
+  const totalDist = stages.reduce((s, st) => s + (st.distance_km ?? 0), 0);
+  const totalElev = stages.reduce((s, st) => s + (st.vertical_meters ?? 0), 0);
+  overviewSummaryEl.innerHTML = `
+    <span class="overview-summary-item"><span class="overview-summary-label">Total Distance</span> <span class="overview-summary-value">${Math.round(totalDist).toLocaleString()} km</span></span>
+    <span class="overview-summary-sep">·</span>
+    <span class="overview-summary-item"><span class="overview-summary-label">Total Elevation</span> <span class="overview-summary-value">${totalElev.toLocaleString()} m</span></span>
+  `;
+
+  const containerRect = overviewChartEl.getBoundingClientRect();
+  const totalWidth = Math.max(containerRect.width || 800, 600);
+  const totalHeight = Math.max(containerRect.height || 500, 400);
+
+  const margin = { top: 12, right: 24, bottom: 32, left: 80 };
+  const innerWidth = totalWidth - margin.left - margin.right;
+
+  const panels = [
+    { key: "distance",   label: "Distance (km)",      value: (s: StageInfo) => s.distance_km ?? 0 },
+    { key: "elevation",  label: "Elevation Gain (m)",  value: (s: StageInfo) => s.vertical_meters ?? 0 },
+    { key: "difficulty", label: "Difficulty Score",    value: difficultyScore },
+  ];
+
+  const panelHeight = Math.floor((totalHeight - margin.top - margin.bottom - (panels.length - 1) * 12) / panels.length);
+
+  const svg = d3.select(overviewChartEl)
+    .append("svg")
+    .attr("width", totalWidth)
+    .attr("height", totalHeight);
+
+  const stageNums = stages.map((s) => s.stage_number);
+  const xScale = d3.scaleBand()
+    .domain(stageNums.map(String))
+    .range([0, innerWidth])
+    .padding(0.15);
+
+  panels.forEach((panel, pi) => {
+    const yTop = margin.top + pi * (panelHeight + 12);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${yTop})`);
+
+    const maxVal = d3.max(stages, panel.value) ?? 1;
+    const yScale = d3.scaleLinear().domain([0, maxVal * 1.08]).range([panelHeight, 0]);
+
+    // Panel label (rotated vertical)
+    g.append("text")
+      .attr("class", "overview-panel-label")
+      .attr("transform", `translate(${-margin.left + 12},${panelHeight / 2}) rotate(-90)`)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .text(panel.label);
+
+    // Y-axis (3 ticks)
+    const yAxis = d3.axisLeft(yScale).ticks(3).tickSize(-innerWidth);
+    g.append("g")
+      .attr("class", "axis y-axis overview-y-axis")
+      .call(yAxis)
+      .call((ax) => ax.select(".domain").remove())
+      .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
+      .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
+
+    // Bars
+    g.selectAll<SVGRectElement, StageInfo>(".overview-bar")
+      .data(stages)
+      .join("rect")
+      .attr("class", "overview-bar")
+      .attr("x", (s) => xScale(String(s.stage_number)) ?? 0)
+      .attr("y", (s) => yScale(panel.value(s)))
+      .attr("width", xScale.bandwidth())
+      .attr("height", (s) => panelHeight - yScale(panel.value(s)))
+      .attr("rx", 2)
+      .attr("fill", (s) => ROUTE_COLOR[s.route_type ?? "F"] ?? ROUTE_COLOR.F)
+      .on("mousemove", (event: MouseEvent, s: StageInfo) => {
+        const diff = difficultyScore(s);
+        tooltipEl.innerHTML = `
+          <div class="t-name">Stage ${s.stage_label}</div>
+          <div class="t-team">${s.start_location ?? "—"} → ${s.finish_location ?? "—"}</div>
+          <div>${ROUTE_LABEL[s.route_type ?? "F"] ?? s.route_type}</div>
+          <div>Distance: ${s.distance_km != null ? Math.round(s.distance_km) + " km" : "—"}</div>
+          <div>Elevation: ${s.vertical_meters != null ? s.vertical_meters.toLocaleString() + " m" : "—"}</div>
+          <div>Difficulty: ${diff.toFixed(1)}</div>
+        `;
+        tooltipEl.hidden = false;
+        const areaRect = chartAreaEl.getBoundingClientRect();
+        tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
+        const tw = tooltipEl.offsetWidth;
+        tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+          ? `${event.clientX - areaRect.left - tw - 10}px`
+          : `${event.clientX - areaRect.left + 24}px`;
+      })
+      .on("mouseleave", () => hideTooltip());
+
+    // X-axis on last panel only
+    if (pi === panels.length - 1) {
+      g.append("g")
+        .attr("class", "axis x-axis")
+        .attr("transform", `translate(0,${panelHeight})`)
+        .call(
+          d3.axisBottom(xScale)
+            .tickFormat((d) => {
+              const s = stages.find((st) => String(st.stage_number) === d);
+              return s?.stage_label ?? d;
+            })
+        )
+        .call((ax) => ax.select(".domain").remove())
+        .call((ax) => ax.selectAll(".tick line").remove());
+    }
+  });
+
+  // Route type legend below the chart
+  const legendData = [...new Set(stages.map((s) => s.route_type ?? "F"))].sort();
+  const legendDiv = document.createElement("div");
+  legendDiv.className = "route-legend";
+  legendDiv.style.paddingLeft = `${margin.left}px`;
+  for (const rt of legendData) {
+    const item = document.createElement("div");
+    item.className = "route-legend-item";
+    const swatch = document.createElement("div");
+    swatch.className = "route-legend-swatch";
+    swatch.style.background = ROUTE_COLOR[rt] ?? "#888";
+    const label = document.createElement("span");
+    label.textContent = ROUTE_LABEL[rt] ?? rt;
+    item.appendChild(swatch);
+    item.appendChild(label);
+    legendDiv.appendChild(item);
+  }
+  overviewChartEl.appendChild(legendDiv);
 }
 
 function init() {
@@ -89,7 +267,7 @@ function buildYearSelect() {
 function buildMetricSelect() {
   metricSelectEl.value = currentMetric;
   metricSelectEl.addEventListener("change", () => {
-    currentMetric = metricSelectEl.value as "gc" | "points";
+    currentMetric = metricSelectEl.value as "gc" | "points" | "kom";
     applyDefaultSelection(20);
     document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
       b.classList.remove("active"),
@@ -100,53 +278,60 @@ function buildMetricSelect() {
   });
 }
 
-/** Recompute pointsRankAtStage and finalPointsRank for the current dataset. */
-function computePointsRankings() {
-  pointsRankAtStage = new Map();
-
-  // Build a quick lookup: riderId → (stageNum → cumulativePoints)
-  const cumPtsByRider = new Map<string, Map<number, number>>();
+function buildRankMaps(
+  getCumPts: (sp: RiderStagePoint) => number,
+): {
+  rankAtStage: Map<number, Map<string, number>>;
+  finalRank: Map<string, number>;
+  ridersAtFinal: Map<number, { riders: RiderSeries[]; points: number }>;
+} {
+  const rankAtStage = new Map<number, Map<string, number>>();
+  const cumByRider = new Map<string, Map<number, number>>();
   for (const rider of dataset.riders) {
     const m = new Map<number, number>();
-    for (const sp of rider.byStage) m.set(sp.stage, sp.cumulativePoints);
-    cumPtsByRider.set(rider.id, m);
+    for (const sp of rider.byStage) m.set(sp.stage, getCumPts(sp));
+    cumByRider.set(rider.id, m);
   }
-
   for (const stage of dataset.stages) {
     const n = stage.stage_number;
-    // Only include riders who actually have a result at this stage
     const entries: Array<[string, number]> = [];
     for (const rider of dataset.riders) {
-      const pts = cumPtsByRider.get(rider.id)?.get(n);
+      const pts = cumByRider.get(rider.id)?.get(n);
       if (pts !== undefined) entries.push([rider.id, pts]);
     }
-    // Sort descending (most points first)
     entries.sort((a, b) => b[1] - a[1]);
-    // Dense rank
     const rankMap = new Map<string, number>();
     let rank = 1;
     for (let i = 0; i < entries.length; i++) {
       if (i > 0 && entries[i][1] < entries[i - 1][1]) rank = i + 1;
       rankMap.set(entries[i][0], rank);
     }
-    pointsRankAtStage.set(n, rankMap);
+    rankAtStage.set(n, rankMap);
   }
-
-  // Final points rank = rank at the last stage
   const lastStageNum = dataset.stages[dataset.stages.length - 1]?.stage_number;
-  finalPointsRank = new Map(pointsRankAtStage.get(lastStageNum ?? -1) ?? []);
-
-  // Build reverse map: final rank → { riders, points } for tie-count labels
-  ridersAtFinalPointsRank = new Map();
+  const finalRank = new Map(rankAtStage.get(lastStageNum ?? -1) ?? []);
+  const ridersAtFinal = new Map<number, { riders: RiderSeries[]; points: number }>();
   for (const rider of dataset.riders) {
-    const rank = finalPointsRank.get(rider.id);
+    const rank = finalRank.get(rider.id);
     if (rank === undefined) continue;
-    const pts = rider.byStage.find((p) => p.stage === lastStageNum)?.cumulativePoints ?? 0;
-    if (!ridersAtFinalPointsRank.has(rank)) {
-      ridersAtFinalPointsRank.set(rank, { riders: [], points: pts });
-    }
-    ridersAtFinalPointsRank.get(rank)!.riders.push(rider);
+    const pts = rider.byStage.find((p) => p.stage === lastStageNum);
+    const ptsVal = pts ? getCumPts(pts) : 0;
+    if (!ridersAtFinal.has(rank)) ridersAtFinal.set(rank, { riders: [], points: ptsVal });
+    ridersAtFinal.get(rank)!.riders.push(rider);
   }
+  return { rankAtStage, finalRank, ridersAtFinal };
+}
+
+function computePointsRankings() {
+  ({ rankAtStage: pointsRankAtStage, finalRank: finalPointsRank, ridersAtFinal: ridersAtFinalPointsRank } =
+    buildRankMaps((sp) => sp.cumulativePoints));
+  ({ rankAtStage: komRankAtStage, finalRank: finalKomRank, ridersAtFinal: ridersAtFinalKomRank } =
+    buildRankMaps((sp) => sp.cumulativeKomPoints));
+}
+
+function activeRankMap(stageNum: number): Map<string, number> | undefined {
+  if (currentMetric === "kom") return komRankAtStage.get(stageNum);
+  return pointsRankAtStage.get(stageNum);
 }
 
 /** Return the "active" rank for a rider at a given stage under the current metric. */
@@ -154,29 +339,27 @@ function getActiveRank(riderId: string, stageNum: number): number | null {
   if (currentMetric === "gc") {
     const sp = dataset.riders.find((r) => r.id === riderId)?.byStage.find((p) => p.stage === stageNum);
     return sp?.gcRank ?? null;
-  } else {
-    // Only defined at stages where the rider has a byStage entry
-    const rider = dataset.riders.find((r) => r.id === riderId);
-    if (!rider?.byStage.some((p) => p.stage === stageNum)) return null;
-    return pointsRankAtStage.get(stageNum)?.get(riderId) ?? null;
   }
+  const rider = dataset.riders.find((r) => r.id === riderId);
+  if (!rider?.byStage.some((p) => p.stage === stageNum)) return null;
+  return activeRankMap(stageNum)?.get(riderId) ?? null;
 }
 
 /** Build the rank series for a rider to feed into d3 line/dot/label rendering. */
 function getDisplayPoints(rider: RiderSeries): Array<{ stage: number; rank: number | null }> {
   if (currentMetric === "gc") {
     return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcRank }));
-  } else {
-    return rider.byStage.map((p) => ({
-      stage: p.stage,
-      rank: pointsRankAtStage.get(p.stage)?.get(rider.id) ?? null,
-    }));
   }
+  return rider.byStage.map((p) => ({
+    stage: p.stage,
+    rank: activeRankMap(p.stage)?.get(rider.id) ?? null,
+  }));
 }
 
 /** Returns the "effective final rank" for a rider under the current metric. */
 function effectiveFinalRank(rider: RiderSeries): number {
   if (currentMetric === "gc") return rider.finalRank;
+  if (currentMetric === "kom") return finalKomRank.get(rider.id) ?? 9999;
   return finalPointsRank.get(rider.id) ?? 9999;
 }
 
@@ -204,7 +387,22 @@ function loadDataset(year: string) {
   );
 
   buildLegend();
-  drawChart();
+  if (currentView === "stage") drawChart();
+  else drawOverview();
+}
+
+function switchView(view: "stage" | "overview") {
+  currentView = view;
+  viewStageBtn.classList.toggle("active", view === "stage");
+  viewOverviewBtn.classList.toggle("active", view === "overview");
+  subtitleStage.hidden = view !== "stage";
+  subtitleOverview.hidden = view !== "overview";
+  chartEl.classList.toggle("hidden", view !== "stage");
+  sidebarEl.classList.toggle("hidden", view !== "stage");
+  overviewChartEl.classList.toggle("visible", view === "overview");
+  overviewSummaryEl.hidden = view !== "overview";
+  if (view === "stage") drawChart();
+  else drawOverview();
 }
 
 function wireControls() {
@@ -246,6 +444,12 @@ function wireControls() {
     refreshLegendState();
     updateLineClasses();
   });
+
+  viewStageBtn.addEventListener("click", (e) => {
+    if ((e.target as HTMLElement).tagName === "SELECT") return; // let metric-select handle its own clicks
+    switchView("stage");
+  });
+  viewOverviewBtn.addEventListener("click", () => switchView("overview"));
 }
 
 function cssEscape(s: string): string {
@@ -422,7 +626,7 @@ function drawChart() {
         .tickFormat((d) => `#${d}`),
     );
 
-  const yLabel = currentMetric === "gc" ? "GC position" : "Points rank";
+  const yLabel = currentMetric === "gc" ? "GC position" : currentMetric === "kom" ? "KOM rank" : "Points rank";
   g.append("text")
     .attr("class", "axis-label")
     .attr("transform", `translate(${-margin.left + 14},${innerHeight / 2}) rotate(-90)`)
@@ -510,22 +714,51 @@ function drawChart() {
     })
     .style("font-size", "10px")
     .text((r) => {
-      if (currentMetric === "points") {
-        const group = ridersAtFinalPointsRank.get(finalPointsRank.get(r.id)!);
+      if (currentMetric !== "gc") {
+        const isKom = currentMetric === "kom";
+        const finalRank = isKom ? finalKomRank : finalPointsRank;
+        const ridersAtFinal = isKom ? ridersAtFinalKomRank : ridersAtFinalPointsRank;
+        const group = ridersAtFinal.get(finalRank.get(r.id)!);
         if (group && group.riders.length > 1) return `(${group.riders.length}) ${lastName(r.name)}`;
       }
       return lastName(r.name);
     })
-    .style("cursor", (r) => currentMetric === "points" ? "pointer" : "default")
+    .style("cursor", (r) => currentMetric === "gc" ? "default" : "pointer")
     .on("mouseover", (event: MouseEvent, r: RiderSeries) => {
-      if (currentMetric !== "points") return;
-      const rank = finalPointsRank.get(r.id);
+      if (currentMetric === "gc") {
+        const lastStage = r.byStage[r.byStage.length - 1];
+        const gcRank = lastStage?.gcRank ?? r.finalRank;
+        const gap = lastStage?.gcGapSeconds ?? null;
+        const gcWinner = dataset.riders.find((rd) => rd.finalRank === 1);
+        const winnerTime = fmtTotalTime(gcWinner?.totalTimeSeconds ?? null);
+        const timeStr = gap === 0 || gcRank === 1
+          ? winnerTime
+          : fmtGap(gap);
+        tooltipEl.innerHTML = `
+          <div class="t-name">${r.name}</div>
+          <div class="t-team">${r.team ?? ""}</div>
+          <div>GC #${gcRank ?? "—"} &middot; ${timeStr}</div>
+        `;
+        tooltipEl.hidden = false;
+        const areaRect = chartAreaEl.getBoundingClientRect();
+        tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
+        const tw = tooltipEl.offsetWidth;
+        tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+          ? `${event.clientX - areaRect.left - tw - 10}px`
+          : `${event.clientX - areaRect.left + 24}px`;
+        return;
+      }
+      const isKom = currentMetric === "kom";
+      const finalRank = isKom ? finalKomRank : finalPointsRank;
+      const ridersAtFinal = isKom ? ridersAtFinalKomRank : ridersAtFinalPointsRank;
+      const rank = finalRank.get(r.id);
       if (rank === undefined) return;
-      const group = ridersAtFinalPointsRank.get(rank);
+      const group = ridersAtFinal.get(rank);
       if (!group) return;
+      const label = isKom ? "KOM" : "Points";
       const names = group.riders.map((rd) => rd.name).join("<br>");
       tooltipEl.innerHTML = `
-        <div class="t-name">Final Points Rank #${rank}</div>
+        <div class="t-name">Final ${label} Rank #${rank}</div>
         <div class="t-team">${group.points} pts</div>
         <div>${names}</div>
       `;
@@ -541,7 +774,9 @@ function drawChart() {
 
   updateLineClasses();
 
-  window.addEventListener("resize", debounce(() => drawChart(), 200));
+  window.addEventListener("resize", debounce(() => {
+    if (currentView === "stage") drawChart(); else drawOverview();
+  }, 200));
 }
 
 function lastDefinedDisplay(r: RiderSeries): { stage: number; rank: number | null } | null {
@@ -613,19 +848,29 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
       ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
     `;
   } else {
-    // Points mode
     const point =
       rider.byStage.find((p) => p.stage === stageGuess) ??
       rider.byStage[rider.byStage.length - 1];
     if (!point) return;
-    const ptsRank = pointsRankAtStage.get(point.stage)?.get(rider.id) ?? null;
-    tooltipEl.innerHTML = `
-      <div class="t-name">${rider.name}</div>
-      <div class="t-team">${rider.team ?? ""}</div>
-      <div>Stage ${stageLabel(point.stage)} &middot; Points rank #${ptsRank ?? "—"}</div>
-      <div>Cumulative pts: ${point.cumulativePoints}</div>
-      ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
-    `;
+    if (currentMetric === "kom") {
+      const komRank = komRankAtStage.get(point.stage)?.get(rider.id) ?? null;
+      tooltipEl.innerHTML = `
+        <div class="t-name">${rider.name}</div>
+        <div class="t-team">${rider.team ?? ""}</div>
+        <div>Stage ${stageLabel(point.stage)} &middot; KOM rank #${komRank ?? "—"}</div>
+        <div>Cumulative KOM pts: ${point.cumulativeKomPoints}</div>
+        ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
+      `;
+    } else {
+      const ptsRank = pointsRankAtStage.get(point.stage)?.get(rider.id) ?? null;
+      tooltipEl.innerHTML = `
+        <div class="t-name">${rider.name}</div>
+        <div class="t-team">${rider.team ?? ""}</div>
+        <div>Stage ${stageLabel(point.stage)} &middot; Points rank #${ptsRank ?? "—"}</div>
+        <div>Cumulative pts: ${point.cumulativePoints}</div>
+        ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
+      `;
+    }
   }
 
   tooltipEl.hidden = false;

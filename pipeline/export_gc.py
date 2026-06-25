@@ -7,12 +7,13 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 SPRINT_POINTS_PATH = os.path.join(HERE, "sprint_points.json")
+# Use reconciled KOM data if available, fall back to raw PCS scrape
+_KOM_RECONCILED = os.path.join(HERE, "kom_points_reconciled.json")
+_KOM_RAW        = os.path.join(HERE, "kom_points.json")
+KOM_POINTS_PATH = _KOM_RECONCILED if os.path.exists(_KOM_RECONCILED) else _KOM_RAW
 
-# Load scraped real sprint points (finish line + intermediate sprints, no KOM).
-# Structure: {year_str: [stage0_dict, stage1_dict, ...]}
-# where each stage_dict maps rider_slug -> points earned that stage.
-# Array index matches DB stage ordering (stage_number order) for that year.
 _sprint_points_cache = None
+_kom_points_cache = None
 
 def load_sprint_points():
     global _sprint_points_cache
@@ -23,6 +24,16 @@ def load_sprint_points():
         else:
             _sprint_points_cache = {}
     return _sprint_points_cache
+
+def load_kom_points():
+    global _kom_points_cache
+    if _kom_points_cache is None:
+        if os.path.exists(KOM_POINTS_PATH):
+            with open(KOM_POINTS_PATH, encoding="utf-8") as f:
+                _kom_points_cache = json.load(f)
+        else:
+            _kom_points_cache = {}
+    return _kom_points_cache
 
 
 def export_year(year, out_path):
@@ -72,8 +83,9 @@ def export_year(year, out_path):
             for j, i in enumerate(indices):
                 stage_labels[i] = f"{day_counter}{'abcde'[j]}"
 
-    # Load real sprint points for this year (array indexed by stage position)
+    # Load real sprint/KOM points for this year (array indexed by stage position)
     sprint_pts_by_year = load_sprint_points().get(str(year), [])
+    kom_pts_by_year = load_kom_points().get(str(year), [])
 
     # final GC rank per rider = gc_rank on the last stage they have a result for
     last_stage_id = stage_ids[-1]
@@ -107,6 +119,19 @@ def export_year(year, out_path):
     )
     all_riders = {r["rider_id"]: dict(r) for r in cur.fetchall()}
 
+    # Compute total race time per rider (sum of finish_time_seconds across all stages)
+    cur.execute(
+        """
+        SELECT sr.rider_id, SUM(sr.finish_time_seconds) AS total_seconds
+        FROM stage_results sr
+        JOIN stages st ON st.stage_id = sr.stage_id
+        WHERE st.edition_id = ? AND sr.finish_time_seconds IS NOT NULL
+        GROUP BY sr.rider_id
+        """,
+        (edition_id,),
+    )
+    total_time_by_rider = {r["rider_id"]: r["total_seconds"] for r in cur.fetchall()}
+
     riders_out = []
     for rider_id, info in all_riders.items():
         final = final_rows.get(rider_id)
@@ -126,13 +151,18 @@ def export_year(year, out_path):
         )
         by_stage = [dict(r) for r in cur.fetchall()]
 
-        # Compute cumulative sprint points from real scraped sprint data
+        # Compute cumulative sprint and KOM points from scraped data
         cum_pts = 0
+        cum_kom = 0
         for sp in by_stage:
             stage_idx = stage_num_to_idx.get(sp["stage"])
-            if stage_idx is not None and stage_idx < len(sprint_pts_by_year):
-                cum_pts += sprint_pts_by_year[stage_idx].get(rider_id, 0)
+            if stage_idx is not None:
+                if stage_idx < len(sprint_pts_by_year):
+                    cum_pts += sprint_pts_by_year[stage_idx].get(rider_id, 0)
+                if stage_idx < len(kom_pts_by_year):
+                    cum_kom += kom_pts_by_year[stage_idx].get(rider_id, 0)
             sp["cumulativePoints"] = cum_pts
+            sp["cumulativeKomPoints"] = cum_kom
 
         riders_out.append({
             "id": rider_id,
@@ -140,6 +170,7 @@ def export_year(year, out_path):
             "nationality": info["nationality"],
             "team": team,
             "finalRank": final_rank,
+            "totalTimeSeconds": total_time_by_rider.get(rider_id),
             "byStage": by_stage,
         })
 
@@ -152,8 +183,8 @@ def export_year(year, out_path):
                 "stage_label": stage_labels[i],
                 "start_location": s["start_location"],
                 "finish_location": s["finish_location"],
-                "distance_km": s["distance_km"],
-                "vertical_meters": s["vertical_meters"],
+                "distance_km": s["distance_km"] or None,
+                "vertical_meters": s["vertical_meters"] or None,
                 "route_type": s["route_type"],
             }
             for i, s in enumerate(stages)

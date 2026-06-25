@@ -14,6 +14,7 @@ export interface RiderStagePoint {
   gcGapSeconds: number | null;
   status: string;
   cumulativePoints: number;
+  cumulativeKomPoints: number;
 }
 
 export interface RiderSeries {
@@ -22,6 +23,7 @@ export interface RiderSeries {
   nationality: string | null;
   team: string | null;
   finalRank: number;
+  totalTimeSeconds: number | null;
   byStage: RiderStagePoint[];
 }
 
