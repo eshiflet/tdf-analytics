@@ -38,6 +38,7 @@ let finalPointsRank = new Map<string, number>();
 const chartEl = document.getElementById("chart") as HTMLDivElement;
 const legendEl = document.getElementById("legend") as HTMLDivElement;
 const tooltipEl = document.getElementById("tooltip") as HTMLDivElement;
+const chartAreaEl = tooltipEl.parentElement as HTMLDivElement;
 const searchEl = document.getElementById("search") as HTMLInputElement;
 const yearSelectEl = document.getElementById("year-select") as HTMLSelectElement;
 const metricSelectEl = document.getElementById("metric-select") as HTMLSelectElement;
@@ -543,10 +544,6 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
   const mouseX = event.clientX - containerRect.left - margin.left;
   const stageGuess = Math.round(xScale.invert(mouseX));
 
-  tooltipEl.hidden = false;
-  tooltipEl.style.left = `${event.clientX - containerRect.left + 14}px`;
-  tooltipEl.style.top = `${event.clientY - containerRect.top - 10}px`;
-
   if (currentMetric === "gc") {
     const point =
       rider.byStage.find((p) => p.stage === stageGuess && p.gcRank !== null) ??
@@ -579,6 +576,17 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
       ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
     `;
   }
+
+  tooltipEl.hidden = false;
+  const areaRect = chartAreaEl.getBoundingClientRect();
+  tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
+  const tooltipWidth = tooltipEl.offsetWidth;
+  const spaceOnRight = window.innerWidth - event.clientX;
+  if (spaceOnRight < tooltipWidth + 24) {
+    tooltipEl.style.left = `${event.clientX - areaRect.left - tooltipWidth - 10}px`;
+  } else {
+    tooltipEl.style.left = `${event.clientX - areaRect.left + 24}px`;
+  }
 }
 
 function showStageTooltip(event: MouseEvent, stage: StageInfo) {
@@ -587,14 +595,21 @@ function showStageTooltip(event: MouseEvent, stage: StageInfo) {
   const vertical = stage.vertical_meters != null ? `${stage.vertical_meters} m` : "—";
   const type = stage.route_type ?? "—";
 
-  tooltipEl.hidden = false;
-  tooltipEl.style.left = `${event.clientX - containerRect.left + 14}px`;
-  tooltipEl.style.top = `${event.clientY - containerRect.top - 10}px`;
   tooltipEl.innerHTML = `
     <div>${stage.start_location ?? "—"}</div>
     <div>${stage.finish_location ?? "—"}</div>
     <div>${distance}, ${vertical}, ${type}</div>
   `;
+  tooltipEl.hidden = false;
+  const areaRect2 = chartAreaEl.getBoundingClientRect();
+  tooltipEl.style.top = `${event.clientY - areaRect2.top - 10}px`;
+  const tooltipWidth2 = tooltipEl.offsetWidth;
+  const spaceOnRight2 = window.innerWidth - event.clientX;
+  if (spaceOnRight2 < tooltipWidth2 + 24) {
+    tooltipEl.style.left = `${event.clientX - areaRect2.left - tooltipWidth2 - 10}px`;
+  } else {
+    tooltipEl.style.left = `${event.clientX - areaRect2.left + 24}px`;
+  }
 }
 
 function hideTooltip() {
