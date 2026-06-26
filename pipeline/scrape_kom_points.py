@@ -98,12 +98,13 @@ def parse_kom_points(html):
         if kom_div_m:
             search_html = kom_div_m.group(1)
 
-    # Parse the delta_pnt column from the KOM standings table (has prev + delta_pnt cols)
+    # Parse the delta_pnt column from the KOM standings table.
+    # Older years (pre-~1960) use "pnt2" instead of "prev"; require only delta_pnt.
     for thead_m, tbody_m in re.findall(
         r"<thead>(.*?)</thead>\s*<tbody>(.*?)</tbody>", search_html, re.DOTALL
     ):
         cols = re.findall(r'data-code="([^"]+)"', thead_m)
-        if "delta_pnt" not in cols or "prev" not in cols:
+        if "delta_pnt" not in cols:
             continue
         delta_idx = cols.index("delta_pnt")
         rows = re.findall(r"<tr>(.*?)</tr>", tbody_m, re.DOTALL)
