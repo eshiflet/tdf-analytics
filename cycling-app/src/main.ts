@@ -528,7 +528,7 @@ function drawAllRacesOverview() {
       g.append("rect")
         .attr("x", bx).attr("y", 0)
         .attr("width", bw).attr("height", panelHeight)
-        .attr("fill", "rgba(239,68,68,0.08)")
+        .attr("fill", "rgba(239,68,68,0.14)")
         .attr("pointer-events", "none");
       // Label on top panel only to avoid repetition
       if (pi === 0) {
@@ -623,6 +623,21 @@ function drawAllRacesOverview() {
       .call((ax) => ax.selectAll(".tick line")
         .attr("stroke", "#4a5160")
         .attr("stroke-opacity", 0.4));
+
+    // Decade tick marks on every panel's bottom edge
+    g.append("g")
+      .attr("class", "axis x-axis all-races-x-ticks")
+      .attr("transform", `translate(0,${panelHeight})`)
+      .call(
+        d3.axisBottom(xScale)
+          .tickValues(tickYears)
+          .tickSize(4)
+          .tickFormat(() => "")
+      )
+      .call((ax) => ax.select(".domain").remove())
+      .call((ax) => ax.selectAll(".tick line")
+        .attr("stroke", "#8a9ab0")
+        .attr("stroke-opacity", 0.7));
 
     // X-axis labels on last panel only
     if (pi === panels.length - 1) {
