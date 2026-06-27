@@ -543,8 +543,15 @@ function drawChart() {
 
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // No-data overlay for sprint points before 1953
-  if (currentMetric === "points" && parseInt(currentYear) < 1953) {
+  // No-data overlays for classifications that didn't exist yet
+  const noDataMessage =
+    currentMetric === "points" && parseInt(currentYear) < 1953
+      ? "No data because the green jersey sprint points competition started in 1953"
+      : currentMetric === "kom" && parseInt(currentYear) < 1933
+      ? "No data because the KOM points competition started in 1933, though the polka dot jersey wasn't used until 1975"
+      : null;
+
+  if (noDataMessage) {
     g.append("text")
       .attr("x", innerWidth / 2)
       .attr("y", 60)
@@ -552,7 +559,7 @@ function drawChart() {
       .attr("dominant-baseline", "middle")
       .attr("fill", "var(--text-muted, #888)")
       .attr("font-size", "22px")
-      .text("No data — the green jersey sprint points competition started in 1953");
+      .text(noDataMessage);
     return;
   }
 
