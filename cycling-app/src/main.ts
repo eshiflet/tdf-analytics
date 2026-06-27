@@ -528,7 +528,22 @@ function drawAllRacesOverview() {
       })
       .on("mouseleave", () => hideTooltip());
 
-    // X-axis on last panel only
+    // Vertical gridlines (every panel)
+    g.append("g")
+      .attr("class", "axis x-axis all-races-x-grid")
+      .attr("transform", `translate(0,${panelHeight})`)
+      .call(
+        d3.axisBottom(xScale)
+          .tickValues(tickYears)
+          .tickSize(-panelHeight)
+          .tickFormat(() => "")
+      )
+      .call((ax) => ax.select(".domain").remove())
+      .call((ax) => ax.selectAll(".tick line")
+        .attr("stroke", "#4a5160")
+        .attr("stroke-opacity", 0.4));
+
+    // X-axis labels on last panel only
     if (pi === panels.length - 1) {
       g.append("g")
         .attr("class", "axis x-axis")
