@@ -7,12 +7,10 @@ Source: procyclingstats.com/race/tour-de-france/YEAR/points  (POINTS tab, pnt2 c
 
 Writes final totals into the LAST stage slot of sprint_points.json.
 
-Golf scoring years (1953–1958): lower pnt2 = better rank.
-  Stored value = (max_pnt2 + 1 - pnt2) so the leader has the highest
-  value and the frontend progression chart is correctly ordered.
+Actual pnt2 values from PCS are stored as-is for all years.
 
+Golf scoring years (1953–1958): lower pnt2 = better rank.
 Modern scoring years (1959+): higher pnt2 = better rank.
-  Stored value = pnt2 directly.
 
 Usage:
   python3 scrape_sprint_finals.py              # default target years
@@ -149,13 +147,8 @@ def main():
         print(f"{len(riders)} riders | {'golf' if golf else 'modern'} scoring | "
               f"leader rnk={leader['rnk']} pnt2={leader['pnt2']} {leader['rider_slug']}")
 
-        # Build the stage dict to store in last slot
-        if golf:
-            # Invert so highest stored value = rank-1 rider
-            max_pnt2 = max(r['pnt2'] for r in riders)
-            stage_dict = {r['rider_slug']: (max_pnt2 + 1 - r['pnt2']) for r in riders}
-        else:
-            stage_dict = {r['rider_slug']: r['pnt2'] for r in riders}
+        # Store raw pnt2 values as-is (matching Wikipedia/PCS)
+        stage_dict = {r['rider_slug']: r['pnt2'] for r in riders}
 
         yr_str = str(year)
         stages_list = sprint_pts.get(yr_str, [])
