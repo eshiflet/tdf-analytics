@@ -205,6 +205,25 @@ def export_year(year, out_path):
             sp["cumulativePoints"]    = cum_pts
             sp["cumulativeKomPoints"] = cum_kom
 
+        # For riders who DNF'd before the last stage, pick up any final-standings
+        # data stored in stage slots beyond their last actual stage (common in early
+        # years where only the race total is available, not per-stage breakdowns).
+        if by_stage:
+            last_sp = by_stage[-1]
+            last_stage_idx = stage_num_to_idx.get(last_sp["stage"], -1)
+            for catch_idx in range(last_stage_idx + 1, len(sprint_pts_by_year)):
+                cum_pts += sprint_pts_by_year[catch_idx].get(rider_id, 0)
+            for catch_idx in range(last_stage_idx + 1, len(kom_pts_by_year)):
+                cum_kom += kom_pts_by_year[catch_idx].get(rider_id, 0)
+            last_sp["cumulativePoints"]    = cum_pts
+            last_sp["cumulativeKomPoints"] = cum_kom
+            # Also back-fill ranks from the final-stage pre-computed tables
+            final_stage_idx = len(stages) - 1
+            if last_sp["sprintRank"] is None and final_stage_idx < len(sprint_ranks_by_stage):
+                last_sp["sprintRank"] = sprint_ranks_by_stage[final_stage_idx].get(rider_id)
+            if last_sp["komRank"] is None and final_stage_idx < len(kom_ranks_by_stage):
+                last_sp["komRank"] = kom_ranks_by_stage[final_stage_idx].get(rider_id)
+
         riders_out.append({
             "id": rider_id,
             "name": info["name"],
