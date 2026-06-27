@@ -372,13 +372,15 @@ svg text {
 }
 
 
-#overview-chart {
+#overview-chart,
+#all-races-chart {
   width: 100%;
   height: 100%;
   display: none;
 }
 
-#overview-chart.visible {
+#overview-chart.visible,
+#all-races-chart.visible {
   display: block;
 }
 

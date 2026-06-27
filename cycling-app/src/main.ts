@@ -49,11 +49,17 @@ const yearSelectEl = document.getElementById("year-select") as HTMLSelectElement
 const metricSelectEl = document.getElementById("metric-select") as HTMLSelectElement;
 const viewStageBtn = document.getElementById("view-stage") as HTMLButtonElement;
 const viewOverviewBtn = document.getElementById("view-overview") as HTMLButtonElement;
+const viewAllRacesBtn = document.getElementById("view-all-races") as HTMLButtonElement;
+const allRacesChartEl = document.getElementById("all-races-chart") as HTMLDivElement;
 const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
 const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement | null;
 const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
 
-let currentView: "stage" | "overview" = "stage";
+import allRacesSummaryRaw from "./data/all_races_summary.json";
+interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; }
+const ALL_RACES: RaceSummary[] = allRacesSummaryRaw as RaceSummary[];
+
+let currentView: "stage" | "overview" | "allraces" = "stage";
 
 function fmtTotalTime(seconds: number | null): string {
   if (!seconds) return "—";
@@ -392,18 +398,150 @@ function loadDataset(year: string) {
   else drawOverview();
 }
 
-function switchView(view: "stage" | "overview") {
+function switchView(view: "stage" | "overview" | "allraces") {
   currentView = view;
   viewStageBtn.classList.toggle("active", view === "stage");
   viewOverviewBtn.classList.toggle("active", view === "overview");
+  viewAllRacesBtn.classList.toggle("active", view === "allraces");
   if (subtitleStage) subtitleStage.hidden = view !== "stage";
   subtitleOverview.hidden = view !== "overview";
   chartEl.classList.toggle("hidden", view !== "stage");
   sidebarEl.classList.toggle("hidden", view !== "stage");
   overviewChartEl.classList.toggle("visible", view === "overview");
   overviewSummaryEl.hidden = view !== "overview";
+  allRacesChartEl.classList.toggle("visible", view === "allraces");
   if (view === "stage") drawChart();
-  else drawOverview();
+  else if (view === "overview") drawOverview();
+  else drawAllRacesOverview();
+}
+
+function drawAllRacesOverview() {
+  allRacesChartEl.innerHTML = "";
+
+  const containerRect = allRacesChartEl.getBoundingClientRect();
+  const totalWidth = Math.max(containerRect.width || 800, 600);
+  const totalHeight = Math.max(containerRect.height || 500, 400);
+  const margin = { top: 20, right: 36, bottom: 40, left: 80 };
+  const innerWidth = totalWidth - margin.left - margin.right;
+
+  const panels: Array<{
+    label: string;
+    value: (r: RaceSummary) => number | null;
+    fmt: (v: number) => string;
+  }> = [
+    {
+      label: "Total Distance (km)",
+      value: (r) => r.totalDistanceKm,
+      fmt: (v) => `${Math.round(v).toLocaleString()} km`,
+    },
+    {
+      label: "Total Elevation (m)",
+      value: (r) => r.totalElevationM,
+      fmt: (v) => `${Math.round(v).toLocaleString()} m`,
+    },
+    {
+      label: "GC Winner Time (h)",
+      value: (r) => r.gcWinnerTimeSeconds != null ? r.gcWinnerTimeSeconds / 3600 : null,
+      fmt: (v) => `${v.toFixed(1)} h`,
+    },
+  ];
+
+  const gapCount = 2; // WWI gap + WWII gap
+  const panelHeight = Math.floor(
+    (totalHeight - margin.top - margin.bottom - (panels.length - 1) * 16) / panels.length
+  );
+
+  const svg = d3.select(allRacesChartEl)
+    .append("svg")
+    .attr("width", totalWidth)
+    .attr("height", totalHeight)
+    .attr("viewBox", `0 0 ${totalWidth} ${totalHeight}`);
+
+  const years = ALL_RACES.map((r) => r.year);
+  const xScale = d3.scalePoint<number>()
+    .domain(years)
+    .range([0, innerWidth])
+    .padding(0.5);
+
+  panels.forEach((panel, pi) => {
+    const yTop = margin.top + pi * (panelHeight + 16);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${yTop})`);
+
+    const vals = ALL_RACES.map((r) => panel.value(r)).filter((v): v is number => v != null);
+    const maxVal = d3.max(vals) ?? 1;
+    const yScale = d3.scaleLinear().domain([0, maxVal * 1.08]).range([panelHeight, 0]);
+
+    // Panel y-label
+    g.append("text")
+      .attr("class", "overview-panel-label")
+      .attr("transform", `translate(${-margin.left + 12},${panelHeight / 2}) rotate(-90)`)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .text(panel.label);
+
+    // Y gridlines
+    g.append("g")
+      .attr("class", "axis y-axis overview-y-axis")
+      .call(d3.axisLeft(yScale).ticks(4).tickSize(-innerWidth))
+      .call((ax) => ax.select(".domain").remove())
+      .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
+      .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
+
+    // Draw line segments (skip gaps between non-consecutive years)
+    const defined = (r: RaceSummary) => panel.value(r) != null;
+    const lineGen = d3.line<RaceSummary>()
+      .defined(defined)
+      .x((r) => xScale(r.year) ?? 0)
+      .y((r) => yScale(panel.value(r) as number))
+      .curve(d3.curveMonotoneX);
+
+    g.append("path")
+      .datum(ALL_RACES)
+      .attr("fill", "none")
+      .attr("stroke", "var(--accent)")
+      .attr("stroke-width", 1.5)
+      .attr("d", lineGen);
+
+    // Dots for each data point
+    g.selectAll<SVGCircleElement, RaceSummary>(".all-races-dot")
+      .data(ALL_RACES.filter(defined))
+      .join("circle")
+      .attr("class", "all-races-dot")
+      .attr("cx", (r) => xScale(r.year) ?? 0)
+      .attr("cy", (r) => yScale(panel.value(r) as number))
+      .attr("r", 3)
+      .attr("fill", "var(--accent)")
+      .on("mousemove", (event: MouseEvent, r: RaceSummary) => {
+        const val = panel.value(r)!;
+        tooltipEl.innerHTML = `
+          <div class="t-name">${r.year} Tour de France</div>
+          <div>${panel.label}: ${panel.fmt(val)}</div>
+        `;
+        tooltipEl.hidden = false;
+        const areaRect = allRacesChartEl.getBoundingClientRect();
+        tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
+        const tw = tooltipEl.offsetWidth;
+        tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+          ? `${event.clientX - areaRect.left - tw - 10}px`
+          : `${event.clientX - areaRect.left + 24}px`;
+      })
+      .on("mouseleave", () => hideTooltip());
+
+    // X-axis on last panel only
+    if (pi === panels.length - 1) {
+      const tickYears = years.filter((y) => y % 10 === 0 || y === years[0] || y === years[years.length - 1]);
+      g.append("g")
+        .attr("class", "axis x-axis")
+        .attr("transform", `translate(0,${panelHeight})`)
+        .call(
+          d3.axisBottom(xScale)
+            .tickValues(tickYears)
+            .tickFormat((y) => String(y))
+        )
+        .call((ax) => ax.select(".domain").remove())
+        .call((ax) => ax.selectAll(".tick line").remove());
+    }
+  });
 }
 
 function wireControls() {
@@ -451,6 +589,7 @@ function wireControls() {
     switchView("stage");
   });
   viewOverviewBtn.addEventListener("click", () => switchView("overview"));
+  viewAllRacesBtn.addEventListener("click", () => switchView("allraces"));
 }
 
 function cssEscape(s: string): string {
