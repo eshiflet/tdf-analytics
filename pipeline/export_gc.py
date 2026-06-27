@@ -6,6 +6,9 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
+
+# Sprint scoring changed from golf (low=best) to modern (high=best) in 1959
+GOLF_SPRINT_YEARS = set(range(1953, 1959))
 SPRINT_POINTS_PATH = os.path.join(HERE, "sprint_points.json")
 # Use reconciled KOM data if available, fall back to raw PCS scrape
 _KOM_RECONCILED = os.path.join(HERE, "kom_points_reconciled.json")
@@ -87,6 +90,39 @@ def export_year(year, out_path):
     sprint_pts_by_year = load_sprint_points().get(str(year), [])
     kom_pts_by_year = load_kom_points().get(str(year), [])
 
+    # Pre-compute cumulative sprint & KOM standings and ranks at each stage.
+    # This lets us rank all riders relative to each other per stage.
+    golf_sprint = year in GOLF_SPRINT_YEARS
+
+    sprint_cum_running = {}   # rider_id -> cumulative points so far
+    kom_cum_running    = {}
+    sprint_ranks_by_stage = []   # [stage_idx] -> {rider_id: rank (1=best)}
+    kom_ranks_by_stage    = []
+
+    for stage_idx in range(len(stages)):
+        # Accumulate this stage's points into running totals
+        sp_stage = sprint_pts_by_year[stage_idx] if stage_idx < len(sprint_pts_by_year) else {}
+        km_stage = kom_pts_by_year[stage_idx]    if stage_idx < len(kom_pts_by_year)    else {}
+        for rid, pts in sp_stage.items():
+            sprint_cum_running[rid] = sprint_cum_running.get(rid, 0) + pts
+        for rid, pts in km_stage.items():
+            kom_cum_running[rid] = kom_cum_running.get(rid, 0) + pts
+
+        # Sprint rank: golf years → ascending (lower pts = better), else descending
+        if sprint_cum_running:
+            reverse = not golf_sprint
+            ranked = sorted(sprint_cum_running.items(), key=lambda x: x[1], reverse=reverse)
+            sprint_ranks_by_stage.append({rid: r + 1 for r, (rid, _) in enumerate(ranked)})
+        else:
+            sprint_ranks_by_stage.append({})
+
+        # KOM rank: always descending (higher pts = better)
+        if kom_cum_running:
+            ranked = sorted(kom_cum_running.items(), key=lambda x: -x[1])
+            kom_ranks_by_stage.append({rid: r + 1 for r, (rid, _) in enumerate(ranked)})
+        else:
+            kom_ranks_by_stage.append({})
+
     # final GC rank per rider = gc_rank on the last stage they have a result for
     last_stage_id = stage_ids[-1]
 
@@ -151,7 +187,7 @@ def export_year(year, out_path):
         )
         by_stage = [dict(r) for r in cur.fetchall()]
 
-        # Compute cumulative sprint and KOM points from scraped data
+        # Attach cumulative sprint/KOM points and ranks from pre-computed tables
         cum_pts = 0
         cum_kom = 0
         for sp in by_stage:
@@ -161,7 +197,12 @@ def export_year(year, out_path):
                     cum_pts += sprint_pts_by_year[stage_idx].get(rider_id, 0)
                 if stage_idx < len(kom_pts_by_year):
                     cum_kom += kom_pts_by_year[stage_idx].get(rider_id, 0)
-            sp["cumulativePoints"] = cum_pts
+                sp["sprintRank"] = sprint_ranks_by_stage[stage_idx].get(rider_id) if stage_idx < len(sprint_ranks_by_stage) else None
+                sp["komRank"]    = kom_ranks_by_stage[stage_idx].get(rider_id)    if stage_idx < len(kom_ranks_by_stage)    else None
+            else:
+                sp["sprintRank"] = None
+                sp["komRank"]    = None
+            sp["cumulativePoints"]    = cum_pts
             sp["cumulativeKomPoints"] = cum_kom
 
         riders_out.append({
