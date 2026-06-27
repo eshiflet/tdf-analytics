@@ -56,7 +56,7 @@ const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement |
 const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
 
 import allRacesSummaryRaw from "./data/all_races_summary.json";
-interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; }
+interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; slowestFinisherTimeSeconds: number | null; }
 const ALL_RACES: RaceSummary[] = allRacesSummaryRaw as RaceSummary[];
 
 let currentView: "stage" | "overview" | "allraces" = "stage";
@@ -424,25 +424,61 @@ function drawAllRacesOverview() {
   const margin = { top: 20, right: 36, bottom: 40, left: 80 };
   const innerWidth = totalWidth - margin.left - margin.right;
 
-  const panels: Array<{
-    label: string;
+  type SeriesDef = {
     value: (r: RaceSummary) => number | null;
     fmt: (v: number) => string;
-  }> = [
+    label: string;     // legend / tooltip label
+    color: string;
+  };
+  type PanelDef = { yLabel: string; series: SeriesDef[] };
+
+  const speed = (distKm: number | null, timeSec: number | null) =>
+    distKm && timeSec ? distKm / (timeSec / 3600) : null;
+
+  const panels: PanelDef[] = [
     {
-      label: "Total Distance (km)",
-      value: (r) => r.totalDistanceKm,
-      fmt: (v) => `${Math.round(v).toLocaleString()} km`,
+      yLabel: "Distance (km)",
+      series: [{
+        label: "Total Distance",
+        value: (r) => r.totalDistanceKm,
+        fmt: (v) => `${Math.round(v).toLocaleString()} km`,
+        color: "var(--accent)",
+      }],
     },
     {
-      label: "Total Elevation (m)",
-      value: (r) => r.totalElevationM,
-      fmt: (v) => `${Math.round(v).toLocaleString()} m`,
+      yLabel: "Elevation (m)",
+      series: [{
+        label: "Total Elevation",
+        value: (r) => r.totalElevationM,
+        fmt: (v) => `${Math.round(v).toLocaleString()} m`,
+        color: "var(--accent)",
+      }],
     },
     {
-      label: "GC Winner Time (h)",
-      value: (r) => r.gcWinnerTimeSeconds != null ? r.gcWinnerTimeSeconds / 3600 : null,
-      fmt: (v) => `${v.toFixed(1)} h`,
+      yLabel: "Winner Time (h)",
+      series: [{
+        label: "GC Winner Time",
+        value: (r) => r.gcWinnerTimeSeconds != null ? r.gcWinnerTimeSeconds / 3600 : null,
+        fmt: (v) => `${v.toFixed(1)} h`,
+        color: "var(--accent)",
+      }],
+    },
+    {
+      yLabel: "Avg Speed (km/h)",
+      series: [
+        {
+          label: "GC Winner",
+          value: (r) => speed(r.totalDistanceKm, r.gcWinnerTimeSeconds),
+          fmt: (v) => `${v.toFixed(1)} km/h`,
+          color: "#22c55e",
+        },
+        {
+          label: "Slowest Finisher",
+          value: (r) => speed(r.totalDistanceKm, r.slowestFinisherTimeSeconds),
+          fmt: (v) => `${v.toFixed(1)} km/h`,
+          color: "#ef4444",
+        },
+      ],
     },
   ];
 
@@ -468,9 +504,13 @@ function drawAllRacesOverview() {
     const yTop = margin.top + pi * (panelHeight + 16);
     const g = svg.append("g").attr("transform", `translate(${margin.left},${yTop})`);
 
-    const vals = ALL_RACES.map((r) => panel.value(r)).filter((v): v is number => v != null);
-    const maxVal = d3.max(vals) ?? 1;
-    const yScale = d3.scaleLinear().domain([0, maxVal * 1.08]).range([panelHeight, 0]);
+    // y domain spans all series in this panel
+    const allVals = panel.series.flatMap((s) =>
+      ALL_RACES.map((r) => s.value(r)).filter((v): v is number => v != null)
+    );
+    const maxVal = d3.max(allVals) ?? 1;
+    const minVal = panel.series.length > 1 ? (d3.min(allVals) ?? 0) * 0.97 : 0;
+    const yScale = d3.scaleLinear().domain([minVal, maxVal * 1.03]).range([panelHeight, 0]);
 
     // Panel y-label
     g.append("text")
@@ -478,7 +518,7 @@ function drawAllRacesOverview() {
       .attr("transform", `translate(${-margin.left + 12},${panelHeight / 2}) rotate(-90)`)
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
-      .text(panel.label);
+      .text(panel.yLabel);
 
     // Y gridlines
     g.append("g")
@@ -488,47 +528,65 @@ function drawAllRacesOverview() {
       .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
       .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
 
-    // Line — gaps appear naturally where value is null or year had no race
-    const defined = (r: RaceSummary) => panel.value(r) != null;
-    const lineGen = d3.line<RaceSummary>()
-      .defined(defined)
-      .x((r) => xScale(r.year))
-      .y((r) => yScale(panel.value(r) as number))
-      .curve(d3.curveMonotoneX);
+    // Draw each series
+    panel.series.forEach((s, si) => {
+      const defined = (r: RaceSummary) => s.value(r) != null;
+      const lineGen = d3.line<RaceSummary>()
+        .defined(defined)
+        .x((r) => xScale(r.year))
+        .y((r) => yScale(s.value(r) as number))
+        .curve(d3.curveMonotoneX);
 
-    g.append("path")
-      .datum(ALL_RACES)
-      .attr("fill", "none")
-      .attr("stroke", "var(--accent)")
-      .attr("stroke-width", 1.5)
-      .attr("d", lineGen);
+      g.append("path")
+        .datum(ALL_RACES)
+        .attr("fill", "none")
+        .attr("stroke", s.color)
+        .attr("stroke-width", 1.5)
+        .attr("d", lineGen);
 
-    // Dots for race years with data
-    g.selectAll<SVGCircleElement, RaceSummary>(".all-races-dot")
-      .data(ALL_RACES.filter(defined))
-      .join("circle")
-      .attr("class", "all-races-dot")
-      .attr("cx", (r) => xScale(r.year))
-      .attr("cy", (r) => yScale(panel.value(r) as number))
-      .attr("r", 3)
-      .attr("fill", "var(--accent)")
-      .on("mousemove", (event: MouseEvent, r: RaceSummary) => {
-        const val = panel.value(r)!;
-        tooltipEl.innerHTML = `
-          <div class="t-name">${r.year} Tour de France</div>
-          <div>${panel.label}: ${panel.fmt(val)}</div>
-        `;
-        tooltipEl.hidden = false;
-        const areaRect = allRacesChartEl.getBoundingClientRect();
-        tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
-        const tw = tooltipEl.offsetWidth;
-        tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-          ? `${event.clientX - areaRect.left - tw - 10}px`
-          : `${event.clientX - areaRect.left + 24}px`;
-      })
-      .on("mouseleave", () => hideTooltip());
+      g.selectAll<SVGCircleElement, RaceSummary>(`.all-races-dot-s${si}`)
+        .data(ALL_RACES.filter(defined))
+        .join("circle")
+        .attr("class", `all-races-dot all-races-dot-s${si}`)
+        .attr("cx", (r) => xScale(r.year))
+        .attr("cy", (r) => yScale(s.value(r) as number))
+        .attr("r", 3)
+        .attr("fill", s.color)
+        .on("mousemove", (event: MouseEvent, r: RaceSummary) => {
+          const val = s.value(r)!;
+          tooltipEl.innerHTML = `
+            <div class="t-name">${r.year} Tour de France</div>
+            <div>${s.label}: ${s.fmt(val)}</div>
+          `;
+          tooltipEl.hidden = false;
+          const areaRect = allRacesChartEl.getBoundingClientRect();
+          tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
+          const tw = tooltipEl.offsetWidth;
+          tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+            ? `${event.clientX - areaRect.left - tw - 10}px`
+            : `${event.clientX - areaRect.left + 24}px`;
+        })
+        .on("mouseleave", () => hideTooltip());
+    });
 
-    // Vertical gridlines (every panel)
+    // Legend for multi-series panels
+    if (panel.series.length > 1) {
+      panel.series.forEach((s, si) => {
+        const lx = innerWidth - 160 + si * 100;
+        g.append("line")
+          .attr("x1", lx).attr("x2", lx + 18)
+          .attr("y1", 8).attr("y2", 8)
+          .attr("stroke", s.color).attr("stroke-width", 2);
+        g.append("text")
+          .attr("x", lx + 22).attr("y", 8)
+          .attr("dominant-baseline", "middle")
+          .attr("font-size", "11px")
+          .attr("fill", "var(--text-muted, #888)")
+          .text(s.label);
+      });
+    }
+
+    // Vertical gridlines
     g.append("g")
       .attr("class", "axis x-axis all-races-x-grid")
       .attr("transform", `translate(0,${panelHeight})`)
