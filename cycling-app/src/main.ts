@@ -543,6 +543,19 @@ function drawChart() {
 
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
+  // No-data overlay for sprint points before 1953
+  if (currentMetric === "points" && parseInt(currentYear) < 1953) {
+    g.append("text")
+      .attr("x", innerWidth / 2)
+      .attr("y", innerHeight / 2)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("fill", "var(--text-muted, #888)")
+      .attr("font-size", "16px")
+      .text("No data — the green jersey sprint points competition started in 1953");
+    return;
+  }
+
   // gridlines (horizontal, every 10 ranks)
   const yTickValues = d3.range(10, maxRank + 1, 10);
   g.append("g")
