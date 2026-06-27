@@ -500,6 +500,20 @@ function drawAllRacesOverview() {
 
   const tickYears = d3.range(1910, maxYear + 1, 10).filter((y) => y <= maxYear);
 
+  // One crosshair line per panel — populated during the forEach below.
+  // Event handlers close over this array by reference, so by the time a
+  // user can hover, all entries are present.
+  const crosshairLines: d3.Selection<SVGLineElement, unknown, null, undefined>[] = [];
+
+  const showCrosshair = (year: number) => {
+    const cx = xScale(year);
+    crosshairLines.forEach((line) =>
+      line.attr("x1", cx).attr("x2", cx).attr("visibility", "visible")
+    );
+  };
+  const hideCrosshair = () =>
+    crosshairLines.forEach((line) => line.attr("visibility", "hidden"));
+
   panels.forEach((panel, pi) => {
     const yTop = margin.top + pi * (panelHeight + 16);
     const g = svg.append("g").attr("transform", `translate(${margin.left},${yTop})`);
@@ -588,9 +602,23 @@ function drawAllRacesOverview() {
           tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
             ? `${event.clientX - areaRect.left - tw - 10}px`
             : `${event.clientX - areaRect.left + 24}px`;
+          showCrosshair(r.year);
         })
-        .on("mouseleave", () => hideTooltip());
+        .on("mouseleave", () => { hideTooltip(); hideCrosshair(); });
     });
+
+    // Crosshair line for this panel (appended after series so it sits on top;
+    // pointer-events:none so dots underneath remain hoverable)
+    crosshairLines.push(
+      g.append("line")
+        .attr("class", "all-races-crosshair")
+        .attr("y1", 0).attr("y2", panelHeight)
+        .attr("stroke", "rgba(255,255,255,0.5)")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "3,3")
+        .attr("pointer-events", "none")
+        .attr("visibility", "hidden")
+    );
 
     // Legend for multi-series panels
     if (panel.series.length > 1) {
