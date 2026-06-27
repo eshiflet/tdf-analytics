@@ -278,7 +278,8 @@ function buildMetricSelect() {
   });
 }
 
-function buildRankMaps(
+function buildRankMapsFromField(
+  getRank: (sp: RiderStagePoint) => number | null | undefined,
   getCumPts: (sp: RiderStagePoint) => number,
 ): {
   rankAtStage: Map<number, Map<string, number>>;
@@ -286,25 +287,15 @@ function buildRankMaps(
   ridersAtFinal: Map<number, { riders: RiderSeries[]; points: number }>;
 } {
   const rankAtStage = new Map<number, Map<string, number>>();
-  const cumByRider = new Map<string, Map<number, number>>();
-  for (const rider of dataset.riders) {
-    const m = new Map<number, number>();
-    for (const sp of rider.byStage) m.set(sp.stage, getCumPts(sp));
-    cumByRider.set(rider.id, m);
-  }
   for (const stage of dataset.stages) {
     const n = stage.stage_number;
-    const entries: Array<[string, number]> = [];
-    for (const rider of dataset.riders) {
-      const pts = cumByRider.get(rider.id)?.get(n);
-      if (pts !== undefined) entries.push([rider.id, pts]);
-    }
-    entries.sort((a, b) => b[1] - a[1]);
     const rankMap = new Map<string, number>();
-    let rank = 1;
-    for (let i = 0; i < entries.length; i++) {
-      if (i > 0 && entries[i][1] < entries[i - 1][1]) rank = i + 1;
-      rankMap.set(entries[i][0], rank);
+    for (const rider of dataset.riders) {
+      const sp = rider.byStage.find((p) => p.stage === n);
+      if (sp) {
+        const rank = getRank(sp);
+        if (rank != null) rankMap.set(rider.id, rank);
+      }
     }
     rankAtStage.set(n, rankMap);
   }
@@ -314,8 +305,8 @@ function buildRankMaps(
   for (const rider of dataset.riders) {
     const rank = finalRank.get(rider.id);
     if (rank === undefined) continue;
-    const pts = rider.byStage.find((p) => p.stage === lastStageNum);
-    const ptsVal = pts ? getCumPts(pts) : 0;
+    const sp = rider.byStage.find((p) => p.stage === lastStageNum);
+    const ptsVal = sp ? getCumPts(sp) : 0;
     if (!ridersAtFinal.has(rank)) ridersAtFinal.set(rank, { riders: [], points: ptsVal });
     ridersAtFinal.get(rank)!.riders.push(rider);
   }
@@ -324,9 +315,9 @@ function buildRankMaps(
 
 function computePointsRankings() {
   ({ rankAtStage: pointsRankAtStage, finalRank: finalPointsRank, ridersAtFinal: ridersAtFinalPointsRank } =
-    buildRankMaps((sp) => sp.cumulativePoints));
+    buildRankMapsFromField((sp) => sp.sprintRank, (sp) => sp.cumulativePoints));
   ({ rankAtStage: komRankAtStage, finalRank: finalKomRank, ridersAtFinal: ridersAtFinalKomRank } =
-    buildRankMaps((sp) => sp.cumulativeKomPoints));
+    buildRankMapsFromField((sp) => sp.komRank, (sp) => sp.cumulativeKomPoints));
 }
 
 function activeRankMap(stageNum: number): Map<string, number> | undefined {

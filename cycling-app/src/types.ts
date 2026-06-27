@@ -15,6 +15,8 @@ export interface RiderStagePoint {
   status: string;
   cumulativePoints: number;
   cumulativeKomPoints: number;
+  sprintRank: number | null;
+  komRank: number | null;
 }
 
 export interface RiderSeries {
