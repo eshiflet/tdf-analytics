@@ -14,9 +14,33 @@ SPRINT_POINTS_PATH = os.path.join(HERE, "sprint_points.json")
 _KOM_RECONCILED = os.path.join(HERE, "kom_points_reconciled.json")
 _KOM_RAW        = os.path.join(HERE, "kom_points.json")
 KOM_POINTS_PATH = _KOM_RECONCILED if os.path.exists(_KOM_RECONCILED) else _KOM_RAW
+GC_ALL_TIMES_PATH   = os.path.join(HERE, "gc_all_times.json")
+GC_WINNER_TIMES_PATH = os.path.join(HERE, "gc_winner_times.json")
 
 _sprint_points_cache = None
 _kom_points_cache = None
+_gc_all_times_cache = None
+_gc_winner_times_cache = None
+
+def load_gc_all_times():
+    global _gc_all_times_cache
+    if _gc_all_times_cache is None:
+        if os.path.exists(GC_ALL_TIMES_PATH):
+            with open(GC_ALL_TIMES_PATH, encoding="utf-8") as f:
+                _gc_all_times_cache = json.load(f)
+        else:
+            _gc_all_times_cache = {}
+    return _gc_all_times_cache
+
+def load_gc_winner_times():
+    global _gc_winner_times_cache
+    if _gc_winner_times_cache is None:
+        if os.path.exists(GC_WINNER_TIMES_PATH):
+            with open(GC_WINNER_TIMES_PATH, encoding="utf-8") as f:
+                _gc_winner_times_cache = json.load(f)
+        else:
+            _gc_winner_times_cache = {}
+    return _gc_winner_times_cache
 
 def load_sprint_points():
     global _sprint_points_cache
@@ -155,7 +179,25 @@ def export_year(year, out_path):
     )
     all_riders = {r["rider_id"]: dict(r) for r in cur.fetchall()}
 
-    # Compute total race time per rider (sum of finish_time_seconds across all stages)
+    # Official total race times from Wikipedia scrape (top ~10 riders per year)
+    official_times = load_gc_all_times().get(str(year), {})
+    # Winner's official total time — used to compute absolute times for riders
+    # who have gc_gap_seconds but are not in official_times (e.g. non-top-10)
+    winner_time = load_gc_winner_times().get(str(year))
+
+    # gc_gap_seconds at the last stage for each rider (fallback for riders not
+    # in official_times but where we have the gap to the winner)
+    cur.execute(
+        """
+        SELECT sr.rider_id, sr.gc_gap_seconds
+        FROM stage_results sr
+        WHERE sr.stage_id = ? AND sr.gc_gap_seconds IS NOT NULL
+        """,
+        (last_stage_id,),
+    )
+    last_stage_gap = {r["rider_id"]: r["gc_gap_seconds"] for r in cur.fetchall()}
+
+    # Fallback: sum of per-stage finish_time_seconds (least preferred)
     cur.execute(
         """
         SELECT sr.rider_id, SUM(sr.finish_time_seconds) AS total_seconds
@@ -166,7 +208,21 @@ def export_year(year, out_path):
         """,
         (edition_id,),
     )
-    total_time_by_rider = {r["rider_id"]: r["total_seconds"] for r in cur.fetchall()}
+    stage_sum_by_rider = {r["rider_id"]: r["total_seconds"] for r in cur.fetchall()}
+
+    def resolve_total_time(rider_id):
+        """
+        Priority: Wikipedia official time > winner_time + last_stage_gap
+                  > sum of stage finish_time_seconds > None
+        """
+        t = official_times.get(str(rider_id)) or official_times.get(rider_id)
+        if t:
+            return t
+        if winner_time is not None:
+            gap = last_stage_gap.get(rider_id)
+            if gap is not None:
+                return winner_time + gap
+        return stage_sum_by_rider.get(rider_id)
 
     riders_out = []
     for rider_id, info in all_riders.items():
@@ -230,7 +286,7 @@ def export_year(year, out_path):
             "nationality": info["nationality"],
             "team": team,
             "finalRank": final_rank,
-            "totalTimeSeconds": total_time_by_rider.get(rider_id),
+            "totalTimeSeconds": resolve_total_time(rider_id),
             "byStage": by_stage,
         })
 
