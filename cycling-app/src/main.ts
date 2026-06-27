@@ -385,6 +385,8 @@ function loadDataset(year: string) {
     "active",
   );
 
+  viewOverviewBtn.textContent = `${currentYear} Race Overview`;
+
   buildLegend();
   if (currentView === "stage") drawChart();
   else drawOverview();
