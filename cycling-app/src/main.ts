@@ -299,14 +299,22 @@ function buildRankMapsFromField(
     }
     rankAtStage.set(n, rankMap);
   }
-  const lastStageNum = dataset.stages[dataset.stages.length - 1]?.stage_number;
-  const finalRank = new Map(rankAtStage.get(lastStageNum ?? -1) ?? []);
+  // Build finalRank from each rider's last byStage entry so that DNF'd riders
+  // (who have no byStage entry for the actual last stage) are still ranked
+  // correctly when their rank was back-filled by the export pipeline.
+  const finalRank = new Map<string, number>();
+  for (const rider of dataset.riders) {
+    if (rider.byStage.length === 0) continue;
+    const lastSp = rider.byStage[rider.byStage.length - 1];
+    const rank = getRank(lastSp);
+    if (rank != null) finalRank.set(rider.id, rank);
+  }
   const ridersAtFinal = new Map<number, { riders: RiderSeries[]; points: number }>();
   for (const rider of dataset.riders) {
     const rank = finalRank.get(rider.id);
     if (rank === undefined) continue;
-    const sp = rider.byStage.find((p) => p.stage === lastStageNum);
-    const ptsVal = sp ? getCumPts(sp) : 0;
+    const lastSp = rider.byStage.length > 0 ? rider.byStage[rider.byStage.length - 1] : undefined;
+    const ptsVal = lastSp ? getCumPts(lastSp) : 0;
     if (!ridersAtFinal.has(rank)) ridersAtFinal.set(rank, { riders: [], points: ptsVal });
     ridersAtFinal.get(rank)!.riders.push(rider);
   }
