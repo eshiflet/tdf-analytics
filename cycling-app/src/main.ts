@@ -446,7 +446,6 @@ function drawAllRacesOverview() {
     },
   ];
 
-  const gapCount = 2; // WWI gap + WWII gap
   const panelHeight = Math.floor(
     (totalHeight - margin.top - margin.bottom - (panels.length - 1) * 16) / panels.length
   );
@@ -457,11 +456,13 @@ function drawAllRacesOverview() {
     .attr("height", totalHeight)
     .attr("viewBox", `0 0 ${totalWidth} ${totalHeight}`);
 
-  const years = ALL_RACES.map((r) => r.year);
-  const xScale = d3.scalePoint<number>()
-    .domain(years)
-    .range([0, innerWidth])
-    .padding(0.5);
+  const minYear = ALL_RACES[0].year;
+  const maxYear = ALL_RACES[ALL_RACES.length - 1].year;
+  const xScale = d3.scaleLinear()
+    .domain([minYear, maxYear])
+    .range([0, innerWidth]);
+
+  const tickYears = d3.range(1910, maxYear + 1, 10).filter((y) => y <= maxYear);
 
   panels.forEach((panel, pi) => {
     const yTop = margin.top + pi * (panelHeight + 16);
@@ -487,11 +488,11 @@ function drawAllRacesOverview() {
       .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
       .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
 
-    // Draw line segments (skip gaps between non-consecutive years)
+    // Line — gaps appear naturally where value is null or year had no race
     const defined = (r: RaceSummary) => panel.value(r) != null;
     const lineGen = d3.line<RaceSummary>()
       .defined(defined)
-      .x((r) => xScale(r.year) ?? 0)
+      .x((r) => xScale(r.year))
       .y((r) => yScale(panel.value(r) as number))
       .curve(d3.curveMonotoneX);
 
@@ -502,12 +503,12 @@ function drawAllRacesOverview() {
       .attr("stroke-width", 1.5)
       .attr("d", lineGen);
 
-    // Dots for each data point
+    // Dots for race years with data
     g.selectAll<SVGCircleElement, RaceSummary>(".all-races-dot")
       .data(ALL_RACES.filter(defined))
       .join("circle")
       .attr("class", "all-races-dot")
-      .attr("cx", (r) => xScale(r.year) ?? 0)
+      .attr("cx", (r) => xScale(r.year))
       .attr("cy", (r) => yScale(panel.value(r) as number))
       .attr("r", 3)
       .attr("fill", "var(--accent)")
@@ -529,7 +530,6 @@ function drawAllRacesOverview() {
 
     // X-axis on last panel only
     if (pi === panels.length - 1) {
-      const tickYears = years.filter((y) => y % 10 === 0 || y === years[0] || y === years[years.length - 1]);
       g.append("g")
         .attr("class", "axis x-axis")
         .attr("transform", `translate(0,${panelHeight})`)
