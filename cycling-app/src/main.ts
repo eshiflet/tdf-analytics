@@ -50,7 +50,7 @@ const metricSelectEl = document.getElementById("metric-select") as HTMLSelectEle
 const viewStageBtn = document.getElementById("view-stage") as HTMLButtonElement;
 const viewOverviewBtn = document.getElementById("view-overview") as HTMLButtonElement;
 const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
-const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement;
+const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement | null;
 const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
 
 let currentView: "stage" | "overview" = "stage";
@@ -394,7 +394,7 @@ function switchView(view: "stage" | "overview") {
   currentView = view;
   viewStageBtn.classList.toggle("active", view === "stage");
   viewOverviewBtn.classList.toggle("active", view === "overview");
-  subtitleStage.hidden = view !== "stage";
+  if (subtitleStage) subtitleStage.hidden = view !== "stage";
   subtitleOverview.hidden = view !== "overview";
   chartEl.classList.toggle("hidden", view !== "stage");
   sidebarEl.classList.toggle("hidden", view !== "stage");
