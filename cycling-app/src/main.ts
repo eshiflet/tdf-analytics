@@ -547,11 +547,11 @@ function drawChart() {
   if (currentMetric === "points" && parseInt(currentYear) < 1953) {
     g.append("text")
       .attr("x", innerWidth / 2)
-      .attr("y", innerHeight / 2)
+      .attr("y", 60)
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
       .attr("fill", "var(--text-muted, #888)")
-      .attr("font-size", "16px")
+      .attr("font-size", "22px")
       .text("No data — the green jersey sprint points competition started in 1953");
     return;
   }
