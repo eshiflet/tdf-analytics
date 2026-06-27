@@ -520,12 +520,35 @@ function drawAllRacesOverview() {
       .attr("dominant-baseline", "middle")
       .text(panel.yLabel);
 
-    // Y gridlines
+    // War-year shaded bands (draw before data lines so they sit behind)
+    [{ start: 1914.5, end: 1918.5, label: "WWI" },
+     { start: 1939.5, end: 1946.5, label: "WWII" }].forEach(({ start, end, label }) => {
+      const bx = xScale(start);
+      const bw = xScale(end) - bx;
+      g.append("rect")
+        .attr("x", bx).attr("y", 0)
+        .attr("width", bw).attr("height", panelHeight)
+        .attr("fill", "rgba(239,68,68,0.08)")
+        .attr("pointer-events", "none");
+      // Label on top panel only to avoid repetition
+      if (pi === 0) {
+        g.append("text")
+          .attr("x", bx + bw / 2).attr("y", panelHeight / 2)
+          .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
+          .attr("font-size", "11px").attr("fill", "rgba(239,68,68,0.45)")
+          .attr("pointer-events", "none")
+          .text(label);
+      }
+    });
+
+    // Y gridlines — y=0 tick gets a brighter stroke
     g.append("g")
       .attr("class", "axis y-axis overview-y-axis")
       .call(d3.axisLeft(yScale).ticks(4).tickSize(-innerWidth))
       .call((ax) => ax.select(".domain").remove())
       .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
+      .call((ax) => ax.selectAll<SVGGElement, number>(".tick").filter((d) => d === 0)
+        .select("line").attr("stroke", "#8a9ab0").attr("stroke-opacity", 0.85))
       .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
 
     // Draw each series
