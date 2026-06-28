@@ -437,6 +437,21 @@ svg text {
   border-color: var(--accent);
 }
 
+.riders-clear-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.riders-clear-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .riders-count-label {
   font-size: 13px;
   color: var(--text-dim);
@@ -444,24 +459,27 @@ svg text {
 }
 
 .riders-grid {
-  column-count: 5;
-  column-gap: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: 29px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   align-content: start;
 }
 
 @media (max-width: 1100px) {
-  .riders-grid { column-count: 4; }
+  .riders-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
 @media (max-width: 800px) {
-  .riders-grid { column-count: 3; }
+  .riders-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 .rider-name-btn {
   display: block;
   width: 100%;
+  min-width: 0;
   background: none;
   border: none;
   color: var(--text-dim);

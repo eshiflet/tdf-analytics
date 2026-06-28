@@ -1369,10 +1369,15 @@ async function drawRidersPage() {
   });
   teamSel.value = ridersFilterTeam;
 
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "riders-clear-btn";
+  clearBtn.textContent = "Clear All";
+
   const countLabel = document.createElement("span");
   countLabel.className = "riders-count-label";
 
-  controls.append(searchInput, yearSel, teamSel, countLabel);
+  controls.append(searchInput, yearSel, teamSel, clearBtn, countLabel);
   ridersChartEl.appendChild(controls);
 
   const grid = document.createElement("div");
@@ -1398,6 +1403,15 @@ async function drawRidersPage() {
   searchInput.addEventListener("input", () => { ridersSearchQuery = searchInput.value; refreshGrid(); });
   yearSel.addEventListener("change", () => { ridersFilterYear = yearSel.value; refreshGrid(); });
   teamSel.addEventListener("change", () => { ridersFilterTeam = teamSel.value; refreshGrid(); });
+  clearBtn.addEventListener("click", () => {
+    ridersSearchQuery = "";
+    ridersFilterYear = "";
+    ridersFilterTeam = "";
+    searchInput.value = "";
+    yearSel.value = "";
+    teamSel.value = "";
+    refreshGrid();
+  });
   refreshGrid();
 }
 
