@@ -51,6 +51,8 @@ const viewStageBtn = document.getElementById("view-stage") as HTMLButtonElement;
 const viewOverviewBtn = document.getElementById("view-overview") as HTMLButtonElement;
 const viewAllRacesBtn = document.getElementById("view-all-races") as HTMLButtonElement;
 const allRacesChartEl = document.getElementById("all-races-chart") as HTMLDivElement;
+const viewRidersBtn = document.getElementById("view-riders") as HTMLButtonElement;
+const ridersChartEl = document.getElementById("riders-chart") as HTMLDivElement;
 const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
 const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement | null;
 const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
@@ -59,7 +61,7 @@ import allRacesSummaryRaw from "./data/all_races_summary.json";
 interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; slowestFinisherTimeSeconds: number | null; }
 const ALL_RACES: RaceSummary[] = allRacesSummaryRaw as RaceSummary[];
 
-let currentView: "stage" | "overview" | "allraces" = "stage";
+let currentView: "stage" | "overview" | "allraces" | "riders" = "stage";
 
 function fmtTotalTime(seconds: number | null): string {
   if (!seconds) return "—";
@@ -245,6 +247,7 @@ function drawOverview() {
 
 function init() {
   try {
+    buildRiderIndex();
     buildYearSelect();
     buildMetricSelect();
     loadDataset(currentYear);
@@ -398,11 +401,12 @@ function loadDataset(year: string) {
   else drawOverview();
 }
 
-function switchView(view: "stage" | "overview" | "allraces") {
+function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   currentView = view;
   viewStageBtn.classList.toggle("active", view === "stage");
   viewOverviewBtn.classList.toggle("active", view === "overview");
   viewAllRacesBtn.classList.toggle("active", view === "allraces");
+  viewRidersBtn.classList.toggle("active", view === "riders");
   if (subtitleStage) subtitleStage.hidden = view !== "stage";
   subtitleOverview.hidden = view !== "overview";
   chartEl.classList.toggle("hidden", view !== "stage");
@@ -410,9 +414,11 @@ function switchView(view: "stage" | "overview" | "allraces") {
   overviewChartEl.classList.toggle("visible", view === "overview");
   overviewSummaryEl.hidden = view !== "overview";
   allRacesChartEl.classList.toggle("visible", view === "allraces");
+  ridersChartEl.classList.toggle("visible", view === "riders");
   if (view === "stage") drawChart();
   else if (view === "overview") drawOverview();
-  else drawAllRacesOverview();
+  else if (view === "allraces") drawAllRacesOverview();
+  else drawRidersPage();
 }
 
 function drawAllRacesOverview() {
@@ -729,6 +735,7 @@ function wireControls() {
   });
   viewOverviewBtn.addEventListener("click", () => switchView("overview"));
   viewAllRacesBtn.addEventListener("click", () => switchView("allraces"));
+  viewRidersBtn.addEventListener("click", () => switchView("riders"));
 }
 
 function cssEscape(s: string): string {
@@ -1221,5 +1228,343 @@ function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
 
 // Unused but kept for type-checking completeness
 void getActiveRank;
+
+// ─── Rider Index ─────────────────────────────────────────────────────────────
+
+interface RiderEntry {
+  id: string;
+  name: string;
+  nationality: string | null;
+  years: Map<number, { finalRank: number; team: string | null }>;
+  teams: Set<string>;
+}
+
+const riderIndex = new Map<string, RiderEntry>();
+let allTeamsSorted: string[] = [];
+
+function buildRiderIndex() {
+  for (const [yearStr, ds] of Object.entries(DATASETS_BY_YEAR)) {
+    const year = parseInt(yearStr);
+    for (const rider of ds.riders) {
+      if (!riderIndex.has(rider.id)) {
+        riderIndex.set(rider.id, {
+          id: rider.id,
+          name: rider.name,
+          nationality: rider.nationality ?? null,
+          years: new Map(),
+          teams: new Set(),
+        });
+      }
+      const entry = riderIndex.get(rider.id)!;
+      entry.years.set(year, { finalRank: rider.finalRank, team: rider.team ?? null });
+      if (rider.team) entry.teams.add(rider.team);
+    }
+  }
+  const teamsSet = new Set<string>();
+  for (const entry of riderIndex.values()) {
+    for (const t of entry.teams) teamsSet.add(t);
+  }
+  allTeamsSorted = [...teamsSet].sort();
+}
+
+// ─── Riders Page ─────────────────────────────────────────────────────────────
+
+let ridersSearchQuery = "";
+let ridersFilterYear = "";
+let ridersFilterTeam = "";
+
+function filteredRiders(): RiderEntry[] {
+  const q = ridersSearchQuery.toLowerCase();
+  const yr = ridersFilterYear ? parseInt(ridersFilterYear) : null;
+  return [...riderIndex.values()]
+    .filter((e) => {
+      if (q && !e.name.toLowerCase().includes(q)) return false;
+      if (yr !== null && !e.years.has(yr)) return false;
+      if (ridersFilterTeam && !e.teams.has(ridersFilterTeam)) return false;
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function drawRidersPage() {
+  ridersChartEl.innerHTML = "";
+
+  const controls = document.createElement("div");
+  controls.className = "riders-controls";
+
+  const searchInput = document.createElement("input");
+  searchInput.type = "text";
+  searchInput.placeholder = "Search rider name…";
+  searchInput.className = "riders-search-input";
+  searchInput.value = ridersSearchQuery;
+
+  const yearSel = document.createElement("select");
+  yearSel.className = "riders-filter-select";
+  [["", "All years"], ...YEARS.map((y) => [y, y])].forEach(([val, label]) => {
+    const opt = document.createElement("option");
+    opt.value = val;
+    opt.textContent = label;
+    yearSel.appendChild(opt);
+  });
+  yearSel.value = ridersFilterYear;
+
+  const teamSel = document.createElement("select");
+  teamSel.className = "riders-filter-select";
+  [["", "All teams"], ...allTeamsSorted.map((t) => [t, t])].forEach(([val, label]) => {
+    const opt = document.createElement("option");
+    opt.value = val;
+    opt.textContent = label;
+    teamSel.appendChild(opt);
+  });
+  teamSel.value = ridersFilterTeam;
+
+  const countLabel = document.createElement("span");
+  countLabel.className = "riders-count-label";
+
+  controls.append(searchInput, yearSel, teamSel, countLabel);
+  ridersChartEl.appendChild(controls);
+
+  const grid = document.createElement("div");
+  grid.className = "riders-grid";
+  ridersChartEl.appendChild(grid);
+
+  function refreshGrid() {
+    const results = filteredRiders();
+    countLabel.textContent = `${results.length.toLocaleString()} rider${results.length !== 1 ? "s" : ""}`;
+    grid.innerHTML = "";
+    const frag = document.createDocumentFragment();
+    for (const entry of results) {
+      const btn = document.createElement("button");
+      btn.className = "rider-name-btn";
+      btn.textContent = entry.name;
+      btn.title = entry.name;
+      btn.addEventListener("click", () => drawRiderDetail(entry.id));
+      frag.appendChild(btn);
+    }
+    grid.appendChild(frag);
+  }
+
+  searchInput.addEventListener("input", () => { ridersSearchQuery = searchInput.value; refreshGrid(); });
+  yearSel.addEventListener("change", () => { ridersFilterYear = yearSel.value; refreshGrid(); });
+  teamSel.addEventListener("change", () => { ridersFilterTeam = teamSel.value; refreshGrid(); });
+  refreshGrid();
+}
+
+function drawRiderDetail(riderId: string) {
+  ridersChartEl.innerHTML = "";
+  const entry = riderIndex.get(riderId);
+  if (!entry) return;
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "rider-detail-header";
+
+  const backBtn = document.createElement("button");
+  backBtn.className = "rider-back-btn";
+  backBtn.textContent = "← All Riders";
+  backBtn.addEventListener("click", () => drawRidersPage());
+
+  const nameEl = document.createElement("h2");
+  nameEl.className = "rider-detail-name";
+  nameEl.textContent = entry.name;
+
+  const metaEl = document.createElement("div");
+  metaEl.className = "rider-detail-meta";
+
+  const years = [...entry.years.keys()].sort((a, b) => a - b);
+  const finishYears = years.filter((yr) => entry.years.get(yr)!.finalRank < 9999);
+  const bestRank = finishYears.length > 0
+    ? Math.min(...finishYears.map((yr) => entry.years.get(yr)!.finalRank))
+    : null;
+
+  const metaParts: string[] = [];
+  if (entry.nationality) metaParts.push(entry.nationality);
+  metaParts.push(`${years.length} Tour${years.length !== 1 ? "s" : ""} (${years[0]}–${years[years.length - 1]})`);
+  if (bestRank !== null) metaParts.push(`Best: GC #${bestRank}`);
+
+  metaEl.textContent = metaParts.join("  ·  ");
+  header.append(backBtn, nameEl, metaEl);
+  ridersChartEl.appendChild(header);
+
+  const chartContainer = document.createElement("div");
+  chartContainer.className = "rider-career-chart";
+  ridersChartEl.appendChild(chartContainer);
+
+  // Defer one tick so the flex container has a chance to lay out
+  setTimeout(() => {
+    const rect = chartContainer.getBoundingClientRect();
+    const W = Math.max(rect.width || 800, 500);
+    const H = Math.max(rect.height || 380, 280);
+    const margin = { top: 30, right: 40, bottom: 44, left: 60 };
+    const iW = W - margin.left - margin.right;
+    const iH = H - margin.top - margin.bottom;
+
+    type YrResult = { year: number; finalRank: number; team: string | null };
+    const allData: YrResult[] = years.map((yr) => ({
+      year: yr,
+      finalRank: entry.years.get(yr)!.finalRank,
+      team: entry.years.get(yr)!.team,
+    }));
+    const finishData = allData.filter((d) => d.finalRank < 9999);
+    const dnfData = allData.filter((d) => d.finalRank >= 9999);
+
+    const maxRank = Math.max(d3.max(finishData, (d) => d.finalRank) ?? 10, 10);
+    const DNF_H = dnfData.length > 0 ? 36 : 0;
+    const mainH = iH - DNF_H - (DNF_H > 0 ? 8 : 0);
+
+    const xPad = Math.max((years[years.length - 1] - years[0]) * 0.06, 1.5);
+    const xScale2 = d3.scaleLinear()
+      .domain([years[0] - xPad, years[years.length - 1] + xPad])
+      .range([0, iW]);
+
+    const yScale2 = d3.scaleLinear()
+      .domain([1, maxRank])
+      .range([0, mainH]);
+
+    const svg = d3.select(chartContainer).append("svg")
+      .attr("width", W).attr("height", H)
+      .attr("viewBox", `0 0 ${W} ${H}`);
+
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Y gridlines + axis
+    const yTickVals = maxRank <= 10
+      ? d3.range(1, maxRank + 1)
+      : d3.range(0, maxRank + 1, maxRank > 50 ? 20 : 10).filter((v) => v > 0);
+
+    g.append("g").attr("class", "grid grid-y")
+      .call(d3.axisLeft(yScale2).tickValues(yTickVals).tickSize(-iW).tickFormat(() => ""));
+
+    g.append("g").attr("class", "axis y-axis")
+      .call(d3.axisLeft(yScale2).tickValues(yTickVals).tickFormat((d) => `#${d}`));
+
+    // X axis
+    g.append("g").attr("class", "axis x-axis")
+      .attr("transform", `translate(0,${iH - 4})`)
+      .call(
+        d3.axisBottom(xScale2)
+          .ticks(Math.min(years.length, 12))
+          .tickFormat((d) => String(d))
+      )
+      .call((ax) => ax.select(".domain").remove())
+      .call((ax) => ax.selectAll(".tick line").remove());
+
+    // Axis labels
+    g.append("text").attr("class", "axis-label")
+      .attr("transform", `translate(${-margin.left + 14},${mainH / 2}) rotate(-90)`)
+      .attr("text-anchor", "middle")
+      .text("GC Rank");
+
+    g.append("text").attr("class", "axis-label")
+      .attr("x", iW / 2).attr("y", iH + margin.bottom - 8)
+      .attr("text-anchor", "middle")
+      .text("Year");
+
+    // Series label (top-right)
+    g.append("line")
+      .attr("x1", iW - 74).attr("x2", iW - 56)
+      .attr("y1", -14).attr("y2", -14)
+      .attr("stroke", "var(--accent)").attr("stroke-width", 2);
+    g.append("text")
+      .attr("x", iW - 52).attr("y", -14)
+      .attr("dominant-baseline", "middle")
+      .attr("font-size", "12px").attr("fill", "var(--accent)")
+      .text("Tour de France");
+
+    // DNF zone divider
+    if (dnfData.length > 0) {
+      g.append("line")
+        .attr("x1", 0).attr("x2", iW)
+        .attr("y1", mainH + 4).attr("y2", mainH + 4)
+        .attr("stroke", "#4a5160").attr("stroke-dasharray", "3,3").attr("stroke-opacity", 0.6);
+      g.append("text")
+        .attr("x", -6).attr("y", mainH + DNF_H / 2 + 4)
+        .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+        .attr("font-size", "10px").attr("fill", "#ef4444").attr("fill-opacity", 0.7)
+        .text("DNF/DNS");
+    }
+
+    // Line through finishes (split on gaps > 5 years to avoid crossing war gaps)
+    if (finishData.length > 1) {
+      const lineGen = d3.line<YrResult>()
+        .x((d) => xScale2(d.year))
+        .y((d) => yScale2(d.finalRank))
+        .curve(d3.curveMonotoneX);
+      const segs: YrResult[][] = [];
+      let seg: YrResult[] = [finishData[0]];
+      for (let i = 1; i < finishData.length; i++) {
+        if (finishData[i].year - finishData[i - 1].year <= 5) seg.push(finishData[i]);
+        else { segs.push(seg); seg = [finishData[i]]; }
+      }
+      segs.push(seg);
+      for (const s of segs) {
+        if (s.length > 1) {
+          g.append("path").datum(s)
+            .attr("fill", "none").attr("stroke", "var(--accent)")
+            .attr("stroke-width", 1.5).attr("stroke-opacity", 0.5)
+            .attr("d", lineGen);
+        }
+      }
+    }
+
+    // Finish dots
+    g.selectAll<SVGCircleElement, YrResult>(".career-dot")
+      .data(finishData).join("circle")
+      .attr("class", "career-dot")
+      .attr("cx", (d) => xScale2(d.year))
+      .attr("cy", (d) => yScale2(d.finalRank))
+      .attr("r", 5)
+      .attr("fill", "var(--accent)").attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
+      .style("cursor", "pointer")
+      .on("mousemove", (event: MouseEvent, d: YrResult) => {
+        tooltipEl.innerHTML = `
+          <div class="t-name">${d.year} Tour de France</div>
+          <div class="t-team">${d.team ?? "—"}</div>
+          <div>GC #${d.finalRank}</div>
+          <div style="color:var(--text-dim);font-size:11px">Click to view stage chart</div>
+        `;
+        tooltipEl.hidden = false;
+        const r = chartAreaEl.getBoundingClientRect();
+        tooltipEl.style.top = `${event.clientY - r.top - 10}px`;
+        const tw = tooltipEl.offsetWidth;
+        tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+          ? `${event.clientX - r.left - tw - 10}px`
+          : `${event.clientX - r.left + 24}px`;
+      })
+      .on("mouseleave", () => hideTooltip())
+      .on("click", (_e: MouseEvent, d: YrResult) => {
+        currentYear = String(d.year);
+        yearSelectEl.value = currentYear;
+        loadDataset(currentYear);
+        switchView("stage");
+      });
+
+    // DNF dots (hollow, in DNF zone)
+    if (dnfData.length > 0) {
+      g.selectAll<SVGCircleElement, YrResult>(".career-dot-dnf")
+        .data(dnfData).join("circle")
+        .attr("class", "career-dot-dnf")
+        .attr("cx", (d) => xScale2(d.year))
+        .attr("cy", mainH + DNF_H / 2 + 4)
+        .attr("r", 4)
+        .attr("fill", "none").attr("stroke", "#ef4444").attr("stroke-width", 1.5)
+        .on("mousemove", (event: MouseEvent, d: YrResult) => {
+          tooltipEl.innerHTML = `
+            <div class="t-name">${d.year} Tour de France</div>
+            <div class="t-team">${d.team ?? "—"}</div>
+            <div>DNF / DNS</div>
+          `;
+          tooltipEl.hidden = false;
+          const r = chartAreaEl.getBoundingClientRect();
+          tooltipEl.style.top = `${event.clientY - r.top - 10}px`;
+          const tw = tooltipEl.offsetWidth;
+          tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+            ? `${event.clientX - r.left - tw - 10}px`
+            : `${event.clientX - r.left + 24}px`;
+        })
+        .on("mouseleave", () => hideTooltip());
+    }
+  });
+}
 
 init();
