@@ -290,6 +290,14 @@ function init() {
     buildYearSelect();
     buildMetricSelect();
     wireControls();
+    // Single resize handler for the lifetime of the page — redraws whichever
+    // view is active. (Previously re-registered on every drawChart() call,
+    // leaking a listener per year/metric switch.)
+    window.addEventListener("resize", debounce(() => {
+      if (currentView === "stage") drawChart();
+      else if (currentView === "overview") drawOverview();
+      else if (currentView === "allraces") drawAllRacesOverview();
+    }, 200));
     loadDataset(currentYear).catch(showLoadError);
   } catch (err) {
     showLoadError(err);
@@ -1111,10 +1119,6 @@ function drawChart() {
     .on("mouseout", () => { tooltipEl.hidden = true; });
 
   updateLineClasses();
-
-  window.addEventListener("resize", debounce(() => {
-    if (currentView === "stage") drawChart(); else drawOverview();
-  }, 200));
 }
 
 function lastDefinedDisplay(r: RiderSeries): { stage: number; rank: number | null } | null {
