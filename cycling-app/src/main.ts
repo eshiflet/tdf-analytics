@@ -1,4 +1,21 @@
-import * as d3 from "d3";
+// Modular d3 imports — pulls only the submodules we use instead of the full
+// d3 meta-package (which bundles geo, force, hierarchy, zoom, etc. unused here).
+import { select, selectAll, type Selection } from "d3-selection";
+import { scaleLinear, scaleBand, scaleOrdinal, type ScaleLinear, type ScaleOrdinal } from "d3-scale";
+import { axisLeft, axisBottom, axisTop } from "d3-axis";
+import { line, curveMonotoneX } from "d3-shape";
+import { max, min, range } from "d3-array";
+import type { NumberValue } from "d3-scale";
+
+// Thin shim so existing `d3.*` call sites keep working without churn.
+const d3 = {
+  select, selectAll,
+  scaleLinear, scaleBand, scaleOrdinal,
+  axisLeft, axisBottom, axisTop,
+  line, curveMonotoneX,
+  max, min, range,
+};
+
 import type { GcDataset, RiderSeries, RiderStagePoint, StageInfo } from "./types";
 
 const PALETTE = [
@@ -8,26 +25,49 @@ const PALETTE = [
   "#74c0fc", "#ffd43b", "#b2f2bb", "#eebefa", "#a9e34b",
 ];
 
-// Auto-discover every per-year dataset bundled under ./data — adding a new
-// year is just a matter of dropping a new gc_by_stage_{year}.json file here,
-// no code changes needed.
-const yearModules = import.meta.glob<GcDataset>("./data/gc_by_stage_*.json", {
-  eager: true,
+// Auto-discover every per-year dataset under ./data. NOT eager: each file
+// becomes its own lazily-fetched chunk, so the browser only downloads and
+// parses the year(s) the user actually views instead of all 113 up front.
+// Adding a new year is still just dropping in a gc_by_stage_{year}.json file.
+const yearLoaders = import.meta.glob<GcDataset>("./data/gc_by_stage_*.json", {
   import: "default",
 });
-const DATASETS_BY_YEAR: Record<string, GcDataset> = {};
-for (const [path, data] of Object.entries(yearModules)) {
+const LOADERS_BY_YEAR: Record<string, () => Promise<GcDataset>> = {};
+for (const [path, loader] of Object.entries(yearLoaders)) {
   const match = path.match(/gc_by_stage_(\d+)\.json$/);
-  if (match) DATASETS_BY_YEAR[match[1]] = data;
+  if (match) LOADERS_BY_YEAR[match[1]] = loader;
 }
-const YEARS = Object.keys(DATASETS_BY_YEAR).sort().reverse();
+const YEARS = Object.keys(LOADERS_BY_YEAR).sort().reverse();
+
+// Bounded LRU of parsed per-year datasets, so a long session that hops between
+// many years never grows memory without limit. Re-visiting an evicted year
+// re-imports from the browser's HTTP cache (no network), only re-parsing.
+const DATASET_CACHE = new Map<string, GcDataset>();
+const DATASET_CACHE_MAX = 6;
+
+async function getDataset(year: string): Promise<GcDataset> {
+  const cached = DATASET_CACHE.get(year);
+  if (cached) {
+    // refresh recency
+    DATASET_CACHE.delete(year);
+    DATASET_CACHE.set(year, cached);
+    return cached;
+  }
+  const ds = await LOADERS_BY_YEAR[year]();
+  DATASET_CACHE.set(year, ds);
+  if (DATASET_CACHE.size > DATASET_CACHE_MAX) {
+    const oldest = DATASET_CACHE.keys().next().value;
+    if (oldest !== undefined) DATASET_CACHE.delete(oldest);
+  }
+  return ds;
+}
 let currentYear = YEARS[0];
 let currentMetric: "gc" | "points" | "kom" = "gc";
 
 let dataset: GcDataset;
 let selected: Set<string> = new Set();
 let highlighted: string | null = null;
-let colorScale: d3.ScaleOrdinal<string, string>;
+let colorScale: ScaleOrdinal<string, string>;
 
 // Per-dataset points/KOM rankings, recomputed on year change.
 let pointsRankAtStage = new Map<number, Map<string, number>>();
@@ -247,15 +287,18 @@ function drawOverview() {
 
 function init() {
   try {
-    buildRiderIndex();
     buildYearSelect();
     buildMetricSelect();
-    loadDataset(currentYear);
     wireControls();
+    loadDataset(currentYear).catch(showLoadError);
   } catch (err) {
-    chartEl.innerHTML = `<p style="color:#ff6b6b">Failed to load data: ${err}</p>`;
-    console.error(err);
+    showLoadError(err);
   }
+}
+
+function showLoadError(err: unknown) {
+  chartEl.innerHTML = `<p style="color:#ff6b6b">Failed to load data: ${err}</p>`;
+  console.error(err);
 }
 
 function buildYearSelect() {
@@ -269,7 +312,7 @@ function buildYearSelect() {
   yearSelectEl.value = currentYear;
   yearSelectEl.addEventListener("change", () => {
     currentYear = yearSelectEl.value;
-    loadDataset(currentYear);
+    loadDataset(currentYear).catch(showLoadError);
   });
 }
 
@@ -375,8 +418,8 @@ function applyDefaultSelection(preset = 20) {
   selected = new Set(dataset.riders.filter((r) => effectiveFinalRank(r) <= preset).map((r) => r.id));
 }
 
-function loadDataset(year: string) {
-  dataset = DATASETS_BY_YEAR[year];
+async function loadDataset(year: string) {
+  dataset = await getDataset(year);
   colorScale = d3
     .scaleOrdinal<string, string>()
     .domain(dataset.riders.map((r) => r.id))
@@ -398,7 +441,7 @@ function loadDataset(year: string) {
 
   buildLegend();
   if (currentView === "stage") drawChart();
-  else drawOverview();
+  else if (currentView === "overview") drawOverview();
 }
 
 function switchView(view: "stage" | "overview" | "allraces" | "riders") {
@@ -418,7 +461,7 @@ function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   if (view === "stage") drawChart();
   else if (view === "overview") drawOverview();
   else if (view === "allraces") drawAllRacesOverview();
-  else drawRidersPage();
+  else drawRidersPage().catch(showLoadError);
 }
 
 function drawAllRacesOverview() {
@@ -509,7 +552,7 @@ function drawAllRacesOverview() {
   // One crosshair line per panel — populated during the forEach below.
   // Event handlers close over this array by reference, so by the time a
   // user can hover, all entries are present.
-  const crosshairLines: d3.Selection<SVGLineElement, unknown, null, undefined>[] = [];
+  const crosshairLines: Selection<SVGLineElement, unknown, null, undefined>[] = [];
 
   const showCrosshair = (year: number) => {
     const cx = xScale(year);
@@ -802,8 +845,8 @@ function refreshLegendState() {
   });
 }
 
-let xScale: d3.ScaleLinear<number, number>;
-let yScale: d3.ScaleLinear<number, number>;
+let xScale: ScaleLinear<number, number>;
+let yScale: ScaleLinear<number, number>;
 
 function drawChart() {
   chartEl.innerHTML = "";
@@ -883,7 +926,7 @@ function drawChart() {
     );
 
   const stagesByNumber = new Map(stages.map((s) => [s.stage_number, s]));
-  const stageLabelFmt = (d: d3.NumberValue) => stagesByNumber.get(+d)?.stage_label ?? String(d);
+  const stageLabelFmt = (d: NumberValue) => stagesByNumber.get(+d)?.stage_label ?? String(d);
 
   // x axis — bottom
   g.append("g")
@@ -1242,29 +1285,37 @@ interface RiderEntry {
 const riderIndex = new Map<string, RiderEntry>();
 let allTeamsSorted: string[] = [];
 
-function buildRiderIndex() {
-  for (const [yearStr, ds] of Object.entries(DATASETS_BY_YEAR)) {
-    const year = parseInt(yearStr);
-    for (const rider of ds.riders) {
-      if (!riderIndex.has(rider.id)) {
-        riderIndex.set(rider.id, {
-          id: rider.id,
-          name: rider.name,
-          nationality: rider.nationality ?? null,
-          years: new Map(),
-          teams: new Set(),
-        });
-      }
-      const entry = riderIndex.get(rider.id)!;
-      entry.years.set(year, { finalRank: rider.finalRank, team: rider.team ?? null });
-      if (rider.team) entry.teams.add(rider.team);
-    }
-  }
+// Compact prebuilt index (pipeline/export_riders_index.py): one small file
+// instead of reading all 113 per-year datasets just to populate the Riders
+// page. Lazy-loaded as its own chunk the first time the Riders view opens, so
+// it never weighs down first paint (the default view is the stage chart).
+// Shape: { id: { n: name, c: nationality, y: { year: [rank, team] } } }
+type RawRiderIndex = Record<
+  string,
+  { n: string; c: string | null; y: Record<string, [number, string | null]> }
+>;
+
+let riderIndexBuilt = false;
+
+async function ensureRiderIndex(): Promise<void> {
+  if (riderIndexBuilt) return;
+  const mod = await import("./data/riders_index.json");
+  const raw = (mod.default ?? mod) as unknown as RawRiderIndex;
   const teamsSet = new Set<string>();
-  for (const entry of riderIndex.values()) {
-    for (const t of entry.teams) teamsSet.add(t);
+  for (const [id, rec] of Object.entries(raw)) {
+    const years = new Map<number, { finalRank: number; team: string | null }>();
+    const teams = new Set<string>();
+    for (const [yearStr, [finalRank, team]] of Object.entries(rec.y)) {
+      years.set(parseInt(yearStr), { finalRank, team: team ?? null });
+      if (team) {
+        teams.add(team);
+        teamsSet.add(team);
+      }
+    }
+    riderIndex.set(id, { id, name: rec.n, nationality: rec.c ?? null, years, teams });
   }
   allTeamsSorted = [...teamsSet].sort();
+  riderIndexBuilt = true;
 }
 
 // ─── Riders Page ─────────────────────────────────────────────────────────────
@@ -1286,8 +1337,18 @@ function filteredRiders(): RiderEntry[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function drawRidersPage() {
+async function drawRidersPage() {
   ridersChartEl.innerHTML = "";
+  if (!riderIndexBuilt) {
+    const loading = document.createElement("div");
+    loading.className = "riders-count-label";
+    loading.textContent = "Loading riders…";
+    ridersChartEl.appendChild(loading);
+    await ensureRiderIndex();
+    // Bail out if the user navigated away while the index was loading.
+    if (currentView !== "riders") return;
+    ridersChartEl.innerHTML = "";
+  }
 
   const controls = document.createElement("div");
   controls.className = "riders-controls";
@@ -1535,8 +1596,9 @@ function drawRiderDetail(riderId: string) {
       .on("click", (_e: MouseEvent, d: YrResult) => {
         currentYear = String(d.year);
         yearSelectEl.value = currentYear;
-        loadDataset(currentYear);
-        switchView("stage");
+        // Load the year's data first, then show the stage view, so the chart
+        // doesn't briefly render with the previously-loaded year.
+        loadDataset(currentYear).then(() => switchView("stage")).catch(showLoadError);
       });
 
     // DNF dots (hollow, in DNF zone)

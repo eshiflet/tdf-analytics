@@ -12,7 +12,9 @@ const indexHtml = fs.readFileSync(new URL("./index.html", buildDir), "utf-8");
 const bodyMatch = indexHtml.match(/<body>([\s\S]*)<\/body>/);
 const bodyHtml = bodyMatch[1].replace(/<script[\s\S]*?<\/script>/, "");
 const scriptSrcMatch = indexHtml.match(/<script[^>]*src="([^"]+)"/);
-const scriptSrc = scriptSrcMatch[1].replace(/^\.\//, "");
+// Built HTML uses the Vite base ("/tdf-analytics/assets/..."); strip the
+// leading base so the path resolves against the local build/ dir.
+const scriptSrc = scriptSrcMatch[1].replace(/^\.\//, "").replace(/^\/tdf-analytics\//, "");
 
 const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml}</body></html>`, {
   url: "http://localhost/",
@@ -135,7 +137,7 @@ const pass =
   bottomAxisTicks.length === 21 &&
   hasAllYears &&
   yearOptions[0] === "2025" &&
-  yearOptions[yearOptions.length - 1] === "1960" &&
+  yearOptions[yearOptions.length - 1] === "1903" &&
   !tooltipHidden &&
   tooltipText.includes("Lille") &&
   tooltipText.includes("Brussel") &&
