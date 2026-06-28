@@ -385,17 +385,6 @@ function activeRankMap(stageNum: number): Map<string, number> | undefined {
   return pointsRankAtStage.get(stageNum);
 }
 
-/** Return the "active" rank for a rider at a given stage under the current metric. */
-function getActiveRank(riderId: string, stageNum: number): number | null {
-  if (currentMetric === "gc") {
-    const sp = dataset.riders.find((r) => r.id === riderId)?.byStage.find((p) => p.stage === stageNum);
-    return sp?.gcRank ?? null;
-  }
-  const rider = dataset.riders.find((r) => r.id === riderId);
-  if (!rider?.byStage.some((p) => p.stage === stageNum)) return null;
-  return activeRankMap(stageNum)?.get(riderId) ?? null;
-}
-
 /** Build the rank series for a rider to feed into d3 line/dot/label rendering. */
 function getDisplayPoints(rider: RiderSeries): Array<{ stage: number; rank: number | null }> {
   if (currentMetric === "gc") {
@@ -1268,9 +1257,6 @@ function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
     timer = setTimeout(() => fn(...args), ms);
   }) as T;
 }
-
-// Unused but kept for type-checking completeness
-void getActiveRank;
 
 // ─── Rider Index ─────────────────────────────────────────────────────────────
 
