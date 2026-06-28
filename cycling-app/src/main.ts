@@ -1268,7 +1268,7 @@ interface RiderEntry {
   id: string;
   name: string;
   nationality: string | null;
-  years: Map<number, { finalRank: number; team: string | null }>;
+  years: Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>;
   teams: Set<string>;
 }
 
@@ -1282,7 +1282,7 @@ let allTeamsSorted: string[] = [];
 // Shape: { id: { n: name, c: nationality, y: { year: [rank, team] } } }
 type RawRiderIndex = Record<
   string,
-  { n: string; c: string | null; y: Record<string, [number, string | null]> }
+  { n: string; c: string | null; y: Record<string, [number, number, number, string | null]> }
 >;
 
 let riderIndexBuilt = false;
@@ -1293,10 +1293,10 @@ async function ensureRiderIndex(): Promise<void> {
   const raw = (mod.default ?? mod) as unknown as RawRiderIndex;
   const teamsSet = new Set<string>();
   for (const [id, rec] of Object.entries(raw)) {
-    const years = new Map<number, { finalRank: number; team: string | null }>();
+    const years = new Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>();
     const teams = new Set<string>();
-    for (const [yearStr, [finalRank, team]] of Object.entries(rec.y)) {
-      years.set(parseInt(yearStr), { finalRank, team: team ?? null });
+    for (const [yearStr, [finalRank, sprintRank, komRank, team]] of Object.entries(rec.y)) {
+      years.set(parseInt(yearStr), { finalRank, sprintRank, komRank, team: team ?? null });
       if (team) {
         teams.add(team);
         teamsSet.add(team);
@@ -1464,16 +1464,25 @@ function drawRiderDetail(riderId: string) {
     const iW = W - margin.left - margin.right;
     const iH = H - margin.top - margin.bottom;
 
-    type YrResult = { year: number; finalRank: number; team: string | null };
+    type YrResult = { year: number; finalRank: number; sprintRank: number; komRank: number; team: string | null };
     const allData: YrResult[] = years.map((yr) => ({
       year: yr,
       finalRank: entry.years.get(yr)!.finalRank,
+      sprintRank: entry.years.get(yr)!.sprintRank,
+      komRank: entry.years.get(yr)!.komRank,
       team: entry.years.get(yr)!.team,
     }));
     const finishData = allData.filter((d) => d.finalRank < 9999);
     const dnfData = allData.filter((d) => d.finalRank >= 9999);
+    const sprintData = allData.filter((d) => d.sprintRank < 9999);
+    const komData = allData.filter((d) => d.komRank < 9999);
 
-    const maxRank = Math.max(d3.max(finishData, (d) => d.finalRank) ?? 10, 10);
+    const allRankedRanks = [
+      ...finishData.map((d) => d.finalRank),
+      ...sprintData.map((d) => d.sprintRank),
+      ...komData.map((d) => d.komRank),
+    ];
+    const maxRank = Math.max(d3.max(allRankedRanks, (d) => d) ?? 10, 10);
     const DNF_H = dnfData.length > 0 ? 36 : 0;
     const mainH = iH - DNF_H - (DNF_H > 0 ? 8 : 0);
 
@@ -1518,23 +1527,35 @@ function drawRiderDetail(riderId: string) {
     g.append("text").attr("class", "axis-label")
       .attr("transform", `translate(${-margin.left + 14},${mainH / 2}) rotate(-90)`)
       .attr("text-anchor", "middle")
-      .text("GC Rank");
+      .text("Rank");
 
     g.append("text").attr("class", "axis-label")
       .attr("x", iW / 2).attr("y", iH + margin.bottom - 8)
       .attr("text-anchor", "middle")
       .text("Year");
 
-    // Series label (top-right)
-    g.append("line")
-      .attr("x1", iW - 74).attr("x2", iW - 56)
-      .attr("y1", -14).attr("y2", -14)
-      .attr("stroke", "var(--accent)").attr("stroke-width", 2);
-    g.append("text")
-      .attr("x", iW - 52).attr("y", -14)
-      .attr("dominant-baseline", "middle")
-      .attr("font-size", "12px").attr("fill", "var(--accent)")
-      .text("Tour de France");
+    // Legend (top-right): GC / Sprint / KOM
+    const legendItems = [
+      { label: "GC", color: "var(--accent)" },
+      { label: "Sprint", color: "#22c55e" },
+      { label: "KOM", color: "#ef4444" },
+    ];
+    let legendX = iW;
+    for (let i = legendItems.length - 1; i >= 0; i--) {
+      const item = legendItems[i];
+      g.append("text")
+        .attr("x", legendX).attr("y", -14)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", "11px").attr("fill", item.color)
+        .text(item.label);
+      const textW = item.label.length * 7;
+      g.append("line")
+        .attr("x1", legendX - textW - 16).attr("x2", legendX - textW - 4)
+        .attr("y1", -14).attr("y2", -14)
+        .attr("stroke", item.color).attr("stroke-width", 2);
+      legendX = legendX - textW - 22;
+    }
 
     // DNF zone divider
     if (dnfData.length > 0) {
@@ -1549,30 +1570,69 @@ function drawRiderDetail(riderId: string) {
         .text("DNF/DNS");
     }
 
-    // Line through finishes (split on gaps > 5 years to avoid crossing war gaps)
-    if (finishData.length > 1) {
+    // Helper: draw a line series split on gaps > 5 years
+    function drawLine(data: YrResult[], yFn: (d: YrResult) => number, color: string) {
+      if (data.length < 2) return;
       const lineGen = d3.line<YrResult>()
         .x((d) => xScale2(d.year))
-        .y((d) => yScale2(d.finalRank))
+        .y((d) => yFn(d))
         .curve(d3.curveMonotoneX);
       const segs: YrResult[][] = [];
-      let seg: YrResult[] = [finishData[0]];
-      for (let i = 1; i < finishData.length; i++) {
-        if (finishData[i].year - finishData[i - 1].year <= 5) seg.push(finishData[i]);
-        else { segs.push(seg); seg = [finishData[i]]; }
+      let seg: YrResult[] = [data[0]];
+      for (let i = 1; i < data.length; i++) {
+        if (data[i].year - data[i - 1].year <= 5) seg.push(data[i]);
+        else { segs.push(seg); seg = [data[i]]; }
       }
       segs.push(seg);
       for (const s of segs) {
         if (s.length > 1) {
           g.append("path").datum(s)
-            .attr("fill", "none").attr("stroke", "var(--accent)")
+            .attr("fill", "none").attr("stroke", color)
             .attr("stroke-width", 1.5).attr("stroke-opacity", 0.5)
             .attr("d", lineGen);
         }
       }
     }
 
-    // Finish dots
+    drawLine(finishData, (d) => yScale2(d.finalRank), "var(--accent)");
+    drawLine(sprintData, (d) => yScale2(d.sprintRank), "#22c55e");
+    drawLine(komData, (d) => yScale2(d.komRank), "#ef4444");
+
+    // Tooltip helper
+    function showDotTooltip(event: MouseEvent, d: YrResult) {
+      const gcPart = d.finalRank < 9999 ? `<div>GC #${d.finalRank}</div>` : "<div>GC DNF/DNS</div>";
+      const sprintPart = d.sprintRank < 9999 ? `<div style="color:#22c55e">Sprint #${d.sprintRank}</div>` : "";
+      const komPart = d.komRank < 9999 ? `<div style="color:#ef4444">KOM #${d.komRank}</div>` : "";
+      tooltipEl.innerHTML = `
+        <div class="t-name">${d.year} Tour de France</div>
+        <div class="t-team">${d.team ?? "—"}</div>
+        ${gcPart}${sprintPart}${komPart}
+        <div style="color:var(--text-dim);font-size:11px">Click to view stage chart</div>
+      `;
+      tooltipEl.hidden = false;
+      const r = chartAreaEl.getBoundingClientRect();
+      tooltipEl.style.top = `${event.clientY - r.top - 10}px`;
+      const tw = tooltipEl.offsetWidth;
+      tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+        ? `${event.clientX - r.left - tw - 10}px`
+        : `${event.clientX - r.left + 24}px`;
+    }
+
+    function handleDotClick(metric: "gc" | "points" | "kom") {
+      return (_e: MouseEvent, d: YrResult) => {
+        currentYear = String(d.year);
+        yearSelectEl.value = currentYear;
+        currentMetric = metric;
+        metricSelectEl.value = metric;
+        loadDataset(currentYear).then(() => {
+          selected = new Set([riderId]);
+          buildLegend();
+          switchView("stage");
+        }).catch(showLoadError);
+      };
+    }
+
+    // GC finish dots
     g.selectAll<SVGCircleElement, YrResult>(".career-dot")
       .data(finishData).join("circle")
       .attr("class", "career-dot")
@@ -1581,29 +1641,35 @@ function drawRiderDetail(riderId: string) {
       .attr("r", 5)
       .attr("fill", "var(--accent)").attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
       .style("cursor", "pointer")
-      .on("mousemove", (event: MouseEvent, d: YrResult) => {
-        tooltipEl.innerHTML = `
-          <div class="t-name">${d.year} Tour de France</div>
-          <div class="t-team">${d.team ?? "—"}</div>
-          <div>GC #${d.finalRank}</div>
-          <div style="color:var(--text-dim);font-size:11px">Click to view stage chart</div>
-        `;
-        tooltipEl.hidden = false;
-        const r = chartAreaEl.getBoundingClientRect();
-        tooltipEl.style.top = `${event.clientY - r.top - 10}px`;
-        const tw = tooltipEl.offsetWidth;
-        tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-          ? `${event.clientX - r.left - tw - 10}px`
-          : `${event.clientX - r.left + 24}px`;
-      })
+      .on("mousemove", showDotTooltip)
       .on("mouseleave", () => hideTooltip())
-      .on("click", (_e: MouseEvent, d: YrResult) => {
-        currentYear = String(d.year);
-        yearSelectEl.value = currentYear;
-        // Load the year's data first, then show the stage view, so the chart
-        // doesn't briefly render with the previously-loaded year.
-        loadDataset(currentYear).then(() => switchView("stage")).catch(showLoadError);
-      });
+      .on("click", handleDotClick("gc"));
+
+    // Sprint dots
+    g.selectAll<SVGCircleElement, YrResult>(".career-dot-sprint")
+      .data(sprintData).join("circle")
+      .attr("class", "career-dot-sprint")
+      .attr("cx", (d) => xScale2(d.year))
+      .attr("cy", (d) => yScale2(d.sprintRank))
+      .attr("r", 4)
+      .attr("fill", "#22c55e").attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
+      .style("cursor", "pointer")
+      .on("mousemove", showDotTooltip)
+      .on("mouseleave", () => hideTooltip())
+      .on("click", handleDotClick("points"));
+
+    // KOM dots
+    g.selectAll<SVGCircleElement, YrResult>(".career-dot-kom")
+      .data(komData).join("circle")
+      .attr("class", "career-dot-kom")
+      .attr("cx", (d) => xScale2(d.year))
+      .attr("cy", (d) => yScale2(d.komRank))
+      .attr("r", 4)
+      .attr("fill", "#ef4444").attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
+      .style("cursor", "pointer")
+      .on("mousemove", showDotTooltip)
+      .on("mouseleave", () => hideTooltip())
+      .on("click", handleDotClick("kom"));
 
     // DNF dots (hollow, in DNF zone)
     if (dnfData.length > 0) {
@@ -1614,21 +1680,9 @@ function drawRiderDetail(riderId: string) {
         .attr("cy", mainH + DNF_H / 2 + 4)
         .attr("r", 4)
         .attr("fill", "none").attr("stroke", "#ef4444").attr("stroke-width", 1.5)
-        .on("mousemove", (event: MouseEvent, d: YrResult) => {
-          tooltipEl.innerHTML = `
-            <div class="t-name">${d.year} Tour de France</div>
-            <div class="t-team">${d.team ?? "—"}</div>
-            <div>DNF / DNS</div>
-          `;
-          tooltipEl.hidden = false;
-          const r = chartAreaEl.getBoundingClientRect();
-          tooltipEl.style.top = `${event.clientY - r.top - 10}px`;
-          const tw = tooltipEl.offsetWidth;
-          tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-            ? `${event.clientX - r.left - tw - 10}px`
-            : `${event.clientX - r.left + 24}px`;
-        })
-        .on("mouseleave", () => hideTooltip());
+        .on("mousemove", showDotTooltip)
+        .on("mouseleave", () => hideTooltip())
+        .on("click", handleDotClick("gc"));
     }
   });
 }

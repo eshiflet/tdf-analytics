@@ -5,16 +5,18 @@ Build a compact cross-year rider index for the Riders page.
 The web app's Riders view needs every rider's per-year Tour result without
 loading all 113 per-year data files into the browser. This script collapses
 the already-exported gc_by_stage_*.json files into a single small index
-(~180 KB gzipped) so the per-year files can be lazy-loaded on demand.
+so the per-year files can be lazy-loaded on demand.
 
 Output: cycling-app/src/data/riders_index.json
   {
     "<rider_id>": {
       "n": "<name>",
       "c": "<nationality or null>",
-      "y": { "<year>": [finalRank, "<team or null>"], ... }
+      "y": { "<year>": [gcRank, sprintRank, komRank, "<team or null>"], ... }
     }
   }
+
+Ranks default to 9999 (sentinel for unranked/DNF) when not available.
 
 Run after export_gc.py (it reads that script's output, not the DB).
 
@@ -42,7 +44,10 @@ def main():
             entry = index.setdefault(
                 r["id"], {"n": r["name"], "c": r.get("nationality"), "y": {}}
             )
-            entry["y"][year] = [r["finalRank"], r.get("team")]
+            last_stage = r["byStage"][-1] if r.get("byStage") else None
+            sprint_rank = (last_stage.get("sprintRank") or 9999) if last_stage else 9999
+            kom_rank = (last_stage.get("komRank") or 9999) if last_stage else 9999
+            entry["y"][year] = [r["finalRank"], sprint_rank, kom_rank, r.get("team")]
 
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(index, f, separators=(",", ":"), ensure_ascii=False)
