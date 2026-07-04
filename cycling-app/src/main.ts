@@ -80,6 +80,9 @@ let currentMetric: "gc" | "points" | "kom" = "gc";
 let dataset: GcDataset;
 let selected: Set<string> = new Set();
 let highlighted: string | null = null;
+// Rider whose career chart is open on the Riders view (null = grid). Only
+// consulted for hash routing while currentView === "riders".
+let currentRiderId: string | null = null;
 let colorScale: ScaleOrdinal<string, string>;
 
 // Per-dataset points/KOM rankings, recomputed on year change.
@@ -311,7 +314,24 @@ function init() {
       else if (currentView === "overview") drawOverview();
       else if (currentView === "allraces") drawAllRacesOverview();
     }, 200));
-    loadDataset(currentYear).catch(showLoadError);
+    window.addEventListener("hashchange", () => {
+      applyHash().catch(showLoadError);
+    });
+    applyHash()
+      .then((handled) => {
+        if (!handled) {
+          // No (or unrecognized) hash: load defaults and seed the URL without
+          // adding a history entry.
+          window.history.replaceState(null, "", computeHash());
+          return loadDataset(currentYear);
+        }
+        // Deep links that land on riders/allraces still need a dataset for
+        // when the user navigates to the stage/overview views.
+        if (currentView === "riders" || currentView === "allraces") {
+          return loadDataset(currentYear);
+        }
+      })
+      .catch(showLoadError);
   } catch (err) {
     showLoadError(err);
   }
@@ -333,6 +353,7 @@ function buildYearSelect() {
   yearSelectEl.value = currentYear;
   yearSelectEl.addEventListener("change", () => {
     currentYear = yearSelectEl.value;
+    updateHash();
     loadDataset(currentYear).catch(showLoadError);
   });
 }
@@ -341,6 +362,7 @@ function buildMetricSelect() {
   metricSelectEl.value = currentMetric;
   metricSelectEl.addEventListener("change", () => {
     currentMetric = metricSelectEl.value as "gc" | "points" | "kom";
+    updateHash();
     applyDefaultSelection(20);
     document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
       b.classList.remove("active"),
@@ -472,6 +494,79 @@ function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   else if (view === "overview") drawOverview();
   else if (view === "allraces") drawAllRacesOverview();
   else drawRidersPage().catch(showLoadError);
+  updateHash();
+}
+
+// ─── Hash routing ────────────────────────────────────────────────────────────
+// Formats: #<year>/stage/<metric> · #<year>/overview · #allraces
+//          #riders · #riders/<rider-slug>
+// State changes push a hash entry (so back/forward walk through app states);
+// hashchange applies the hash back onto app state. The compare-with-
+// computeHash() guard on both sides breaks the write→event→write loop.
+
+function computeHash(): string {
+  if (currentView === "riders") {
+    return currentRiderId
+      ? `#riders/${currentRiderId.replace(/^rider\//, "")}`
+      : "#riders";
+  }
+  if (currentView === "allraces") return "#allraces";
+  if (currentView === "overview") return `#${currentYear}/overview`;
+  return `#${currentYear}/stage/${currentMetric}`;
+}
+
+// Suppresses hash writes while a hash is being applied, so the intermediate
+// draw calls inside applyHash() don't push partial states onto the history.
+let applyingHash = false;
+
+function updateHash() {
+  if (applyingHash) return;
+  const h = computeHash();
+  if (window.location.hash !== h) window.location.hash = h;
+}
+
+/** Applies the current location.hash to app state. Returns false if the hash
+ *  was empty/unrecognized and the caller should fall back to defaults. */
+async function applyHash(): Promise<boolean> {
+  const hash = window.location.hash;
+  if (!hash || hash === "#") return false;
+  if (hash === computeHash()) return true; // already in sync (our own write)
+  const parts = hash.slice(1).split("/");
+  applyingHash = true;
+  try {
+    if (parts[0] === "allraces") {
+      switchView("allraces");
+      return true;
+    }
+
+    if (parts[0] === "riders") {
+      if (parts[1]) {
+        await ensureRiderIndex();
+        const id = `rider/${parts[1]}`;
+        if (riderIndex.has(id)) {
+          switchView("riders"); // renders grid synchronously (index is built)
+          drawRiderDetail(id);
+          return true;
+        }
+      }
+      switchView("riders");
+      return true;
+    }
+
+    const [year, view, metric] = parts;
+    if (!URLS_BY_YEAR[year]) return false;
+    currentYear = year;
+    yearSelectEl.value = year;
+    if (view !== "overview") {
+      currentMetric = metric === "points" || metric === "kom" ? metric : "gc";
+      metricSelectEl.value = currentMetric;
+    }
+    await loadDataset(year);
+    switchView(view === "overview" ? "overview" : "stage");
+    return true;
+  } finally {
+    applyingHash = false;
+  }
 }
 
 function drawAllRacesOverview() {
@@ -1355,6 +1450,8 @@ function filteredRiders(): RiderEntry[] {
 }
 
 async function drawRidersPage() {
+  currentRiderId = null;
+  updateHash();
   ridersChartEl.innerHTML = "";
   if (!riderIndexBuilt) {
     const loading = document.createElement("div");
@@ -1454,6 +1551,8 @@ function drawRiderDetail(riderId: string) {
   ridersChartEl.innerHTML = "";
   const entry = riderIndex.get(riderId);
   if (!entry) return;
+  currentRiderId = riderId;
+  updateHash();
 
   // Header
   const header = document.createElement("div");
