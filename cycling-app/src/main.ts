@@ -25,25 +25,38 @@ const PALETTE = [
   "#74c0fc", "#ffd43b", "#b2f2bb", "#eebefa", "#a9e34b",
 ];
 
-// Auto-discover every per-year dataset under ./data. NOT eager: each file
-// becomes its own lazily-fetched chunk, so the browser only downloads and
-// parses the year(s) the user actually views instead of all 113 up front.
+// Auto-discover every per-year dataset under ./data, but only take each
+// file's URL (eager ?url glob = a list of tiny strings in the main bundle).
+// The data itself is fetched + JSON.parsed on demand, NOT imported as a JS
+// module: dynamic import() would pin every visited year in the browser's
+// module registry forever, which made LRU eviction below purely cosmetic.
+// fetch() keeps the data out of the module graph so evicted years can
+// actually be garbage-collected, and JSON.parse is faster than parsing the
+// same content as a JS object literal.
 // Adding a new year is still just dropping in a gc_by_stage_{year}.json file.
-const yearLoaders = import.meta.glob<GcDataset>("./data/gc_by_stage_*.json", {
+const yearUrls = import.meta.glob<string>("./data/gc_by_stage_*.json", {
+  query: "?url",
   import: "default",
+  eager: true,
 });
-const LOADERS_BY_YEAR: Record<string, () => Promise<GcDataset>> = {};
-for (const [path, loader] of Object.entries(yearLoaders)) {
-  const match = path.match(/gc_by_stage_(\d+)\.json$/);
-  if (match) LOADERS_BY_YEAR[match[1]] = loader;
+const URLS_BY_YEAR: Record<string, string> = {};
+for (const [path, url] of Object.entries(yearUrls)) {
+  const match = path.match(/gc_by_stage_(\d+)\.json/);
+  if (match) URLS_BY_YEAR[match[1]] = url;
 }
-const YEARS = Object.keys(LOADERS_BY_YEAR).sort().reverse();
+const YEARS = Object.keys(URLS_BY_YEAR).sort().reverse();
 
 // Bounded LRU of parsed per-year datasets, so a long session that hops between
 // many years never grows memory without limit. Re-visiting an evicted year
-// re-imports from the browser's HTTP cache (no network), only re-parsing.
+// re-fetches from the browser's HTTP cache (no network), only re-parsing.
 const DATASET_CACHE = new Map<string, GcDataset>();
 const DATASET_CACHE_MAX = 6;
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load ${url}: HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
 
 async function getDataset(year: string): Promise<GcDataset> {
   const cached = DATASET_CACHE.get(year);
@@ -53,7 +66,7 @@ async function getDataset(year: string): Promise<GcDataset> {
     DATASET_CACHE.set(year, cached);
     return cached;
   }
-  const ds = await LOADERS_BY_YEAR[year]();
+  const ds = await fetchJson<GcDataset>(URLS_BY_YEAR[year]);
   DATASET_CACHE.set(year, ds);
   if (DATASET_CACHE.size > DATASET_CACHE_MAX) {
     const oldest = DATASET_CACHE.keys().next().value;
@@ -1275,28 +1288,42 @@ interface RiderEntry {
 const riderIndex = new Map<string, RiderEntry>();
 let allTeamsSorted: string[] = [];
 
+// URL-only import (see the year-data comment up top for why we fetch instead
+// of importing the JSON as a module).
+import ridersIndexUrl from "./data/riders_index.json?url";
+
 // Compact prebuilt index (pipeline/export_riders_index.py): one small file
 // instead of reading all 113 per-year datasets just to populate the Riders
 // page. Lazy-loaded as its own chunk the first time the Riders view opens, so
 // it never weighs down first paint (the default view is the stage chart).
 // Shape: { id: { n: name, c: nationality, y: { year: [rank, team] } } }
+// Year tuple: [gcRank, team] when the rider had no sprint/KOM ranking that
+// year (the common case), or [gcRank, team, sprintRank, komRank] with 0
+// standing in for an absent rank. Normalized to 9999 sentinels on load.
+type RawYearTuple =
+  | [number, string | null]
+  | [number, string | null, number, number];
 type RawRiderIndex = Record<
   string,
-  { n: string; c: string | null; y: Record<string, [number, number, number, string | null]> }
+  { n: string; c: string | null; y: Record<string, RawYearTuple> }
 >;
 
 let riderIndexBuilt = false;
 
 async function ensureRiderIndex(): Promise<void> {
   if (riderIndexBuilt) return;
-  const mod = await import("./data/riders_index.json");
-  const raw = (mod.default ?? mod) as unknown as RawRiderIndex;
+  const raw = await fetchJson<RawRiderIndex>(ridersIndexUrl);
   const teamsSet = new Set<string>();
   for (const [id, rec] of Object.entries(raw)) {
     const years = new Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>();
     const teams = new Set<string>();
-    for (const [yearStr, [finalRank, sprintRank, komRank, team]] of Object.entries(rec.y)) {
-      years.set(parseInt(yearStr), { finalRank, sprintRank, komRank, team: team ?? null });
+    for (const [yearStr, [finalRank, team, sprintRank, komRank]] of Object.entries(rec.y)) {
+      years.set(parseInt(yearStr), {
+        finalRank,
+        sprintRank: sprintRank || 9999,
+        komRank: komRank || 9999,
+        team: team ?? null,
+      });
       if (team) {
         teams.add(team);
         teamsSet.add(team);
@@ -1394,13 +1421,21 @@ async function drawRidersPage() {
       btn.className = "rider-name-btn";
       btn.textContent = entry.name;
       btn.title = entry.name;
-      btn.addEventListener("click", () => drawRiderDetail(entry.id));
+      btn.dataset.id = entry.id;
       frag.appendChild(btn);
     }
     grid.appendChild(frag);
   }
 
-  searchInput.addEventListener("input", () => { ridersSearchQuery = searchInput.value; refreshGrid(); });
+  // One delegated listener instead of one closure per button (~5,400 of them).
+  grid.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".rider-name-btn");
+    if (btn?.dataset.id) drawRiderDetail(btn.dataset.id);
+  });
+
+  // Debounced: refreshGrid rebuilds the whole grid, so don't do it per keystroke.
+  const debouncedSearch = debounce(() => { ridersSearchQuery = searchInput.value; refreshGrid(); }, 150);
+  searchInput.addEventListener("input", debouncedSearch);
   yearSel.addEventListener("change", () => { ridersFilterYear = yearSel.value; refreshGrid(); });
   teamSel.addEventListener("change", () => { ridersFilterTeam = teamSel.value; refreshGrid(); });
   clearBtn.addEventListener("click", () => {

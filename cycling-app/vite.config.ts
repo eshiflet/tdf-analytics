@@ -4,6 +4,8 @@ export default defineConfig({
   base: "/tdf-analytics/",
   build: {
     outDir: "build",
-    emptyOutDir: false,
+    // Clear stale hashed chunks from previous builds; nothing hand-placed
+    // lives in build/.
+    emptyOutDir: true,
   },
 });

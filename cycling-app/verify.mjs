@@ -34,6 +34,15 @@ globalThis.MutationObserver = window.MutationObserver;
 globalThis.requestAnimationFrame = window.requestAnimationFrame || ((cb) => setTimeout(cb, 0));
 globalThis.cancelAnimationFrame = window.cancelAnimationFrame || clearTimeout;
 
+// The app fetch()es its data files by site-relative URL ("/tdf-analytics/
+// assets/*.json"). Node's fetch rejects relative URLs, so serve them straight
+// from the local build/ dir instead.
+globalThis.fetch = async (url) => {
+  const rel = String(url).replace(/^\/tdf-analytics\//, "");
+  const data = fs.readFileSync(new URL(rel, buildDir), "utf-8");
+  return new Response(data, { status: 200, headers: { "Content-Type": "application/json" } });
+};
+
 await import(new URL(scriptSrc, buildDir).href);
 await new Promise((r) => setTimeout(r, 300));
 
