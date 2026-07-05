@@ -263,6 +263,14 @@ body {
   vertical-align: middle;
 }
 
+.jersey-years {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
 .legend-item.highlighted {
   background: #232733;
   color: var(--accent);

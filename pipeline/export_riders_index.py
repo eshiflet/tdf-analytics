@@ -14,8 +14,8 @@ Output: cycling-app/src/data/riders_index.json
       "<rider slug>": {                       # rider id minus the "rider/" prefix
         "n": "<name>",
         "c": "<nationality or null>",
-        "yw": 1,                               # omitted unless rider won young-rider (white
-                                                # jersey) classification at least once
+        "yw": [1984, 1989],                    # years rider won young-rider (white jersey)
+                                                # classification; omitted if never
         "y": { "<year>": [gcRank, teamIdx]                        # no points rankings
                | [gcRank, teamIdx, sprintRank, komRank], ... }    # 0 = that rank absent
       }
@@ -28,13 +28,13 @@ roughly a third versus inlining the strings. Most rider-years have no
 sprint/KOM ranking, so the short 2-element form avoids shipping sentinel
 values for ~65% of entries. gcRank 9999 = DNF/DNS.
 
-GC/sprint/KOM "ever won" is derived client-side from gcRank/sprintRank/
-komRank === 1 in any year, so only the young-rider (white jersey) win needs
-its own flag here — that classification isn't tracked anywhere else in the
+GC/sprint/KOM winning years are derived client-side from gcRank/sprintRank/
+komRank === 1 per year, so only the young-rider (white jersey) win needs its
+own field here — that classification isn't tracked anywhere else in the
 exported per-year JSON, only in the DB's classification_standings table.
 
 Run after export_gc.py (it reads that script's output for everything except
-the youth-winner flag, which comes directly from cycling.db).
+the youth-winner years, which come directly from cycling.db).
 
 Usage:
   python3 export_riders_index.py
@@ -44,6 +44,7 @@ import glob
 import json
 import os
 import sqlite3
+from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data")
@@ -52,17 +53,21 @@ DB_PATH = os.path.join(HERE, "cycling.db")
 
 
 def load_youth_winners():
-    """Rider IDs with at least one rank=1 finish in the youth (white jersey)
-    classification, per cycling.db's classification_standings table."""
+    """Maps rider_id -> sorted list of years with a rank=1 finish in the
+    youth (white jersey) classification, per cycling.db's
+    classification_standings table."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT rider_id FROM classification_standings "
-        "WHERE classification = 'youth' AND rank = 1"
+        "SELECT cs.rider_id, re.year FROM classification_standings cs "
+        "JOIN race_editions re ON re.edition_id = cs.edition_id "
+        "WHERE cs.classification = 'youth' AND cs.rank = 1"
     )
-    winners = {row[0] for row in cur.fetchall()}
+    winners = defaultdict(list)
+    for rider_id, year in cur.fetchall():
+        winners[rider_id].append(year)
     conn.close()
-    return winners
+    return {rider_id: sorted(years) for rider_id, years in winners.items()}
 
 
 def main():
@@ -82,7 +87,7 @@ def main():
                 slug, {"n": r["name"], "c": r.get("nationality"), "y": {}}
             )
             if r["id"] in youth_winners:
-                entry["yw"] = 1
+                entry["yw"] = youth_winners[r["id"]]
             if r.get("team"):
                 team_names.add(r["team"])
             raw_years.append((entry, year, r))

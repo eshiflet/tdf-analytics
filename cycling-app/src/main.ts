@@ -962,32 +962,66 @@ function komJerseySvg(): string {
 }
 
 const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint (points) winner", kom: "KOM winner", youth: "Young rider winner" } as const;
+type JerseyCategory = keyof typeof JERSEY_LABELS;
 
-/** Which classifications this rider has won at least once (order: GC, sprint,
- *  KOM, youth — matches jersey colors yellow/green/polka-dot/white). */
-function riderJerseysWon(entry: RiderEntry): Array<keyof typeof JERSEY_LABELS> {
-  const won: Array<keyof typeof JERSEY_LABELS> = [];
-  const years = [...entry.years.values()];
-  if (years.some((y) => y.finalRank === 1)) won.push("gc");
-  if (years.some((y) => y.sprintRank === 1)) won.push("sprint");
-  if (years.some((y) => y.komRank === 1)) won.push("kom");
-  if (entry.youthWinner) won.push("youth");
-  return won;
+/** Every year this rider won each classification (GC/sprint/KOM derived from
+ *  per-year rank data; youth from the pipeline's classification_standings
+ *  lookup, since that classification isn't in the per-year JSON at all). */
+function jerseyYearsWon(entry: RiderEntry): Record<JerseyCategory, number[]> {
+  const gc: number[] = [], sprint: number[] = [], kom: number[] = [];
+  for (const [year, y] of entry.years) {
+    if (y.finalRank === 1) gc.push(year);
+    if (y.sprintRank === 1) sprint.push(year);
+    if (y.komRank === 1) kom.push(year);
+  }
+  const sortAsc = (a: number, b: number) => a - b;
+  return {
+    gc: gc.sort(sortAsc),
+    sprint: sprint.sort(sortAsc),
+    kom: kom.sort(sortAsc),
+    youth: [...entry.youthWinYears].sort(sortAsc),
+  };
+}
+
+function jerseyIconSvg(category: JerseyCategory): string {
+  return category === "gc" ? jerseySvg("#FFD400")
+    : category === "sprint" ? jerseySvg("#3FA535")
+    : category === "kom" ? komJerseySvg()
+    : jerseySvg("#FFFFFF", "#888888");
 }
 
 /** Small jersey <span> icons for every classification a rider has won. */
 function jerseyIconsEl(entry: RiderEntry): HTMLSpanElement[] {
-  return riderJerseysWon(entry).map((category) => {
-    const el = document.createElement("span");
-    el.className = "jersey-icon";
-    el.title = JERSEY_LABELS[category];
-    el.innerHTML =
-      category === "gc" ? jerseySvg("#FFD400")
-      : category === "sprint" ? jerseySvg("#3FA535")
-      : category === "kom" ? komJerseySvg()
-      : jerseySvg("#FFFFFF", "#888888");
-    return el;
-  });
+  const years = jerseyYearsWon(entry);
+  return (Object.keys(JERSEY_LABELS) as JerseyCategory[])
+    .filter((category) => years[category].length > 0)
+    .map((category) => {
+      const el = document.createElement("span");
+      el.className = "jersey-icon";
+      el.title = JERSEY_LABELS[category];
+      el.innerHTML = jerseyIconSvg(category);
+      return el;
+    });
+}
+
+/** Jersey icons + a "(year, year, ...)" label after each — rider detail page
+ *  only; the Riders grid uses the plain icons from jerseyIconsEl(). */
+function jerseyIconsWithYearsEl(entry: RiderEntry): HTMLSpanElement[] {
+  const years = jerseyYearsWon(entry);
+  const out: HTMLSpanElement[] = [];
+  for (const category of Object.keys(JERSEY_LABELS) as JerseyCategory[]) {
+    if (years[category].length === 0) continue;
+    const icon = document.createElement("span");
+    icon.className = "jersey-icon";
+    icon.title = JERSEY_LABELS[category];
+    icon.innerHTML = jerseyIconSvg(category);
+    out.push(icon);
+    const yearsEl = document.createElement("span");
+    yearsEl.className = "jersey-years";
+    yearsEl.textContent = `(${years[category].join(", ")})`;
+    out.push(yearsEl);
+  }
+  return out;
 }
 
 function buildLegend() {
@@ -1469,7 +1503,7 @@ interface RiderEntry {
   id: string;
   name: string;
   nationality: string | null;
-  youthWinner: boolean;
+  youthWinYears: number[];
   years: Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>;
   teams: Set<string>;
 }
@@ -1498,7 +1532,7 @@ type RawYearTuple =
   | [number, number, number, number];
 type RawRiderIndex = {
   teams: string[];
-  riders: Record<string, { n: string; c: string | null; yw?: number; y: Record<string, RawYearTuple> }>;
+  riders: Record<string, { n: string; c: string | null; yw?: number[]; y: Record<string, RawYearTuple> }>;
 };
 
 let riderIndexBuilt = false;
@@ -1521,7 +1555,7 @@ async function ensureRiderIndex(): Promise<void> {
       });
       if (team) teams.add(team);
     }
-    riderIndex.set(id, { id, name: rec.n, nationality: rec.c ?? null, youthWinner: !!rec.yw, years, teams });
+    riderIndex.set(id, { id, name: rec.n, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams });
   }
   allTeamsSorted = [...teamTable].sort();
   allNationalitiesSorted = [...new Set(
@@ -1686,7 +1720,7 @@ function drawRiderDetail(riderId: string) {
   nameEl.appendChild(document.createTextNode(entry.name));
   const detailFlag = nationalityFlagEl(entry.nationality);
   if (detailFlag) nameEl.appendChild(detailFlag);
-  for (const jersey of jerseyIconsEl(entry)) nameEl.appendChild(jersey);
+  for (const el of jerseyIconsWithYearsEl(entry)) nameEl.appendChild(el);
 
   const metaEl = document.createElement("div");
   metaEl.className = "rider-detail-meta";
