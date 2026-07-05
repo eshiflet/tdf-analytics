@@ -92,7 +92,8 @@ function check(name, cond, detail) {
   const name = doc.querySelector(".rider-detail-name")?.textContent;
   await new Promise((r) => setTimeout(r, 100)); // career chart draws on a deferred tick
   const dots = doc.querySelectorAll(".career-dot").length;
-  check("rider detail deep link shows rider", name === "Merckx Eddy", `name=${JSON.stringify(name)}`);
+  // .rider-detail-name also carries a trailing nationality flag emoji.
+  check("rider detail deep link shows rider", name?.startsWith("Merckx Eddy") ?? false, `name=${JSON.stringify(name)}`);
   check("career chart has GC dots", dots >= 6, `${dots} dots`);
 }
 

@@ -252,6 +252,11 @@ body {
   white-space: nowrap;
 }
 
+.nationality-flag {
+  margin-left: 6px;
+  cursor: default;
+}
+
 .legend-item.highlighted {
   background: #232733;
   color: var(--accent);

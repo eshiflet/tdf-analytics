@@ -44,6 +44,15 @@ COUNTRY_NAMES = {
     "lu": "Luxembourg", "ch": "Switzerland", "kz": "Kazakhstan", "ie": "Ireland",
     "at": "Austria", "cz": "Czech Republic", "er": "Eritrea",
     "mc": "Monaco",
+    # Previously missing — silently dropped to null nationality for any rider
+    # with one of these codes (e.g. "cn" -> Cheng Ji, 2014) until this fix.
+    "ar": "Argentina", "br": "Brazil", "by": "Belarus", "cn": "China",
+    "cr": "Costa Rica", "dz": "Algeria", "ee": "Estonia", "et": "Ethiopia",
+    "fi": "Finland", "hr": "Croatia", "hu": "Hungary", "il": "Israel",
+    "jp": "Japan", "li": "Liechtenstein", "lt": "Lithuania", "ma": "Morocco",
+    "md": "Moldova", "mx": "Mexico", "nz": "New Zealand", "ro": "Romania",
+    "se": "Sweden", "sk": "Slovakia", "su": "Soviet Union", "tn": "Tunisia",
+    "ua": "Ukraine", "uz": "Uzbekistan", "ve": "Venezuela", "yu": "Yugoslavia",
 }
 
 
