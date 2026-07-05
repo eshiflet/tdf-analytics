@@ -170,6 +170,7 @@ function difficultyScore(stage: StageInfo): number {
 }
 
 function drawOverview() {
+  if (!dataset) return; // initial fetch in flight; loadDataset() redraws
   overviewChartEl.innerHTML = "";
   const stages = dataset.stages;
   if (!stages.length) return;
@@ -254,13 +255,7 @@ function drawOverview() {
           <div>Elevation: ${s.vertical_meters != null ? s.vertical_meters.toLocaleString() + " m" : "—"}</div>
           <div>Difficulty: ${diff.toFixed(1)}</div>
         `;
-        tooltipEl.hidden = false;
-        const areaRect = chartAreaEl.getBoundingClientRect();
-        tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
-        const tw = tooltipEl.offsetWidth;
-        tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-          ? `${event.clientX - areaRect.left - tw - 10}px`
-          : `${event.clientX - areaRect.left + 24}px`;
+        positionTooltip(event);
       })
       .on("mouseleave", () => hideTooltip());
 
@@ -320,16 +315,16 @@ function init() {
     applyHash()
       .then((handled) => {
         if (!handled) {
-          // No (or unrecognized) hash: load defaults and seed the URL without
-          // adding a history entry.
+          // No (or unrecognized) hash: seed the URL without adding a history
+          // entry, then fall through to the default load below.
           window.history.replaceState(null, "", computeHash());
-          return loadDataset(currentYear);
         }
-        // Deep links that land on riders/allraces still need a dataset for
-        // when the user navigates to the stage/overview views.
-        if (currentView === "riders" || currentView === "allraces") {
-          return loadDataset(currentYear);
-        }
+        // Load whenever no dataset is in memory yet. This covers three cases:
+        // empty/unrecognized hash, deep links landing on riders/allraces (which
+        // need a dataset for later stage/overview navigation), and deep links
+        // that exactly match the default state — applyHash() treats those as
+        // "already in sync" and returns without loading anything.
+        if (!dataset) return loadDataset(currentYear);
       })
       .catch(showLoadError);
   } catch (err) {
@@ -381,18 +376,15 @@ function buildRankMapsFromField(
   finalRank: Map<string, number>;
   ridersAtFinal: Map<number, { riders: RiderSeries[]; points: number }>;
 } {
+  // One pass over each rider's byStage array instead of a per-stage
+  // rider.byStage.find() scan (which was O(stages × riders × stages)).
   const rankAtStage = new Map<number, Map<string, number>>();
-  for (const stage of dataset.stages) {
-    const n = stage.stage_number;
-    const rankMap = new Map<string, number>();
-    for (const rider of dataset.riders) {
-      const sp = rider.byStage.find((p) => p.stage === n);
-      if (sp) {
-        const rank = getRank(sp);
-        if (rank != null) rankMap.set(rider.id, rank);
-      }
+  for (const stage of dataset.stages) rankAtStage.set(stage.stage_number, new Map());
+  for (const rider of dataset.riders) {
+    for (const sp of rider.byStage) {
+      const rank = getRank(sp);
+      if (rank != null) rankAtStage.get(sp.stage)?.set(rider.id, rank);
     }
-    rankAtStage.set(n, rankMap);
   }
   // Build finalRank from each rider's last byStage entry so that DNF'd riders
   // (who have no byStage entry for the actual last stage) are still ranked
@@ -447,6 +439,7 @@ function effectiveFinalRank(rider: RiderSeries): number {
 }
 
 function applyDefaultSelection(preset = 20) {
+  if (!dataset) return; // initial fetch in flight; loadDataset() reapplies
   selected = new Set(dataset.riders.filter((r) => effectiveFinalRank(r) <= preset).map((r) => r.id));
 }
 
@@ -749,13 +742,7 @@ function drawAllRacesOverview() {
             <div class="t-name">${r.year} Tour de France</div>
             <div>${s.label}: ${s.fmt(val)}</div>
           `;
-          tooltipEl.hidden = false;
-          const areaRect = allRacesChartEl.getBoundingClientRect();
-          tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
-          const tw = tooltipEl.offsetWidth;
-          tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-            ? `${event.clientX - areaRect.left - tw - 10}px`
-            : `${event.clientX - areaRect.left + 24}px`;
+          positionTooltip(event);
           showCrosshair(r.year);
         })
         .on("mouseleave", () => { hideTooltip(); hideCrosshair(); });
@@ -840,6 +827,7 @@ function drawAllRacesOverview() {
 function wireControls() {
   document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((btn) => {
     btn.addEventListener("click", () => {
+      if (!dataset) return; // initial fetch in flight; selection state comes with it
       document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
         b.classList.remove("active"),
       );
@@ -859,6 +847,7 @@ function wireControls() {
   });
 
   searchEl.addEventListener("input", () => {
+    if (!dataset) return; // initial fetch in flight; nothing to search yet
     const q = searchEl.value.trim().toLowerCase();
     if (!q) {
       highlighted = null;
@@ -891,6 +880,7 @@ function cssEscape(s: string): string {
 }
 
 function buildLegend() {
+  if (!dataset) return; // initial fetch in flight; loadDataset() rebuilds
   legendEl.innerHTML = "";
   // Sort legend by effective final rank for the current metric
   const sorted = [...dataset.riders].sort((a, b) => effectiveFinalRank(a) - effectiveFinalRank(b));
@@ -954,6 +944,10 @@ let xScale: ScaleLinear<number, number>;
 let yScale: ScaleLinear<number, number>;
 
 function drawChart() {
+  // The initial dataset fetch may still be in flight (clicking a view button
+  // or resizing during load lands here). loadDataset() redraws the current
+  // view when it resolves, so bailing out is safe.
+  if (!dataset) return;
   chartEl.innerHTML = "";
   const containerRect = chartEl.getBoundingClientRect();
   const width = Math.max(containerRect.width, 600);
@@ -966,11 +960,21 @@ function drawChart() {
   const minStage = d3.min(stages, (s) => s.stage_number) ?? 0;
   const maxStage = d3.max(stages, (s) => s.stage_number) ?? 21;
 
-  // Determine y-axis domain from the display points of all riders
+  // Compute each rider's display series once per draw; the line generator,
+  // hit paths, end dots, and end labels all read from these maps.
+  const displayPointsById = new Map<string, Array<{ stage: number; rank: number | null }>>();
+  const lastDefinedById = new Map<string, { stage: number; rank: number | null } | null>();
   let maxRank = 1;
   for (const r of dataset.riders) {
-    for (const dp of getDisplayPoints(r)) {
-      if (dp.rank !== null) maxRank = Math.max(maxRank, dp.rank);
+    const dp = getDisplayPoints(r);
+    displayPointsById.set(r.id, dp);
+    let last: { stage: number; rank: number | null } | null = null;
+    for (let i = dp.length - 1; i >= 0; i--) {
+      if (dp[i].rank !== null) { last = dp[i]; break; }
+    }
+    lastDefinedById.set(r.id, last);
+    for (const p of dp) {
+      if (p.rank !== null && p.rank > maxRank) maxRank = p.rank;
     }
   }
 
@@ -1104,7 +1108,7 @@ function drawChart() {
     .join("path")
     .attr("class", "rider-line")
     .attr("data-id", (r) => r.id)
-    .attr("d", (r) => lineGen(getDisplayPoints(r)))
+    .attr("d", (r) => lineGen(displayPointsById.get(r.id)!))
     .attr("stroke", "var(--line-dim)");
 
   // invisible wide hit-path per rider, for easier hover targeting
@@ -1115,7 +1119,7 @@ function drawChart() {
     .attr("fill", "none")
     .attr("stroke", "transparent")
     .attr("stroke-width", 10)
-    .attr("d", (r) => lineGen(getDisplayPoints(r)))
+    .attr("d", (r) => lineGen(displayPointsById.get(r.id)!))
     .style("cursor", "pointer")
     .on("mouseenter", (_event, r) => {
       highlighted = r.id;
@@ -1143,11 +1147,11 @@ function drawChart() {
     .attr("data-id", (r) => r.id)
     .attr("r", 3)
     .attr("cx", (r) => {
-      const last = lastDefinedDisplay(r);
+      const last = lastDefinedById.get(r.id);
       return last ? xScale(last.stage) : -100;
     })
     .attr("cy", (r) => {
-      const last = lastDefinedDisplay(r);
+      const last = lastDefinedById.get(r.id);
       return last ? yScale(last.rank as number) : -100;
     });
 
@@ -1159,11 +1163,11 @@ function drawChart() {
     .attr("class", "rider-end-label")
     .attr("data-id", (r) => r.id)
     .attr("x", (r) => {
-      const last = lastDefinedDisplay(r);
+      const last = lastDefinedById.get(r.id);
       return last ? xScale(last.stage) + 6 : -100;
     })
     .attr("y", (r) => {
-      const last = lastDefinedDisplay(r);
+      const last = lastDefinedById.get(r.id);
       return last ? yScale(last.rank as number) + 3 : -100;
     })
     .style("font-size", "10px")
@@ -1193,13 +1197,7 @@ function drawChart() {
           <div class="t-team">${r.team ?? ""}</div>
           <div>GC #${gcRank ?? "—"} &middot; ${timeStr}</div>
         `;
-        tooltipEl.hidden = false;
-        const areaRect = chartAreaEl.getBoundingClientRect();
-        tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
-        const tw = tooltipEl.offsetWidth;
-        tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-          ? `${event.clientX - areaRect.left - tw - 10}px`
-          : `${event.clientX - areaRect.left + 24}px`;
+        positionTooltip(event);
         return;
       }
       const isKom = currentMetric === "kom";
@@ -1216,25 +1214,11 @@ function drawChart() {
         <div class="t-team">${group.points} pts</div>
         <div>${names}</div>
       `;
-      tooltipEl.hidden = false;
-      const areaRect = chartAreaEl.getBoundingClientRect();
-      tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
-      const tw = tooltipEl.offsetWidth;
-      tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-        ? `${event.clientX - areaRect.left - tw - 10}px`
-        : `${event.clientX - areaRect.left + 24}px`;
+      positionTooltip(event);
     })
     .on("mouseout", () => { tooltipEl.hidden = true; });
 
   updateLineClasses();
-}
-
-function lastDefinedDisplay(r: RiderSeries): { stage: number; rank: number | null } | null {
-  const dp = getDisplayPoints(r);
-  for (let i = dp.length - 1; i >= 0; i--) {
-    if (dp[i].rank !== null) return dp[i];
-  }
-  return null;
 }
 
 function lastName(full: string): string {
@@ -1323,20 +1307,10 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
     }
   }
 
-  tooltipEl.hidden = false;
-  const areaRect = chartAreaEl.getBoundingClientRect();
-  tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
-  const tooltipWidth = tooltipEl.offsetWidth;
-  const spaceOnRight = window.innerWidth - event.clientX;
-  if (spaceOnRight < tooltipWidth + 24) {
-    tooltipEl.style.left = `${event.clientX - areaRect.left - tooltipWidth - 10}px`;
-  } else {
-    tooltipEl.style.left = `${event.clientX - areaRect.left + 24}px`;
-  }
+  positionTooltip(event);
 }
 
 function showStageTooltip(event: MouseEvent, stage: StageInfo) {
-  const containerRect = chartEl.getBoundingClientRect();
   const distance = stage.distance_km != null ? `${Math.round(stage.distance_km)} km` : "—";
   const vertical = stage.vertical_meters != null ? `${stage.vertical_meters} m` : "—";
   const type = stage.route_type ?? "—";
@@ -1346,20 +1320,26 @@ function showStageTooltip(event: MouseEvent, stage: StageInfo) {
     <div>${stage.finish_location ?? "—"}</div>
     <div>${distance}, ${vertical}, ${type}</div>
   `;
-  tooltipEl.hidden = false;
-  const areaRect2 = chartAreaEl.getBoundingClientRect();
-  tooltipEl.style.top = `${event.clientY - areaRect2.top - 10}px`;
-  const tooltipWidth2 = tooltipEl.offsetWidth;
-  const spaceOnRight2 = window.innerWidth - event.clientX;
-  if (spaceOnRight2 < tooltipWidth2 + 24) {
-    tooltipEl.style.left = `${event.clientX - areaRect2.left - tooltipWidth2 - 10}px`;
-  } else {
-    tooltipEl.style.left = `${event.clientX - areaRect2.left + 24}px`;
-  }
+  positionTooltip(event);
 }
 
 function hideTooltip() {
   tooltipEl.hidden = true;
+}
+
+// Shows the tooltip at the pointer, flipping to the left of the cursor when
+// it would overflow the right edge of the window. Offsets are computed from
+// chartAreaEl because that's the tooltip's positioning parent (.chart-area is
+// position:relative) — measuring any other container skews the placement by
+// that container's padding offset.
+function positionTooltip(event: MouseEvent) {
+  tooltipEl.hidden = false;
+  const areaRect = chartAreaEl.getBoundingClientRect();
+  tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
+  const tw = tooltipEl.offsetWidth;
+  tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
+    ? `${event.clientX - areaRect.left - tw - 10}px`
+    : `${event.clientX - areaRect.left + 24}px`;
 }
 
 function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
@@ -1391,42 +1371,44 @@ import ridersIndexUrl from "./data/riders_index.json?url";
 // instead of reading all 113 per-year datasets just to populate the Riders
 // page. Lazy-loaded as its own chunk the first time the Riders view opens, so
 // it never weighs down first paint (the default view is the stage chart).
-// Shape: { id: { n: name, c: nationality, y: { year: [rank, team] } } }
-// Year tuple: [gcRank, team] when the rider had no sprint/KOM ranking that
-// year (the common case), or [gcRank, team, sprintRank, komRank] with 0
+// Shape: { teams: [names], riders: { slug: { n, c, y: { year: tuple } } } }
+// Rider keys are slugs (id minus the "rider/" prefix, re-added on load) and
+// teams are integer indexes into the shared string table (-1 = no team) —
+// both cut the payload versus repeating the strings inline.
+// Year tuple: [gcRank, teamIdx] when the rider had no sprint/KOM ranking that
+// year (the common case), or [gcRank, teamIdx, sprintRank, komRank] with 0
 // standing in for an absent rank. Normalized to 9999 sentinels on load.
 type RawYearTuple =
-  | [number, string | null]
-  | [number, string | null, number, number];
-type RawRiderIndex = Record<
-  string,
-  { n: string; c: string | null; y: Record<string, RawYearTuple> }
->;
+  | [number, number]
+  | [number, number, number, number];
+type RawRiderIndex = {
+  teams: string[];
+  riders: Record<string, { n: string; c: string | null; y: Record<string, RawYearTuple> }>;
+};
 
 let riderIndexBuilt = false;
 
 async function ensureRiderIndex(): Promise<void> {
   if (riderIndexBuilt) return;
   const raw = await fetchJson<RawRiderIndex>(ridersIndexUrl);
-  const teamsSet = new Set<string>();
-  for (const [id, rec] of Object.entries(raw)) {
+  const teamTable = raw.teams;
+  for (const [slug, rec] of Object.entries(raw.riders)) {
+    const id = `rider/${slug}`;
     const years = new Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>();
     const teams = new Set<string>();
-    for (const [yearStr, [finalRank, team, sprintRank, komRank]] of Object.entries(rec.y)) {
+    for (const [yearStr, [finalRank, teamIdx, sprintRank, komRank]] of Object.entries(rec.y)) {
+      const team = teamIdx >= 0 ? teamTable[teamIdx] : null;
       years.set(parseInt(yearStr), {
         finalRank,
         sprintRank: sprintRank || 9999,
         komRank: komRank || 9999,
-        team: team ?? null,
+        team,
       });
-      if (team) {
-        teams.add(team);
-        teamsSet.add(team);
-      }
+      if (team) teams.add(team);
     }
     riderIndex.set(id, { id, name: rec.n, nationality: rec.c ?? null, years, teams });
   }
-  allTeamsSorted = [...teamsSet].sort();
+  allTeamsSorted = [...teamTable].sort();
   riderIndexBuilt = true;
 }
 
@@ -1743,13 +1725,7 @@ function drawRiderDetail(riderId: string) {
         ${gcPart}${sprintPart}${komPart}
         <div style="color:var(--text-dim);font-size:11px">Click to view stage chart</div>
       `;
-      tooltipEl.hidden = false;
-      const r = chartAreaEl.getBoundingClientRect();
-      tooltipEl.style.top = `${event.clientY - r.top - 10}px`;
-      const tw = tooltipEl.offsetWidth;
-      tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-        ? `${event.clientX - r.left - tw - 10}px`
-        : `${event.clientX - r.left + 24}px`;
+      positionTooltip(event);
     }
 
     function handleDotClick(metric: "gc" | "points" | "kom") {

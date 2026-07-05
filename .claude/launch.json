@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cycling-app-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "cycling-app", "--", "--port", "5199", "--strictPort"],
+      "port": 5199
+    }
+  ]
+}
