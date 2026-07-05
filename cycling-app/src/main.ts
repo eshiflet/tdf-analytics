@@ -932,6 +932,64 @@ function nationalityFlagEl(nationality: string | null | undefined): HTMLSpanElem
   return flag;
 }
 
+// ─── Jersey Icons (Riders page only) ────────────────────────────────────────
+// One icon per classification a rider has ever won at least once (GC winners
+// across multiple years — e.g. Greg LeMond's 3 yellow jerseys — still get a
+// single icon, since riderJerseysWon() only checks "won at least once").
+// Hand-drawn generic jersey silhouette (not official ASO artwork) reused for
+// all four, colored/patterned per classification.
+const JERSEY_PATH = "M9,2 L4,2 L1,6 L5,9 L5,22 L19,22 L19,9 L23,6 L20,2 L15,2 Q12,5 9,2 Z";
+
+function jerseySvg(fill: string, stroke = "#00000055"): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.3em" height="1.3em"><path d="${JERSEY_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="1" stroke-linejoin="round"/></svg>`;
+}
+
+let komJerseyClipCounter = 0;
+/** White jersey + red polka dots, clipped to the jersey silhouette. Each call
+ *  gets a unique clipPath id — reusing one id would make every KOM icon on
+ *  the page reference whichever <clipPath> happened to render first. */
+function komJerseySvg(): string {
+  const clipId = `komclip${komJerseyClipCounter++}`;
+  const dots = [6, 10, 14, 18]
+    .flatMap((y, row) => {
+      const offset = row % 2 ? 2 : 0;
+      return [5 + offset, 10 + offset, 15 + offset, 20 + offset].map(
+        (x) => `<circle cx="${x}" cy="${y}" r="1.3" fill="#E4002B"/>`,
+      );
+    })
+    .join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.3em" height="1.3em"><defs><clipPath id="${clipId}"><path d="${JERSEY_PATH}"/></clipPath></defs><path d="${JERSEY_PATH}" fill="#FFFFFF" stroke="#888888" stroke-width="1" stroke-linejoin="round"/><g clip-path="url(#${clipId})">${dots}</g></svg>`;
+}
+
+const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint (points) winner", kom: "KOM winner", youth: "Young rider winner" } as const;
+
+/** Which classifications this rider has won at least once (order: GC, sprint,
+ *  KOM, youth — matches jersey colors yellow/green/polka-dot/white). */
+function riderJerseysWon(entry: RiderEntry): Array<keyof typeof JERSEY_LABELS> {
+  const won: Array<keyof typeof JERSEY_LABELS> = [];
+  const years = [...entry.years.values()];
+  if (years.some((y) => y.finalRank === 1)) won.push("gc");
+  if (years.some((y) => y.sprintRank === 1)) won.push("sprint");
+  if (years.some((y) => y.komRank === 1)) won.push("kom");
+  if (entry.youthWinner) won.push("youth");
+  return won;
+}
+
+/** Small jersey <span> icons for every classification a rider has won. */
+function jerseyIconsEl(entry: RiderEntry): HTMLSpanElement[] {
+  return riderJerseysWon(entry).map((category) => {
+    const el = document.createElement("span");
+    el.className = "jersey-icon";
+    el.title = JERSEY_LABELS[category];
+    el.innerHTML =
+      category === "gc" ? jerseySvg("#FFD400")
+      : category === "sprint" ? jerseySvg("#3FA535")
+      : category === "kom" ? komJerseySvg()
+      : jerseySvg("#FFFFFF", "#888888");
+    return el;
+  });
+}
+
 function buildLegend() {
   if (!dataset) return; // initial fetch in flight; loadDataset() rebuilds
   legendEl.innerHTML = "";
@@ -1411,6 +1469,7 @@ interface RiderEntry {
   id: string;
   name: string;
   nationality: string | null;
+  youthWinner: boolean;
   years: Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>;
   teams: Set<string>;
 }
@@ -1439,7 +1498,7 @@ type RawYearTuple =
   | [number, number, number, number];
 type RawRiderIndex = {
   teams: string[];
-  riders: Record<string, { n: string; c: string | null; y: Record<string, RawYearTuple> }>;
+  riders: Record<string, { n: string; c: string | null; yw?: number; y: Record<string, RawYearTuple> }>;
 };
 
 let riderIndexBuilt = false;
@@ -1462,7 +1521,7 @@ async function ensureRiderIndex(): Promise<void> {
       });
       if (team) teams.add(team);
     }
-    riderIndex.set(id, { id, name: rec.n, nationality: rec.c ?? null, years, teams });
+    riderIndex.set(id, { id, name: rec.n, nationality: rec.c ?? null, youthWinner: !!rec.yw, years, teams });
   }
   allTeamsSorted = [...teamTable].sort();
   allNationalitiesSorted = [...new Set(
@@ -1572,6 +1631,7 @@ async function drawRidersPage() {
       btn.appendChild(document.createTextNode(entry.name));
       const flag = nationalityFlagEl(entry.nationality);
       if (flag) btn.appendChild(flag);
+      for (const jersey of jerseyIconsEl(entry)) btn.appendChild(jersey);
       btn.title = entry.name;
       btn.dataset.id = entry.id;
       frag.appendChild(btn);
@@ -1626,6 +1686,7 @@ function drawRiderDetail(riderId: string) {
   nameEl.appendChild(document.createTextNode(entry.name));
   const detailFlag = nationalityFlagEl(entry.nationality);
   if (detailFlag) nameEl.appendChild(detailFlag);
+  for (const jersey of jerseyIconsEl(entry)) nameEl.appendChild(jersey);
 
   const metaEl = document.createElement("div");
   metaEl.className = "rider-detail-meta";

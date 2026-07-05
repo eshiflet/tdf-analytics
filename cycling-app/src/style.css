@@ -257,6 +257,12 @@ body {
   cursor: default;
 }
 
+.jersey-icon {
+  margin-left: 4px;
+  cursor: default;
+  vertical-align: middle;
+}
+
 .legend-item.highlighted {
   background: #232733;
   color: var(--accent);
