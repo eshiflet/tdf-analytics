@@ -456,6 +456,33 @@ svg text {
   border-color: var(--accent);
 }
 
+.jersey-filter-group {
+  display: flex;
+  gap: 4px;
+}
+
+.jersey-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.jersey-filter-btn:hover {
+  border-color: var(--accent);
+}
+
+.jersey-filter-btn.active {
+  border-color: var(--accent);
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 .riders-clear-btn {
   padding: 6px 12px;
   background: transparent;

@@ -1570,6 +1570,8 @@ let ridersSearchQuery = "";
 let ridersFilterYear = "";
 let ridersFilterTeam = "";
 let ridersFilterNationality = "";
+// AND semantics: a rider must have won every selected category, not just one.
+const ridersFilterJerseys = new Set<JerseyCategory>();
 
 function filteredRiders(): RiderEntry[] {
   const q = ridersSearchQuery.toLowerCase();
@@ -1580,6 +1582,12 @@ function filteredRiders(): RiderEntry[] {
       if (yr !== null && !e.years.has(yr)) return false;
       if (ridersFilterTeam && !e.teams.has(ridersFilterTeam)) return false;
       if (ridersFilterNationality && e.nationality !== ridersFilterNationality) return false;
+      if (ridersFilterJerseys.size > 0) {
+        const won = jerseyYearsWon(e);
+        for (const category of ridersFilterJerseys) {
+          if (won[category].length === 0) return false;
+        }
+      }
       return true;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -1639,6 +1647,22 @@ async function drawRidersPage() {
   });
   nationalitySel.value = ridersFilterNationality;
 
+  // Jersey filter toggles — AND semantics: selecting more than one narrows
+  // to riders who've won every selected category, not any one of them.
+  const jerseyFilterGroup = document.createElement("div");
+  jerseyFilterGroup.className = "jersey-filter-group";
+  const jerseyFilterBtns = (Object.keys(JERSEY_LABELS) as JerseyCategory[]).map((category) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "jersey-filter-btn";
+    btn.classList.toggle("active", ridersFilterJerseys.has(category));
+    btn.title = `Filter to ${JERSEY_LABELS[category]}s`;
+    btn.innerHTML = jerseyIconSvg(category);
+    btn.dataset.category = category;
+    jerseyFilterGroup.appendChild(btn);
+    return btn;
+  });
+
   const clearBtn = document.createElement("button");
   clearBtn.type = "button";
   clearBtn.className = "riders-clear-btn";
@@ -1647,7 +1671,7 @@ async function drawRidersPage() {
   const countLabel = document.createElement("span");
   countLabel.className = "riders-count-label";
 
-  controls.append(searchInput, yearSel, teamSel, nationalitySel, clearBtn, countLabel);
+  controls.append(searchInput, yearSel, teamSel, nationalitySel, jerseyFilterGroup, clearBtn, countLabel);
   ridersChartEl.appendChild(controls);
 
   const grid = document.createElement("div");
@@ -1685,15 +1709,26 @@ async function drawRidersPage() {
   yearSel.addEventListener("change", () => { ridersFilterYear = yearSel.value; refreshGrid(); });
   teamSel.addEventListener("change", () => { ridersFilterTeam = teamSel.value; refreshGrid(); });
   nationalitySel.addEventListener("change", () => { ridersFilterNationality = nationalitySel.value; refreshGrid(); });
+  for (const btn of jerseyFilterBtns) {
+    btn.addEventListener("click", () => {
+      const category = btn.dataset.category as JerseyCategory;
+      if (ridersFilterJerseys.has(category)) ridersFilterJerseys.delete(category);
+      else ridersFilterJerseys.add(category);
+      btn.classList.toggle("active", ridersFilterJerseys.has(category));
+      refreshGrid();
+    });
+  }
   clearBtn.addEventListener("click", () => {
     ridersSearchQuery = "";
     ridersFilterYear = "";
     ridersFilterTeam = "";
     ridersFilterNationality = "";
+    ridersFilterJerseys.clear();
     searchInput.value = "";
     yearSel.value = "";
     teamSel.value = "";
     nationalitySel.value = "";
+    for (const btn of jerseyFilterBtns) btn.classList.remove("active");
     refreshGrid();
   });
   refreshGrid();
