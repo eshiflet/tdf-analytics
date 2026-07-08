@@ -79,7 +79,7 @@ def export_year(year, out_path):
 
     cur.execute(
         """SELECT stage_id, stage_number, stage_date, start_location, finish_location,
-                  distance_km, vertical_meters, route_type
+                  distance_km, vertical_meters, route_type, profile_score
            FROM stages WHERE edition_id = ? ORDER BY stage_number""",
         (edition_id,),
     )
@@ -302,6 +302,7 @@ def export_year(year, out_path):
                 "distance_km": s["distance_km"] or None,
                 "vertical_meters": s["vertical_meters"] or None,
                 "route_type": s["route_type"],
+                "profile_score": s["profile_score"] or None,
             }
             for i, s in enumerate(stages)
         ],

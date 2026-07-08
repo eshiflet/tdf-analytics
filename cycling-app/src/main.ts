@@ -170,6 +170,7 @@ const ROUTE_MULTIPLIER: Record<string, number> = {
 };
 
 function difficultyScore(stage: StageInfo): number {
+  if (stage.profile_score != null) return stage.profile_score;
   const vm = stage.vertical_meters ?? 0;
   const dk = stage.distance_km ?? 0;
   if (dk === 0) return 0;
@@ -199,10 +200,13 @@ function drawOverview() {
   const margin = { top: 12, right: 24, bottom: 32, left: 80 };
   const innerWidth = totalWidth - margin.left - margin.right;
 
+  const usesGradeAwareScore = stages.some((s) => s.profile_score != null);
+  const difficultyLabel = `Difficulty Score (${usesGradeAwareScore ? "grade aware" : "simple ascent"})`;
+
   const panels = [
     { key: "distance",   label: "Distance (km)",      value: (s: StageInfo) => s.distance_km ?? 0 },
     { key: "elevation",  label: "Elevation Gain (m)",  value: (s: StageInfo) => s.vertical_meters ?? 0 },
-    { key: "difficulty", label: "Difficulty Score",    value: difficultyScore },
+    { key: "difficulty", label: difficultyLabel,       value: difficultyScore },
   ];
 
   const panelHeight = Math.floor((totalHeight - margin.top - margin.bottom - (panels.length - 1) * 12) / panels.length);
