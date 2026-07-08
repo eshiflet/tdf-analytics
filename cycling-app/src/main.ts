@@ -80,6 +80,10 @@ let currentMetric: "gc" | "points" | "kom" = "gc";
 let dataset: GcDataset;
 let selected: Set<string> = new Set();
 let highlighted: string | null = null;
+// Team/Nation filter state for the "by Stage" view — reset whenever the
+// dataset (year) changes since team/nation membership is year-specific.
+let stageFilterTeams: Set<string> = new Set();
+let stageFilterNations: Set<string> = new Set();
 // Rider whose career chart is open on the Riders view (null = grid). Only
 // consulted for hash routing while currentView === "riders".
 let currentRiderId: string | null = null;
@@ -112,6 +116,10 @@ const ridersChartEl = document.getElementById("riders-chart") as HTMLDivElement;
 const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
 const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement | null;
 const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
+const teamFilterBtn = document.getElementById("team-filter-btn") as HTMLButtonElement;
+const teamFilterPanel = document.getElementById("team-filter-panel") as HTMLDivElement;
+const nationFilterBtn = document.getElementById("nation-filter-btn") as HTMLButtonElement;
+const nationFilterPanel = document.getElementById("nation-filter-panel") as HTMLDivElement;
 
 import allRacesSummaryRaw from "./data/all_races_summary.json";
 interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; slowestFinisherTimeSeconds: number | null; }
@@ -363,6 +371,7 @@ function buildMetricSelect() {
       b.classList.remove("active"),
     );
     document.querySelector<HTMLButtonElement>('.button-row button[data-preset="20"]')?.classList.add("active");
+    applyStageTeamNationFilter();
     buildLegend();
     drawChart();
   });
@@ -464,6 +473,8 @@ async function loadDataset(year: string) {
 
   viewOverviewBtn.textContent = `${currentYear} Race Overview`;
 
+  buildStageFilters();
+  closeFilterPanels();
   buildLegend();
   if (currentView === "stage") drawChart();
   else if (currentView === "overview") drawOverview();
@@ -835,8 +846,13 @@ function wireControls() {
       const preset = btn.dataset.preset;
       if (preset === "all") {
         selected = new Set(dataset.riders.map((r) => r.id));
+        // "All" already selects every rider, which subsumes any Team/Nation
+        // filter — clear both so the filter buttons don't show a stale state.
+        clearStageTeamNationFilters();
       } else if (preset === "none") {
         selected = new Set();
+        // "None" doubles as a Clear All for the Team/Nation filters.
+        clearStageTeamNationFilters();
       } else {
         const n = parseInt(preset ?? "20", 10);
         applyDefaultSelection(n);
@@ -844,6 +860,23 @@ function wireControls() {
       refreshLegendState();
       updateLineClasses();
     });
+  });
+
+  teamFilterBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = teamFilterPanel.hidden;
+    closeFilterPanels();
+    teamFilterPanel.hidden = !willOpen;
+  });
+  nationFilterBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = nationFilterPanel.hidden;
+    closeFilterPanels();
+    nationFilterPanel.hidden = !willOpen;
+  });
+  document.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest(".filter-dropdown")) closeFilterPanels();
   });
 
   searchEl.addEventListener("input", () => {
@@ -1085,6 +1118,117 @@ function refreshLegendState() {
     const swatch = row.querySelector<HTMLSpanElement>(".legend-swatch")!;
     swatch.style.background = isSelected ? colorScale(id) : "var(--line-dim)";
   });
+}
+
+/** Recomputes `selected` from the active team/nation filters (OR within a
+ *  facet, AND across facets). No-op if neither filter has a selection, so it
+ *  never fights with the Top 10/20/All quick-select buttons when unused. */
+function applyStageTeamNationFilter() {
+  if (!dataset) return;
+  if (stageFilterTeams.size === 0 && stageFilterNations.size === 0) return;
+  selected = new Set(
+    dataset.riders
+      .filter(
+        (r) =>
+          (stageFilterTeams.size === 0 || (r.team && stageFilterTeams.has(r.team))) &&
+          (stageFilterNations.size === 0 || (r.nationality && stageFilterNations.has(r.nationality))),
+      )
+      .map((r) => r.id),
+  );
+  document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
+    b.classList.remove("active"),
+  );
+}
+
+function updateFilterButtonLabel(btn: HTMLButtonElement, base: string, count: number) {
+  btn.textContent = count > 0 ? `${base} (${count})` : base;
+  btn.classList.toggle("active", count > 0);
+}
+
+function closeFilterPanels() {
+  teamFilterPanel.hidden = true;
+  nationFilterPanel.hidden = true;
+}
+
+function clearStageTeamNationFilters() {
+  stageFilterTeams.clear();
+  stageFilterNations.clear();
+  updateFilterButtonLabel(teamFilterBtn, "Team", 0);
+  updateFilterButtonLabel(nationFilterBtn, "Nation", 0);
+  teamFilterPanel.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(
+    (cb) => (cb.checked = false),
+  );
+  nationFilterPanel.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(
+    (cb) => (cb.checked = false),
+  );
+  closeFilterPanels();
+}
+
+function buildFilterPanel(
+  panel: HTMLDivElement,
+  options: string[],
+  activeSet: Set<string>,
+  btn: HTMLButtonElement,
+  baseLabel: string,
+  showFlags = false,
+) {
+  panel.innerHTML = "";
+
+  const actions = document.createElement("div");
+  actions.className = "filter-panel-actions";
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "filter-panel-clear";
+  clear.textContent = "Clear";
+  clear.addEventListener("click", () => {
+    activeSet.clear();
+    panel.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((cb) => (cb.checked = false));
+    updateFilterButtonLabel(btn, baseLabel, activeSet.size);
+    applyStageTeamNationFilter();
+    refreshLegendState();
+    updateLineClasses();
+  });
+  actions.appendChild(clear);
+  panel.appendChild(actions);
+
+  for (const option of options) {
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = option;
+    cb.checked = activeSet.has(option);
+    cb.addEventListener("change", () => {
+      if (cb.checked) activeSet.add(option);
+      else activeSet.delete(option);
+      updateFilterButtonLabel(btn, baseLabel, activeSet.size);
+      applyStageTeamNationFilter();
+      refreshLegendState();
+      updateLineClasses();
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(option));
+    if (showFlags) {
+      const flag = nationalityFlagEl(option);
+      if (flag) label.appendChild(flag);
+    }
+    panel.appendChild(label);
+  }
+}
+
+/** Rebuilds the Team/Nation dropdown contents for the current dataset and
+ *  resets both filters (team/nation membership is specific to each year). */
+function buildStageFilters() {
+  if (!dataset) return;
+  stageFilterTeams = new Set();
+  stageFilterNations = new Set();
+  updateFilterButtonLabel(teamFilterBtn, "Team", 0);
+  updateFilterButtonLabel(nationFilterBtn, "Nation", 0);
+
+  const teams = [...new Set(dataset.riders.map((r) => r.team).filter((t): t is string => !!t))].sort();
+  const nations = [...new Set(dataset.riders.map((r) => r.nationality).filter((n): n is string => !!n))].sort();
+
+  buildFilterPanel(teamFilterPanel, teams, stageFilterTeams, teamFilterBtn, "Team");
+  buildFilterPanel(nationFilterPanel, nations, stageFilterNations, nationFilterBtn, "Nation", true);
 }
 
 let xScale: ScaleLinear<number, number>;

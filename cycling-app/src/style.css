@@ -199,6 +199,100 @@ body {
   border-color: var(--accent);
 }
 
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-dropdown {
+  position: relative;
+}
+
+.filter-toggle-btn {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.filter-toggle-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.filter-toggle-btn.active {
+  background: var(--accent);
+  color: #1a1a1a;
+  border-color: var(--accent);
+}
+
+.filter-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 6px;
+  min-width: 200px;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.filter-panel[hidden] {
+  display: none;
+}
+
+.filter-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 2px 4px 6px;
+  border-bottom: 1px solid var(--panel-border);
+  margin-bottom: 4px;
+}
+
+.filter-panel-clear {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.filter-panel-clear:hover {
+  text-decoration: underline;
+}
+
+.filter-panel label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 3px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.filter-panel label:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.filter-panel input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
 .legend-block {
   flex: 1;
   min-height: 0;

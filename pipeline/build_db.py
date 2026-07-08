@@ -32,7 +32,7 @@ def ordinal(n):
 
 # Each Tour de France edition we have scraped raw JSON for. Edition number
 # follows the real-world numbering (2024 = 111th), so year - 1913 = edition #.
-EDITIONS = [(year, f"{ordinal(year - 1913)} Tour de France") for year in range(1995, 2026)]
+EDITIONS = [(year, f"{ordinal(year - 1913)} Tour de France") for year in range(1995, 2027)]
 
 COUNTRY_NAMES = {
     "fr": "France", "nl": "Netherlands", "be": "Belgium", "si": "Slovenia",
