@@ -1219,16 +1219,33 @@ function buildFilterPanel(
  *  resets both filters (team/nation membership is specific to each year). */
 function buildStageFilters() {
   if (!dataset) return;
-  stageFilterTeams = new Set();
-  stageFilterNations = new Set();
-  updateFilterButtonLabel(teamFilterBtn, "Team", 0);
-  updateFilterButtonLabel(nationFilterBtn, "Nation", 0);
+  const hadActiveFilter = stageFilterTeams.size > 0 || stageFilterNations.size > 0;
 
   const teams = [...new Set(dataset.riders.map((r) => r.team).filter((t): t is string => !!t))].sort();
   const nations = [...new Set(dataset.riders.map((r) => r.nationality).filter((n): n is string => !!n))].sort();
 
+  // Carry the filter *values* over across a year change, dropping only the
+  // ones that don't exist in the new year's teams/nations (e.g. a team name
+  // from 2024 that didn't race in 2022).
+  stageFilterTeams = new Set([...stageFilterTeams].filter((t) => teams.includes(t)));
+  stageFilterNations = new Set([...stageFilterNations].filter((n) => nations.includes(n)));
+
+  updateFilterButtonLabel(teamFilterBtn, "Team", stageFilterTeams.size);
+  updateFilterButtonLabel(nationFilterBtn, "Nation", stageFilterNations.size);
+
   buildFilterPanel(teamFilterPanel, teams, stageFilterTeams, teamFilterBtn, "Team");
   buildFilterPanel(nationFilterPanel, nations, stageFilterNations, nationFilterBtn, "Nation", true);
+
+  if (stageFilterTeams.size > 0 || stageFilterNations.size > 0) {
+    applyStageTeamNationFilter();
+  } else if (hadActiveFilter) {
+    // Every previously-selected team/nation was absent from this year —
+    // nothing carries over, so behave like the "None" button was pressed.
+    selected = new Set();
+    document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
+      b.classList.remove("active"),
+    );
+  }
 }
 
 let xScale: ScaleLinear<number, number>;
