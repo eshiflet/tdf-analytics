@@ -76,6 +76,9 @@ async function getDataset(year: string): Promise<GcDataset> {
 }
 let currentYear = YEARS[0];
 let currentMetric: "gc" | "points" | "kom" = "gc";
+// Only meaningful when currentMetric === "gc" — toggles the "by Stage" chart
+// between ranking-based ("position") and gap-to-leader-based ("time") display.
+let gcDisplayMode: "position" | "time" = "position";
 
 let dataset: GcDataset;
 let selected: Set<string> = new Set();
@@ -107,6 +110,7 @@ const chartAreaEl = tooltipEl.parentElement as HTMLDivElement;
 const searchEl = document.getElementById("search") as HTMLInputElement;
 const yearSelectEl = document.getElementById("year-select") as HTMLSelectElement;
 const metricSelectEl = document.getElementById("metric-select") as HTMLSelectElement;
+const gcTimeToggleBtn = document.getElementById("gc-time-toggle") as HTMLButtonElement;
 const viewStageBtn = document.getElementById("view-stage") as HTMLButtonElement;
 const viewOverviewBtn = document.getElementById("view-overview") as HTMLButtonElement;
 const viewAllRacesBtn = document.getElementById("view-all-races") as HTMLButtonElement;
@@ -147,6 +151,15 @@ function fmtGap(seconds: number | null): string {
   const s = seconds % 60;
   const parts = h > 0 ? [h, m, s] : [m, s];
   return "+" + parts.map((p, i) => (i === 0 ? String(p) : String(p).padStart(2, "0"))).join(":");
+}
+
+/** Zero-padded HH:MM:SS, for the GC Time y-axis. */
+function fmtHms(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
 // ─── Route type colors & difficulty ──────────────────────────────────────────
@@ -367,8 +380,11 @@ function buildYearSelect() {
 
 function buildMetricSelect() {
   metricSelectEl.value = currentMetric;
+  updateGcTimeToggle();
   metricSelectEl.addEventListener("change", () => {
     currentMetric = metricSelectEl.value as "gc" | "points" | "kom";
+    if (currentMetric !== "gc") gcDisplayMode = "position";
+    updateGcTimeToggle();
     updateHash();
     applyDefaultSelection(20);
     document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
@@ -379,6 +395,15 @@ function buildMetricSelect() {
     buildLegend();
     drawChart();
   });
+}
+
+/** Shows/hides the GC Time toggle (only relevant in GC Position "by Stage"
+ *  view) and reflects whether it's currently engaged. */
+function updateGcTimeToggle() {
+  gcTimeToggleBtn.hidden = !(currentView === "stage" && currentMetric === "gc");
+  gcTimeToggleBtn.textContent = gcDisplayMode === "time"
+    ? "GC Time → GC Position"
+    : "GC Position → GC Time";
 }
 
 function buildRankMapsFromField(
@@ -433,9 +458,15 @@ function activeRankMap(stageNum: number): Map<string, number> | undefined {
   return pointsRankAtStage.get(stageNum);
 }
 
-/** Build the rank series for a rider to feed into d3 line/dot/label rendering. */
+/** Build the display-value series for a rider to feed into d3 line/dot/label
+ *  rendering. The "rank" field doubles as the plotted y-value: it's an actual
+ *  rank in every mode except GC Time, where it holds gcGapSeconds instead —
+ *  0 for the stage leader, increasing for riders further behind. */
 function getDisplayPoints(rider: RiderSeries): Array<{ stage: number; rank: number | null }> {
   if (currentMetric === "gc") {
+    if (gcDisplayMode === "time") {
+      return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcGapSeconds }));
+    }
     return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcRank }));
   }
   return rider.byStage.map((p) => ({
@@ -486,6 +517,7 @@ async function loadDataset(year: string) {
 
 function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   currentView = view;
+  updateGcTimeToggle();
   viewStageBtn.classList.toggle("active", view === "stage");
   viewOverviewBtn.classList.toggle("active", view === "overview");
   viewAllRacesBtn.classList.toggle("active", view === "allraces");
@@ -506,8 +538,8 @@ function switchView(view: "stage" | "overview" | "allraces" | "riders") {
 }
 
 // ─── Hash routing ────────────────────────────────────────────────────────────
-// Formats: #<year>/stage/<metric> · #<year>/overview · #allraces
-//          #riders · #riders/<rider-slug>
+// Formats: #<year>/stage/<metric> (metric: gc | gc-time | points | kom)
+//          · #<year>/overview · #allraces · #riders · #riders/<rider-slug>
 // State changes push a hash entry (so back/forward walk through app states);
 // hashchange applies the hash back onto app state. The compare-with-
 // computeHash() guard on both sides breaks the write→event→write loop.
@@ -520,7 +552,8 @@ function computeHash(): string {
   }
   if (currentView === "allraces") return "#allraces";
   if (currentView === "overview") return `#${currentYear}/overview`;
-  return `#${currentYear}/stage/${currentMetric}`;
+  const metricSeg = currentMetric === "gc" && gcDisplayMode === "time" ? "gc-time" : currentMetric;
+  return `#${currentYear}/stage/${metricSeg}`;
 }
 
 // Suppresses hash writes while a hash is being applied, so the intermediate
@@ -567,6 +600,7 @@ async function applyHash(): Promise<boolean> {
     yearSelectEl.value = year;
     if (view !== "overview") {
       currentMetric = metric === "points" || metric === "kom" ? metric : "gc";
+      gcDisplayMode = metric === "gc-time" ? "time" : "position";
       metricSelectEl.value = currentMetric;
     }
     await loadDataset(year);
@@ -910,6 +944,13 @@ function wireControls() {
   viewOverviewBtn.addEventListener("click", () => switchView("overview"));
   viewAllRacesBtn.addEventListener("click", () => switchView("allraces"));
   viewRidersBtn.addEventListener("click", () => switchView("riders"));
+
+  gcTimeToggleBtn.addEventListener("click", () => {
+    gcDisplayMode = gcDisplayMode === "time" ? "position" : "time";
+    updateGcTimeToggle();
+    updateHash();
+    drawChart();
+  });
 }
 
 function cssEscape(s: string): string {
@@ -1271,6 +1312,7 @@ function drawChart() {
   const stages = dataset.stages;
   const minStage = d3.min(stages, (s) => s.stage_number) ?? 0;
   const maxStage = d3.max(stages, (s) => s.stage_number) ?? 21;
+  const isGcTime = currentMetric === "gc" && gcDisplayMode === "time";
 
   // Compute each rider's display series once per draw; the line generator,
   // hit paths, end dots, and end labels all read from these maps.
@@ -1291,7 +1333,7 @@ function drawChart() {
   }
 
   xScale = d3.scaleLinear().domain([minStage, maxStage]).range([0, innerWidth]);
-  yScale = d3.scaleLinear().domain([1, maxRank]).range([0, innerHeight]);
+  yScale = d3.scaleLinear().domain(isGcTime ? [0, maxRank] : [1, maxRank]).range([0, innerHeight]);
 
   const svg = d3
     .select(chartEl)
@@ -1322,8 +1364,10 @@ function drawChart() {
     return;
   }
 
-  // gridlines (horizontal, every 10 ranks)
-  const yTickValues = d3.range(10, maxRank + 1, 10);
+  // gridlines (horizontal) — "nice" time ticks in GC Time mode, every 10 ranks otherwise
+  const yTickValues = isGcTime
+    ? d3.scaleLinear().domain([0, maxRank]).nice().ticks(6).filter((v) => v > 0)
+    : d3.range(10, maxRank + 1, 10);
   g.append("g")
     .attr("class", "grid grid-y")
     .call(
@@ -1392,16 +1436,18 @@ function drawChart() {
     .call(
       d3
         .axisLeft(yScale)
-        .tickValues([1, ...yTickValues])
-        .tickFormat((d) => `#${d}`),
+        .tickValues(isGcTime ? [0, ...yTickValues] : [1, ...yTickValues])
+        .tickFormat((d) => (isGcTime ? fmtHms(d as number) : `#${d}`)),
     );
 
-  const yLabel = currentMetric === "gc" ? "GC position" : currentMetric === "kom" ? "KOM rank" : "Points rank";
-  g.append("text")
-    .attr("class", "axis-label")
-    .attr("transform", `translate(${-margin.left + 14},${innerHeight / 2}) rotate(-90)`)
-    .attr("text-anchor", "middle")
-    .text(yLabel);
+  if (currentMetric !== "gc") {
+    const yLabel = currentMetric === "kom" ? "KOM rank" : "Points rank";
+    g.append("text")
+      .attr("class", "axis-label")
+      .attr("transform", `translate(${-margin.left + 14},${innerHeight / 2}) rotate(-90)`)
+      .attr("text-anchor", "middle")
+      .text(yLabel);
+  }
 
   const lineGen = d3
     .line<{ stage: number; rank: number | null }>()

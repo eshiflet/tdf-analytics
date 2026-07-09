@@ -18,7 +18,7 @@
           <nav class="view-nav">
             <button id="view-stage" class="view-btn active">
               <select id="metric-select" class="metric-inline">
-                <option value="gc">GC Position</option>
+                <option value="gc">GC</option>
                 <option value="points">Sprint Points</option>
                 <option value="kom">KOM Points</option>
               </select>
@@ -69,6 +69,7 @@
         </aside>
 
         <main class="chart-area">
+          <button id="gc-time-toggle" type="button" class="y-axis-toggle" hidden>GC Time</button>
           <div id="chart"></div>
           <div id="overview-chart"></div>
           <div id="all-races-chart"></div>

@@ -81,6 +81,38 @@ body {
   background: color-mix(in srgb, var(--accent) 10%, var(--panel));
 }
 
+.view-btn[hidden] {
+  display: none;
+}
+
+.y-axis-toggle {
+  position: absolute;
+  left: 34px;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  background: var(--panel);
+  border: 1px solid var(--text-dim);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  z-index: 5;
+}
+
+.y-axis-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.y-axis-toggle[hidden] {
+  display: none;
+}
+
 .metric-inline {
   background: transparent;
   border: none;
