@@ -76,6 +76,7 @@ async function getDataset(year: string): Promise<GcDataset> {
 }
 let currentYear = YEARS[0];
 let currentMetric: "gc" | "points" | "kom" = "gc";
+let currentPreset = "20";
 // Only meaningful when currentMetric === "gc" — toggles the "by Stage" chart
 // between ranking-based ("position") and gap-to-leader-based ("time") display.
 let gcDisplayMode: "position" | "time" = "position";
@@ -495,14 +496,20 @@ async function loadDataset(year: string) {
     .range(PALETTE);
 
   computePointsRankings();
-  applyDefaultSelection(20);
+  if (currentPreset === "all") {
+    selected = new Set(dataset.riders.map((r) => r.id));
+  } else if (currentPreset === "none") {
+    selected = new Set();
+  } else {
+    applyDefaultSelection(parseInt(currentPreset, 10));
+  }
 
   highlighted = null;
   searchEl.value = "";
   document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
     b.classList.remove("active"),
   );
-  document.querySelector<HTMLButtonElement>('.button-row button[data-preset="20"]')?.classList.add(
+  document.querySelector<HTMLButtonElement>(`.button-row button[data-preset="${currentPreset}"]`)?.classList.add(
     "active",
   );
 
@@ -882,6 +889,7 @@ function wireControls() {
       );
       btn.classList.add("active");
       const preset = btn.dataset.preset;
+      currentPreset = preset ?? "20";
       if (preset === "all") {
         selected = new Set(dataset.riders.map((r) => r.id));
         // "All" already selects every rider, which subsumes any Team/Nation
@@ -1305,7 +1313,7 @@ function drawChart() {
   const containerRect = chartEl.getBoundingClientRect();
   const width = Math.max(containerRect.width, 600);
   const height = Math.max(containerRect.height, 480);
-  const margin = { top: 32, right: 36, bottom: 36, left: 44 };
+  const margin = { top: 32, right: 36, bottom: 36, left: currentMetric === "gc" ? 72 : 44 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
@@ -1618,7 +1626,7 @@ function updateLineClasses() {
 
 function showTooltip(event: MouseEvent, rider: RiderSeries) {
   const containerRect = chartEl.getBoundingClientRect();
-  const margin = { left: 44, top: 16 };
+  const margin = { left: currentMetric === "gc" ? 72 : 44, top: 16 };
   const mouseX = event.clientX - containerRect.left - margin.left;
   const stageGuess = Math.round(xScale.invert(mouseX));
 
