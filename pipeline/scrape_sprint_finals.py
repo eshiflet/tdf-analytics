@@ -31,7 +31,7 @@ SPRINT_PATH = os.path.join(HERE, "sprint_points.json")
 # Years where lower pnt2 = better (golf scoring)
 GOLF_YEARS = set(range(1953, 1959))
 
-TARGET_YEARS = list(range(1953, 1964))
+TARGET_YEARS = list(range(1953, 1964)) + [1997, 1999] + list(range(2000, 2011)) + [2012, 2013, 2019]
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "

@@ -77,6 +77,7 @@ async function getDataset(year: string): Promise<GcDataset> {
 let currentYear = YEARS[0];
 let currentMetric: "gc" | "points" | "kom" = "gc";
 let currentPreset = "20";
+let sprintDisplayMode: "rank" | "points" = "rank";
 // Only meaningful when currentMetric === "gc" — toggles the "by Stage" chart
 // between ranking-based ("position") and gap-to-leader-based ("time") display.
 let gcDisplayMode: "position" | "time" = "position";
@@ -112,6 +113,7 @@ const searchEl = document.getElementById("search") as HTMLInputElement;
 const yearSelectEl = document.getElementById("year-select") as HTMLSelectElement;
 const metricSelectEl = document.getElementById("metric-select") as HTMLSelectElement;
 const gcTimeToggleBtn = document.getElementById("gc-time-toggle") as HTMLButtonElement;
+const sprintModeToggleBtn = document.getElementById("sprint-mode-toggle") as HTMLButtonElement;
 const viewStageBtn = document.getElementById("view-stage") as HTMLButtonElement;
 const viewOverviewBtn = document.getElementById("view-overview") as HTMLButtonElement;
 const viewAllRacesBtn = document.getElementById("view-all-races") as HTMLButtonElement;
@@ -382,10 +384,13 @@ function buildYearSelect() {
 function buildMetricSelect() {
   metricSelectEl.value = currentMetric;
   updateGcTimeToggle();
+  updateSprintModeToggle();
   metricSelectEl.addEventListener("change", () => {
     currentMetric = metricSelectEl.value as "gc" | "points" | "kom";
     if (currentMetric !== "gc") gcDisplayMode = "position";
+    if (currentMetric !== "points") sprintDisplayMode = "rank";
     updateGcTimeToggle();
+    updateSprintModeToggle();
     updateHash();
     applyDefaultSelection(20);
     document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
@@ -405,6 +410,13 @@ function updateGcTimeToggle() {
   gcTimeToggleBtn.textContent = gcDisplayMode === "time"
     ? "GC Time → GC Position"
     : "GC Position → GC Time";
+}
+
+function updateSprintModeToggle() {
+  sprintModeToggleBtn.hidden = !(currentView === "stage" && currentMetric === "points");
+  sprintModeToggleBtn.textContent = sprintDisplayMode === "points"
+    ? "Points → Rank"
+    : "Rank → Points";
 }
 
 function buildRankMapsFromField(
@@ -470,6 +482,9 @@ function getDisplayPoints(rider: RiderSeries): Array<{ stage: number; rank: numb
     }
     return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcRank }));
   }
+  if (currentMetric === "points" && sprintDisplayMode === "points") {
+    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativePoints }));
+  }
   return rider.byStage.map((p) => ({
     stage: p.stage,
     rank: activeRankMap(p.stage)?.get(rider.id) ?? null,
@@ -525,6 +540,7 @@ async function loadDataset(year: string) {
 function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   currentView = view;
   updateGcTimeToggle();
+  updateSprintModeToggle();
   viewStageBtn.classList.toggle("active", view === "stage");
   viewOverviewBtn.classList.toggle("active", view === "overview");
   viewAllRacesBtn.classList.toggle("active", view === "allraces");
@@ -559,7 +575,9 @@ function computeHash(): string {
   }
   if (currentView === "allraces") return "#allraces";
   if (currentView === "overview") return `#${currentYear}/overview`;
-  const metricSeg = currentMetric === "gc" && gcDisplayMode === "time" ? "gc-time" : currentMetric;
+  const metricSeg = currentMetric === "gc" && gcDisplayMode === "time" ? "gc-time"
+    : currentMetric === "points" && sprintDisplayMode === "points" ? "sprint-points"
+    : currentMetric;
   return `#${currentYear}/stage/${metricSeg}`;
 }
 
@@ -606,8 +624,10 @@ async function applyHash(): Promise<boolean> {
     currentYear = year;
     yearSelectEl.value = year;
     if (view !== "overview") {
-      currentMetric = metric === "points" || metric === "kom" ? metric : "gc";
+      currentMetric = (metric === "points" || metric === "sprint-points") ? "points"
+        : metric === "kom" ? "kom" : "gc";
       gcDisplayMode = metric === "gc-time" ? "time" : "position";
+      sprintDisplayMode = metric === "sprint-points" ? "points" : "rank";
       metricSelectEl.value = currentMetric;
     }
     await loadDataset(year);
@@ -959,6 +979,13 @@ function wireControls() {
     updateHash();
     drawChart();
   });
+
+  sprintModeToggleBtn.addEventListener("click", () => {
+    sprintDisplayMode = sprintDisplayMode === "points" ? "rank" : "points";
+    updateSprintModeToggle();
+    updateHash();
+    drawChart();
+  });
 }
 
 function cssEscape(s: string): string {
@@ -1048,6 +1075,13 @@ function komJerseySvg(): string {
 }
 
 const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint (points) winner", kom: "KOM winner", youth: "Young rider winner" } as const;
+
+// Doping notes shown next to GC jersey years on the rider detail page.
+const DOPING_GC_NOTES: Record<string, string> = {
+  "rider/lance-armstrong": "Stripped of yellow jersey due to doping",
+  "rider/floyd-landis": "Stripped of yellow jersey due to doping",
+  "rider/alberto-contador": "Stripped of 2010 yellow jersey due to doping",
+};
 type JerseyCategory = keyof typeof JERSEY_LABELS;
 
 /** Every year this rider won each classification (GC/sprint/KOM derived from
@@ -1106,6 +1140,12 @@ function jerseyIconsWithYearsEl(entry: RiderEntry): HTMLSpanElement[] {
     yearsEl.className = "jersey-years";
     yearsEl.textContent = `(${years[category].join(", ")})`;
     out.push(yearsEl);
+    if (category === "gc" && DOPING_GC_NOTES[entry.id]) {
+      const noteEl = document.createElement("span");
+      noteEl.className = "jersey-stripped-note";
+      noteEl.textContent = DOPING_GC_NOTES[entry.id];
+      out.push(noteEl);
+    }
   }
   return out;
 }
@@ -1321,6 +1361,7 @@ function drawChart() {
   const minStage = d3.min(stages, (s) => s.stage_number) ?? 0;
   const maxStage = d3.max(stages, (s) => s.stage_number) ?? 21;
   const isGcTime = currentMetric === "gc" && gcDisplayMode === "time";
+  const isSprintPoints = currentMetric === "points" && sprintDisplayMode === "points";
 
   // Compute each rider's display series once per draw; the line generator,
   // hit paths, end dots, and end labels all read from these maps.
@@ -1341,7 +1382,9 @@ function drawChart() {
   }
 
   xScale = d3.scaleLinear().domain([minStage, maxStage]).range([0, innerWidth]);
-  yScale = d3.scaleLinear().domain(isGcTime ? [0, maxRank] : [1, maxRank]).range([0, innerHeight]);
+  yScale = d3.scaleLinear()
+    .domain(isGcTime ? [0, maxRank] : isSprintPoints ? [maxRank, 0] : [1, maxRank])
+    .range([0, innerHeight]);
 
   const svg = d3
     .select(chartEl)
@@ -1372,8 +1415,8 @@ function drawChart() {
     return;
   }
 
-  // gridlines (horizontal) — "nice" time ticks in GC Time mode, every 10 ranks otherwise
-  const yTickValues = isGcTime
+  // gridlines (horizontal) — "nice" ticks in GC Time / Sprint Points mode, every 10 ranks otherwise
+  const yTickValues = isGcTime || isSprintPoints
     ? d3.scaleLinear().domain([0, maxRank]).nice().ticks(6).filter((v) => v > 0)
     : d3.range(10, maxRank + 1, 10);
   g.append("g")
@@ -1444,17 +1487,16 @@ function drawChart() {
     .call(
       d3
         .axisLeft(yScale)
-        .tickValues(isGcTime ? [0, ...yTickValues] : [1, ...yTickValues])
-        .tickFormat((d) => (isGcTime ? fmtHms(d as number) : `#${d}`)),
+        .tickValues(isGcTime || isSprintPoints ? [0, ...yTickValues] : [1, ...yTickValues])
+        .tickFormat((d) => isGcTime ? fmtHms(d as number) : isSprintPoints ? String(d) : `#${d}`),
     );
 
-  if (currentMetric !== "gc") {
-    const yLabel = currentMetric === "kom" ? "KOM rank" : "Points rank";
+  if (currentMetric === "kom") {
     g.append("text")
       .attr("class", "axis-label")
       .attr("transform", `translate(${-margin.left + 14},${innerHeight / 2}) rotate(-90)`)
       .attr("text-anchor", "middle")
-      .text(yLabel);
+      .text("KOM rank");
   }
 
   const lineGen = d3

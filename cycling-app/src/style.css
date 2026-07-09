@@ -397,6 +397,15 @@ body {
   vertical-align: middle;
 }
 
+.jersey-stripped-note {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 6px;
+  vertical-align: middle;
+  font-style: italic;
+}
+
 .legend-item.highlighted {
   background: #232733;
   color: var(--accent);
