@@ -30,8 +30,16 @@ jobs:
         run: npm ci
         working-directory: cycling-app
 
+      - name: Validate exported data
+        run: python3 validate_exports.py
+        working-directory: pipeline
+
       - name: Build
         run: npm run build
+        working-directory: cycling-app
+
+      - name: Smoke-test built bundle
+        run: node verify.mjs && node verify-views.mjs
         working-directory: cycling-app
 
       - uses: actions/upload-pages-artifact@v3

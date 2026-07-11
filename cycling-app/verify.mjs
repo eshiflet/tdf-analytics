@@ -50,8 +50,11 @@ const doc = window.document;
 const topAxisTicks = doc.querySelectorAll(".x-axis-top .tick");
 const bottomAxisTicks = doc.querySelectorAll(".x-axis:not(.x-axis-top) .tick");
 const vLines = doc.querySelectorAll(".grid-x .tick line");
-console.log("top axis ticks:", topAxisTicks.length, "(expect 21)");
-console.log("bottom axis ticks:", bottomAxisTicks.length, "(expect 21)");
+// The default year may be an in-progress tour with fewer than 21 stages, so
+// only require the two axes to agree here; the strict 21-tick check runs
+// after switching to 2017 (a completed 21-stage tour) below.
+console.log("top axis ticks:", topAxisTicks.length, "(expect same as bottom, ≥1)");
+console.log("bottom axis ticks:", bottomAxisTicks.length);
 console.log("top axis tick text sample:", [...topAxisTicks].slice(0, 3).map((t) => t.textContent));
 console.log("vertical gridlines:", vLines.length);
 
@@ -82,6 +85,8 @@ await new Promise((r) => setTimeout(r, 200));
 const legendCount2017 = doc.querySelectorAll("#legend .legend-item").length;
 const firstLegendName2017 = doc.querySelector("#legend .legend-item .legend-name")?.textContent;
 console.log("legend rows (2017):", legendCount2017, "first rider:", firstLegendName2017);
+const topAxisTicks2017 = doc.querySelectorAll(".x-axis-top .tick");
+console.log("top axis ticks (2017):", topAxisTicks2017.length, "(expect 21)");
 
 // switch to 1995 (oldest year, newly added, 20 stages, missing uci_pnt column historically)
 yearSelect.value = "1995";
@@ -141,11 +146,15 @@ const tooltipText = tooltipEl.textContent.replace(/\s+/g, " ").trim();
 const tooltipHidden = tooltipEl.hidden;
 console.log("stage tooltip (1960 stage1):", JSON.stringify(tooltipText), "hidden:", tooltipHidden);
 
+// First option must be the newest year present (don't hard-code it: a new
+// tour year is added while in progress).
+const newestYear = String(Math.max(...yearOptions.map(Number)));
 const pass =
-  topAxisTicks.length === 21 &&
-  bottomAxisTicks.length === 21 &&
+  topAxisTicks.length >= 1 &&
+  topAxisTicks.length === bottomAxisTicks.length &&
+  topAxisTicks2017.length === 21 &&
   hasAllYears &&
-  yearOptions[0] === "2025" &&
+  yearOptions[0] === newestYear &&
   yearOptions[yearOptions.length - 1] === "1903" &&
   !tooltipHidden &&
   tooltipText.includes("Lille") &&
@@ -169,3 +178,4 @@ const pass =
   legendCount1960 > 0 &&
   firstLegendName1960 === "Nencini Gastone";
 console.log(pass ? "PASS" : "FAIL");
+process.exit(pass ? 0 : 1);

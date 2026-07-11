@@ -43,7 +43,16 @@ GOOD_THRESHOLD    = 0.80   # PCS total ≥ 80% of reference → keep as-is
 PARTIAL_THRESHOLD = 0.20   # PCS total ≥ 20% → scale; below → redistribute
 
 
+# Characters NFD decomposition can't strip (no combining-mark form)
+_CHAR_MAP = str.maketrans({
+    "ł": "l", "Ł": "L", "ø": "o", "Ø": "O", "đ": "d", "Đ": "D",
+    "ð": "d", "Ð": "D", "þ": "th", "Þ": "Th", "æ": "ae", "Æ": "Ae",
+    "œ": "oe", "Œ": "Oe", "ß": "ss",
+})
+
+
 def normalize(name: str) -> str:
+    name = name.translate(_CHAR_MAP)
     name = unicodedata.normalize("NFD", name)
     name = "".join(c for c in name if unicodedata.category(c) != "Mn")
     name = name.lower()
