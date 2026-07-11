@@ -1,5 +1,373 @@
 [
   {
+    "year": 1903,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1904,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1905,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1906,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1907,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1908,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1909,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1910,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1911,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1912,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1913,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1914,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1919,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1920,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1921,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1922,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1923,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1924,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1925,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1926,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1927,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1928,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1929,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1930,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1931,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1932,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1933,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1934,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1935,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1936,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1937,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1938,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1939,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1947,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1948,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1949,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1950,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1951,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1952,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1953,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1954,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1955,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1956,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1957,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1958,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
+    "year": 1959,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
+  },
+  {
     "year": 1960,
     "strategy": "scale_pcs",
     "pcs_coverage": 0.732,
@@ -3307,8 +3675,8 @@
   },
   {
     "year": 2018,
-    "strategy": "scale_pcs",
-    "pcs_coverage": 0.598,
+    "strategy": "keep_pcs",
+    "pcs_coverage": 0.833,
     "match_rate_pct": 88,
     "reference_riders": 10,
     "verification": [
@@ -3321,8 +3689,8 @@
       {
         "name": "Warren Barguil",
         "ref": 91,
-        "ours": 90,
-        "pct_off": 1.1
+        "ours": 91,
+        "pct_off": 0.0
       },
       {
         "name": "Rafał Majka",
@@ -3333,20 +3701,20 @@
       {
         "name": "Geraint Thomas",
         "ref": 74,
-        "ours": 75,
-        "pct_off": 1.4
+        "ours": 74,
+        "pct_off": 0.0
       },
       {
         "name": "Tom Dumoulin",
         "ref": 63,
-        "ours": 64,
-        "pct_off": 1.6
+        "ours": 63,
+        "pct_off": 0.0
       },
       {
         "name": "Primož Roglič",
         "ref": 56,
-        "ours": 55,
-        "pct_off": 1.8
+        "ours": 56,
+        "pct_off": 0.0
       },
       {
         "name": "Dan Martin",
@@ -3760,5 +4128,13 @@
         "pct_off": 0.0
       }
     ]
+  },
+  {
+    "year": 2026,
+    "strategy": "no_reference",
+    "pcs_coverage": 0.0,
+    "match_rate_pct": 0,
+    "reference_riders": 0,
+    "verification": []
   }
 ]

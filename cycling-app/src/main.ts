@@ -449,13 +449,15 @@ function buildRankMapsFromField(
       if (rank != null) rankAtStage.get(sp.stage)?.set(rider.id, rank);
     }
   }
-  // Build finalRank from each rider's last byStage entry so that DNF'd riders
-  // (who have no byStage entry for the actual last stage) are still ranked
-  // correctly when their rank was back-filled by the export pipeline.
+  // Build finalRank only for riders who reached the final stage; DNF riders
+  // keep their mid-race rank in rankAtStage but are excluded from finalRank
+  // so they don't pollute "Top N" selection or the legend ordering.
+  const finalStageNum = Math.max(...dataset.stages.map((s) => s.stage_number));
   const finalRank = new Map<string, number>();
   for (const rider of dataset.riders) {
     if (rider.byStage.length === 0) continue;
     const lastSp = rider.byStage[rider.byStage.length - 1];
+    if (lastSp.stage !== finalStageNum) continue;
     const rank = getRank(lastSp);
     if (rank != null) finalRank.set(rider.id, rank);
   }
