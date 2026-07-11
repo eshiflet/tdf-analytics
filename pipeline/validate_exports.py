@@ -164,11 +164,13 @@ def main():
     )
     total_errors = 0
     total_warnings = 0
+    checked = 0
 
     for fname in files:
         year = int(fname.replace("gc_by_stage_", "").replace(".json", ""))
         if single_year and year != single_year:
             continue
+        checked += 1
         with open(os.path.join(DATA_DIR, fname), encoding="utf-8") as f:
             ds = json.load(f)
 
@@ -187,7 +189,7 @@ def main():
         total_errors += len(errors)
         total_warnings += len(warnings)
 
-    print(f"\n{len(files)} files checked: {total_errors} errors, {total_warnings} warnings")
+    print(f"\n{checked} files checked: {total_errors} errors, {total_warnings} warnings")
     sys.exit(1 if total_errors else 0)
 
 

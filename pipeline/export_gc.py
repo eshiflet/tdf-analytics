@@ -320,6 +320,13 @@ if __name__ == "__main__":
     conn = sqlite3.connect(DB_PATH)
     years = [r[0] for r in conn.execute("SELECT year FROM race_editions ORDER BY year")]
     conn.close()
+
+    if "--year" in sys.argv:
+        wanted = int(sys.argv[sys.argv.index("--year") + 1])
+        if wanted not in years:
+            sys.exit(f"error: no edition for year {wanted} in the database")
+        years = [wanted]
+
     out_dir = os.path.join(HERE, "..", "cycling-app", "src", "data")
     os.makedirs(out_dir, exist_ok=True)
     for year in years:
