@@ -1217,12 +1217,10 @@ function buildLegend() {
     });
 
     row.addEventListener("mouseenter", () => {
-      highlighted = rider.id;
-      updateLineClasses();
+      setHighlight(rider.id);
     });
     row.addEventListener("mouseleave", () => {
-      highlighted = null;
-      updateLineClasses();
+      setHighlight(null);
     });
 
     legendEl.appendChild(row);
@@ -1551,13 +1549,11 @@ function drawChart() {
     .attr("d", (r) => lineGen(displayPointsById.get(r.id)!))
     .style("cursor", "pointer")
     .on("mouseenter", (_event, r) => {
-      highlighted = r.id;
-      updateLineClasses();
+      setHighlight(r.id);
     })
     .on("mousemove", (event, r) => showTooltip(event, r))
     .on("mouseleave", () => {
-      highlighted = null;
-      updateLineClasses();
+      setHighlight(null);
       hideTooltip();
     })
     .on("click", (_event, r) => {
@@ -1655,36 +1651,63 @@ function lastName(full: string): string {
   return parts[parts.length - 1];
 }
 
+// Restyle one rider's line based on current selected/highlighted state.
+function styleRiderLine(pathEl: SVGPathElement) {
+  const el = d3.select(pathEl);
+  const id = pathEl.getAttribute("data-id")!;
+  const isSelected = selected.has(id);
+  const isHighlighted = highlighted === id;
+  el.classed("hidden-line", false);
+  el.classed("dimmed", !isSelected && !isHighlighted);
+  el.classed("highlighted", isHighlighted);
+  el.attr("stroke", isSelected || isHighlighted ? colorScale(id) : "var(--line-dim)");
+  el.style("stroke-opacity", isHighlighted ? 1 : isSelected ? 0.95 : 0.12);
+}
+
+// Restyle one rider's end dot or end label (same visibility rules for both).
+function styleRiderMarker(el: SVGCircleElement | SVGTextElement) {
+  const id = el.getAttribute("data-id")!;
+  const isSelected = selected.has(id);
+  const isHighlighted = highlighted === id;
+  d3.select(el)
+    .style("opacity", isSelected || isHighlighted ? 1 : 0)
+    .attr("fill", isSelected || isHighlighted ? colorScale(id) : "var(--line-dim)");
+}
+
+// Full sweep across every rider — needed when the selection set changes
+// (legend clicks, presets, filters) or after a redraw.
 function updateLineClasses() {
   d3.selectAll<SVGPathElement, unknown>(".lines .rider-line").each(function () {
-    const el = d3.select(this as SVGPathElement);
-    const id = (this as SVGPathElement).getAttribute("data-id")!;
-    const isSelected = selected.has(id);
-    const isHighlighted = highlighted === id;
-    el.classed("hidden-line", false);
-    el.classed("dimmed", !isSelected && !isHighlighted);
-    el.classed("highlighted", isHighlighted);
-    el.attr("stroke", isSelected || isHighlighted ? colorScale(id) : "var(--line-dim)");
-    el.style("stroke-opacity", isHighlighted ? 1 : isSelected ? 0.95 : 0.12);
+    styleRiderLine(this as SVGPathElement);
   });
-
   d3.selectAll<SVGCircleElement, unknown>(".dots .rider-dot").each(function () {
-    const id = (this as SVGCircleElement).getAttribute("data-id")!;
-    const isSelected = selected.has(id);
-    const isHighlighted = highlighted === id;
-    d3.select(this as SVGCircleElement)
-      .style("opacity", isSelected || isHighlighted ? 1 : 0)
-      .attr("fill", isSelected || isHighlighted ? colorScale(id) : "var(--line-dim)");
+    styleRiderMarker(this as SVGCircleElement);
   });
-
   d3.selectAll<SVGTextElement, unknown>(".labels .rider-end-label").each(function () {
-    const id = (this as SVGTextElement).getAttribute("data-id")!;
-    const isSelected = selected.has(id);
-    const isHighlighted = highlighted === id;
-    d3.select(this as SVGTextElement)
-      .style("opacity", isSelected || isHighlighted ? 1 : 0)
-      .attr("fill", isSelected || isHighlighted ? colorScale(id) : "var(--line-dim)");
+    styleRiderMarker(this as SVGTextElement);
   });
+}
+
+// Restyle just one rider's three chart elements (line, end dot, end label).
+function restyleRider(id: string) {
+  const esc = cssEscape(id);
+  const line = chartEl.querySelector<SVGPathElement>(`.lines .rider-line[data-id="${esc}"]`);
+  if (line) styleRiderLine(line);
+  const dot = chartEl.querySelector<SVGCircleElement>(`.dots .rider-dot[data-id="${esc}"]`);
+  if (dot) styleRiderMarker(dot);
+  const label = chartEl.querySelector<SVGTextElement>(`.labels .rider-end-label[data-id="${esc}"]`);
+  if (label) styleRiderMarker(label);
+}
+
+// O(1) hover path: only the previously-highlighted rider and the new one
+// change appearance, so restyle exactly those two instead of sweeping all
+// ~200 lines + dots + labels on every mouseenter/mouseleave.
+function setHighlight(id: string | null) {
+  if (highlighted === id) return;
+  const prev = highlighted;
+  highlighted = id;
+  if (prev) restyleRider(prev);
+  if (id) restyleRider(id);
 }
 
 function showTooltip(event: MouseEvent, rider: RiderSeries) {
