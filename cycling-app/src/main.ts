@@ -78,6 +78,7 @@ let currentYear = YEARS[0];
 let currentMetric: "gc" | "points" | "kom" = "gc";
 let currentPreset = "20";
 let sprintDisplayMode: "rank" | "points" = "rank";
+let komDisplayMode: "rank" | "points" = "rank";
 // Only meaningful when currentMetric === "gc" — toggles the "by Stage" chart
 // between ranking-based ("position") and gap-to-leader-based ("time") display.
 let gcDisplayMode: "position" | "time" = "position";
@@ -114,6 +115,7 @@ const yearSelectEl = document.getElementById("year-select") as HTMLSelectElement
 const metricSelectEl = document.getElementById("metric-select") as HTMLSelectElement;
 const gcTimeToggleBtn = document.getElementById("gc-time-toggle") as HTMLButtonElement;
 const sprintModeToggleBtn = document.getElementById("sprint-mode-toggle") as HTMLButtonElement;
+const komModeToggleBtn = document.getElementById("kom-mode-toggle") as HTMLButtonElement;
 const viewStageBtn = document.getElementById("view-stage") as HTMLButtonElement;
 const viewOverviewBtn = document.getElementById("view-overview") as HTMLButtonElement;
 const viewAllRacesBtn = document.getElementById("view-all-races") as HTMLButtonElement;
@@ -385,12 +387,15 @@ function buildMetricSelect() {
   metricSelectEl.value = currentMetric;
   updateGcTimeToggle();
   updateSprintModeToggle();
+  updateKomModeToggle();
   metricSelectEl.addEventListener("change", () => {
     currentMetric = metricSelectEl.value as "gc" | "points" | "kom";
     if (currentMetric !== "gc") gcDisplayMode = "position";
     if (currentMetric !== "points") sprintDisplayMode = "rank";
+    if (currentMetric !== "kom") komDisplayMode = "rank";
     updateGcTimeToggle();
     updateSprintModeToggle();
+    updateKomModeToggle();
     updateHash();
     applyDefaultSelection(20);
     document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
@@ -415,6 +420,13 @@ function updateGcTimeToggle() {
 function updateSprintModeToggle() {
   sprintModeToggleBtn.hidden = !(currentView === "stage" && currentMetric === "points");
   sprintModeToggleBtn.textContent = sprintDisplayMode === "points"
+    ? "Points → Rank"
+    : "Rank → Points";
+}
+
+function updateKomModeToggle() {
+  komModeToggleBtn.hidden = !(currentView === "stage" && currentMetric === "kom");
+  komModeToggleBtn.textContent = komDisplayMode === "points"
     ? "Points → Rank"
     : "Rank → Points";
 }
@@ -485,6 +497,9 @@ function getDisplayPoints(rider: RiderSeries): Array<{ stage: number; rank: numb
   if (currentMetric === "points" && sprintDisplayMode === "points") {
     return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativePoints }));
   }
+  if (currentMetric === "kom" && komDisplayMode === "points") {
+    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativeKomPoints }));
+  }
   return rider.byStage.map((p) => ({
     stage: p.stage,
     rank: activeRankMap(p.stage)?.get(rider.id) ?? null,
@@ -541,6 +556,7 @@ function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   currentView = view;
   updateGcTimeToggle();
   updateSprintModeToggle();
+  updateKomModeToggle();
   viewStageBtn.classList.toggle("active", view === "stage");
   viewOverviewBtn.classList.toggle("active", view === "overview");
   viewAllRacesBtn.classList.toggle("active", view === "allraces");
@@ -577,6 +593,7 @@ function computeHash(): string {
   if (currentView === "overview") return `#${currentYear}/overview`;
   const metricSeg = currentMetric === "gc" && gcDisplayMode === "time" ? "gc-time"
     : currentMetric === "points" && sprintDisplayMode === "points" ? "sprint-points"
+    : currentMetric === "kom" && komDisplayMode === "points" ? "kom-points"
     : currentMetric;
   return `#${currentYear}/stage/${metricSeg}`;
 }
@@ -625,9 +642,10 @@ async function applyHash(): Promise<boolean> {
     yearSelectEl.value = year;
     if (view !== "overview") {
       currentMetric = (metric === "points" || metric === "sprint-points") ? "points"
-        : metric === "kom" ? "kom" : "gc";
+        : (metric === "kom" || metric === "kom-points") ? "kom" : "gc";
       gcDisplayMode = metric === "gc-time" ? "time" : "position";
       sprintDisplayMode = metric === "sprint-points" ? "points" : "rank";
+      komDisplayMode = metric === "kom-points" ? "points" : "rank";
       metricSelectEl.value = currentMetric;
     }
     await loadDataset(year);
@@ -983,6 +1001,13 @@ function wireControls() {
   sprintModeToggleBtn.addEventListener("click", () => {
     sprintDisplayMode = sprintDisplayMode === "points" ? "rank" : "points";
     updateSprintModeToggle();
+    updateHash();
+    drawChart();
+  });
+
+  komModeToggleBtn.addEventListener("click", () => {
+    komDisplayMode = komDisplayMode === "points" ? "rank" : "points";
+    updateKomModeToggle();
     updateHash();
     drawChart();
   });
@@ -1362,6 +1387,7 @@ function drawChart() {
   const maxStage = d3.max(stages, (s) => s.stage_number) ?? 21;
   const isGcTime = currentMetric === "gc" && gcDisplayMode === "time";
   const isSprintPoints = currentMetric === "points" && sprintDisplayMode === "points";
+  const isKomPoints = currentMetric === "kom" && komDisplayMode === "points";
 
   // Compute each rider's display series once per draw; the line generator,
   // hit paths, end dots, and end labels all read from these maps.
@@ -1383,7 +1409,7 @@ function drawChart() {
 
   xScale = d3.scaleLinear().domain([minStage, maxStage]).range([0, innerWidth]);
   yScale = d3.scaleLinear()
-    .domain(isGcTime ? [0, maxRank] : isSprintPoints ? [maxRank, 0] : [1, maxRank])
+    .domain(isGcTime ? [0, maxRank] : (isSprintPoints || isKomPoints) ? [maxRank, 0] : [1, maxRank])
     .range([0, innerHeight]);
 
   const svg = d3
@@ -1416,7 +1442,7 @@ function drawChart() {
   }
 
   // gridlines (horizontal) — "nice" ticks in GC Time / Sprint Points mode, every 10 ranks otherwise
-  const yTickValues = isGcTime || isSprintPoints
+  const yTickValues = isGcTime || isSprintPoints || isKomPoints
     ? d3.scaleLinear().domain([0, maxRank]).nice().ticks(6).filter((v) => v > 0)
     : d3.range(10, maxRank + 1, 10);
   g.append("g")
@@ -1487,17 +1513,10 @@ function drawChart() {
     .call(
       d3
         .axisLeft(yScale)
-        .tickValues(isGcTime || isSprintPoints ? [0, ...yTickValues] : [1, ...yTickValues])
-        .tickFormat((d) => isGcTime ? fmtHms(d as number) : isSprintPoints ? String(d) : `#${d}`),
+        .tickValues(isGcTime || isSprintPoints || isKomPoints ? [0, ...yTickValues] : [1, ...yTickValues])
+        .tickFormat((d) => isGcTime ? fmtHms(d as number) : (isSprintPoints || isKomPoints) ? String(d) : `#${d}`),
     );
 
-  if (currentMetric === "kom") {
-    g.append("text")
-      .attr("class", "axis-label")
-      .attr("transform", `translate(${-margin.left + 14},${innerHeight / 2}) rotate(-90)`)
-      .attr("text-anchor", "middle")
-      .text("KOM rank");
-  }
 
   const lineGen = d3
     .line<{ stage: number; rank: number | null }>()
