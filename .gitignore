@@ -17,6 +17,7 @@ pipeline/cycling.db
 
 # Raw scraped data (large — only needed to rebuild the DB from scratch)
 pipeline/tdf_*.json
+pipeline/scrapes/
 
 # macOS
 .DS_Store

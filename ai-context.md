@@ -59,6 +59,9 @@ tdf-analytics/
     ├── export_all_races_summary.py   # Builds all_races_summary.json from cycling.db + supplements
     ├── build_db.py                   # STALE/DO NOT USE for adding years — see warning below
     ├── add_pre1960.py                # The actual tool for adding ANY year additively (name is historical)
+    ├── add_stages.py                 # Automated stage addition: scrape files → JSON updates → DB → exports
+    ├── scrape_stage_template.js      # JS snippets for extracting stage data from PCS in a browser
+    ├── scrapes/                      # Per-stage scrape output files (stage_N.json)
     ├── schema.sql                    # DB schema reference
     │
     │   # Supplemental data files (all in git)
@@ -349,38 +352,45 @@ git push
 
 ## Adding stages to an in-progress year (e.g. more 2026 stages)
 
-`add_pre1960.py`'s `insert_edition()` checks `SELECT edition_id FROM race_editions WHERE year=?` and **skips the entire year if it already exists** — it has no incremental-append mode. Simply re-running `python3 add_pre1960.py 2026` after adding stages 5–8 to `tdf_2026_full.json` will print "already in DB, skipping" and do nothing.
+**Automated workflow** using `add_stages.py` + `scrape_stage_template.js`:
 
-Until a proper incremental-append mode exists, the safe process to add newly-completed stages to a year already in the DB is **delete the edition, then re-insert from a `tdf_2026_full.json` that contains every stage raced so far (not just the new ones)**:
+1. **Scrape each new stage** from PCS via the browser. For each stage N:
+   - Navigate to `https://www.procyclingstats.com/race/tour-de-france/2026/stage-N`
+   - Run the `EXTRACT_RESULTS` JS from `scrape_stage_template.js` via `javascript_tool`
+   - Read the page text (`get_page_text`) and save as `pipeline/scrapes/stage_N.json`
+   - Navigate to `.../stage-N-points`
+   - Run the `EXTRACT_POINTS` JS via `javascript_tool`
+   - Read the page text, parse the JSON, merge `sprint_points` and `kom_points` into `scrapes/stage_N.json`
 
-1. Update `tdf_2026_full.json` so its `"stages"` array contains **all** stages 1..N to date (append the newly-scraped stages to the existing ones — don't replace the file with only the new stages).
-2. Delete the existing edition (no `ON DELETE CASCADE` in `schema.sql`, so each dependent table needs its own delete, in this order):
+2. **Run `add_stages.py`** — this handles everything else automatically:
    ```bash
    cd pipeline
-   python3 -c "
-   import sqlite3
-   conn = sqlite3.connect('cycling.db')
-   year = 2026
-   ed = conn.execute('SELECT edition_id FROM race_editions WHERE year=?', (year,)).fetchone()
-   if ed:
-       edition_id = ed[0]
-       conn.execute('DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)', (edition_id,))
-       conn.execute('DELETE FROM stage_incidents WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)', (edition_id,))
-       conn.execute('DELETE FROM classification_standings WHERE edition_id=?', (edition_id,))
-       conn.execute('DELETE FROM stages WHERE edition_id=?', (edition_id,))
-       conn.execute('DELETE FROM race_editions WHERE edition_id=?', (edition_id,))
-       conn.commit()
-       print(f'Deleted edition_id={edition_id} for {year}')
-   else:
-       print(f'{year} not in DB, nothing to delete')
-   "
+   python3 add_stages.py 10 11        # stage numbers to add
+   python3 add_stages.py 10 --dry-run # preview without writing
    ```
-   Riders/teams/countries do **not** need deleting — `add_pre1960.py` uses `INSERT OR IGNORE` for those, so re-inserting is harmless.
-3. Re-run `python3 add_pre1960.py 2026` as if adding it fresh.
-4. Extend `sprint_points.json`, `kom_points_reconciled.json`, and `profile_icons.json`'s `"2026"` arrays with entries for the new stages (append — don't touch the existing entries for stages already there).
-5. Re-export (`export_gc.py`, `export_riders_index.py`, `export_all_races_summary.py`) and verify in the app.
+   It updates `tdf_2026_full.json`, `sprint_points.json`, `kom_points_reconciled.json`, `profile_icons.json`, deletes/re-inserts the year in `cycling.db`, runs all three exports, and validates.
 
-**A cleaner fix** would be to add a real incremental-append function to `add_pre1960.py` (look up the existing `edition_id`, find `MAX(stage_number)` already inserted, seed `last_known_gc` from the last stage's `stage_results` instead of an empty dict, and only insert stage rows past that number) — worth doing if this delete-and-reinsert cycle becomes a recurring source of friction over the next few weeks of 2026 stage additions.
+Each `scrapes/stage_N.json` contains:
+```json
+{
+  "n": 10,
+  "info": { "Date": "...", "Distance": "...", "Won how": "...", ... },
+  "rows": [ [rnk, gc_pos, gc_lag, bib, age, name, slug, nat, team, team_slug, uci, pnt, bonus, abs_time, gap], ... ],
+  "profile_icon": "p2",
+  "sprint_points": { "rider/slug": 25, ... },
+  "kom_points": { "rider/slug": 3, ... }
+}
+```
+
+**Key notes:**
+- `add_stages.py` safely replaces stages that already exist in the data files (idempotent)
+- The scrape files persist in `pipeline/scrapes/` so stages don't need re-scraping
+- `--scrapes-only` flag updates just the JSON files without touching the DB or running exports
+- `add_pre1960.py` is still the underlying DB inserter; `add_stages.py` orchestrates around it
+
+### Manual fallback (if add_stages.py isn't suitable)
+
+`add_pre1960.py`'s `insert_edition()` skips the entire year if it already exists in `race_editions`. The manual process is: delete the edition from all DB tables (no `ON DELETE CASCADE`), re-run `add_pre1960.py`, and manually update the supplemental JSON files. See `add_stages.py` source for the exact delete SQL.
 
 ---
 
