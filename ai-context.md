@@ -1,6 +1,6 @@
 # Cycling Analytics — AI Context
 
-Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026) and the **Giro d'Italia** (2026, all 21 stages). The 2026 Tour de France is in progress — stages are added incrementally as the race runs. The 2026 Giro d'Italia is complete (all 21 stages scraped, ingested, and exported). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026) and the **Giro d'Italia** (42 editions with data, spanning 1980–2026 plus earlier decades being added). The 2026 Tour de France is in progress — stages are added incrementally as the race runs. Historical Giro data is being added decade by decade backwards toward 1909. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
 ---
 
@@ -13,7 +13,9 @@ The app visualizes per-rider performance across every stage of multiple Grand To
 - Data: SQLite → Python export → JSON files bundled by Vite
 - Hosting: GitHub Pages, deployed via GitHub Actions on push to `main`
 
-**Multi-race support:** The frontend has a race dropdown (Tour de France / Giro d'Italia) next to the year dropdown. Each race has its own set of years. Data files are organized by subdirectory: TDF at `data/gc_by_stage_*.json`, Giro at `data/giro/gc_by_stage_*.json`. The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro). The Giro currently has 2026 (all 21 stages). The "All Races Overview" and "Riders" views currently only have TDF data.
+**Multi-race support:** The frontend has a race dropdown (Tour de France / Giro d'Italia) next to the year dropdown. Each race has its own set of years. Data files are organized by subdirectory: TDF at `data/gc_by_stage_*.json`, Giro at `data/giro/gc_by_stage_*.json`. The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro). The Giro has 42 editions with data (1980–2026, plus more being added; 2,775 riders / 446 teams as of mid-2026). The "All Races Overview" currently shows TDF data only. The "Riders" view includes Giro riders.
+
+**Giro jersey colors** differ from TDF: Pink (#E4007C) = GC, Purple (#8B1FA1) = Sprint, Blue (#0083CA) = KOM. The frontend is race-aware — `jerseyIconSvg()` returns the correct color based on `currentRace`, and `drawRiderDetail()` uses local `gcColor`/`sprintColor`/`komColor` constants (not hardcoded) so chart lines also match the correct race's colors. Jersey tooltips are also race-aware (`jerseyTooltipLabel()` returns e.g. "Pink jersey — GC winner" for Giro).
 
 **Three views:**
 
@@ -53,9 +55,11 @@ tdf-analytics/
 │           ├── ...
 │           ├── gc_by_stage_2026.json  # 113 TDF files total (lazy-loaded, one chunk each)
 │           ├── giro/                  # Giro d'Italia files in subdirectory
-│           │   └── gc_by_stage_2026.json
+│           │   ├── gc_by_stage_YEAR.json  # 42 years with data (1980–2026)
+│           │   ├── all_races_summary.json # Giro cross-year aggregate (built by export_giro_races_summary.py)
+│           │   └── riders_index.json      # Giro rider index (2,775 riders / 446 teams)
 │           ├── all_races_summary.json # Cross-year aggregate data for All Races view (TDF only currently)
-│           └── riders_index.json      # Compact cross-year rider index (lazy-loaded by Riders view)
+│           └── riders_index.json      # Compact cross-year TDF rider index (lazy-loaded by Riders view)
 └── pipeline/                         # Data pipeline — not deployed
     ├── cycling.db                    # SQLite DB (gitignored — ~50MB, keep locally)
     ├── export_gc.py                  # Main exporter: cycling.db + JSON supplements → src/data/
@@ -70,10 +74,21 @@ tdf-analytics/
     ├── schema.sql                    # DB schema reference
     │
     │   # Giro d'Italia pipeline
-    ├── ingest_giro.py                # Reads giro_scrapes/stage_N.json → inserts into cycling.db
+    ├── scrape_giro.py                # Background scraper: downloads multiple years from PCS into giro_scrapes/YEAR/
+    │                                 #   Usage: python3 scrape_giro.py 1970-1979  (range or individual years)
+    │                                 #   Saves per-stage JSON: giro_scrapes/YEAR/stage_N.json
+    ├── ingest_giro.py                # Reads giro_scrapes/YEAR/stage_N.json → inserts into cycling.db
     │                                 #   Creates race "Giro d'Italia" (race_id=2) if not present
+    │                                 #   Auto-runs fix_giro_rider_names.py at end of non-dry-run
     ├── build_giro_points.py          # Extracts sprint/KOM points from giro_scrapes/ → giro_*_points.json
-    ├── giro_scrapes/                 # Per-stage Giro scrape output files (stage_N.json, all 21 for 2026)
+    ├── fix_giro_rider_names.py       # Fixes single-word rider names in the Giro data by reconstructing
+    │                                 #   "LASTNAME Firstname" from the rider slug (e.g. rider/fausto-coppi → "Coppi Fausto")
+    │                                 #   Strips disambiguation digits (rider/pozzi2 → pozzi). Auto-run by ingest_giro.py.
+    ├── export_giro_races_summary.py  # Builds data/giro/all_races_summary.json from cycling.db (Giro only)
+    ├── export_giro_riders_index.py   # Builds data/giro/riders_index.json from exported Giro gc_by_stage files
+    ├── giro_scrapes/                 # Per-stage Giro scrape output files
+    │   ├── YEAR/stage_N.json         # Historical years organized by subdirectory (e.g. giro_scrapes/1980/stage_1.json)
+    │   ├── stage_N.json              # 2026 files at flat level (legacy layout — 2026 was scraped before year dirs existed)
     │   └── save_server.py            # Local HTTP server (localhost:8765) for saving stage JSON via POST
     ├── giro_sprint_points.json       # Giro sprint points per rider per stage (same format as sprint_points.json)
     ├── giro_kom_points.json          # Giro KOM points per rider per stage (same format as kom_points.json)
@@ -151,15 +166,30 @@ PCS website  →  tdf_YEAR_full.json  (scraped via a real browser — see note b
 
 ### Giro d'Italia pipeline
 ```
-PCS website  →  giro_scrapes/stage_N.json  (scraped via real browser, same row format as TDF)
+PCS website  →  giro_scrapes/YEAR/stage_N.json  (via scrape_giro.py for historical years)
                        ↓
                build_giro_points.py  →  giro_sprint_points.json + giro_kom_points.json
                        ↓
                ingest_giro.py  →  cycling.db  (race_id=2, "Giro d'Italia")
+                  └─ auto-runs fix_giro_rider_names.py to correct single-word names
                        ↓
                export_gc.py --race giro
                        ↓
               data/giro/gc_by_stage_YEAR.json
+                       ↓
+               export_giro_races_summary.py  →  data/giro/all_races_summary.json
+               export_giro_riders_index.py   →  data/giro/riders_index.json
+```
+
+**Full pipeline command sequence for each decade of historical Giro data:**
+```bash
+cd pipeline
+python3 scrape_giro.py 1970-1979         # background-friendly; saves to giro_scrapes/YEAR/
+python3 build_giro_points.py
+python3 ingest_giro.py 1970-1979         # also accepts individual years or no-arg for all
+python3 export_gc.py --race giro
+python3 export_giro_races_summary.py
+python3 export_giro_riders_index.py
 ```
 
 Both pipelines feed into the same `cycling.db` (the `races` table distinguishes them: race_id=1 = TDF, race_id=2 = Giro). The Giro pipeline is simpler because it stores sprint/KOM points inside each stage scrape file (not in a separate `tdf_YEAR_full.json` bundle). `export_gc.py --race giro` automatically picks up `giro_sprint_points.json` and `giro_kom_points.json` instead of the TDF versions.
@@ -311,8 +341,10 @@ python3 export_gc.py --year 2026     # single-year only (much faster — avoids 
 # Giro exports
 python3 export_gc.py --race giro                # all Giro years → src/data/giro/
 python3 export_gc.py --race giro --year 2026    # single Giro year
-# Shared exports
-python3 export_riders_index.py       # rebuilds riders_index.json (Riders page cross-year index)
+python3 export_giro_races_summary.py            # rebuilds data/giro/all_races_summary.json
+python3 export_giro_riders_index.py             # rebuilds data/giro/riders_index.json
+# TDF shared exports
+python3 export_riders_index.py       # rebuilds riders_index.json (TDF Riders page cross-year index)
 python3 export_all_races_summary.py  # rebuilds all_races_summary.json (All Races Overview data — TDF only currently)
 python3 validate_exports.py          # check all exported files (0 errors = good; warnings = informational)
 python3 validate_exports.py --year 2026  # validate just one year
@@ -434,6 +466,44 @@ Each `scrapes/stage_N.json` contains:
 
 The Giro pipeline is separate from the TDF pipeline (different scripts, different scrape directory, different supplemental files), but uses the same DB schema and export format.
 
+### Historical Giro data — decade-by-decade scraping
+
+Historical Giro editions (pre-2026) are added decade by decade using `scrape_giro.py`, which scrapes PCS in the background (no browser required — uses urllib with delays to avoid Cloudflare blocks). It saves to `giro_scrapes/YEAR/stage_N.json` subdirectory layout.
+
+```bash
+# Start scraper in background (run from pipeline/ directory)
+python3 scrape_giro.py 1970-1979 > /tmp/giro_1970s.log 2>&1 &
+echo "PID: $!"
+
+# Monitor progress
+tail -f /tmp/giro_1970s.log
+
+# After scraper finishes, run the full pipeline:
+python3 build_giro_points.py
+python3 ingest_giro.py 1970-1979
+python3 export_gc.py --race giro
+python3 export_giro_races_summary.py
+python3 export_giro_riders_index.py
+```
+
+**Progress as of 2026-07-13:** 42 editions with data spanning 1980–2026 (2,775 riders / 446 teams). Next: 1970–1979, then 1960s, 1950s, 1940s, 1930s, 1920s, 1910s — back to 1909 (first Giro).
+
+### Rider name quality and fix script
+
+PCS stage result pages for historical Giro years can produce single-word names (first name only) due to two page formats:
+1. `<span>LASTNAME</span> Firstname` — newer format, correctly extracted by `scrape_giro.py`'s anchor-based td_text extraction
+2. `<img flag/> Firstname` — older format, only the first name appears even with the correct extraction
+
+`fix_giro_rider_names.py` handles case 2 by reconstructing `"LASTNAME Firstname"` from the rider's slug (e.g. `rider/fausto-coppi` → `"Coppi Fausto"`). It:
+- Finds all Giro riders in the DB with a single-word `full_name`
+- Identifies which slug parts are the first name (by fuzzy-matching against the current scraped name, preserving accent characters)
+- Builds the corrected name with last name uppercased + original first name
+- Strips disambiguation suffixes (e.g. `rider/pozzi2` → last name `Pozzi`, `rider/sierra-1` → drops the `1`)
+
+`ingest_giro.py` automatically runs this script at the end of every non-dry-run ingest. Run it standalone with `python3 fix_giro_rider_names.py [--dry-run]`.
+
+**`INSERT OR IGNORE` name precedence:** The `riders` table uses `INSERT OR IGNORE`, so the **first insert wins**. TDF-sourced rider names (which came from TDF scraping) take precedence over Giro-scraped names for any rider who raced both.
+
 ### Scraping new Giro stages
 
 PCS URLs follow the same pattern as TDF — just substitute `giro-d-italia` for `tour-de-france`:
@@ -492,6 +562,12 @@ python3 validate_exports.py --year 2026
 ```
 
 > **Note:** Unlike the TDF pipeline which has `add_stages.py` for incremental stage addition, the Giro pipeline currently requires a full delete-and-reimport cycle when adding new stages. This is simpler but means all `giro_scrapes/stage_N.json` files must be present for a reimport.
+
+After ingesting, also run:
+```bash
+python3 export_giro_races_summary.py   # updates data/giro/all_races_summary.json
+python3 export_giro_riders_index.py    # updates data/giro/riders_index.json
+```
 
 ---
 
