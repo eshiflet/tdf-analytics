@@ -144,8 +144,12 @@ const nationFilterBtn = document.getElementById("nation-filter-btn") as HTMLButt
 const nationFilterPanel = document.getElementById("nation-filter-panel") as HTMLDivElement;
 
 import allRacesSummaryRaw from "./data/all_races_summary.json";
+import giroAllRacesSummaryRaw from "./data/giro/all_races_summary.json";
 interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; slowestFinisherTimeSeconds: number | null; }
-const ALL_RACES: RaceSummary[] = allRacesSummaryRaw as RaceSummary[];
+const ALL_RACES_BY_RACE: Record<RaceId, RaceSummary[]> = {
+  tdf: allRacesSummaryRaw as RaceSummary[],
+  giro: giroAllRacesSummaryRaw as RaceSummary[],
+};
 
 let currentView: "stage" | "overview" | "allraces" | "riders" = "stage";
 
@@ -411,6 +415,11 @@ function buildRaceSelect() {
       yearSelectEl.appendChild(opt);
     }
     yearSelectEl.value = currentYear;
+    // Reset riders filter state so stale year/team selections don't carry over
+    ridersFilterYear = "";
+    ridersFilterTeam = "";
+    ridersFilterNationality = "";
+    ridersFilterJerseys.clear();
     updateHash();
     loadDataset(currentYear).catch(showLoadError);
   });
@@ -585,6 +594,7 @@ async function loadDataset(year: string) {
   buildLegend();
   if (currentView === "stage") drawChart();
   else if (currentView === "overview") drawOverview();
+  else if (currentView === "allraces") drawAllRacesOverview();
 }
 
 function switchView(view: "stage" | "overview" | "allraces" | "riders") {
@@ -661,7 +671,7 @@ async function applyHash(): Promise<boolean> {
       if (parts[1]) {
         await ensureRiderIndex();
         const id = `rider/${parts[1]}`;
-        if (riderIndex.has(id)) {
+        if (riderIndex().has(id)) {
           switchView("riders"); // renders grid synchronously (index is built)
           drawRiderDetail(id);
           return true;
@@ -693,6 +703,9 @@ async function applyHash(): Promise<boolean> {
 
 function drawAllRacesOverview() {
   allRacesChartEl.innerHTML = "";
+
+  const ALL_RACES = ALL_RACES_BY_RACE[currentRace];
+  const raceName = currentRace === "tdf" ? "Tour de France" : "Giro d'Italia";
 
   const containerRect = allRacesChartEl.getBoundingClientRect();
   const totalWidth = Math.max(containerRect.width || 800, 600);
@@ -774,7 +787,8 @@ function drawAllRacesOverview() {
     .domain([minYear, maxYear])
     .range([0, innerWidth]);
 
-  const tickYears = d3.range(1910, maxYear + 1, 10).filter((y) => y <= maxYear);
+  const firstTickDecade = Math.ceil(minYear / 10) * 10;
+  const tickYears = d3.range(firstTickDecade, maxYear + 1, 10).filter((y) => y <= maxYear);
 
   // One crosshair line per panel — populated during the forEach below.
   // Event handlers close over this array by reference, so by the time a
@@ -811,8 +825,10 @@ function drawAllRacesOverview() {
       .text(panel.yLabel);
 
     // War-year shaded bands (draw before data lines so they sit behind)
-    [{ start: 1914.5, end: 1918.5, label: "WWI" },
-     { start: 1939.5, end: 1946.5, label: "WWII" }].forEach(({ start, end, label }) => {
+    const warBands = currentRace === "tdf"
+      ? [{ start: 1914.5, end: 1918.5, label: "WWI" }, { start: 1939.5, end: 1946.5, label: "WWII" }]
+      : [{ start: 1914.5, end: 1918.5, label: "WWI" }, { start: 1940.5, end: 1945.5, label: "WWII" }];
+    warBands.forEach(({ start, end, label }) => {
       const bx = xScale(start);
       const bw = xScale(end) - bx;
       g.append("rect")
@@ -868,7 +884,7 @@ function drawAllRacesOverview() {
         .on("mousemove", (event: MouseEvent, r: RaceSummary) => {
           const val = s.value(r)!;
           tooltipEl.innerHTML = `
-            <div class="t-name">${r.year} Tour de France</div>
+            <div class="t-name">${r.year} ${raceName}</div>
             <div>${s.label}: ${s.fmt(val)}</div>
           `;
           positionTooltip(event);
@@ -1846,13 +1862,24 @@ interface RiderEntry {
   teams: Set<string>;
 }
 
-const riderIndex = new Map<string, RiderEntry>();
-let allTeamsSorted: string[] = [];
-let allNationalitiesSorted: string[] = [];
+const riderIndexByRace: Record<RaceId, Map<string, RiderEntry>> = { tdf: new Map(), giro: new Map() };
+const allTeamsSortedByRace: Record<RaceId, string[]> = { tdf: [], giro: [] };
+const allNationalitiesSortedByRace: Record<RaceId, string[]> = { tdf: [], giro: [] };
+
+// Convenience accessors for the current race
+function riderIndex() { return riderIndexByRace[currentRace]; }
+function allTeamsSorted() { return allTeamsSortedByRace[currentRace]; }
+function allNationalitiesSorted() { return allNationalitiesSortedByRace[currentRace]; }
 
 // URL-only import (see the year-data comment up top for why we fetch instead
 // of importing the JSON as a module).
 import ridersIndexUrl from "./data/riders_index.json?url";
+import giroRidersIndexUrl from "./data/giro/riders_index.json?url";
+
+const RIDERS_INDEX_URL: Record<RaceId, string> = {
+  tdf: ridersIndexUrl,
+  giro: giroRidersIndexUrl,
+};
 
 // Compact prebuilt index (pipeline/export_riders_index.py): one small file
 // instead of reading all 113 per-year datasets just to populate the Riders
@@ -1873,12 +1900,14 @@ type RawRiderIndex = {
   riders: Record<string, { n: string; c: string | null; yw?: number[]; y: Record<string, RawYearTuple> }>;
 };
 
-let riderIndexBuilt = false;
+const riderIndexBuilt: Record<RaceId, boolean> = { tdf: false, giro: false };
 
 async function ensureRiderIndex(): Promise<void> {
-  if (riderIndexBuilt) return;
-  const raw = await fetchJson<RawRiderIndex>(ridersIndexUrl);
+  if (riderIndexBuilt[currentRace]) return;
+  const race = currentRace;
+  const raw = await fetchJson<RawRiderIndex>(RIDERS_INDEX_URL[race]);
   const teamTable = raw.teams;
+  const index = riderIndexByRace[race];
   for (const [slug, rec] of Object.entries(raw.riders)) {
     const id = `rider/${slug}`;
     const years = new Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>();
@@ -1893,13 +1922,13 @@ async function ensureRiderIndex(): Promise<void> {
       });
       if (team) teams.add(team);
     }
-    riderIndex.set(id, { id, name: rec.n, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams });
+    index.set(id, { id, name: rec.n, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams });
   }
-  allTeamsSorted = [...teamTable].sort();
-  allNationalitiesSorted = [...new Set(
-    [...riderIndex.values()].map((r) => r.nationality).filter((n): n is string => !!n),
+  allTeamsSortedByRace[race] = [...teamTable].sort();
+  allNationalitiesSortedByRace[race] = [...new Set(
+    [...index.values()].map((r) => r.nationality).filter((n): n is string => !!n),
   )].sort();
-  riderIndexBuilt = true;
+  riderIndexBuilt[race] = true;
 }
 
 // ─── Riders Page ─────────────────────────────────────────────────────────────
@@ -1914,7 +1943,7 @@ const ridersFilterJerseys = new Set<JerseyCategory>();
 function filteredRiders(): RiderEntry[] {
   const q = ridersSearchQuery.toLowerCase();
   const yr = ridersFilterYear ? parseInt(ridersFilterYear) : null;
-  return [...riderIndex.values()]
+  return [...riderIndex().values()]
     .filter((e) => {
       if (q && !e.name.toLowerCase().includes(q)) return false;
       if (yr !== null && !e.years.has(yr)) return false;
@@ -1935,7 +1964,7 @@ async function drawRidersPage() {
   currentRiderId = null;
   updateHash();
   ridersChartEl.innerHTML = "";
-  if (!riderIndexBuilt) {
+  if (!riderIndexBuilt[currentRace]) {
     const loading = document.createElement("div");
     loading.className = "riders-count-label";
     loading.textContent = "Loading riders…";
@@ -1967,7 +1996,7 @@ async function drawRidersPage() {
 
   const teamSel = document.createElement("select");
   teamSel.className = "riders-filter-select";
-  [["", "All teams"], ...allTeamsSorted.map((t) => [t, t])].forEach(([val, label]) => {
+  [["", "All teams"], ...allTeamsSorted().map((t) => [t, t])].forEach(([val, label]) => {
     const opt = document.createElement("option");
     opt.value = val;
     opt.textContent = label;
@@ -1977,7 +2006,7 @@ async function drawRidersPage() {
 
   const nationalitySel = document.createElement("select");
   nationalitySel.className = "riders-filter-select";
-  [["", "All nationalities"], ...allNationalitiesSorted.map((n) => [n, n])].forEach(([val, label]) => {
+  [["", "All nationalities"], ...allNationalitiesSorted().map((n) => [n, n])].forEach(([val, label]) => {
     const opt = document.createElement("option");
     opt.value = val;
     opt.textContent = label;
@@ -1985,10 +2014,12 @@ async function drawRidersPage() {
   });
   nationalitySel.value = ridersFilterNationality;
 
-  // Jersey filter toggles — AND semantics: selecting more than one narrows
-  // to riders who've won every selected category, not any one of them.
+  // Jersey filter toggles — TDF only (Giro classification data not yet tracked).
+  // AND semantics: selecting more than one narrows to riders who've won every
+  // selected category, not any one of them.
   const jerseyFilterGroup = document.createElement("div");
   jerseyFilterGroup.className = "jersey-filter-group";
+  if (currentRace !== "tdf") jerseyFilterGroup.style.display = "none";
   const jerseyFilterBtns = (Object.keys(JERSEY_LABELS) as JerseyCategory[]).map((category) => {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -2074,7 +2105,7 @@ async function drawRidersPage() {
 
 function drawRiderDetail(riderId: string) {
   ridersChartEl.innerHTML = "";
-  const entry = riderIndex.get(riderId);
+  const entry = riderIndex().get(riderId);
   if (!entry) return;
   currentRiderId = riderId;
   updateHash();
