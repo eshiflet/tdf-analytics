@@ -2,12 +2,15 @@
 """
 Ingest scraped Giro d'Italia stage data into cycling.db.
 
-Reads JSON files from pipeline/giro_scrapes/stage_N.json (same row format
-as TDF scrapes) and inserts into the existing multi-race schema.
+Reads JSON files from pipeline/giro_scrapes/YEAR/stage_N.json (or flat
+giro_scrapes/stage_N.json for legacy 2026 data) and inserts into the
+existing multi-race schema.
 
 Usage:
-  python3 ingest_giro.py              # all stage files found
-  python3 ingest_giro.py --dry-run    # show what would be inserted
+  python3 ingest_giro.py                    # all years with stage files
+  python3 ingest_giro.py 1990 1991 1992     # specific years only
+  python3 ingest_giro.py 1990-2000          # year range
+  python3 ingest_giro.py --dry-run          # show what would be inserted
 """
 
 import json
@@ -22,7 +25,6 @@ DB_PATH = os.path.join(HERE, "cycling.db")
 SCRAPES_DIR = os.path.join(HERE, "giro_scrapes")
 
 DRY_RUN = "--dry-run" in sys.argv
-YEAR = 2026
 
 ICON_TO_ROUTE = {"p1": "F", "p2": "H", "p3": "H", "p4": "M", "p5": "M"}
 
@@ -84,53 +86,70 @@ def detect_route_type(icon: str, won_how: str) -> str:
     return ICON_TO_ROUTE.get(icon or "p1", "F")
 
 
-def main():
-    stage_files = sorted(glob(os.path.join(SCRAPES_DIR, "stage_*.json")))
-    if not stage_files:
-        print("No stage files found in", SCRAPES_DIR)
-        sys.exit(1)
+def parse_year_args(args: list[str]) -> list[int]:
+    years = []
+    for a in args:
+        if a.startswith("-"):
+            continue
+        if "-" in a and not a.startswith("-"):
+            parts = a.split("-")
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                years.extend(range(int(parts[0]), int(parts[1]) + 1))
+                continue
+        if a.isdigit():
+            years.append(int(a))
+    return sorted(set(years))
 
-    print(f"Found {len(stage_files)} stage file(s)")
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.row_factory = sqlite3.Row
+def find_stage_files_for_year(year: int) -> list[str]:
+    """Find stage files for a year, checking year subdir first, then flat layout for 2026."""
+    year_dir = os.path.join(SCRAPES_DIR, str(year))
+    files = sorted(glob(os.path.join(year_dir, "stage_*.json")))
+    if files:
+        return files
+    if year == 2026:
+        return sorted(glob(os.path.join(SCRAPES_DIR, "stage_*.json")))
+    return []
+
+
+def discover_years() -> list[int]:
+    """Find all years that have scraped stage files."""
+    years = set()
+    for entry in os.listdir(SCRAPES_DIR):
+        if entry.isdigit() and os.path.isdir(os.path.join(SCRAPES_DIR, entry)):
+            files = glob(os.path.join(SCRAPES_DIR, entry, "stage_*.json"))
+            if files:
+                years.add(int(entry))
+    if glob(os.path.join(SCRAPES_DIR, "stage_*.json")):
+        years.add(2026)
+    return sorted(years)
+
+
+def ingest_year(conn, race_id: int, year: int, stage_files: list[str]) -> int:
+    """Ingest one year's stage files. Returns total results inserted."""
     cur = conn.cursor()
-
-    # Ensure Giro d'Italia exists in races table
-    race_row = cur.execute("SELECT race_id FROM races WHERE name = ?", ("Giro d'Italia",)).fetchone()
-    if not race_row:
-        cur.execute(
-            "INSERT INTO races (name, country, race_type) VALUES (?, ?, ?)",
-            ("Giro d'Italia", "Italy", "stage_race"),
-        )
-        race_id = cur.lastrowid
-        print(f"Created race 'Giro d'Italia' (race_id={race_id})")
-    else:
-        race_id = race_row["race_id"]
-        print(f"Using existing Giro d'Italia (race_id={race_id})")
 
     # Check if edition already exists
     existing = cur.execute(
         "SELECT edition_id FROM race_editions WHERE race_id=? AND year=?",
-        (race_id, YEAR),
+        (race_id, year),
     ).fetchone()
     if existing:
-        print(f"Edition {YEAR} already exists (edition_id={existing[0]}). Delete it first to re-import.")
-        conn.close()
-        sys.exit(1)
+        eid = existing[0]
+        cur.execute("DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
+        cur.execute("DELETE FROM stages WHERE edition_id=?", (eid,))
+        cur.execute("DELETE FROM race_editions WHERE edition_id=?", (eid,))
+        conn.commit()
 
     if DRY_RUN:
-        print(f"[DRY RUN] Would insert {YEAR} Giro d'Italia with {len(stage_files)} stages")
-        conn.close()
-        return
+        print(f"  [DRY RUN] Would insert {year} Giro d'Italia with {len(stage_files)} stages")
+        return 0
 
     cur.execute(
         "INSERT INTO race_editions (race_id, year, edition_name) VALUES (?,?,?)",
-        (race_id, YEAR, f"{YEAR} Giro d'Italia"),
+        (race_id, year, f"{year} Giro d'Italia"),
     )
     edition_id = cur.lastrowid
-    print(f"Created edition {YEAR} (edition_id={edition_id})")
 
     # Preload existing entities
     countries_seen = {r["code"] for r in cur.execute("SELECT code FROM countries")}
@@ -278,8 +297,50 @@ def main():
         print(f"  Stage {n}: {len(rows)} rows inserted")
 
     conn.commit()
-    print(f"\nDone: {total_results} stage results for {YEAR} Giro d'Italia")
+    return total_results
+
+
+def main():
+    args = sys.argv[1:]
+    year_args = parse_year_args(args)
+    years = year_args if year_args else discover_years()
+
+    if not years:
+        print("No stage files found in", SCRAPES_DIR)
+        sys.exit(1)
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    race_row = cur.execute("SELECT race_id FROM races WHERE name = ?", ("Giro d'Italia",)).fetchone()
+    if not race_row:
+        cur.execute(
+            "INSERT INTO races (name, country, race_type) VALUES (?, ?, ?)",
+            ("Giro d'Italia", "Italy", "stage_race"),
+        )
+        conn.commit()
+        race_id = cur.execute("SELECT race_id FROM races WHERE name = ?", ("Giro d'Italia",)).fetchone()[0]
+        print(f"Created race 'Giro d'Italia' (race_id={race_id})")
+    else:
+        race_id = race_row["race_id"]
+        print(f"Using existing Giro d'Italia (race_id={race_id})")
+
+    grand_total = 0
+    for year in years:
+        stage_files = find_stage_files_for_year(year)
+        if not stage_files:
+            print(f"{year}: no stage files found, skipping")
+            continue
+        print(f"\n{year}: {len(stage_files)} stage file(s)")
+        total = ingest_year(conn, race_id, year, stage_files)
+        grand_total += total
+        if not DRY_RUN:
+            print(f"  {year}: {total} results inserted")
+
     conn.close()
+    print(f"\nDone: {grand_total} total stage results across {len(years)} year(s)")
 
 
 if __name__ == "__main__":
