@@ -2297,7 +2297,7 @@ function drawRiderDetail(riderId: string) {
       const sprintPart = d.sprintRank < 9999 ? `<div style="color:#22c55e">Sprint #${d.sprintRank}</div>` : "";
       const komPart = d.komRank < 9999 ? `<div style="color:#ef4444">KOM #${d.komRank}</div>` : "";
       tooltipEl.innerHTML = `
-        <div class="t-name">${d.year} Tour de France</div>
+        <div class="t-name">${d.year} ${currentRace === "tdf" ? "Tour de France" : "Giro d'Italia"}</div>
         <div class="t-team">${d.team ?? "—"}</div>
         ${gcPart}${sprintPart}${komPart}
         <div style="color:var(--text-dim);font-size:11px">Click to view stage chart</div>
