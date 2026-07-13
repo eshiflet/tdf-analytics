@@ -1150,7 +1150,12 @@ function komJerseySvg(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.3em" height="1.3em"><defs><clipPath id="${clipId}"><path d="${JERSEY_PATH}"/></clipPath></defs><path d="${JERSEY_PATH}" fill="#FFFFFF" stroke="#888888" stroke-width="1" stroke-linejoin="round"/><g clip-path="url(#${clipId})">${dots}</g></svg>`;
 }
 
-const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint (points) winner", kom: "KOM winner", youth: "Young rider winner" } as const;
+const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint winner", kom: "KOM winner", youth: "Young rider winner" } as const;
+const JERSEY_TOOLTIP_LABELS_TDF = { gc: "Yellow jersey — GC winner", sprint: "Green jersey — Sprint winner", kom: "Polka dot jersey — KOM winner", youth: "White jersey — Young rider winner" } as const;
+const JERSEY_TOOLTIP_LABELS_GIRO = { gc: "Pink jersey — GC winner", sprint: "Purple jersey — Sprint winner", kom: "Blue jersey — KOM winner", youth: "White jersey — Young rider winner" } as const;
+function jerseyTooltipLabel(category: JerseyCategory): string {
+  return (currentRace === "giro" ? JERSEY_TOOLTIP_LABELS_GIRO : JERSEY_TOOLTIP_LABELS_TDF)[category];
+}
 
 // Doping notes shown next to GC jersey years on the rider detail page.
 const DOPING_GC_NOTES: Record<string, string> = {
@@ -1180,9 +1185,15 @@ function jerseyYearsWon(entry: RiderEntry): Record<JerseyCategory, number[]> {
 }
 
 function jerseyIconSvg(category: JerseyCategory): string {
-  return category === "gc" ? jerseySvg("#FFD400")
-    : category === "sprint" ? jerseySvg("#3FA535")
-    : category === "kom" ? komJerseySvg()
+  if (currentRace === "giro") {
+    return category === "gc"     ? jerseySvg("#E4007C")
+      : category === "sprint"    ? jerseySvg("#8B1FA1")
+      : category === "kom"       ? jerseySvg("#0083CA")
+      : jerseySvg("#FFFFFF", "#888888");
+  }
+  return category === "gc"    ? jerseySvg("#FFD400")
+    : category === "sprint"   ? jerseySvg("#3FA535")
+    : category === "kom"      ? komJerseySvg()
     : jerseySvg("#FFFFFF", "#888888");
 }
 
@@ -1209,8 +1220,12 @@ function jerseyIconsWithYearsEl(entry: RiderEntry): HTMLSpanElement[] {
     if (years[category].length === 0) continue;
     const icon = document.createElement("span");
     icon.className = "jersey-icon";
-    icon.title = JERSEY_LABELS[category];
     icon.innerHTML = jerseyIconSvg(category);
+    icon.addEventListener("mouseenter", (e) => {
+      tooltipEl.innerHTML = `<div class="t-name">${jerseyTooltipLabel(category)}</div>`;
+      positionTooltip(e as MouseEvent);
+    });
+    icon.addEventListener("mouseleave", () => { tooltipEl.hidden = true; });
     out.push(icon);
     const yearsEl = document.createElement("span");
     yearsEl.className = "jersey-years";
