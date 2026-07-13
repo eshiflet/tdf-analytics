@@ -253,8 +253,8 @@ def parse_rows(table_html: str) -> list[list]:
                 if rider_slug.startswith("/"):
                     rider_slug = rider_slug[1:]
 
-                name_m = re.search(r'>([^<]+)</a>', rtd)
-                rider_name = name_m.group(1).strip() if name_m else ""
+                anchor_m = re.search(r'<a[^>]*href="[^"]*rider/[^"]*"[^>]*>(.*?)</a>', rtd, re.DOTALL)
+                rider_name = td_text(anchor_m.group(1)) if anchor_m else ""
 
                 nat_m = re.search(r'class="flag ([a-z]{2})"', rtd)
                 nat = nat_m.group(1) if nat_m else ""

@@ -342,6 +342,15 @@ def main():
     conn.close()
     print(f"\nDone: {grand_total} total stage results across {len(years)} year(s)")
 
+    if not DRY_RUN:
+        import importlib.util
+        fix_path = os.path.join(HERE, "fix_giro_rider_names.py")
+        spec = importlib.util.spec_from_file_location("fix_giro_rider_names", fix_path)
+        fix_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(fix_mod)
+        print()
+        fix_mod.main()
+
 
 if __name__ == "__main__":
     main()
