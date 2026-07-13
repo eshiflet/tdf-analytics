@@ -9,8 +9,9 @@ DB_PATH = os.path.join(HERE, "cycling.db")
 
 # Sprint scoring changed from golf (low=best) to modern (high=best) in 1959
 GOLF_SPRINT_YEARS = set(range(1953, 1959))
+
+# Default paths (TDF) — overridden per-race in __main__
 SPRINT_POINTS_PATH = os.path.join(HERE, "sprint_points.json")
-# Use reconciled KOM data if available, fall back to raw PCS scrape
 _KOM_RECONCILED = os.path.join(HERE, "kom_points_reconciled.json")
 _KOM_RAW        = os.path.join(HERE, "kom_points.json")
 KOM_POINTS_PATH = _KOM_RECONCILED if os.path.exists(_KOM_RECONCILED) else _KOM_RAW
@@ -63,14 +64,19 @@ def load_kom_points():
     return _kom_points_cache
 
 
-def export_year(year, out_path):
+def export_year(year, out_path, race_id=None):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    cur.execute(
-        "SELECT edition_id FROM race_editions WHERE year = ?", (year,)
-    )
+    if race_id is not None:
+        cur.execute(
+            "SELECT edition_id FROM race_editions WHERE year = ? AND race_id = ?", (year, race_id)
+        )
+    else:
+        cur.execute(
+            "SELECT edition_id FROM race_editions WHERE year = ?", (year,)
+        )
     row = cur.fetchone()
     if not row:
         print(f"No edition found for {year}")
@@ -317,8 +323,49 @@ def export_year(year, out_path):
 
 
 if __name__ == "__main__":
+    # Determine which race to export
+    race_name = "Tour de France"
+    race_subdir = ""
+    if "--race" in sys.argv:
+        race_arg = sys.argv[sys.argv.index("--race") + 1]
+        if race_arg == "giro":
+            race_name = "Giro d'Italia"
+            race_subdir = "giro"
+        elif race_arg == "tdf":
+            race_name = "Tour de France"
+            race_subdir = ""
+        else:
+            sys.exit(f"error: unknown race '{race_arg}' (use 'tdf' or 'giro')")
+
+    # Override sprint/KOM paths for non-TDF races
+    if race_subdir:
+        sp = os.path.join(HERE, f"{race_subdir}_sprint_points.json")
+        if os.path.exists(sp):
+            SPRINT_POINTS_PATH = sp
+        else:
+            SPRINT_POINTS_PATH = "__nonexistent__"
+        kp = os.path.join(HERE, f"{race_subdir}_kom_points.json")
+        if os.path.exists(kp):
+            KOM_POINTS_PATH = kp
+        else:
+            KOM_POINTS_PATH = "__nonexistent__"
+        GC_ALL_TIMES_PATH = "__nonexistent__"
+        GC_WINNER_TIMES_PATH = "__nonexistent__"
+        _sprint_points_cache = None
+        _kom_points_cache = None
+        _gc_all_times_cache = None
+        _gc_winner_times_cache = None
+
     conn = sqlite3.connect(DB_PATH)
-    years = [r[0] for r in conn.execute("SELECT year FROM race_editions ORDER BY year")]
+    conn.row_factory = sqlite3.Row
+    race_row = conn.execute("SELECT race_id FROM races WHERE name = ?", (race_name,)).fetchone()
+    if not race_row:
+        sys.exit(f"error: race '{race_name}' not found in database")
+    race_id = race_row["race_id"]
+
+    years = [r[0] for r in conn.execute(
+        "SELECT year FROM race_editions WHERE race_id = ? ORDER BY year", (race_id,)
+    )]
     conn.close()
 
     if "--year" in sys.argv:
@@ -328,6 +375,8 @@ if __name__ == "__main__":
         years = [wanted]
 
     out_dir = os.path.join(HERE, "..", "cycling-app", "src", "data")
+    if race_subdir:
+        out_dir = os.path.join(out_dir, race_subdir)
     os.makedirs(out_dir, exist_ok=True)
     for year in years:
-        export_year(year, os.path.join(out_dir, f"gc_by_stage_{year}.json"))
+        export_year(year, os.path.join(out_dir, f"gc_by_stage_{year}.json"), race_id=race_id)

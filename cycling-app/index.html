@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Tour de France analytics for races, stages, and riders from 1903 to present" />
-    <meta property="og:title" content="Cycling Analytics — Tour de France" />
-    <meta property="og:description" content="Tour de France analytics for races, stages, and riders from 1903 to present" />
+    <meta name="description" content="Cycling analytics for Grand Tour races, stages, and riders — Tour de France, Giro d'Italia, and more" />
+    <meta property="og:title" content="Cycling Analytics" />
+    <meta property="og:description" content="Cycling analytics for Grand Tour races, stages, and riders — Tour de France, Giro d'Italia, and more" />
     <meta property="og:type" content="website" />
-    <title>Cycling Analytics — Tour de France</title>
+    <title>Cycling Analytics</title>
     <link rel="icon" href="/favicon.ico" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
@@ -16,7 +16,10 @@
       <header class="topbar">
         <div class="topbar-row">
           <h1>
-            Tour de France
+            <select id="race-select" class="race-select">
+              <option value="tdf">Tour de France</option>
+              <option value="giro">Giro d'Italia</option>
+            </select>
             <select id="year-select" class="year-select"></select>
           </h1>
           <nav class="view-nav">

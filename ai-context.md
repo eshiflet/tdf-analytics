@@ -1,17 +1,19 @@
-# TDF Analytics — AI Context
+# Cycling Analytics — AI Context
 
-Interactive Tour de France visualizer covering all 113 editions from 1903–2026 (2026 in progress — stages are added incrementally as the race runs). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026) and the **Giro d'Italia** (2026, all 21 stages). The 2026 Tour de France is in progress — stages are added incrementally as the race runs. The 2026 Giro d'Italia is complete (all 21 stages scraped, ingested, and exported). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
 ---
 
 ## Project Overview
 
-The app visualizes per-rider performance across every stage of each Tour de France edition. Users select a year and metric, then see a bump chart of every rider's ranking after each stage, with a sidebar legend and hover tooltips.
+The app visualizes per-rider performance across every stage of multiple Grand Tour races. Users select a **race** (Tour de France or Giro d'Italia) and **year** via dropdowns, then pick a metric and see a bump chart of every rider's ranking after each stage, with a sidebar legend and hover tooltips.
 
 **Tech stack:**
 - Frontend: Vite + TypeScript + D3.js (static site, no framework)
 - Data: SQLite → Python export → JSON files bundled by Vite
 - Hosting: GitHub Pages, deployed via GitHub Actions on push to `main`
+
+**Multi-race support:** The frontend has a race dropdown (Tour de France / Giro d'Italia) next to the year dropdown. Each race has its own set of years. Data files are organized by subdirectory: TDF at `data/gc_by_stage_*.json`, Giro at `data/giro/gc_by_stage_*.json`. The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro). The Giro currently has 2026 (all 21 stages). The "All Races Overview" and "Riders" views currently only have TDF data.
 
 **Three views:**
 
@@ -47,24 +49,36 @@ tdf-analytics/
 │       ├── types.ts                  # TypeScript interfaces
 │       ├── style.css                 # All styles
 │       └── data/                     # Generated JSON — one per year + summary
-│           ├── gc_by_stage_1903.json
+│           ├── gc_by_stage_1903.json  # TDF files live at top level
 │           ├── ...
-│           ├── gc_by_stage_2026.json  # 113 files total (lazy-loaded, one chunk each)
-│           ├── all_races_summary.json # Cross-year aggregate data for All Races view
+│           ├── gc_by_stage_2026.json  # 113 TDF files total (lazy-loaded, one chunk each)
+│           ├── giro/                  # Giro d'Italia files in subdirectory
+│           │   └── gc_by_stage_2026.json
+│           ├── all_races_summary.json # Cross-year aggregate data for All Races view (TDF only currently)
 │           └── riders_index.json      # Compact cross-year rider index (lazy-loaded by Riders view)
 └── pipeline/                         # Data pipeline — not deployed
     ├── cycling.db                    # SQLite DB (gitignored — ~50MB, keep locally)
-    ├── export_gc.py                  # Main exporter: cycling.db + JSON supplements → src/data/ (--year N for single year)
+    ├── export_gc.py                  # Main exporter: cycling.db + JSON supplements → src/data/
+    │                                 #   --year N for single year, --race giro|tdf to select race
     ├── export_riders_index.py        # Builds riders_index.json from the exported per-year files
     ├── export_all_races_summary.py   # Builds all_races_summary.json from cycling.db + supplements
     ├── build_db.py                   # STALE/DO NOT USE for adding years — see warning below
-    ├── add_pre1960.py                # The actual tool for adding ANY year additively (name is historical)
-    ├── add_stages.py                 # Automated stage addition: scrape files → JSON updates → DB → exports
+    ├── add_pre1960.py                # The actual tool for adding ANY TDF year additively (name is historical)
+    ├── add_stages.py                 # Automated TDF stage addition: scrape files → JSON updates → DB → exports
     ├── scrape_stage_template.js      # JS snippets for extracting stage data from PCS in a browser
-    ├── scrapes/                      # Per-stage scrape output files (stage_N.json)
+    ├── scrapes/                      # Per-stage TDF scrape output files (stage_N.json)
     ├── schema.sql                    # DB schema reference
     │
-    │   # Supplemental data files (all in git)
+    │   # Giro d'Italia pipeline
+    ├── ingest_giro.py                # Reads giro_scrapes/stage_N.json → inserts into cycling.db
+    │                                 #   Creates race "Giro d'Italia" (race_id=2) if not present
+    ├── build_giro_points.py          # Extracts sprint/KOM points from giro_scrapes/ → giro_*_points.json
+    ├── giro_scrapes/                 # Per-stage Giro scrape output files (stage_N.json, all 21 for 2026)
+    │   └── save_server.py            # Local HTTP server (localhost:8765) for saving stage JSON via POST
+    ├── giro_sprint_points.json       # Giro sprint points per rider per stage (same format as sprint_points.json)
+    ├── giro_kom_points.json          # Giro KOM points per rider per stage (same format as kom_points.json)
+    │
+    │   # TDF supplemental data files (all in git)
     ├── sprint_points.json            # Green jersey points per rider per stage (1953–2025)
     ├── kom_points.json               # KOM points per rider per stage (raw PCS scrape)
     ├── kom_points_reconciled.json    # KOM points after Wikipedia patching (authoritative)
@@ -113,6 +127,7 @@ tdf-analytics/
 
 ## Data Pipeline
 
+### Tour de France pipeline
 ```
 PCS website  →  tdf_YEAR_full.json  (scraped via a real browser — see note below)
                        ↓
@@ -131,10 +146,25 @@ PCS website  →  tdf_YEAR_full.json  (scraped via a real browser — see note b
                                       │
                     ┌─────────────────┴──────────────────┐
                     ↓                                    ↓
-          gc_by_stage_YEAR.json (×N)         all_races_summary.json
-                    │                                    │
-                    └─────────────────┬──────────────────┘
-                                      ↓
+       data/gc_by_stage_YEAR.json (×N)       all_races_summary.json
+```
+
+### Giro d'Italia pipeline
+```
+PCS website  →  giro_scrapes/stage_N.json  (scraped via real browser, same row format as TDF)
+                       ↓
+               build_giro_points.py  →  giro_sprint_points.json + giro_kom_points.json
+                       ↓
+               ingest_giro.py  →  cycling.db  (race_id=2, "Giro d'Italia")
+                       ↓
+               export_gc.py --race giro
+                       ↓
+              data/giro/gc_by_stage_YEAR.json
+```
+
+Both pipelines feed into the same `cycling.db` (the `races` table distinguishes them: race_id=1 = TDF, race_id=2 = Giro). The Giro pipeline is simpler because it stores sprint/KOM points inside each stage scrape file (not in a separate `tdf_YEAR_full.json` bundle). `export_gc.py --race giro` automatically picks up `giro_sprint_points.json` and `giro_kom_points.json` instead of the TDF versions.
+
+```
                                vite build  →  build/  →  GitHub Pages
 ```
 
@@ -143,9 +173,10 @@ PCS website  →  tdf_YEAR_full.json  (scraped via a real browser — see note b
 ### Key data files
 
 **`cycling.db`** — SQLite database. Tables:
-- `race_editions` — (edition_id, year)
+- `races` — (race_id, name, country, race_type) — race_id=1 "Tour de France", race_id=2 "Giro d'Italia"
+- `race_editions` — (edition_id, race_id, year) — `race_id` FK to `races`; UNIQUE(race_id, year)
 - `stages` — (stage_id, edition_id, stage_number, stage_date, start_location, finish_location, distance_km, vertical_meters, route_type)
-- `riders` — (rider_id, full_name, nationality_code)
+- `riders` — (rider_id, full_name, nationality_code) — shared across races (same rider can appear in both)
 - `teams` — (team_id, name)
 - `countries` — (code, name)
 - `stage_results` — (rider_id, stage_id, team_id, gc_rank, gc_gap_seconds, finish_time_seconds, status)
@@ -218,7 +249,7 @@ Generated by `export_all_races_summary.py`, which merges in `all_races_summary_o
 
 ## export_gc.py — Key Logic
 
-This is the most important script. It reads cycling.db + all supplemental JSON files and produces the per-year JSON files.
+This is the most important script. It reads cycling.db + all supplemental JSON files and produces the per-year JSON files. Supports `--race giro` (or `--race tdf`, the default) to select which race to export. When `--race giro` is used, it reads `giro_sprint_points.json` / `giro_kom_points.json` instead of the TDF versions and outputs to `data/giro/`.
 
 **`totalTimeSeconds` priority** (per rider):
 1. `gc_all_times.json` — Wikipedia official time (top ~10 per year)
@@ -242,7 +273,7 @@ This is the most important script. It reads cycling.db + all supplemental JSON f
 All chart logic is in `cycling-app/src/main.ts` (~2,290 lines). Key functions:
 
 - **`loadDataset(year)`** — **async**; awaits `getDataset(year)` (lazy chunk fetch + LRU), updates UI state, triggers chart redraw. Callers that depend on the result (year-select change, career-dot click-through) must handle the promise — the career-dot click does `loadDataset(...).then(() => switchView("stage"))` to avoid rendering the previously-loaded year.
-- **`getDataset(year)`** — resolves a year's dataset from a 6-entry LRU (`DATASET_CACHE`); on miss it `fetch()`es the year's JSON asset (URL from `URLS_BY_YEAR`) and `JSON.parse`s it. Re-visiting an evicted year re-fetches from the browser HTTP cache (no network, only re-parse).
+- **`getDataset(year)`** — resolves a year's dataset from a 6-entry LRU (`DATASET_CACHE`, keyed by `race:year`); on miss it `fetch()`es the year's JSON asset (URL from `URLS_BY_RACE[currentRace]`) and `JSON.parse`s it. Re-visiting an evicted year re-fetches from the browser HTTP cache (no network, only re-parse).
 - **`drawChart()`** — renders the bump chart for the current year/metric. Calls `buildRankMapsFromField()` to extract rank series per rider. Each metric has an optional "points" display mode toggled via a y-axis button: GC Time (ascending hours), Sprint Points (ascending cumulative), KOM Points (ascending cumulative).
 - **`buildRankMapsFromField(getRank, getCumPts)`** — takes accessor functions, builds `rankAtStage` and `cumulativeAtStage` maps. Reads `sprintRank`/`komRank` fields directly (never re-derives them). `finalRank` is built only from riders who reached the final stage — DNF riders keep their mid-race rank in `rankAtStage` (so their lines still draw) but are excluded from `finalRank` (so they don't pollute Top N selection or legend ordering).
 - **`setHighlight(id)`** — O(1) hover path: restyles only the previous and new highlighted rider's elements (line + dot + label) via `restyleRider()`, instead of sweeping all ~180 riders. `updateLineClasses()` still exists for full-sweep scenarios (selection changes, presets, filters).
@@ -259,7 +290,7 @@ All chart logic is in `cycling-app/src/main.ts` (~2,290 lines). Key functions:
 
 **No-data overlays**: If `currentMetric === "points"` and `year < 1953`, or `currentMetric === "kom"` and `year < 1933`, the chart area shows an explanatory text message instead of chart elements.
 
-**Data loading (performance-critical)**: Per-year files are discovered with an **eager `?url` glob** — `import.meta.glob('./data/gc_by_stage_*.json', { query: "?url", import: "default", eager: true })` — which puts only the hashed asset *URLs* in the main bundle; the data itself is emitted as raw `.json` assets and loaded via `fetch()` + `JSON.parse` on demand. Do **not** switch back to module imports (plain glob / dynamic `import()`): the browser's ES-module registry pins every imported module for the page's lifetime, so LRU eviction would no longer free memory, and parsing JSON-as-JS is slower than `JSON.parse`. The Riders page's cross-year `riders_index.json` is fetched the same way (its URL comes from a `riders_index.json?url` import). Only the tiny `all_races_summary.json` is eagerly bundled. d3 is imported as modular submodules (`d3-selection`, `d3-scale`, `d3-axis`, `d3-shape`, `d3-array`) via a small `d3` shim object, not the full `d3` meta-package. Net result: initial download for the default stage view is ~76 KB gzipped, and only LRU-cached years (max 6) stay in memory.
+**Data loading (performance-critical)**: Per-year files are discovered with **two eager `?url` globs** — one for TDF (`./data/gc_by_stage_*.json`) and one for Giro (`./data/giro/gc_by_stage_*.json`). These put only the hashed asset *URLs* in the main bundle via `URLS_BY_RACE` (a `Record<RaceId, Record<string, string>>`); the data itself is emitted as raw `.json` assets and loaded via `fetch()` + `JSON.parse` on demand. The `currentRace` variable (`"tdf"` | `"giro"`) selects which URL map to use; `YEARS` is rebuilt from `getYearsForRace(currentRace)` on race change. Do **not** switch back to module imports (plain glob / dynamic `import()`): the browser's ES-module registry pins every imported module for the page's lifetime, so LRU eviction would no longer free memory, and parsing JSON-as-JS is slower than `JSON.parse`. Adding a new race is: drop files in a new subdirectory under `data/`, add a glob for that path, extend `URLS_BY_RACE` and the `RaceId` type, and add an `<option>` to the race dropdown in `index.html`. The Riders page's cross-year `riders_index.json` is fetched the same way (its URL comes from a `riders_index.json?url` import). Only the tiny `all_races_summary.json` is eagerly bundled. d3 is imported as modular submodules (`d3-selection`, `d3-scale`, `d3-axis`, `d3-shape`, `d3-array`) via a small `d3` shim object, not the full `d3` meta-package. Net result: initial download for the default stage view is ~76 KB gzipped, and only LRU-cached years (max 6) stay in memory.
 
 ---
 
@@ -274,10 +305,15 @@ npm run dev          # dev server at http://localhost:5173/tdf-analytics/
 After making data changes:
 ```bash
 cd pipeline
-python3 export_gc.py                 # regenerates all src/data/gc_by_stage_*.json (every year in cycling.db)
+# TDF exports (default)
+python3 export_gc.py                 # regenerates all src/data/gc_by_stage_*.json (every TDF year in cycling.db)
 python3 export_gc.py --year 2026     # single-year only (much faster — avoids rewriting all 113 files)
+# Giro exports
+python3 export_gc.py --race giro                # all Giro years → src/data/giro/
+python3 export_gc.py --race giro --year 2026    # single Giro year
+# Shared exports
 python3 export_riders_index.py       # rebuilds riders_index.json (Riders page cross-year index)
-python3 export_all_races_summary.py  # rebuilds all_races_summary.json (All Races Overview data)
+python3 export_all_races_summary.py  # rebuilds all_races_summary.json (All Races Overview data — TDF only currently)
 python3 validate_exports.py          # check all exported files (0 errors = good; warnings = informational)
 python3 validate_exports.py --year 2026  # validate just one year
 
@@ -394,9 +430,143 @@ Each `scrapes/stage_N.json` contains:
 
 ---
 
-## Scraping a live/in-progress Tour (e.g. 2026)
+## Adding Giro d'Italia stages
 
-PCS blocks plain HTTP scraping with a Cloudflare "Just a moment…" challenge (`scrape_pcs_stages.py` no longer works standalone against the live site). Use a real browser instead, navigate to each stage's PCS page, and extract data via injected JavaScript.
+The Giro pipeline is separate from the TDF pipeline (different scripts, different scrape directory, different supplemental files), but uses the same DB schema and export format.
+
+### Scraping new Giro stages
+
+PCS URLs follow the same pattern as TDF — just substitute `giro-d-italia` for `tour-de-france`:
+- Stage results: `https://www.procyclingstats.com/race/giro-d-italia/2026/stage-N`
+- GC after stage: `https://www.procyclingstats.com/race/giro-d-italia/2026/stage-N-gc`
+- Sprint points: `https://www.procyclingstats.com/race/giro-d-italia/2026/stage-N-points`
+- KOM points: `https://www.procyclingstats.com/race/giro-d-italia/2026/stage-N-kom`
+
+Use the save-server + navigate-and-extract methodology described in "Scraping a live/in-progress race from PCS" above. The save server at `pipeline/giro_scrapes/save_server.py` saves to the correct directory. Each `giro_scrapes/stage_N.json` has this format:
+```json
+{
+  "n": 4,
+  "info": { "Date": "2026-05-11", "Distance": "138 km", "Start": "Catanzaro", "Finish": "Cosenza", "Won how": "..." },
+  "profile_icon": "p3",
+  "rows": [ [rnk, gc_pos, gc_lag, bib, age, name, slug, nat, team, team_slug, uci, pnt, bonus, abs_time, gap], ... ],
+  "sprint_points": { "rider/slug": 25, ... },
+  "kom_points": { "rider/slug": 3, ... }
+}
+```
+
+**2026 Giro status:** All 21 stages scraped and processed. 184 starters, 152 finishers. Started in Bulgaria (Nessebar), finished in Rome. The race ran May 8–31, 2026.
+
+### Processing scraped Giro stages
+
+After scraping new stage files into `giro_scrapes/`:
+
+```bash
+cd pipeline
+
+# 1. If adding to an existing edition, delete it first (ingest_giro.py refuses if edition exists)
+python3 -c "
+import sqlite3
+conn = sqlite3.connect('cycling.db')
+eid = conn.execute('SELECT edition_id FROM race_editions WHERE race_id=2 AND year=2026').fetchone()
+if eid:
+    eid = eid[0]
+    conn.execute('DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)', (eid,))
+    conn.execute('DELETE FROM stages WHERE edition_id=?', (eid,))
+    conn.execute('DELETE FROM race_editions WHERE edition_id=?', (eid,))
+    conn.commit()
+    print(f'Deleted edition {eid}')
+conn.close()
+"
+
+# 2. Rebuild points files from all stage scrapes
+python3 build_giro_points.py
+
+# 3. Re-ingest all stages into DB
+python3 ingest_giro.py
+
+# 4. Export to frontend
+python3 export_gc.py --race giro --year 2026
+
+# 5. Validate
+python3 validate_exports.py --year 2026
+```
+
+> **Note:** Unlike the TDF pipeline which has `add_stages.py` for incremental stage addition, the Giro pipeline currently requires a full delete-and-reimport cycle when adding new stages. This is simpler but means all `giro_scrapes/stage_N.json` files must be present for a reimport.
+
+---
+
+## Scraping a live/in-progress race from PCS
+
+PCS blocks plain HTTP scraping with a Cloudflare "Just a moment…" challenge (`scrape_pcs_stages.py` no longer works standalone against the live site). Use a real browser instead, navigate to each stage's PCS page, and extract data via injected JavaScript. The page structure below applies identically to both the Tour de France and Giro d'Italia — only the URL path differs (`tour-de-france` vs `giro-d-italia`).
+
+### Efficient multi-stage scraping methodology
+
+**The core constraint is Cloudflare rate-limiting:** after ~2-5 same-origin `fetch()` requests from a page, PCS starts returning Cloudflare challenge pages instead of real content. Navigating to a page in the browser (which passes Cloudflare's JS challenge) resets this counter. The optimal strategy uses a **local save server** + a **self-contained extraction JS snippet** to minimize both Cloudflare blocks and token/context usage.
+
+#### Step 1: Start a local save server
+
+Use `pipeline/giro_scrapes/save_server.py` (or copy it for TDF into `pipeline/scrapes/`). It runs on `localhost:8765` and accepts POSTed JSON, saving each stage to `stage_N.json`.
+
+```bash
+cd pipeline/giro_scrapes   # IMPORTANT: run from the correct directory
+nohup python3 save_server.py > /dev/null 2>&1 &
+echo "PID: $!"
+```
+
+**Critical:** The server resolves its save directory from `os.path.dirname(os.path.abspath(__file__))` — the script file's location, not the shell's working directory. But if you copy the script elsewhere or it gets started from a different context (e.g. a temp directory), files will be saved to the wrong place. **Always verify with a test POST** after starting:
+```bash
+curl -s -X POST http://localhost:8765 -H 'Content-Type: application/json' \
+  -d '{"n":99,"rows":[],"info":{},"profile_icon":"p1","sprint_points":{},"kom_points":{}}'
+ls stage_99.json && rm stage_99.json   # confirm it landed in the right directory
+```
+
+Chrome allows `localhost` HTTP POSTs from HTTPS pages (mixed-content exception), so the browser JS can POST directly from PCS pages.
+
+#### Step 2: Navigate + extract, one stage at a time
+
+For each stage, navigate to the PCS page in the browser (this passes Cloudflare), then run a single JS snippet that:
+1. Parses the results table from the already-loaded DOM (no fetch needed for the main page)
+2. Fetches the `-points` and `-kom` sub-pages via same-origin `fetch()` (these 2 fetches share the navigation's Cloudflare session and stay under the rate limit)
+3. POSTs the combined JSON payload directly to `localhost:8765`
+
+This approach uses **2 tool calls per stage** (navigate + javascript_tool) and **zero context window overhead** for the data itself — the extracted JSON goes straight to disk via the save server, never flowing through the conversation.
+
+The extraction JS is a self-contained IIFE (~3KB minified) that handles:
+- Table detection: finds the main results table by looking for `Rnk` + `GC` headers, falling back to any table with 50+ rows
+- Rider/team slug extraction from `<a href="/rider/...">` and `<a href="/team/...">` anchors
+- Nationality from `<span class="flag XX">` (second CSS class)
+- Profile icon from `<span class="icon profile pN">` (class matching `/^p\d$/`)
+- Date parsing from page text (`Date: DD Month YYYY`)
+- "Won how" text extraction
+- Time deduplication (PCS doubles time strings, e.g. `"21:4721:47"` → `"21:47"`)
+- Sprint/KOM points parsing from `-points` and `-kom` sub-pages
+- Route info (Start/Finish/Distance) passed in via a lookup table in the JS
+
+**The route info lookup table** must be prepared before scraping. Get stage routes from the PCS race route page (e.g. `https://www.procyclingstats.com/race/giro-d-italia/2026/route`). Build a JS object mapping stage number → `{S: "Start City", F: "Finish City", D: "NNN km"}`. This avoids scraping route info from each individual stage page.
+
+#### Step 3: Batch optimization (when Cloudflare cooperates)
+
+After navigating to a stage page, the extraction JS can optionally try to `fetch()` the next 1-2 stages' main pages too (3 fetches per extra stage: main + points + kom). This works for ~2 extra stages before Cloudflare blocks. When a fetch returns a Cloudflare challenge page (detectable by checking for `"Just a moment"` in the response or response length < 5000 chars), skip that stage and navigate to it next.
+
+**Practical cadence:** navigate to a stage, extract it from the DOM + fetch its sub-pages, then try fetching 1-2 more stages. When blocked, navigate to the next unprocessed stage and repeat. This cuts the total tool calls from 2×N to roughly 1.3×N for a 21-stage race.
+
+#### Step 4: Verify and run the pipeline
+
+After all stages are scraped, verify the files are on disk and run the appropriate pipeline:
+```bash
+# Verify all files exist with correct row counts
+for f in stage_{1..21}.json; do
+  echo "$f: $(python3 -c "import json; d=json.load(open('$f')); print(f'{len(d[\"rows\"])}r {len(d.get(\"sprint_points\",{}))}sp {len(d.get(\"kom_points\",{}))}km')")"
+done
+
+# Then run the pipeline (Giro example — see "Processing scraped Giro stages" section)
+python3 build_giro_points.py
+# delete existing edition if needed...
+python3 ingest_giro.py
+python3 export_gc.py --race giro --year 2026
+```
+
+### PCS page structure reference
 
 **Normal stage** (`.../stage-N`) — one comprehensive table (`document.querySelectorAll('table')[0]`) with header row `Rnk | GC | Timelag | BIB | H2H | Specialty | Age | Rider | Team | UCI | Pnt | (blank) | Time`. Per-column extraction:
 - Rider name/slug: `td.querySelector('a')` inside the `Rider` column (`a.textContent` = name, `new URL(a.href).pathname` = slug).
@@ -410,9 +580,17 @@ PCS blocks plain HTTP scraping with a Cloudflare "Just a moment…" challenge (`
 
 **Points classification** (`.../stage-N-points`) — look for `<h4>` headings whose text starts with `"Sprint |"` or equals exactly `"Points at finish"`; the table immediately following each such heading has a `Pnt` column and a `Rider` column with the same anchor structure as above. Sum `Pnt` per rider **across all matching headings on the page** (a rider can score at both an intermediate sprint and the finish) — this sum is that stage's entry in `sprint_points.json`. Ignore any `<h4>KOM Sprint...</h4>` headings on this page — those belong to the KOM classification, not points.
 
-**KOM classification** (`.../stage-N-kom`) — same page layout, but now sum the `Pnt` column under every `<h4>KOM Sprint...</h4>` heading (there's one per categorized climb on the stage) — this sum is that stage's entry in `kom_points_reconciled.json`. A flat/TTT stage with no climbs has no such headings at all → empty `{}` for that stage index in both files.
+**KOM classification** (`.../stage-N-kom`) — same page layout, but now sum the `Pnt` column under every `<h4>KOM Sprint...</h4>` or `<h4>GPM Sprint...</h4>` heading (there's one per categorized climb on the stage) — this sum is that stage's entry in `kom_points_reconciled.json`. A flat/TTT stage with no climbs has no such headings at all → empty `{}` for that stage index in both files.
 
-**Getting large scraped payloads out of the browser**: direct return values from a JS-execution tool get truncated at surprisingly small sizes (even ~60 table rows), and Blob-download / `window.open` / `data:` URI approaches are all blocked by the browser after the first use or by popup/navigation restrictions. The reliable pattern: `JSON.stringify()` the payload, write it into a `<pre>` tag via `document.body.innerHTML = ''; document.body.appendChild(pre)`, then read it back with a page-text-extraction tool (which does not truncate, unlike direct JS-execution return values) — this worked cleanly for full ~180-row stage tables.
+### Lessons learned from Giro 2026 scraping
+
+1. **Always verify the save server's target directory** before scraping. The server uses `__file__`-relative paths, but if started from the wrong context (e.g. a temp directory from a previous Claude session), all POSTed data silently goes to the wrong place. A test POST + `ls` check takes 5 seconds and prevents losing 21 stages of work.
+
+2. **Cloudflare rate limits vary by session.** Sometimes you get 5 extra fetches per navigation, sometimes only 1-2. Don't assume a fixed batch size — check for `"Just a moment"` in every fetch response and fall back to navigate-per-stage when blocked.
+
+3. **The save server approach is far more token-efficient than returning data through the conversation.** Each stage's JSON is ~28KB. With 21 stages, that's ~588KB of data that would otherwise flow through context. The save server reduces each stage to a 2-tool-call round trip (navigate + JS extraction with POST) with only a one-line confirmation in the response.
+
+4. **Stage 21 (final stage) often has 0 sprint and 0 KOM points** — this is normal for a processional/criterium-style final stage, not a scraping error.
 
 ---
 

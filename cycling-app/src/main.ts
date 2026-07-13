@@ -25,26 +25,37 @@ const PALETTE = [
   "#74c0fc", "#ffd43b", "#b2f2bb", "#eebefa", "#a9e34b",
 ];
 
-// Auto-discover every per-year dataset under ./data, but only take each
-// file's URL (eager ?url glob = a list of tiny strings in the main bundle).
-// The data itself is fetched + JSON.parsed on demand, NOT imported as a JS
-// module: dynamic import() would pin every visited year in the browser's
-// module registry forever, which made LRU eviction below purely cosmetic.
-// fetch() keeps the data out of the module graph so evicted years can
-// actually be garbage-collected, and JSON.parse is faster than parsing the
-// same content as a JS object literal.
-// Adding a new year is still just dropping in a gc_by_stage_{year}.json file.
-const yearUrls = import.meta.glob<string>("./data/gc_by_stage_*.json", {
+// Auto-discover datasets per race. TDF files live at ./data/gc_by_stage_*.json,
+// Giro files at ./data/giro/gc_by_stage_*.json. Each race gets its own year list.
+const tdfUrls = import.meta.glob<string>("./data/gc_by_stage_*.json", {
   query: "?url",
   import: "default",
   eager: true,
 });
-const URLS_BY_YEAR: Record<string, string> = {};
-for (const [path, url] of Object.entries(yearUrls)) {
+const giroUrls = import.meta.glob<string>("./data/giro/gc_by_stage_*.json", {
+  query: "?url",
+  import: "default",
+  eager: true,
+});
+
+type RaceId = "tdf" | "giro";
+const URLS_BY_RACE: Record<RaceId, Record<string, string>> = { tdf: {}, giro: {} };
+for (const [path, url] of Object.entries(tdfUrls)) {
   const match = path.match(/gc_by_stage_(\d+)\.json/);
-  if (match) URLS_BY_YEAR[match[1]] = url;
+  if (match) URLS_BY_RACE.tdf[match[1]] = url;
 }
-const YEARS = Object.keys(URLS_BY_YEAR).sort().reverse();
+for (const [path, url] of Object.entries(giroUrls)) {
+  const match = path.match(/gc_by_stage_(\d+)\.json/);
+  if (match) URLS_BY_RACE.giro[match[1]] = url;
+}
+
+let currentRace: RaceId = "tdf";
+const URLS_BY_YEAR = URLS_BY_RACE.tdf;
+let YEARS = Object.keys(URLS_BY_YEAR).sort().reverse();
+
+function getYearsForRace(race: RaceId): string[] {
+  return Object.keys(URLS_BY_RACE[race]).sort().reverse();
+}
 
 // Bounded LRU of parsed per-year datasets, so a long session that hops between
 // many years never grows memory without limit. Re-visiting an evicted year
@@ -59,15 +70,16 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 async function getDataset(year: string): Promise<GcDataset> {
-  const cached = DATASET_CACHE.get(year);
+  const cacheKey = `${currentRace}:${year}`;
+  const cached = DATASET_CACHE.get(cacheKey);
   if (cached) {
-    // refresh recency
-    DATASET_CACHE.delete(year);
-    DATASET_CACHE.set(year, cached);
+    DATASET_CACHE.delete(cacheKey);
+    DATASET_CACHE.set(cacheKey, cached);
     return cached;
   }
-  const ds = await fetchJson<GcDataset>(URLS_BY_YEAR[year]);
-  DATASET_CACHE.set(year, ds);
+  const url = URLS_BY_RACE[currentRace][year];
+  const ds = await fetchJson<GcDataset>(url);
+  DATASET_CACHE.set(cacheKey, ds);
   if (DATASET_CACHE.size > DATASET_CACHE_MAX) {
     const oldest = DATASET_CACHE.keys().next().value;
     if (oldest !== undefined) DATASET_CACHE.delete(oldest);
@@ -104,6 +116,7 @@ let komRankAtStage = new Map<number, Map<string, number>>();
 let finalKomRank = new Map<string, number>();
 let ridersAtFinalKomRank = new Map<number, { riders: RiderSeries[]; points: number }>();
 
+const raceSelectEl = document.getElementById("race-select") as HTMLSelectElement;
 const chartEl = document.getElementById("chart") as HTMLDivElement;
 const overviewChartEl = document.getElementById("overview-chart") as HTMLDivElement;
 const legendEl = document.getElementById("legend") as HTMLDivElement;
@@ -328,6 +341,7 @@ function drawOverview() {
 
 function init() {
   try {
+    buildRaceSelect();
     buildYearSelect();
     buildMetricSelect();
     wireControls();
@@ -378,6 +392,25 @@ function buildYearSelect() {
   yearSelectEl.value = currentYear;
   yearSelectEl.addEventListener("change", () => {
     currentYear = yearSelectEl.value;
+    updateHash();
+    loadDataset(currentYear).catch(showLoadError);
+  });
+}
+
+function buildRaceSelect() {
+  raceSelectEl.value = currentRace;
+  raceSelectEl.addEventListener("change", () => {
+    currentRace = raceSelectEl.value as RaceId;
+    YEARS = getYearsForRace(currentRace);
+    currentYear = YEARS[0];
+    yearSelectEl.innerHTML = "";
+    for (const year of YEARS) {
+      const opt = document.createElement("option");
+      opt.value = year;
+      opt.textContent = year;
+      yearSelectEl.appendChild(opt);
+    }
+    yearSelectEl.value = currentYear;
     updateHash();
     loadDataset(currentYear).catch(showLoadError);
   });

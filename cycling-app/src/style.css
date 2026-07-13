@@ -128,6 +128,26 @@ body {
   outline: none;
 }
 
+.race-select {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 2px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.race-select:hover {
+  border-color: var(--accent);
+}
+
+.race-select:focus {
+  outline: 1px solid var(--accent);
+}
+
 .year-select {
   background: var(--panel);
   border: 1px solid var(--panel-border);
