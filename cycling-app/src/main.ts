@@ -2242,11 +2242,16 @@ function drawRiderDetail(riderId: string) {
       .attr("text-anchor", "middle")
       .text("Year");
 
+    // Colors vary by race
+    const gcColor     = currentRace === "giro" ? "#E4007C" : "var(--accent)";
+    const sprintColor = currentRace === "giro" ? "#8B1FA1" : "#22c55e";
+    const komColor    = currentRace === "giro" ? "#0083CA" : "#ef4444";
+
     // Legend (top-right): GC / Sprint / KOM
     const legendItems = [
-      { label: "GC", color: "var(--accent)" },
-      { label: "Sprint", color: "#22c55e" },
-      { label: "KOM", color: "#ef4444" },
+      { label: "GC", color: gcColor },
+      { label: "Sprint", color: sprintColor },
+      { label: "KOM", color: komColor },
     ];
     let legendX = iW;
     for (let i = legendItems.length - 1; i >= 0; i--) {
@@ -2274,7 +2279,7 @@ function drawRiderDetail(riderId: string) {
       g.append("text")
         .attr("x", -6).attr("y", mainH + DNF_H / 2 + 4)
         .attr("text-anchor", "end").attr("dominant-baseline", "middle")
-        .attr("font-size", "10px").attr("fill", "#ef4444").attr("fill-opacity", 0.7)
+        .attr("font-size", "10px").attr("fill", komColor).attr("fill-opacity", 0.7)
         .text("DNF/DNS");
     }
 
@@ -2302,15 +2307,15 @@ function drawRiderDetail(riderId: string) {
       }
     }
 
-    drawLine(finishData, (d) => yScale2(d.finalRank), "var(--accent)");
-    drawLine(sprintData, (d) => yScale2(d.sprintRank), "#22c55e");
-    drawLine(komData, (d) => yScale2(d.komRank), "#ef4444");
+    drawLine(finishData, (d) => yScale2(d.finalRank), gcColor);
+    drawLine(sprintData, (d) => yScale2(d.sprintRank), sprintColor);
+    drawLine(komData, (d) => yScale2(d.komRank), komColor);
 
     // Tooltip helper
     function showDotTooltip(event: MouseEvent, d: YrResult) {
       const gcPart = d.finalRank < 9999 ? `<div>GC #${d.finalRank}</div>` : "<div>GC DNF/DNS</div>";
-      const sprintPart = d.sprintRank < 9999 ? `<div style="color:#22c55e">Sprint #${d.sprintRank}</div>` : "";
-      const komPart = d.komRank < 9999 ? `<div style="color:#ef4444">KOM #${d.komRank}</div>` : "";
+      const sprintPart = d.sprintRank < 9999 ? `<div style="color:${sprintColor}">Sprint #${d.sprintRank}</div>` : "";
+      const komPart = d.komRank < 9999 ? `<div style="color:${komColor}">KOM #${d.komRank}</div>` : "";
       tooltipEl.innerHTML = `
         <div class="t-name">${d.year} ${currentRace === "tdf" ? "Tour de France" : "Giro d'Italia"}</div>
         <div class="t-team">${d.team ?? "—"}</div>
@@ -2341,7 +2346,7 @@ function drawRiderDetail(riderId: string) {
       .attr("cx", (d) => xScale2(d.year))
       .attr("cy", (d) => yScale2(d.finalRank))
       .attr("r", 5)
-      .attr("fill", "var(--accent)").attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
+      .attr("fill", gcColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
       .style("cursor", "pointer")
       .on("mousemove", showDotTooltip)
       .on("mouseleave", () => hideTooltip())
@@ -2354,7 +2359,7 @@ function drawRiderDetail(riderId: string) {
       .attr("cx", (d) => xScale2(d.year))
       .attr("cy", (d) => yScale2(d.sprintRank))
       .attr("r", 4)
-      .attr("fill", "#22c55e").attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
+      .attr("fill", sprintColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
       .style("cursor", "pointer")
       .on("mousemove", showDotTooltip)
       .on("mouseleave", () => hideTooltip())
@@ -2367,7 +2372,7 @@ function drawRiderDetail(riderId: string) {
       .attr("cx", (d) => xScale2(d.year))
       .attr("cy", (d) => yScale2(d.komRank))
       .attr("r", 4)
-      .attr("fill", "#ef4444").attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
+      .attr("fill", komColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
       .style("cursor", "pointer")
       .on("mousemove", showDotTooltip)
       .on("mouseleave", () => hideTooltip())
@@ -2380,8 +2385,8 @@ function drawRiderDetail(riderId: string) {
         .attr("class", "career-dot-dnf")
         .attr("cx", (d) => xScale2(d.year))
         .attr("cy", mainH + DNF_H / 2 + 4)
-        .attr("r", 4)
-        .attr("fill", "none").attr("stroke", "#ef4444").attr("stroke-width", 1.5)
+        .attr("r", 6)
+        .attr("fill", "transparent").attr("stroke", komColor).attr("stroke-width", 1.5)
         .on("mousemove", showDotTooltip)
         .on("mouseleave", () => hideTooltip())
         .on("click", handleDotClick("gc"));
