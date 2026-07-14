@@ -29,7 +29,7 @@ HEADERS = {
                   "Chrome/120.0.0.0 Safari/537.36",
     "Accept-Language": "en-US,en;q=0.9",
 }
-DELAY = 2.0
+DELAY = float(os.environ.get("SCRAPE_DELAY", "2.0"))
 MAX_WAIT = 12.0
 
 ICON_TO_ROUTE = {"p1": "F", "p2": "H", "p3": "H", "p4": "M", "p5": "M"}
