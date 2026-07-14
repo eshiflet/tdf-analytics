@@ -24,6 +24,7 @@ import sqlite3
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 OUT_PATH = os.path.join(HERE, "..", "cycling-app", "src", "data", "giro", "all_races_summary.json")
+OVERRIDES_PATH = os.path.join(HERE, "giro_races_summary_overrides.json")
 
 FIRST_YEAR = 1909
 
@@ -52,6 +53,11 @@ def main():
             "SELECT year, edition_id FROM race_editions WHERE race_id=?", (race_id,)
         )
     }
+
+    overrides = {}
+    if os.path.exists(OVERRIDES_PATH):
+        with open(OVERRIDES_PATH, encoding="utf-8") as f:
+            overrides = {int(k): v for k, v in json.load(f).items()}
 
     out = []
     for year in range(FIRST_YEAR, last_year + 1):
@@ -113,13 +119,15 @@ def main():
                     if max_gap is not None:
                         slowest_finisher = gc_winner_seconds + int(max_gap)
 
-        out.append({
+        row = {
             "year": year,
             "totalDistanceKm": round(total_distance, 1) if total_distance else None,
             "totalElevationM": int(total_elevation) if total_elevation else None,
             "gcWinnerTimeSeconds": gc_winner_seconds,
             "slowestFinisherTimeSeconds": slowest_finisher,
-        })
+        }
+        row.update(overrides.get(year, {}))
+        out.append(row)
 
     conn.close()
 
