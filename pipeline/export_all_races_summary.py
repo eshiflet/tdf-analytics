@@ -42,7 +42,7 @@ DB_PATH = os.path.join(HERE, "cycling.db")
 WIKI_DISTANCES_PATH = os.path.join(HERE, "wiki_race_distances.json")
 GC_WINNER_TIMES_PATH = os.path.join(HERE, "gc_winner_times.json")
 OVERRIDES_PATH = os.path.join(HERE, "all_races_summary_overrides.json")
-OUT_PATH = os.path.join(HERE, "..", "cycling-app", "src", "data", "all_races_summary.json")
+OUT_PATH = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour", "all_races_summary.json")
 
 FIRST_YEAR = 1903
 

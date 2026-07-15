@@ -25,9 +25,9 @@ const PALETTE = [
   "#74c0fc", "#ffd43b", "#b2f2bb", "#eebefa", "#a9e34b",
 ];
 
-// Auto-discover datasets per race. TDF files live at ./data/gc_by_stage_*.json,
+// Auto-discover datasets per race. TDF files live at ./data/tour/gc_by_stage_*.json,
 // Giro files at ./data/giro/gc_by_stage_*.json. Each race gets its own year list.
-const tdfUrls = import.meta.glob<string>("./data/gc_by_stage_*.json", {
+const tdfUrls = import.meta.glob<string>("./data/tour/gc_by_stage_*.json", {
   query: "?url",
   import: "default",
   eager: true,
@@ -152,7 +152,7 @@ const teamFilterPanel = document.getElementById("team-filter-panel") as HTMLDivE
 const nationFilterBtn = document.getElementById("nation-filter-btn") as HTMLButtonElement;
 const nationFilterPanel = document.getElementById("nation-filter-panel") as HTMLDivElement;
 
-import allRacesSummaryRaw from "./data/all_races_summary.json";
+import allRacesSummaryRaw from "./data/tour/all_races_summary.json";
 import giroAllRacesSummaryRaw from "./data/giro/all_races_summary.json";
 import vueltaAllRacesSummaryRaw from "./data/vuelta/all_races_summary.json";
 interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; slowestFinisherTimeSeconds: number | null; }
@@ -1906,7 +1906,7 @@ function allNationalitiesSorted() { return allNationalitiesSortedByRace[currentR
 
 // URL-only import (see the year-data comment up top for why we fetch instead
 // of importing the JSON as a module).
-import ridersIndexUrl from "./data/riders_index.json?url";
+import ridersIndexUrl from "./data/tour/riders_index.json?url";
 import giroRidersIndexUrl from "./data/giro/riders_index.json?url";
 import vueltaRidersIndexUrl from "./data/vuelta/riders_index.json?url";
 

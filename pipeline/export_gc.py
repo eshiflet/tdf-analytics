@@ -325,7 +325,7 @@ def export_year(year, out_path, race_id=None):
 if __name__ == "__main__":
     # Determine which race to export
     race_name = "Tour de France"
-    race_subdir = ""
+    race_subdir = "tour"
     if "--race" in sys.argv:
         race_arg = sys.argv[sys.argv.index("--race") + 1]
         if race_arg == "giro":
@@ -336,7 +336,7 @@ if __name__ == "__main__":
             race_subdir = "vuelta"
         elif race_arg == "tdf":
             race_name = "Tour de France"
-            race_subdir = ""
+            race_subdir = "tour"
         else:
             sys.exit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
 
@@ -377,9 +377,7 @@ if __name__ == "__main__":
             sys.exit(f"error: no edition for year {wanted} in the database")
         years = [wanted]
 
-    out_dir = os.path.join(HERE, "..", "cycling-app", "src", "data")
-    if race_subdir:
-        out_dir = os.path.join(out_dir, race_subdir)
+    out_dir = os.path.join(HERE, "..", "cycling-app", "src", "data", race_subdir)
     os.makedirs(out_dir, exist_ok=True)
     for year in years:
         export_year(year, os.path.join(out_dir, f"gc_by_stage_{year}.json"), race_id=race_id)

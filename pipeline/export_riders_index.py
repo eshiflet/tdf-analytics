@@ -47,7 +47,7 @@ import sqlite3
 from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data")
+DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour")
 OUT_PATH = os.path.join(DATA_DIR, "riders_index.json")
 DB_PATH = os.path.join(HERE, "cycling.db")
 

@@ -117,6 +117,10 @@ tdf-analytics/
     ├── ingest_vuelta.py              # Reads vuelta_scrapes/YEAR/stage_N.json → inserts into cycling.db
     │                                 #   Creates race "Vuelta a España" (race_id=3) if not present
     │                                 #   No auto-run of fix_giro_rider_names (modern PCS format, names are correct)
+    ├── scrape_vuelta_stage_info.py    # Fetches vertical_meters + profile_score for Vuelta stages from PCS
+    │                                  #   Must be run separately after ingest — scrape_vuelta.py does NOT capture these
+    │                                  #   URL: /race/vuelta-a-espana/YEAR/stage-N/result/result
+    │                                  #   Updates cycling.db stages table directly (same pattern as scrape_giro_stage_info.py)
     ├── export_vuelta_races_summary.py # Builds data/vuelta/all_races_summary.json (FIRST_YEAR=1935, 91 years)
     │                                  #   Merges vuelta_races_summary_overrides.json after computing DB defaults
     ├── export_vuelta_riders_index.py  # Builds data/vuelta/riders_index.json from exported Vuelta gc_by_stage files
@@ -670,6 +674,62 @@ python3 export_vuelta_riders_index.py
 `ingest_vuelta.py` refuses to re-insert an existing edition. To update a year that's already in the DB, delete it first (same SQL as the Giro delete snippet — use `race_id=3`).
 
 **PCS rate limiting:** Use `SCRAPE_DELAY=4.0` for recent years (2015+). Older years can often use `2.0`. The scraper handles 429 with a 30s backoff.
+
+### Adding elevation data for a Vuelta year
+
+`scrape_vuelta.py` does NOT capture `vertical_meters` or `profile_score` — these must be fetched separately after ingestion using `scrape_vuelta_stage_info.py`:
+
+```bash
+cd pipeline
+python3 scrape_vuelta_stage_info.py 2024          # single year
+python3 scrape_vuelta_stage_info.py 2020-2024     # range
+python3 scrape_vuelta_stage_info.py 2024 --dry-run  # preview
+```
+
+It fetches `/race/vuelta-a-espana/YEAR/stage-N/result/result` and extracts `vertical_meters` and `profile_score` directly from the HTML, then writes them to the `stages` table in `cycling.db`. Re-export after running it:
+
+```bash
+python3 export_gc.py --race vuelta --year 2024
+python3 export_vuelta_races_summary.py   # picks up new totalElevationM
+```
+
+This is exactly the same pattern as `scrape_giro_stage_info.py` — if you forget this step, the Race Overview page shows no elevation bars and the All Races Overview shows null elevation for that year. Use `SCRAPE_DELAY` env var if hitting 429s (default 3.0s).
+
+**Total elevation for all_races_summary.json** is computed by summing `vertical_meters` from the DB stages (done automatically by `export_vuelta_races_summary.py`). If PCS's per-stage numbers differ slightly from the official route total, use `vuelta_races_summary_overrides.json` to pin the authoritative value:
+```json
+{"2025": {"totalElevationM": 53914}}
+```
+
+### Jersey filter buttons on the Riders page
+
+The Riders page shows GC / Sprint / KOM / Youth jersey filter buttons for **all three races**. Youth wins are not tracked for Giro or Vuelta (the pipeline captures sprint and KOM winners but not youth), so the youth button is hidden on non-TDF:
+
+```typescript
+if (category === "youth" && currentRace !== "tdf") btn.style.display = "none";
+```
+
+The button group itself is always rendered — only the youth button is hidden per-category. The AND semantics (selecting multiple jerseys narrows to riders who've won every selected category) apply on all races.
+
+`jerseyIconSvg(category)` is already race-aware via `currentRace` and returns the correct jersey colors automatically — no per-race changes needed there.
+
+**If you add a new race:** check whether youth wins are tracked in its pipeline. If not, the `btn.style.display = "none"` condition must include the new race ID.
+
+### Rider detail chart colors and race name (`drawRiderDetail`)
+
+The `drawRiderDetail()` function uses local constants for chart line/dot colors — not hardcoded — so they match each race's jersey palette. These must be three-way ternaries:
+
+```typescript
+const gcColor     = currentRace === "giro" ? "#E4007C" : currentRace === "vuelta" ? "#E30613" : "var(--accent)";
+const sprintColor = currentRace === "giro" ? "#8B1FA1" : currentRace === "vuelta" ? "#3FA535" : "#22c55e";
+const komColor    = currentRace === "giro" ? "#0083CA" : currentRace === "vuelta" ? "#0057B8" : "#ef4444";
+```
+
+The tooltip race name is also a three-way ternary:
+```typescript
+currentRace === "tdf" ? "Tour de France" : currentRace === "giro" ? "Giro d'Italia" : "Vuelta a España"
+```
+
+**If you add a new race:** add a branch to each of these four expressions (the three color constants + the tooltip ternary). Failing to do so means the new race gets TDF colors and "Vuelta a España" in its tooltip — a silent visual bug.
 
 ---
 

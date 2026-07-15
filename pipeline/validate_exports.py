@@ -35,7 +35,7 @@ import sys
 from reconcile_kom import name_match, slug_to_display
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data")
+DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour")
 TOTALS_PATH = os.path.join(HERE, "kom_totals.json")
 REPORT_PATH = os.path.join(HERE, "kom_reconcile_report.json")
 
