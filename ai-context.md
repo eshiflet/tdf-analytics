@@ -1,21 +1,26 @@
 # Cycling Analytics — AI Context
 
-Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026) and the **Giro d'Italia** (42 editions with data, spanning 1980–2026 plus earlier decades being added). The 2026 Tour de France is in progress — stages are added incrementally as the race runs. Historical Giro data is being added decade by decade backwards toward 1909. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (42 editions with data, spanning 1980–2026 plus earlier decades being added), and the **Vuelta a España** (1 edition with data: 2025). The 2026 Tour de France is in progress — stages are added incrementally as the race runs. Historical Giro data is being added decade by decade backwards toward 1909. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
 ---
 
 ## Project Overview
 
-The app visualizes per-rider performance across every stage of multiple Grand Tour races. Users select a **race** (Tour de France or Giro d'Italia) and **year** via dropdowns, then pick a metric and see a bump chart of every rider's ranking after each stage, with a sidebar legend and hover tooltips.
+The app visualizes per-rider performance across every stage of multiple Grand Tour races. Users select a **race** (Tour de France, Giro d'Italia, or Vuelta a España) and **year** via dropdowns, then pick a metric and see a bump chart of every rider's ranking after each stage, with a sidebar legend and hover tooltips.
 
 **Tech stack:**
 - Frontend: Vite + TypeScript + D3.js (static site, no framework)
 - Data: SQLite → Python export → JSON files bundled by Vite
 - Hosting: GitHub Pages, deployed via GitHub Actions on push to `main`
 
-**Multi-race support:** The frontend has a race dropdown (Tour de France / Giro d'Italia) next to the year dropdown. Each race has its own set of years. Data files are organized by subdirectory: TDF at `data/gc_by_stage_*.json`, Giro at `data/giro/gc_by_stage_*.json`. The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro). The Giro has 42 editions with data (1980–2026, plus more being added; 2,775 riders / 446 teams as of mid-2026). The "All Races Overview" currently shows TDF data only. The "Riders" view includes Giro riders.
+**Multi-race support:** The frontend has a race dropdown (Tour de France / Giro d'Italia / Vuelta a España) next to the year dropdown. Each race has its own set of years. Data files are organized by subdirectory: TDF at `data/gc_by_stage_*.json`, Giro at `data/giro/gc_by_stage_*.json`, Vuelta at `data/vuelta/gc_by_stage_*.json`. The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). The Giro has 42 editions with data (1980–2026, plus more being added; 2,775 riders / 446 teams as of mid-2026). The Vuelta has 1 edition with data (2025; 184 riders / 23 teams). The "All Races Overview" currently shows TDF data only. The "Riders" view includes Giro and Vuelta riders.
 
-**Giro jersey colors** differ from TDF: Pink (#E4007C) = GC, Purple (#8B1FA1) = Sprint, Blue (#0083CA) = KOM. The frontend is race-aware — `jerseyIconSvg()` returns the correct color based on `currentRace`, and `drawRiderDetail()` uses local `gcColor`/`sprintColor`/`komColor` constants (not hardcoded) so chart lines also match the correct race's colors. Jersey tooltips are also race-aware (`jerseyTooltipLabel()` returns e.g. "Pink jersey — GC winner" for Giro).
+**Jersey colors by race:**
+- **TDF**: Yellow = GC, Green = Sprint, Red polka-dot = KOM, White = Youth
+- **Giro**: Pink (#E4007C) = GC, Purple (#8B1FA1) = Sprint, Blue (#0083CA) = KOM
+- **Vuelta**: Red (#E30613) = GC, Green (#3FA535) = Sprint, White with blue (#0057B8) polka-dots = KOM, White = Youth
+
+The frontend is race-aware — `jerseyIconSvg()` returns the correct color based on `currentRace`. `komJerseySvg(dotColor)` accepts a color parameter (default `"#E4002B"` for TDF red dots; pass `"#0057B8"` for Vuelta blue dots). `drawRiderDetail()` uses local `gcColor`/`sprintColor`/`komColor` constants (not hardcoded) so chart lines match the correct race's colors. Jersey tooltips are also race-aware (`jerseyTooltipLabel()` returns e.g. "Pink jersey — GC winner" for Giro, "Red jersey — GC winner" for Vuelta).
 
 **Three views:**
 
@@ -58,6 +63,10 @@ tdf-analytics/
 │           │   ├── gc_by_stage_YEAR.json  # 42 years with data (1980–2026)
 │           │   ├── all_races_summary.json # Giro cross-year aggregate (built by export_giro_races_summary.py)
 │           │   └── riders_index.json      # Giro rider index (2,775 riders / 446 teams)
+│           ├── vuelta/                # Vuelta a España files in subdirectory
+│           │   ├── gc_by_stage_2025.json  # 1 year with data (2025)
+│           │   ├── all_races_summary.json # Vuelta cross-year aggregate (91 years 1935–2025, 1 with data)
+│           │   └── riders_index.json      # Vuelta rider index (184 riders / 23 teams)
 │           ├── all_races_summary.json # Cross-year aggregate data for All Races view (TDF only currently)
 │           └── riders_index.json      # Compact cross-year TDF rider index (lazy-loaded by Riders view)
 └── pipeline/                         # Data pipeline — not deployed
@@ -85,6 +94,7 @@ tdf-analytics/
     │                                 #   "LASTNAME Firstname" from the rider slug (e.g. rider/fausto-coppi → "Coppi Fausto")
     │                                 #   Strips disambiguation digits (rider/pozzi2 → pozzi). Auto-run by ingest_giro.py.
     ├── export_giro_races_summary.py  # Builds data/giro/all_races_summary.json from cycling.db (Giro only)
+    │                                 #   Merges giro_races_summary_overrides.json after computing DB defaults
     ├── export_giro_riders_index.py   # Builds data/giro/riders_index.json from exported Giro gc_by_stage files
     ├── giro_scrapes/                 # Per-stage Giro scrape output files
     │   ├── YEAR/stage_N.json         # Historical years organized by subdirectory (e.g. giro_scrapes/1980/stage_1.json)
@@ -92,6 +102,29 @@ tdf-analytics/
     │   └── save_server.py            # Local HTTP server (localhost:8765) for saving stage JSON via POST
     ├── giro_sprint_points.json       # Giro sprint points per rider per stage (same format as sprint_points.json)
     ├── giro_kom_points.json          # Giro KOM points per rider per stage (same format as kom_points.json)
+    ├── giro_races_summary_overrides.json # Per-year field overrides for export_giro_races_summary.py
+    │                                 #   Contains 88 entries with correct gcWinnerTimeSeconds/slowestFinisherTimeSeconds
+    │                                 #   sourced from PCS GC standings pages (DB summed stage times were unreliable)
+    ├── check_giro_gc_times.py        # Fetches PCS GC standings page for each Giro year, extracts winner time,
+    │                                 #   compares to DB; writes mismatches to giro_gc_time_corrections.json
+    ├── apply_giro_gc_corrections.py  # Reads giro_gc_time_corrections.json, merges into giro_races_summary_overrides.json
+    │
+    │   # Vuelta a España pipeline
+    ├── scrape_vuelta.py              # Background scraper: downloads years from PCS into vuelta_scrapes/YEAR/
+    │                                 #   Usage: python3 scrape_vuelta.py 2025  (same pattern as scrape_giro.py)
+    │                                 #   PCS base URL: /race/vuelta-a-espana/YEAR/
+    ├── build_vuelta_points.py        # Extracts sprint/KOM points from vuelta_scrapes/ → vuelta_*_points.json
+    ├── ingest_vuelta.py              # Reads vuelta_scrapes/YEAR/stage_N.json → inserts into cycling.db
+    │                                 #   Creates race "Vuelta a España" (race_id=3) if not present
+    │                                 #   No auto-run of fix_giro_rider_names (modern PCS format, names are correct)
+    ├── export_vuelta_races_summary.py # Builds data/vuelta/all_races_summary.json (FIRST_YEAR=1935, 91 years)
+    │                                  #   Merges vuelta_races_summary_overrides.json after computing DB defaults
+    ├── export_vuelta_riders_index.py  # Builds data/vuelta/riders_index.json from exported Vuelta gc_by_stage files
+    ├── vuelta_scrapes/               # Per-stage Vuelta scrape output files
+    │   └── YEAR/stage_N.json         # Organized by year subdirectory (e.g. vuelta_scrapes/2025/stage_1.json)
+    ├── vuelta_sprint_points.json     # Vuelta sprint points per rider per stage
+    ├── vuelta_kom_points.json        # Vuelta KOM points per rider per stage
+    └── vuelta_races_summary_overrides.json # Per-year field overrides for export_vuelta_races_summary.py (currently empty {})
     │
     │   # TDF supplemental data files (all in git)
     ├── sprint_points.json            # Green jersey points per rider per stage (1953–2025)
@@ -192,7 +225,34 @@ python3 export_giro_races_summary.py
 python3 export_giro_riders_index.py
 ```
 
-Both pipelines feed into the same `cycling.db` (the `races` table distinguishes them: race_id=1 = TDF, race_id=2 = Giro). The Giro pipeline is simpler because it stores sprint/KOM points inside each stage scrape file (not in a separate `tdf_YEAR_full.json` bundle). `export_gc.py --race giro` automatically picks up `giro_sprint_points.json` and `giro_kom_points.json` instead of the TDF versions.
+### Vuelta a España pipeline
+```
+PCS website  →  vuelta_scrapes/YEAR/stage_N.json  (via scrape_vuelta.py)
+                       ↓
+               build_vuelta_points.py  →  vuelta_sprint_points.json + vuelta_kom_points.json
+                       ↓
+               ingest_vuelta.py  →  cycling.db  (race_id=3, "Vuelta a España")
+                       ↓
+               export_gc.py --race vuelta
+                       ↓
+              data/vuelta/gc_by_stage_YEAR.json
+                       ↓
+               export_vuelta_races_summary.py  →  data/vuelta/all_races_summary.json
+               export_vuelta_riders_index.py   →  data/vuelta/riders_index.json
+```
+
+**Full pipeline command sequence for adding Vuelta data:**
+```bash
+cd pipeline
+python3 scrape_vuelta.py 2024         # saves to vuelta_scrapes/2024/
+python3 build_vuelta_points.py
+python3 ingest_vuelta.py 2024
+python3 export_gc.py --race vuelta
+python3 export_vuelta_races_summary.py
+python3 export_vuelta_riders_index.py
+```
+
+All three pipelines feed into the same `cycling.db` (the `races` table distinguishes them: race_id=1 = TDF, race_id=2 = Giro, race_id=3 = Vuelta). The Giro and Vuelta pipelines are similar — both store sprint/KOM points inside each stage scrape file. `export_gc.py --race vuelta` picks up `vuelta_sprint_points.json` and `vuelta_kom_points.json` and outputs to `data/vuelta/`. The Vuelta pipeline has no `fix_rider_names` equivalent — modern PCS format names are correct.
 
 ```
                                vite build  →  build/  →  GitHub Pages
@@ -203,7 +263,7 @@ Both pipelines feed into the same `cycling.db` (the `races` table distinguishes 
 ### Key data files
 
 **`cycling.db`** — SQLite database. Tables:
-- `races` — (race_id, name, country, race_type) — race_id=1 "Tour de France", race_id=2 "Giro d'Italia"
+- `races` — (race_id, name, country, race_type) — race_id=1 "Tour de France", race_id=2 "Giro d'Italia", race_id=3 "Vuelta a España"
 - `race_editions` — (edition_id, race_id, year) — `race_id` FK to `races`; UNIQUE(race_id, year)
 - `stages` — (stage_id, edition_id, stage_number, stage_date, start_location, finish_location, distance_km, vertical_meters, route_type)
 - `riders` — (rider_id, full_name, nationality_code) — shared across races (same rider can appear in both)
@@ -279,7 +339,7 @@ Generated by `export_all_races_summary.py`, which merges in `all_races_summary_o
 
 ## export_gc.py — Key Logic
 
-This is the most important script. It reads cycling.db + all supplemental JSON files and produces the per-year JSON files. Supports `--race giro` (or `--race tdf`, the default) to select which race to export. When `--race giro` is used, it reads `giro_sprint_points.json` / `giro_kom_points.json` instead of the TDF versions and outputs to `data/giro/`.
+This is the most important script. It reads cycling.db + all supplemental JSON files and produces the per-year JSON files. Supports `--race giro`, `--race vuelta` (or `--race tdf`, the default) to select which race to export. When `--race giro` is used, it reads `giro_sprint_points.json` / `giro_kom_points.json` and outputs to `data/giro/`. When `--race vuelta` is used, it reads `vuelta_sprint_points.json` / `vuelta_kom_points.json` and outputs to `data/vuelta/`. The TDF `gc_all_times.json` / `gc_winner_times.json` supplements are not used for Giro or Vuelta (set to `__nonexistent__`).
 
 **`totalTimeSeconds` priority** (per rider):
 1. `gc_all_times.json` — Wikipedia official time (top ~10 per year)
@@ -320,7 +380,14 @@ All chart logic is in `cycling-app/src/main.ts` (~2,290 lines). Key functions:
 
 **No-data overlays**: If `currentMetric === "points"` and `year < 1953`, or `currentMetric === "kom"` and `year < 1933`, the chart area shows an explanatory text message instead of chart elements.
 
-**Data loading (performance-critical)**: Per-year files are discovered with **two eager `?url` globs** — one for TDF (`./data/gc_by_stage_*.json`) and one for Giro (`./data/giro/gc_by_stage_*.json`). These put only the hashed asset *URLs* in the main bundle via `URLS_BY_RACE` (a `Record<RaceId, Record<string, string>>`); the data itself is emitted as raw `.json` assets and loaded via `fetch()` + `JSON.parse` on demand. The `currentRace` variable (`"tdf"` | `"giro"`) selects which URL map to use; `YEARS` is rebuilt from `getYearsForRace(currentRace)` on race change. Do **not** switch back to module imports (plain glob / dynamic `import()`): the browser's ES-module registry pins every imported module for the page's lifetime, so LRU eviction would no longer free memory, and parsing JSON-as-JS is slower than `JSON.parse`. Adding a new race is: drop files in a new subdirectory under `data/`, add a glob for that path, extend `URLS_BY_RACE` and the `RaceId` type, and add an `<option>` to the race dropdown in `index.html`. The Riders page's cross-year `riders_index.json` is fetched the same way (its URL comes from a `riders_index.json?url` import). Only the tiny `all_races_summary.json` is eagerly bundled. d3 is imported as modular submodules (`d3-selection`, `d3-scale`, `d3-axis`, `d3-shape`, `d3-array`) via a small `d3` shim object, not the full `d3` meta-package. Net result: initial download for the default stage view is ~76 KB gzipped, and only LRU-cached years (max 6) stay in memory.
+**`RaceId` type**: `"tdf" | "giro" | "vuelta"`. All `Record<RaceId, ...>` maps — `URLS_BY_RACE`, `ALL_RACES_BY_RACE`, `riderIndexByRace`, `allTeamsSortedByRace`, `allNationalitiesSortedByRace`, `riderIndexBuilt`, `RIDERS_INDEX_URL` — must include a `vuelta` key. TypeScript enforces this at compile time.
+
+**War bands by race** (shaded regions on All Races Overview):
+- TDF: `[{ start: 1914.5, end: 1918.5, label: "WWI" }, { start: 1939.5, end: 1946.5, label: "WWII" }]`
+- Giro: `[{ start: 1914.5, end: 1918.5, label: "WWI" }, { start: 1940.5, end: 1945.5, label: "WWII" }]`
+- Vuelta: `[{ start: 1935.5, end: 1944.5, label: "Civil War / WWII" }]` (Vuelta started 1935; Spanish Civil War + WWII gap covers 1936–1944)
+
+**Data loading (performance-critical)**: Per-year files are discovered with **three eager `?url` globs** — one for TDF (`./data/gc_by_stage_*.json`), one for Giro (`./data/giro/gc_by_stage_*.json`), one for Vuelta (`./data/vuelta/gc_by_stage_*.json`). These put only the hashed asset *URLs* in the main bundle via `URLS_BY_RACE` (a `Record<RaceId, Record<string, string>>`); the data itself is emitted as raw `.json` assets and loaded via `fetch()` + `JSON.parse` on demand. The `currentRace` variable (`"tdf"` | `"giro"` | `"vuelta"`) selects which URL map to use; `YEARS` is rebuilt from `getYearsForRace(currentRace)` on race change. Do **not** switch back to module imports (plain glob / dynamic `import()`): the browser's ES-module registry pins every imported module for the page's lifetime, so LRU eviction would no longer free memory, and parsing JSON-as-JS is slower than `JSON.parse`. Adding a new race is: drop files in a new subdirectory under `data/`, add a glob for that path, extend `URLS_BY_RACE` and the `RaceId` type, and add an `<option>` to the race dropdown in `index.html`. The Riders page's cross-year `riders_index.json` is fetched the same way (its URL comes from a `riders_index.json?url` import). Only the tiny `all_races_summary.json` files are eagerly bundled. d3 is imported as modular submodules (`d3-selection`, `d3-scale`, `d3-axis`, `d3-shape`, `d3-array`) via a small `d3` shim object, not the full `d3` meta-package. Net result: initial download for the default stage view is ~76 KB gzipped, and only LRU-cached years (max 6) stay in memory.
 
 ---
 
@@ -343,6 +410,11 @@ python3 export_gc.py --race giro                # all Giro years → src/data/gi
 python3 export_gc.py --race giro --year 2026    # single Giro year
 python3 export_giro_races_summary.py            # rebuilds data/giro/all_races_summary.json
 python3 export_giro_riders_index.py             # rebuilds data/giro/riders_index.json
+# Vuelta exports
+python3 export_gc.py --race vuelta              # all Vuelta years → src/data/vuelta/
+python3 export_gc.py --race vuelta --year 2025  # single Vuelta year
+python3 export_vuelta_races_summary.py          # rebuilds data/vuelta/all_races_summary.json
+python3 export_vuelta_riders_index.py           # rebuilds data/vuelta/riders_index.json
 # TDF shared exports
 python3 export_riders_index.py       # rebuilds riders_index.json (TDF Riders page cross-year index)
 python3 export_all_races_summary.py  # rebuilds all_races_summary.json (All Races Overview data — TDF only currently)
@@ -571,6 +643,36 @@ python3 export_giro_riders_index.py    # updates data/giro/riders_index.json
 
 ---
 
+## Adding Vuelta a España data
+
+The Vuelta pipeline mirrors the Giro pipeline exactly (same scrape format, same DB schema, same export flow), differing only in:
+- PCS base URL: `/race/vuelta-a-espana/YEAR/` (vs `giro-d-italia`)
+- Scrape directory: `vuelta_scrapes/YEAR/stage_N.json`
+- race_id = 3, race_name = "Vuelta a España"
+- No `fix_rider_names` step (modern PCS format, names are reliable)
+- First year: 1935 (vs 1909 for Giro)
+- War band: Spanish Civil War / WWII gap 1936–1944
+
+**Current status (as of 2026-07-14):** 1 edition with data (2025: 184 riders / 23 teams / 21 stages).
+
+### Adding historical Vuelta years
+
+```bash
+cd pipeline
+python3 scrape_vuelta.py 2020-2024    # saves to vuelta_scrapes/YEAR/ (use SCRAPE_DELAY=4.0 for recent years)
+python3 build_vuelta_points.py
+python3 ingest_vuelta.py 2020-2024
+python3 export_gc.py --race vuelta
+python3 export_vuelta_races_summary.py
+python3 export_vuelta_riders_index.py
+```
+
+`ingest_vuelta.py` refuses to re-insert an existing edition. To update a year that's already in the DB, delete it first (same SQL as the Giro delete snippet — use `race_id=3`).
+
+**PCS rate limiting:** Use `SCRAPE_DELAY=4.0` for recent years (2015+). Older years can often use `2.0`. The scraper handles 429 with a 30s backoff.
+
+---
+
 ## Scraping a live/in-progress race from PCS
 
 PCS blocks plain HTTP scraping with a Cloudflare "Just a moment…" challenge (`scrape_pcs_stages.py` no longer works standalone against the live site). Use a real browser instead, navigate to each stage's PCS page, and extract data via injected JavaScript. The page structure below applies identically to both the Tour de France and Giro d'Italia — only the URL path differs (`tour-de-france` vs `giro-d-italia`).
@@ -671,6 +773,22 @@ python3 export_gc.py --race giro --year 2026
 ---
 
 ## Key Implementation Notes
+
+### Giro GC winner time overrides
+
+`export_giro_races_summary.py` computes `gcWinnerTimeSeconds` by summing `finish_time_seconds` per stage. For historical Giro editions this is unreliable — many stages have NULL times, or PCS stored cumulative totals instead of per-stage deltas. As a result, 88 of 109 Giro editions had wrong times.
+
+The fix: `giro_races_summary_overrides.json` contains 88 year entries with correct `gcWinnerTimeSeconds` and `slowestFinisherTimeSeconds`, sourced from PCS GC standings pages (`/race/giro-d-italia/YEAR/gc/result/result`). These overrides are applied after DB-computed defaults in `export_giro_races_summary.py`.
+
+To update/check GC times:
+```bash
+# Check all years and write corrections
+python3 check_giro_gc_times.py        # → giro_gc_time_corrections.json
+python3 apply_giro_gc_corrections.py  # → merges into giro_races_summary_overrides.json
+python3 export_giro_races_summary.py  # → regenerates all_races_summary.json
+```
+
+The PCS GC page extraction uses regex `r'(?<!\+)(?<!\d)(\d{1,3}:\d{2}:\d{2})(?!\d)'` — finds time strings NOT preceded by `+` (gaps have `+` prefix; the winner's total time does not).
 
 ### Sprint points scoring system
 The green jersey competition existed 1953–present. **1953–1958 used golf scoring** (lower cumulative points = better rank — the Schär system). From 1959 onward, higher = better. The constant `GOLF_SPRINT_YEARS = set(range(1953, 1959))` in `export_gc.py` controls ascending vs descending sort when pre-computing `sprintRank`. The frontend reads the pre-computed rank and never re-derives it, which is critical — re-deriving from points would get 1953–1958 backwards.
