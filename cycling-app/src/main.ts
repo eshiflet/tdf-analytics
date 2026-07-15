@@ -37,9 +37,14 @@ const giroUrls = import.meta.glob<string>("./data/giro/gc_by_stage_*.json", {
   import: "default",
   eager: true,
 });
+const vueltaUrls = import.meta.glob<string>("./data/vuelta/gc_by_stage_*.json", {
+  query: "?url",
+  import: "default",
+  eager: true,
+});
 
-type RaceId = "tdf" | "giro";
-const URLS_BY_RACE: Record<RaceId, Record<string, string>> = { tdf: {}, giro: {} };
+type RaceId = "tdf" | "giro" | "vuelta";
+const URLS_BY_RACE: Record<RaceId, Record<string, string>> = { tdf: {}, giro: {}, vuelta: {} };
 for (const [path, url] of Object.entries(tdfUrls)) {
   const match = path.match(/gc_by_stage_(\d+)\.json/);
   if (match) URLS_BY_RACE.tdf[match[1]] = url;
@@ -47,6 +52,10 @@ for (const [path, url] of Object.entries(tdfUrls)) {
 for (const [path, url] of Object.entries(giroUrls)) {
   const match = path.match(/gc_by_stage_(\d+)\.json/);
   if (match) URLS_BY_RACE.giro[match[1]] = url;
+}
+for (const [path, url] of Object.entries(vueltaUrls)) {
+  const match = path.match(/gc_by_stage_(\d+)\.json/);
+  if (match) URLS_BY_RACE.vuelta[match[1]] = url;
 }
 
 let currentRace: RaceId = "tdf";
@@ -145,10 +154,12 @@ const nationFilterPanel = document.getElementById("nation-filter-panel") as HTML
 
 import allRacesSummaryRaw from "./data/all_races_summary.json";
 import giroAllRacesSummaryRaw from "./data/giro/all_races_summary.json";
+import vueltaAllRacesSummaryRaw from "./data/vuelta/all_races_summary.json";
 interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; slowestFinisherTimeSeconds: number | null; }
 const ALL_RACES_BY_RACE: Record<RaceId, RaceSummary[]> = {
   tdf: allRacesSummaryRaw as RaceSummary[],
   giro: giroAllRacesSummaryRaw as RaceSummary[],
+  vuelta: vueltaAllRacesSummaryRaw as RaceSummary[],
 };
 
 let currentView: "stage" | "overview" | "allraces" | "riders" = "stage";
@@ -705,7 +716,7 @@ function drawAllRacesOverview() {
   allRacesChartEl.innerHTML = "";
 
   const ALL_RACES = ALL_RACES_BY_RACE[currentRace];
-  const raceName = currentRace === "tdf" ? "Tour de France" : "Giro d'Italia";
+  const raceName = currentRace === "tdf" ? "Tour de France" : currentRace === "giro" ? "Giro d'Italia" : "Vuelta a España";
 
   const containerRect = allRacesChartEl.getBoundingClientRect();
   const totalWidth = Math.max(containerRect.width || 800, 600);
@@ -827,6 +838,8 @@ function drawAllRacesOverview() {
     // War-year shaded bands (draw before data lines so they sit behind)
     const warBands = currentRace === "tdf"
       ? [{ start: 1914.5, end: 1918.5, label: "WWI" }, { start: 1939.5, end: 1946.5, label: "WWII" }]
+      : currentRace === "vuelta"
+      ? [{ start: 1935.5, end: 1944.5, label: "Civil War / WWII" }]
       : [{ start: 1914.5, end: 1918.5, label: "WWI" }, { start: 1940.5, end: 1945.5, label: "WWII" }];
     warBands.forEach(({ start, end, label }) => {
       const bx = xScale(start);
@@ -1134,16 +1147,14 @@ function jerseySvg(fill: string, stroke = "#00000055"): string {
 }
 
 let komJerseyClipCounter = 0;
-/** White jersey + red polka dots, clipped to the jersey silhouette. Each call
- *  gets a unique clipPath id — reusing one id would make every KOM icon on
- *  the page reference whichever <clipPath> happened to render first. */
-function komJerseySvg(): string {
+/** White jersey + polka dots (red for TDF, blue for Vuelta), clipped to the jersey silhouette. */
+function komJerseySvg(dotColor = "#E4002B"): string {
   const clipId = `komclip${komJerseyClipCounter++}`;
   const dots = [6, 10, 14, 18]
     .flatMap((y, row) => {
       const offset = row % 2 ? 2 : 0;
       return [5 + offset, 10 + offset, 15 + offset, 20 + offset].map(
-        (x) => `<circle cx="${x}" cy="${y}" r="1.3" fill="#E4002B"/>`,
+        (x) => `<circle cx="${x}" cy="${y}" r="1.3" fill="${dotColor}"/>`,
       );
     })
     .join("");
@@ -1153,8 +1164,9 @@ function komJerseySvg(): string {
 const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint winner", kom: "KOM winner", youth: "Young rider winner" } as const;
 const JERSEY_TOOLTIP_LABELS_TDF = { gc: "Yellow jersey — GC winner", sprint: "Green jersey — Sprint winner", kom: "Polka dot jersey — KOM winner", youth: "White jersey — Young rider winner" } as const;
 const JERSEY_TOOLTIP_LABELS_GIRO = { gc: "Pink jersey — GC winner", sprint: "Purple jersey — Sprint winner", kom: "Blue jersey — KOM winner", youth: "White jersey — Young rider winner" } as const;
+const JERSEY_TOOLTIP_LABELS_VUELTA = { gc: "Red jersey — GC winner", sprint: "Green jersey — Sprint winner", kom: "Polka dot jersey — KOM winner", youth: "White jersey — Young rider winner" } as const;
 function jerseyTooltipLabel(category: JerseyCategory): string {
-  return (currentRace === "giro" ? JERSEY_TOOLTIP_LABELS_GIRO : JERSEY_TOOLTIP_LABELS_TDF)[category];
+  return (currentRace === "giro" ? JERSEY_TOOLTIP_LABELS_GIRO : currentRace === "vuelta" ? JERSEY_TOOLTIP_LABELS_VUELTA : JERSEY_TOOLTIP_LABELS_TDF)[category];
 }
 
 // Doping notes shown next to GC jersey years on the rider detail page.
@@ -1189,6 +1201,12 @@ function jerseyIconSvg(category: JerseyCategory): string {
     return category === "gc"     ? jerseySvg("#E4007C")
       : category === "sprint"    ? jerseySvg("#8B1FA1")
       : category === "kom"       ? jerseySvg("#0083CA")
+      : jerseySvg("#FFFFFF", "#888888");
+  }
+  if (currentRace === "vuelta") {
+    return category === "gc"     ? jerseySvg("#E30613")
+      : category === "sprint"    ? jerseySvg("#3FA535")
+      : category === "kom"       ? komJerseySvg("#0057B8")
       : jerseySvg("#FFFFFF", "#888888");
   }
   return category === "gc"    ? jerseySvg("#FFD400")
@@ -1877,9 +1895,9 @@ interface RiderEntry {
   teams: Set<string>;
 }
 
-const riderIndexByRace: Record<RaceId, Map<string, RiderEntry>> = { tdf: new Map(), giro: new Map() };
-const allTeamsSortedByRace: Record<RaceId, string[]> = { tdf: [], giro: [] };
-const allNationalitiesSortedByRace: Record<RaceId, string[]> = { tdf: [], giro: [] };
+const riderIndexByRace: Record<RaceId, Map<string, RiderEntry>> = { tdf: new Map(), giro: new Map(), vuelta: new Map() };
+const allTeamsSortedByRace: Record<RaceId, string[]> = { tdf: [], giro: [], vuelta: [] };
+const allNationalitiesSortedByRace: Record<RaceId, string[]> = { tdf: [], giro: [], vuelta: [] };
 
 // Convenience accessors for the current race
 function riderIndex() { return riderIndexByRace[currentRace]; }
@@ -1890,10 +1908,12 @@ function allNationalitiesSorted() { return allNationalitiesSortedByRace[currentR
 // of importing the JSON as a module).
 import ridersIndexUrl from "./data/riders_index.json?url";
 import giroRidersIndexUrl from "./data/giro/riders_index.json?url";
+import vueltaRidersIndexUrl from "./data/vuelta/riders_index.json?url";
 
 const RIDERS_INDEX_URL: Record<RaceId, string> = {
   tdf: ridersIndexUrl,
   giro: giroRidersIndexUrl,
+  vuelta: vueltaRidersIndexUrl,
 };
 
 // Compact prebuilt index (pipeline/export_riders_index.py): one small file
@@ -1915,7 +1935,7 @@ type RawRiderIndex = {
   riders: Record<string, { n: string; c: string | null; yw?: number[]; y: Record<string, RawYearTuple> }>;
 };
 
-const riderIndexBuilt: Record<RaceId, boolean> = { tdf: false, giro: false };
+const riderIndexBuilt: Record<RaceId, boolean> = { tdf: false, giro: false, vuelta: false };
 
 async function ensureRiderIndex(): Promise<void> {
   if (riderIndexBuilt[currentRace]) return;

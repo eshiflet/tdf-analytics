@@ -331,11 +331,14 @@ if __name__ == "__main__":
         if race_arg == "giro":
             race_name = "Giro d'Italia"
             race_subdir = "giro"
+        elif race_arg == "vuelta":
+            race_name = "Vuelta a España"
+            race_subdir = "vuelta"
         elif race_arg == "tdf":
             race_name = "Tour de France"
             race_subdir = ""
         else:
-            sys.exit(f"error: unknown race '{race_arg}' (use 'tdf' or 'giro')")
+            sys.exit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
 
     # Override sprint/KOM paths for non-TDF races
     if race_subdir:
