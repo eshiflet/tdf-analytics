@@ -2049,12 +2049,11 @@ async function drawRidersPage() {
   });
   nationalitySel.value = ridersFilterNationality;
 
-  // Jersey filter toggles — TDF only (Giro classification data not yet tracked).
-  // AND semantics: selecting more than one narrows to riders who've won every
-  // selected category, not any one of them.
+  // Jersey filter toggles. AND semantics: selecting more than one narrows to
+  // riders who've won every selected category, not any one of them.
+  // Youth wins are only tracked for TDF; hide that button on other races.
   const jerseyFilterGroup = document.createElement("div");
   jerseyFilterGroup.className = "jersey-filter-group";
-  if (currentRace !== "tdf") jerseyFilterGroup.style.display = "none";
   const jerseyFilterBtns = (Object.keys(JERSEY_LABELS) as JerseyCategory[]).map((category) => {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -2063,6 +2062,7 @@ async function drawRidersPage() {
     btn.title = `Filter to ${JERSEY_LABELS[category]}s`;
     btn.innerHTML = jerseyIconSvg(category);
     btn.dataset.category = category;
+    if (category === "youth" && currentRace !== "tdf") btn.style.display = "none";
     jerseyFilterGroup.appendChild(btn);
     return btn;
   });
