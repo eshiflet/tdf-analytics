@@ -2263,9 +2263,9 @@ function drawRiderDetail(riderId: string) {
       .text("Year");
 
     // Colors vary by race
-    const gcColor     = currentRace === "giro" ? "#E4007C" : "var(--accent)";
-    const sprintColor = currentRace === "giro" ? "#8B1FA1" : "#22c55e";
-    const komColor    = currentRace === "giro" ? "#0083CA" : "#ef4444";
+    const gcColor     = currentRace === "giro" ? "#E4007C" : currentRace === "vuelta" ? "#E30613" : "var(--accent)";
+    const sprintColor = currentRace === "giro" ? "#8B1FA1" : currentRace === "vuelta" ? "#3FA535" : "#22c55e";
+    const komColor    = currentRace === "giro" ? "#0083CA" : currentRace === "vuelta" ? "#0057B8" : "#ef4444";
 
     // Legend (top-right): GC / Sprint / KOM
     const legendItems = [
@@ -2337,7 +2337,7 @@ function drawRiderDetail(riderId: string) {
       const sprintPart = d.sprintRank < 9999 ? `<div style="color:${sprintColor}">Sprint #${d.sprintRank}</div>` : "";
       const komPart = d.komRank < 9999 ? `<div style="color:${komColor}">KOM #${d.komRank}</div>` : "";
       tooltipEl.innerHTML = `
-        <div class="t-name">${d.year} ${currentRace === "tdf" ? "Tour de France" : "Giro d'Italia"}</div>
+        <div class="t-name">${d.year} ${currentRace === "tdf" ? "Tour de France" : currentRace === "giro" ? "Giro d'Italia" : "Vuelta a España"}</div>
         <div class="t-team">${d.team ?? "—"}</div>
         ${gcPart}${sprintPart}${komPart}
         <div style="color:var(--text-dim);font-size:11px">Click to view stage chart</div>
