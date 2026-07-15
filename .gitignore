@@ -18,6 +18,11 @@ pipeline/cycling.db
 # Raw scraped data (large — only needed to rebuild the DB from scratch)
 pipeline/tdf_*.json
 pipeline/scrapes/
+pipeline/giro_scrapes/
+pipeline/vuelta_scrapes/
+
+# Claude Code — machine-specific settings (launch.json is committed; settings.local.json is not)
+.claude/settings.local.json
 
 # macOS
 .DS_Store
