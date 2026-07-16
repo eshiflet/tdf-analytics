@@ -213,7 +213,8 @@
   },
   "1992": {
     "gcWinnerTimeSeconds": 372968,
-    "slowestFinisherTimeSeconds": 389805
+    "slowestFinisherTimeSeconds": 389805,
+    "totalElevationM": null
   },
   "1993": {
     "gcWinnerTimeSeconds": 353384,
@@ -225,15 +226,18 @@
   },
   "1995": {
     "gcWinnerTimeSeconds": 351590,
-    "slowestFinisherTimeSeconds": 366417
+    "slowestFinisherTimeSeconds": 366417,
+    "totalElevationM": null
   },
   "1996": {
     "gcWinnerTimeSeconds": 379223,
-    "slowestFinisherTimeSeconds": 392623
+    "slowestFinisherTimeSeconds": 392623,
+    "totalElevationM": null
   },
   "1997": {
     "gcWinnerTimeSeconds": 370438,
-    "slowestFinisherTimeSeconds": 386181
+    "slowestFinisherTimeSeconds": 386181,
+    "totalElevationM": null
   },
   "1998": {
     "gcWinnerTimeSeconds": 355712,
@@ -241,7 +245,8 @@
   },
   "1999": {
     "gcWinnerTimeSeconds": 359756,
-    "slowestFinisherTimeSeconds": 373485
+    "slowestFinisherTimeSeconds": 373485,
+    "totalElevationM": null
   },
   "2000": {
     "gcWinnerTimeSeconds": 354614,
