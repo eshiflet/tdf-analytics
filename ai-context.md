@@ -663,15 +663,18 @@ The Vuelta pipeline mirrors the Giro pipeline exactly (same scrape format, same 
 
 ```bash
 cd pipeline
-python3 scrape_vuelta.py 2020-2024    # saves to vuelta_scrapes/YEAR/ (use SCRAPE_DELAY=4.0 for recent years)
+python3 scrape_vuelta.py 2020-2024          # saves to vuelta_scrapes/YEAR/ (use SCRAPE_DELAY=4.0 for recent years)
 python3 build_vuelta_points.py
-python3 ingest_vuelta.py 2020-2024
+python3 ingest_vuelta.py 2020-2024          # ALWAYS pass a year range — see warning below
 python3 export_gc.py --race vuelta
 python3 export_vuelta_races_summary.py
 python3 export_vuelta_riders_index.py
+python3 scrape_vuelta_stage_info.py 2020-2024   # only the newly ingested years
+python3 export_gc.py --race vuelta              # re-export to pick up elevation
+python3 export_vuelta_races_summary.py
 ```
 
-`ingest_vuelta.py` refuses to re-insert an existing edition. To update a year that's already in the DB, delete it first (same SQL as the Giro delete snippet — use `race_id=3`).
+> **Warning — always pass a year range to `ingest_vuelta.py`.** Unlike Giro, `ingest_vuelta.py` **deletes and re-creates** any edition it touches (it does not refuse existing editions — it wipes and reimports them). Running it with no arguments triggers `discover_years()`, which finds every year in `vuelta_scrapes/` and re-ingests all of them, setting `vertical_meters = NULL` for every stage across all years. Always pass the specific range you're adding (e.g. `ingest_vuelta.py 1970-1989`) to avoid wiping elevation data for years you didn't intend to touch. After ingest, only `scrape_vuelta_stage_info.py` needs to be run for the newly ingested years — not all years — since the others were untouched.
 
 **PCS rate limiting:** Use `SCRAPE_DELAY=4.0` for recent years (2015+). Older years can often use `2.0`. The scraper handles 429 with a 30s backoff.
 
