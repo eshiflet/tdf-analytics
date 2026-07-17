@@ -340,8 +340,8 @@ if __name__ == "__main__":
         else:
             sys.exit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
 
-    # Override sprint/KOM paths for non-TDF races
-    if race_subdir:
+    # Override sprint/KOM paths for non-TDF races (TDF uses the module-level defaults)
+    if race_subdir and race_subdir != "tour":
         sp = os.path.join(HERE, f"{race_subdir}_sprint_points.json")
         if os.path.exists(sp):
             SPRINT_POINTS_PATH = sp
