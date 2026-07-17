@@ -159,7 +159,9 @@ def main():
     # ── 5. Delete edition from DB and re-insert ──
     print(f"\nRe-inserting {year} in cycling.db...")
     conn = sqlite3.connect(DB_PATH)
-    ed = conn.execute("SELECT edition_id FROM race_editions WHERE year=?", (year,)).fetchone()
+    tdf_row = conn.execute("SELECT race_id FROM races WHERE name='Tour de France'").fetchone()
+    tdf_race_id = tdf_row[0] if tdf_row else 1
+    ed = conn.execute("SELECT edition_id FROM race_editions WHERE race_id=? AND year=?", (tdf_race_id, year)).fetchone()
     if ed:
         edition_id = ed[0]
         conn.execute("DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)", (edition_id,))

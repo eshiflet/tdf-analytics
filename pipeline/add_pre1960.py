@@ -126,8 +126,8 @@ def insert_edition(conn, race_id, year, icons_for_year, countries_seen, riders_s
 
     cur = conn.cursor()
 
-    # Check if edition already exists
-    existing = cur.execute("SELECT edition_id FROM race_editions WHERE year=?", (year,)).fetchone()
+    # Check if edition already exists (filter by race_id to avoid matching Giro/Vuelta same year)
+    existing = cur.execute("SELECT edition_id FROM race_editions WHERE race_id=? AND year=?", (race_id, year)).fetchone()
     if existing:
         print(f"  {year}: already in DB (edition_id={existing[0]}), skipping")
         return 0, 0
