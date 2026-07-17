@@ -1,6 +1,6 @@
 # Cycling Analytics — AI Context
 
-Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (42 editions with data, spanning 1980–2026 plus earlier decades being added), and the **Vuelta a España** (1 edition with data: 2025). The 2026 Tour de France is in progress — stages are added incrementally as the race runs. Historical Giro data is being added decade by decade backwards toward 1909. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (42 editions with data, spanning 1980–2026 plus earlier decades being added), and the **Vuelta a España** (1 edition with data: 2025). The 2026 Tour de France is in progress — **stages 1–12 are in the DB as of 2026-07-16** (stage 12: Merlier win, Nevers → Chalon-sur-Saône); stages are added incrementally as the race runs. Historical Giro data is being added decade by decade backwards toward 1909. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
 ---
 
@@ -531,6 +531,8 @@ Each `scrapes/stage_N.json` contains:
 - The scrape files persist in `pipeline/scrapes/` so stages don't need re-scraping
 - `--scrapes-only` flag updates just the JSON files without touching the DB or running exports
 - `add_pre1960.py` is still the underlying DB inserter; `add_stages.py` orchestrates around it
+
+> **Never pre-fill or estimate time gaps.** Even flat sprint stages produce real time gaps — crashes and incidents can leave riders at the back losing 3–7+ minutes, and riders can DNS/DNF on any stage type. Every `gap_txt` value in a scrape file must come from actual PCS data. Do not write stage files until the real PCS results page has been scraped.
 
 ### Manual fallback (if add_stages.py isn't suitable)
 
