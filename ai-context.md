@@ -1,6 +1,6 @@
 # Cycling Analytics — AI Context
 
-Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (42 editions with data, spanning 1980–2026 plus earlier decades being added), and the **Vuelta a España** (1 edition with data: 2025). The 2026 Tour de France is in progress — **stages 1–12 are in the DB as of 2026-07-16** (stage 12: Merlier win, Nevers → Chalon-sur-Saône); stages are added incrementally as the race runs. Historical Giro data is being added decade by decade backwards toward 1909. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), and the **Vuelta a España** (80 editions with data, back to 1935). The 2026 Tour de France is in progress — **stages 1–12 are in the DB as of 2026-07-16** (stage 12: Merlier win, Nevers → Chalon-sur-Saône); stages are added incrementally as the race runs. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
 ---
 
@@ -13,7 +13,7 @@ The app visualizes per-rider performance across every stage of multiple Grand To
 - Data: SQLite → Python export → JSON files bundled by Vite
 - Hosting: GitHub Pages, deployed via GitHub Actions on push to `main`
 
-**Multi-race support:** The frontend has a race dropdown (Tour de France / Giro d'Italia / Vuelta a España) next to the year dropdown. Each race has its own set of years. Data files are organized by subdirectory: TDF at `data/gc_by_stage_*.json`, Giro at `data/giro/gc_by_stage_*.json`, Vuelta at `data/vuelta/gc_by_stage_*.json`. The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). The Giro has 42 editions with data (1980–2026, plus more being added; 2,775 riders / 446 teams as of mid-2026). The Vuelta has 1 edition with data (2025; 184 riders / 23 teams). The "All Races Overview" currently shows TDF data only. The "Riders" view includes Giro and Vuelta riders.
+**Multi-race support:** Each race has a canonical **slug** — `tour`, `giro`, `vuelta` — used consistently for the data subdirectory (`src/data/<slug>/gc_by_stage_*.json`), the frontend `RaceId` type, the race dropdown value, and the URL hash segment. The frontend race dropdown is populated from the `RACES` registry in main.ts (see "Race registry" below); every view (stage chart, Race Overview, All Races Overview, Riders) works for all three races, and deep links are race-aware (`#giro/2026/stage/gc`). The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). Editions with data: TDF 113 (1903–2026), Giro 109 (~4,700 riders), Vuelta 80 (1935–2025, ~4,400 riders).
 
 **Jersey colors by race:**
 - **TDF**: Yellow = GC, Green = Sprint, Red polka-dot = KOM, White = Youth
@@ -40,6 +40,27 @@ The frontend is race-aware via the `RACES` registry in main.ts (see "Race regist
 
 ---
 
+## Recent structural changes (July 2026) — read before assuming older patterns
+
+A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen older descriptions of this codebase, these supersede them:
+
+**Data safety (pipeline):**
+- All raw scraped data (`pipeline/tdf_*_full.json`, `scrapes/`, `giro_scrapes/`, `vuelta_scrapes/`) is now **tracked in git** — it used to be gitignored with the only copy on one machine.
+- `cycling.db` is NOT regenerable; back it up with `python3 pipeline/db_backup.py` (rotating snapshots in `pipeline/db_backups/`). `add_stages.py` snapshots automatically before its destructive delete.
+- `ingest_giro.py` / `ingest_vuelta.py`: `--dry-run` is now truly read-only (it used to delete the edition!), delete+reinsert is atomic, `vertical_meters`/`profile_score` are preserved across re-ingest, and a bare no-arg run is refused without `--all`.
+- All TDF-only scripts filter `race_editions` by the TDF race_id (year-only lookups could silently hit a Giro/Vuelta edition of the same year).
+- `build_db.py` was deleted (stale, dangerous). `validate_exports.py` validates **all three races** (302 files).
+- Exports write compact JSON (`separators=(",", ":")`) — ~10% smaller payloads.
+
+**Multi-race frontend (see "Race registry" and "Hash routing" sections):**
+- Canonical race slugs: `tour`, `giro`, `vuelta` (the frontend's old `"tdf"` id is gone).
+- The `RACES` registry in main.ts is the single source of truth for per-race name, colors, jerseys, war bands, capabilities. Adding a race = one registry entry + a `src/data/<slug>/` directory (wildcard globs auto-discover the files).
+- URL hashes are race-aware: `#giro/2026/stage/gc`, `#vuelta/allraces`, `#giro/riders/<slug>`; bare hashes (no race segment) mean `tour`, so all old links still work.
+
+**Planned direction:** one-day classics (e.g. Paris–Roubaix) will be added as races with a single stage. The DB schema already supports this (`races.race_type`); the remaining work is (a) capability flags in the `RACES` registry so stage-chart/sprint/KOM views disable for one-day races, (b) consolidating the near-duplicate `ingest_giro.py`/`ingest_vuelta.py` and per-race export scripts into slug-parameterized versions, and (c) moving TDF's unprefixed supplemental files (`sprint_points.json` etc.) into a per-race layout — deferred until after the 2026 Tour ends.
+
+---
+
 ## Repository Structure
 
 ```
@@ -52,7 +73,7 @@ tdf-analytics/
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
-│       ├── main.ts                   # All chart logic, D3 rendering, event handling (~2,200 lines)
+│       ├── main.ts                   # All chart logic, D3 rendering, event handling (~2,500 lines; starts with the RACES registry)
 │       ├── types.ts                  # TypeScript interfaces
 │       ├── style.css                 # All styles
 │       └── data/                     # Generated JSON — one per year + summary
@@ -363,7 +384,7 @@ This is the most important script. It reads cycling.db + all supplemental JSON f
 
 ## Frontend — main.ts
 
-All chart logic is in `cycling-app/src/main.ts` (~2,290 lines). Key functions:
+All chart logic is in `cycling-app/src/main.ts` (~2,500 lines). It opens with the **`RACES` registry** — the single source of truth for per-race config (see "Race registry" below). Key functions:
 
 - **`loadDataset(year)`** — **async**; awaits `getDataset(year)` (lazy chunk fetch + LRU), updates UI state, triggers chart redraw. Callers that depend on the result (year-select change, career-dot click-through) must handle the promise — the career-dot click does `loadDataset(...).then(() => switchView("stage"))` to avoid rendering the previously-loaded year.
 - **`getDataset(year)`** — resolves a year's dataset from a 6-entry LRU (`DATASET_CACHE`, keyed by `race:year`); on miss it `fetch()`es the year's JSON asset (URL from `URLS_BY_RACE[currentRace]`) and `JSON.parse`s it. Re-visiting an evicted year re-fetches from the browser HTTP cache (no network, only re-parse).
@@ -418,7 +439,7 @@ python3 export_vuelta_riders_index.py           # rebuilds data/vuelta/riders_in
 # TDF shared exports
 python3 export_riders_index.py       # rebuilds riders_index.json (TDF Riders page cross-year index)
 python3 export_all_races_summary.py  # rebuilds all_races_summary.json (All Races Overview data — TDF only currently)
-python3 validate_exports.py          # check all exported files (0 errors = good; warnings = informational)
+python3 validate_exports.py          # check ALL races' exported files (tour+giro+vuelta; 0 errors = good; warnings = informational)
 python3 validate_exports.py --year 2026  # validate just one year
 
 cd ../cycling-app
@@ -560,7 +581,7 @@ python3 export_giro_races_summary.py
 python3 export_giro_riders_index.py
 ```
 
-**Progress as of 2026-07-13:** 42 editions with data spanning 1980–2026 (2,775 riders / 446 teams). Next: 1970–1979, then 1960s, 1950s, 1940s, 1930s, 1920s, 1910s — back to 1909 (first Giro).
+**Progress as of 2026-07-17:** COMPLETE — all 109 editions with data, 1909–2026 (~4,700 riders / ~700 teams).
 
 ### Rider name quality and fix script
 
@@ -657,7 +678,7 @@ The Vuelta pipeline mirrors the Giro pipeline exactly (same scrape format, same 
 - First year: 1935 (vs 1909 for Giro)
 - War band: Spanish Civil War / WWII gap 1936–1944
 
-**Current status (as of 2026-07-14):** 1 edition with data (2025: 184 riders / 23 teams / 21 stages).
+**Current status (as of 2026-07-17):** 80 editions with data, 1935–2025 (~4,400 riders / ~570 teams).
 
 ### Adding historical Vuelta years
 
