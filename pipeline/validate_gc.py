@@ -89,7 +89,7 @@ def load_db_stages(year: int) -> list[dict]:
     """Load stage list from DB with stage_number and distance_km."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    row = conn.execute("SELECT edition_id FROM race_editions WHERE year=?", (year,)).fetchone()
+    row = conn.execute("SELECT edition_id FROM race_editions WHERE race_id=(SELECT race_id FROM races WHERE name='Tour de France') AND year=?", (year,)).fetchone()
     if not row:
         conn.close()
         return []

@@ -138,7 +138,7 @@ def stage_url_suffixes(year):
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute(
-        "SELECT edition_id FROM race_editions WHERE year = ?", (year,)
+        "SELECT edition_id FROM race_editions WHERE race_id=(SELECT race_id FROM races WHERE name='Tour de France') AND year=?", (year,)
     )
     row = cur.fetchone()
     if not row:

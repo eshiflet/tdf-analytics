@@ -119,7 +119,7 @@ def main():
 
         if year not in stages_by_year:
             edition_id = conn.execute(
-                "SELECT edition_id FROM race_editions WHERE year=?", (year,)
+                "SELECT edition_id FROM race_editions WHERE race_id=(SELECT race_id FROM races WHERE name='Tour de France') AND year=?", (year,)
             ).fetchone()["edition_id"]
             stages_by_year[year] = [
                 dict(r) for r in conn.execute(

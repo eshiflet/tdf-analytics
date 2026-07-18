@@ -64,19 +64,16 @@ def load_kom_points():
     return _kom_points_cache
 
 
-def export_year(year, out_path, race_id=None):
+def export_year(year, out_path, race_id):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    if race_id is not None:
-        cur.execute(
-            "SELECT edition_id FROM race_editions WHERE year = ? AND race_id = ?", (year, race_id)
-        )
-    else:
-        cur.execute(
-            "SELECT edition_id FROM race_editions WHERE year = ?", (year,)
-        )
+    # race_id is required: multiple races can share a year, and a year-only
+    # lookup silently picks whichever edition it finds first.
+    cur.execute(
+        "SELECT edition_id FROM race_editions WHERE year = ? AND race_id = ?", (year, race_id)
+    )
     row = cur.fetchone()
     if not row:
         print(f"No edition found for {year}")

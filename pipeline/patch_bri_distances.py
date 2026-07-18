@@ -118,7 +118,7 @@ def main():
         if not bri_stages:
             continue
 
-        row = conn.execute("SELECT edition_id FROM race_editions WHERE year=?", (year,)).fetchone()
+        row = conn.execute("SELECT edition_id FROM race_editions WHERE race_id=(SELECT race_id FROM races WHERE name='Tour de France') AND year=?", (year,)).fetchone()
         if not row:
             continue
         edition_id = row["edition_id"]

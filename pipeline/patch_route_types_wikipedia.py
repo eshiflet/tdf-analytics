@@ -209,7 +209,7 @@ def main():
 
         # Load DB stages for this year
         edition_row = conn.execute(
-            "SELECT edition_id FROM race_editions WHERE year=?", (year,)
+            "SELECT edition_id FROM race_editions WHERE race_id=(SELECT race_id FROM races WHERE name='Tour de France') AND year=?", (year,)
         ).fetchone()
         if not edition_row:
             print(f"  not in DB")

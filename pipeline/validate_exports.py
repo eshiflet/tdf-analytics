@@ -35,7 +35,13 @@ import sys
 from reconcile_kom import name_match, slug_to_display
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour")
+DATA_ROOT = os.path.join(HERE, "..", "cycling-app", "src", "data")
+# (label, subdir, has_kom_reference) — KOM reference data exists only for TDF
+RACE_DIRS = [
+    ("tour", "tour", True),
+    ("giro", "giro", False),
+    ("vuelta", "vuelta", False),
+]
 TOTALS_PATH = os.path.join(HERE, "kom_totals.json")
 REPORT_PATH = os.path.join(HERE, "kom_reconcile_report.json")
 
@@ -158,36 +164,41 @@ def main():
         with open(REPORT_PATH, encoding="utf-8") as f:
             strategies = {r["year"]: r["strategy"] for r in json.load(f)}
 
-    files = sorted(
-        f for f in os.listdir(DATA_DIR)
-        if f.startswith("gc_by_stage_") and f.endswith(".json")
-    )
     total_errors = 0
     total_warnings = 0
     checked = 0
 
-    for fname in files:
-        year = int(fname.replace("gc_by_stage_", "").replace(".json", ""))
-        if single_year and year != single_year:
+    for race_label, subdir, has_kom_ref in RACE_DIRS:
+        data_dir = os.path.join(DATA_ROOT, subdir)
+        if not os.path.isdir(data_dir):
             continue
-        checked += 1
-        with open(os.path.join(DATA_DIR, fname), encoding="utf-8") as f:
-            ds = json.load(f)
+        files = sorted(
+            f for f in os.listdir(data_dir)
+            if f.startswith("gc_by_stage_") and f.endswith(".json")
+        )
+        for fname in files:
+            year = int(fname.replace("gc_by_stage_", "").replace(".json", ""))
+            if single_year and year != single_year:
+                continue
+            checked += 1
+            with open(os.path.join(data_dir, fname), encoding="utf-8") as f:
+                ds = json.load(f)
 
-        errors, warnings = validate_year(year, ds)
+            errors, warnings = validate_year(year, ds)
 
-        entry = totals_data.get(str(year), {})
-        ref_wiki = entry.get("wikipedia", [])
-        ref_bri = entry.get("bikeraceinfo", [])
-        ref = ref_wiki if ref_wiki else ref_bri
-        warnings += check_kom_reference(year, ds, ref, strategies.get(year, ""))
+            if has_kom_ref:
+                entry = totals_data.get(str(year), {})
+                ref_wiki = entry.get("wikipedia", [])
+                ref_bri = entry.get("bikeraceinfo", [])
+                ref = ref_wiki if ref_wiki else ref_bri
+                warnings += check_kom_reference(year, ds, ref, strategies.get(year, ""))
 
-        for e in errors:
-            print(f"ERROR {year}: {e}")
-        for w in warnings:
-            print(f"warn  {year}: {w}")
-        total_errors += len(errors)
-        total_warnings += len(warnings)
+            for e in errors:
+                print(f"ERROR {race_label} {year}: {e}")
+            for w in warnings:
+                print(f"warn  {race_label} {year}: {w}")
+            total_errors += len(errors)
+            total_warnings += len(warnings)
 
     print(f"\n{checked} files checked: {total_errors} errors, {total_warnings} warnings")
     sys.exit(1 if total_errors else 0)
