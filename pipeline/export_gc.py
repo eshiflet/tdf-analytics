@@ -349,8 +349,14 @@ if __name__ == "__main__":
             KOM_POINTS_PATH = kp
         else:
             KOM_POINTS_PATH = "__nonexistent__"
+        # Wikipedia per-rider times exist only for the TDF, but per-race PCS
+        # winner times ({race}_gc_winner_times.json, from check_*_gc_times.py)
+        # give correct totals as winner_time + last-stage gap. Without them,
+        # totalTimeSeconds falls back to summing per-stage times, which is
+        # wildly wrong for historical years with sparse stage times.
         GC_ALL_TIMES_PATH = "__nonexistent__"
-        GC_WINNER_TIMES_PATH = "__nonexistent__"
+        wt = os.path.join(HERE, f"{race_subdir}_gc_winner_times.json")
+        GC_WINNER_TIMES_PATH = wt if os.path.exists(wt) else "__nonexistent__"
         _sprint_points_cache = None
         _kom_points_cache = None
         _gc_all_times_cache = None
