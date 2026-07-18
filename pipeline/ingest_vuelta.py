@@ -122,16 +122,28 @@ def ingest_year(conn, race_id: int, year: int, stage_files: list[str]) -> int:
         "SELECT edition_id FROM race_editions WHERE race_id=? AND year=?",
         (race_id, year),
     ).fetchone()
+
+    # Preserve per-stage fields that come from scrape_vuelta_stage_info.py, not
+    # the stage scrape files — otherwise a re-ingest silently wipes them.
+    preserved_stage_info = {}
+    if existing:
+        for r in cur.execute(
+            "SELECT stage_number, vertical_meters, profile_score FROM stages WHERE edition_id=?",
+            (existing[0],),
+        ):
+            if r["vertical_meters"] is not None or r["profile_score"] is not None:
+                preserved_stage_info[r["stage_number"]] = (r["vertical_meters"], r["profile_score"])
+
+    if DRY_RUN:
+        action = "replace existing" if existing else "insert"
+        print(f"  [DRY RUN] Would {action} {year} Vuelta a España with {len(stage_files)} stages")
+        return 0
+
     if existing:
         eid = existing[0]
         cur.execute("DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
         cur.execute("DELETE FROM stages WHERE edition_id=?", (eid,))
         cur.execute("DELETE FROM race_editions WHERE edition_id=?", (eid,))
-        conn.commit()
-
-    if DRY_RUN:
-        print(f"  [DRY RUN] Would insert {year} Vuelta a España with {len(stage_files)} stages")
-        return 0
 
     cur.execute(
         "INSERT INTO race_editions (race_id, year, edition_name) VALUES (?,?,?)",
@@ -172,17 +184,18 @@ def ingest_year(conn, race_id: int, year: int, stage_files: list[str]) -> int:
         won_how = info.get("Won how", "")
         route_type = detect_route_type(profile_icon, won_how)
 
+        preserved_vm, preserved_ps = preserved_stage_info.get(n, (None, None))
         cur.execute(
             """INSERT INTO stages
                (edition_id, stage_number, stage_label, stage_date,
                 start_location, finish_location, distance_km, stage_type,
-                profile_score, route_type, won_how)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                vertical_meters, profile_score, route_type, won_how)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 edition_id, n, f"Stage {n}", date_iso,
                 info.get("Start"), info.get("Finish"), distance_km,
                 "itt" if route_type in ("TT", "TTT") else "road",
-                None, route_type, won_how,
+                preserved_vm, preserved_ps, route_type, won_how,
             ),
         )
         stage_id = cur.lastrowid
@@ -283,6 +296,13 @@ def ingest_year(conn, race_id: int, year: int, stage_files: list[str]) -> int:
 def main():
     args = sys.argv[1:]
     year_args = parse_year_args(args)
+    if not year_args and "--all" not in args:
+        sys.exit(
+            "Refusing to re-ingest every year in vuelta_scrapes/ without an explicit --all.\n"
+            "Re-ingesting a year wipes and rebuilds it; pass the year(s) you actually\n"
+            "changed (e.g. 'python3 ingest_vuelta.py 2025' or '2020-2024'), or --all\n"
+            "if you really want to rebuild everything."
+        )
     years = year_args if year_args else discover_years()
 
     if not years:

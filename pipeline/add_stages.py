@@ -158,6 +158,8 @@ def main():
 
     # ── 5. Delete edition from DB and re-insert ──
     print(f"\nRe-inserting {year} in cycling.db...")
+    from db_backup import backup_db
+    backup_db(f"pre-stages-{'-'.join(map(str, stage_nums))}")
     conn = sqlite3.connect(DB_PATH)
     tdf_row = conn.execute("SELECT race_id FROM races WHERE name='Tour de France'").fetchone()
     tdf_race_id = tdf_row[0] if tdf_row else 1
