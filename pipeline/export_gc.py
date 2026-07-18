@@ -155,7 +155,8 @@ def export_year(year, out_path, race_id):
 
     cur.execute(
         """
-        SELECT sr.rider_id, r.full_name AS name, c.name AS nationality,
+        SELECT sr.rider_id, r.full_name AS name, r.first_name, r.last_name,
+               c.name AS nationality,
                t.name AS team, sr.gc_rank AS finalRank
         FROM stage_results sr
         JOIN riders r ON r.rider_id = sr.rider_id
@@ -170,7 +171,8 @@ def export_year(year, out_path, race_id):
     # all riders who appear anywhere in this edition (in case some DNF'd before the last stage)
     cur.execute(
         """
-        SELECT DISTINCT sr.rider_id, r.full_name AS name, c.name AS nationality, t.name AS team
+        SELECT DISTINCT sr.rider_id, r.full_name AS name, r.first_name, r.last_name,
+               c.name AS nationality, t.name AS team
         FROM stage_results sr
         JOIN stages st ON st.stage_id = sr.stage_id
         JOIN riders r ON r.rider_id = sr.rider_id
@@ -283,15 +285,22 @@ def export_year(year, out_path, race_id):
             if last_sp["komRank"] is None and final_stage_idx < len(kom_ranks_by_stage):
                 last_sp["komRank"] = kom_ranks_by_stage[final_stage_idx].get(rider_id)
 
-        riders_out.append({
+        entry: dict = {
             "id": rider_id,
             "name": info["name"],
+        }
+        if info.get("first_name"):
+            entry["firstName"] = info["first_name"]
+        if info.get("last_name"):
+            entry["lastName"] = info["last_name"]
+        entry.update({
             "nationality": info["nationality"],
             "team": team,
             "finalRank": final_rank,
             "totalTimeSeconds": resolve_total_time(rider_id),
             "byStage": by_stage,
         })
+        riders_out.append(entry)
 
     riders_out.sort(key=lambda r: r["finalRank"])
 

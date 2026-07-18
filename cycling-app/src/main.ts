@@ -1110,7 +1110,7 @@ function wireControls() {
       refreshLegendState();
       return;
     }
-    const match = dataset.riders.find((r) => r.name.toLowerCase().includes(q));
+    const match = dataset.riders.find((r) => r.name.toLowerCase().includes(q) || displayName(r).toLowerCase().includes(q));
     if (match) {
       selected.add(match.id);
       highlighted = match.id;
@@ -1341,8 +1341,8 @@ function buildLegend() {
 
     const name = document.createElement("span");
     name.className = "legend-name";
-    name.textContent = rider.name;
-    name.title = `${rider.name} — ${rider.team ?? ""}`;
+    name.textContent = displayName(rider);
+    name.title = `${displayName(rider)} — ${rider.team ?? ""}`;
 
     row.appendChild(rank);
     row.appendChild(swatch);
@@ -1746,9 +1746,9 @@ function drawChart() {
         const finalRank = isKom ? finalKomRank : finalPointsRank;
         const ridersAtFinal = isKom ? ridersAtFinalKomRank : ridersAtFinalPointsRank;
         const group = ridersAtFinal.get(finalRank.get(r.id)!);
-        if (group && group.riders.length > 1) return `(${group.riders.length}) ${lastName(r.name)}`;
+        if (group && group.riders.length > 1) return `(${group.riders.length}) ${riderLabel(r)}`;
       }
-      return lastName(r.name);
+      return riderLabel(r);
     })
     .style("cursor", (r) => currentMetric === "gc" ? "default" : "pointer")
     .on("mouseover", (event: MouseEvent, r: RiderSeries) => {
@@ -1762,7 +1762,7 @@ function drawChart() {
           ? winnerTime
           : fmtGap(gap);
         tooltipEl.innerHTML = `
-          <div class="t-name">${r.name}</div>
+          <div class="t-name">${displayName(r)}</div>
           <div class="t-team">${r.team ?? ""}</div>
           <div>GC #${gcRank ?? "—"} &middot; ${timeStr}</div>
         `;
@@ -1777,7 +1777,7 @@ function drawChart() {
       const group = ridersAtFinal.get(rank);
       if (!group) return;
       const label = isKom ? "KOM" : "Points";
-      const names = group.riders.map((rd) => rd.name).join("<br>");
+      const names = group.riders.map((rd) => displayName(rd)).join("<br>");
       tooltipEl.innerHTML = `
         <div class="t-name">Final ${label} Rank #${rank}</div>
         <div class="t-team">${group.points} pts</div>
@@ -1790,8 +1790,15 @@ function drawChart() {
   updateLineClasses();
 }
 
-function lastName(full: string): string {
-  const parts = full.trim().split(" ");
+/** "Firstname Lastname" when scrape data is present; falls back to PCS "LastName Firstname". */
+function displayName(r: { name: string; firstName?: string; lastName?: string }): string {
+  return r.firstName && r.lastName ? `${r.firstName} ${r.lastName}` : r.name;
+}
+
+/** Short label for chart lines: last name when available, else last word of full_name. */
+function riderLabel(r: RiderSeries): string {
+  if (r.lastName) return r.lastName;
+  const parts = r.name.trim().split(" ");
   return parts[parts.length - 1];
 }
 
@@ -1871,7 +1878,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
       })();
     if (!point) return;
     tooltipEl.innerHTML = `
-      <div class="t-name">${rider.name}</div>
+      <div class="t-name">${displayName(rider)}</div>
       <div class="t-team">${rider.team ?? ""}</div>
       <div>Stage ${stageLabel(point.stage)} &middot; GC #${point.gcRank ?? "—"}</div>
       <div>Gap: ${fmtGap(point.gcGapSeconds)}</div>
@@ -1885,7 +1892,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
     if (currentMetric === "kom") {
       const komRank = komRankAtStage.get(point.stage)?.get(rider.id) ?? null;
       tooltipEl.innerHTML = `
-        <div class="t-name">${rider.name}</div>
+        <div class="t-name">${displayName(rider)}</div>
         <div class="t-team">${rider.team ?? ""}</div>
         <div>Stage ${stageLabel(point.stage)} &middot; KOM rank #${komRank ?? "—"}</div>
         <div>Cumulative KOM pts: ${point.cumulativeKomPoints}</div>
@@ -1894,7 +1901,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
     } else {
       const ptsRank = pointsRankAtStage.get(point.stage)?.get(rider.id) ?? null;
       tooltipEl.innerHTML = `
-        <div class="t-name">${rider.name}</div>
+        <div class="t-name">${displayName(rider)}</div>
         <div class="t-team">${rider.team ?? ""}</div>
         <div>Stage ${stageLabel(point.stage)} &middot; Points rank #${ptsRank ?? "—"}</div>
         <div>Cumulative pts: ${point.cumulativePoints}</div>
@@ -1951,6 +1958,8 @@ function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
 interface RiderEntry {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   nationality: string | null;
   youthWinYears: number[];
   years: Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>;
@@ -1995,7 +2004,7 @@ type RawYearTuple =
   | [number, number, number, number];
 type RawRiderIndex = {
   teams: string[];
-  riders: Record<string, { n: string; c: string | null; yw?: number[]; y: Record<string, RawYearTuple> }>;
+  riders: Record<string, { n: string; fn?: string; ln?: string; c: string | null; yw?: number[]; y: Record<string, RawYearTuple> }>;
 };
 
 const riderIndexBuilt = emptyPerRace<boolean>(() => false);
@@ -2020,7 +2029,7 @@ async function ensureRiderIndex(): Promise<void> {
       });
       if (team) teams.add(team);
     }
-    index.set(id, { id, name: rec.n, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams });
+    index.set(id, { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams });
   }
   allTeamsSortedByRace[race] = [...teamTable].sort();
   allNationalitiesSortedByRace[race] = [...new Set(
@@ -2043,7 +2052,7 @@ function filteredRiders(): RiderEntry[] {
   const yr = ridersFilterYear ? parseInt(ridersFilterYear) : null;
   return [...riderIndex().values()]
     .filter((e) => {
-      if (q && !e.name.toLowerCase().includes(q)) return false;
+      if (q && !e.name.toLowerCase().includes(q) && !displayName(e).toLowerCase().includes(q)) return false;
       if (yr !== null && !e.years.has(yr)) return false;
       if (ridersFilterTeam && !e.teams.has(ridersFilterTeam)) return false;
       if (ridersFilterNationality && e.nationality !== ridersFilterNationality) return false;
@@ -2055,7 +2064,7 @@ function filteredRiders(): RiderEntry[] {
       }
       return true;
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => (a.lastName ?? a.name).localeCompare(b.lastName ?? b.name));
 }
 
 async function drawRidersPage() {
@@ -2153,11 +2162,11 @@ async function drawRidersPage() {
     for (const entry of results) {
       const btn = document.createElement("button");
       btn.className = "rider-name-btn";
-      btn.appendChild(document.createTextNode(entry.name));
+      btn.appendChild(document.createTextNode(displayName(entry)));
       const flag = nationalityFlagEl(entry.nationality);
       if (flag) btn.appendChild(flag);
       for (const jersey of jerseyIconsEl(entry)) btn.appendChild(jersey);
-      btn.title = entry.name;
+      btn.title = displayName(entry);
       btn.dataset.id = entry.id;
       frag.appendChild(btn);
     }
@@ -2219,7 +2228,7 @@ function drawRiderDetail(riderId: string) {
 
   const nameEl = document.createElement("h2");
   nameEl.className = "rider-detail-name";
-  nameEl.appendChild(document.createTextNode(entry.name));
+  nameEl.appendChild(document.createTextNode(displayName(entry)));
   const detailFlag = nationalityFlagEl(entry.nationality);
   if (detailFlag) nameEl.appendChild(detailFlag);
   for (const el of jerseyIconsWithYearsEl(entry)) nameEl.appendChild(el);

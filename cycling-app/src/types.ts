@@ -22,7 +22,9 @@ export interface RiderStagePoint {
 
 export interface RiderSeries {
   id: string;
-  name: string;
+  name: string;         // "LastName FirstName" (PCS format)
+  firstName?: string;   // parsed from PCS rider page; absent until scrape runs
+  lastName?: string;
   nationality: string | null;
   team: string | null;
   finalRank: number;

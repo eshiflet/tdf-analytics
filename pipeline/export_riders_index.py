@@ -83,9 +83,11 @@ def main():
             ds = json.load(f)
         for r in ds["riders"]:
             slug = r["id"].removeprefix("rider/")
-            entry = riders.setdefault(
-                slug, {"n": r["name"], "c": r.get("nationality"), "y": {}}
-            )
+            entry = riders.setdefault(slug, {"n": r["name"], "c": r.get("nationality"), "y": {}})
+            if r.get("firstName") and "fn" not in entry:
+                entry["fn"] = r["firstName"]
+            if r.get("lastName") and "ln" not in entry:
+                entry["ln"] = r["lastName"]
             if r["id"] in youth_winners:
                 entry["yw"] = youth_winners[r["id"]]
             if r.get("team"):
