@@ -744,6 +744,47 @@ svg text {
   margin-left: auto;
 }
 
+.race-toggle-group {
+  display: flex;
+  gap: 8px;
+  padding: 10px 0 4px;
+  flex-shrink: 0;
+}
+
+.race-toggle-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--race-color, #888);
+  background: transparent;
+  color: var(--race-color, #888);
+  font-weight: 700;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  line-height: 1;
+  padding: 0;
+}
+
+.race-toggle-btn.active {
+  background: var(--race-color, #888);
+  color: var(--race-text, #fff);
+}
+
+.race-toggle-btn.inactive {
+  opacity: 0.45;
+}
+
+.race-toggle-btn.no-data {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.race-toggle-btn:not(.no-data):hover {
+  opacity: 1;
+}
+
 .rider-career-chart {
   flex: 1;
   min-height: 0;
