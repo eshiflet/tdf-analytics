@@ -122,7 +122,7 @@ def main():
     conn.close()
 
     with open(OUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(out, f)
+        json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
 
     print(f"Wrote {len(out)} years ({FIRST_YEAR}-{last_year}) -> {OUT_PATH}")
 

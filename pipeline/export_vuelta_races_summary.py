@@ -124,7 +124,7 @@ def main():
 
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(out, f)
+        json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
 
     years_with_data = sum(1 for r in out if r["totalDistanceKm"] is not None)
     print(f"Wrote {len(out)} years ({FIRST_YEAR}-{last_year}), {years_with_data} with data -> {OUT_PATH}")

@@ -313,7 +313,7 @@ def export_year(year, out_path, race_id):
     }
 
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(dataset, f)
+        json.dump(dataset, f, separators=(",", ":"), ensure_ascii=False)
 
     print(f"{year}: {len(riders_out)} riders, {len(stages)} stages -> {out_path}")
     conn.close()
