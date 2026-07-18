@@ -70,12 +70,12 @@ tdf-analytics/
 │           ├── all_races_summary.json # Cross-year aggregate data for All Races view (TDF only currently)
 │           └── riders_index.json      # Compact cross-year TDF rider index (lazy-loaded by Riders view)
 └── pipeline/                         # Data pipeline — not deployed
-    ├── cycling.db                    # SQLite DB (gitignored — ~50MB, keep locally)
+    ├── cycling.db                    # SQLite DB (gitignored, ~140MB, NOT regenerable — back up with db_backup.py)
+    ├── db_backup.py                  # Rotating DB backups → db_backups/ (auto-run by add_stages.py before deletes)
     ├── export_gc.py                  # Main exporter: cycling.db + JSON supplements → src/data/
     │                                 #   --year N for single year, --race giro|tdf to select race
     ├── export_riders_index.py        # Builds riders_index.json from the exported per-year files
     ├── export_all_races_summary.py   # Builds all_races_summary.json from cycling.db + supplements
-    ├── build_db.py                   # STALE/DO NOT USE for adding years — see warning below
     ├── add_pre1960.py                # The actual tool for adding ANY TDF year additively (name is historical)
     ├── add_stages.py                 # Automated TDF stage addition: scrape files → JSON updates → DB → exports
     ├── scrape_stage_template.js      # JS snippets for extracting stage data from PCS in a browser
@@ -145,7 +145,7 @@ tdf-analytics/
     │                                   #   (e.g. full-planned-route elevation for an in-progress year)
     │
     │   # Scraping scripts
-    ├── tdf_YEAR_full.json            # Raw PCS scrape files (1903–1959 kept in git; 1960+ generated locally)
+    ├── tdf_YEAR_full.json            # Raw PCS scrape files — ALL tracked in git (as are scrapes/, giro_scrapes/, vuelta_scrapes/)
     ├── scrape_kom_points.py          # Scrapes KOM points from PCS stage -kom pages
     ├── scrape_kom_totals.py          # Scrapes final KOM totals from Wikipedia + bikeraceinfo
     ├── scrape_bri_stages.py          # Scrapes per-stage results from bikeraceinfo
@@ -154,7 +154,6 @@ tdf-analytics/
     ├── scrape_pcs_stages.py          # Scrapes stage data from PCS
     ├── scrape_pcs_kom_finals.py      # Scrapes final KOM standings from PCS
     ├── scrape_sprint_finals.py       # Scrapes final sprint standings
-    ├── scrape_sprint_finals.py
     │
     │   # Patch / fix scripts
     ├── patch_kom_wikipedia.py        # Patches KOM data from Wikipedia (years 1933–1938 top 10)
@@ -171,9 +170,9 @@ tdf-analytics/
     └── validate_gc.py               # Validates per-stage GC leaders/gaps vs bikeraceinfo
 ```
 
-> **Critical:** `cycling.db` is gitignored and must be kept locally at `pipeline/cycling.db`. Without it you cannot regenerate the JSON data files or add new years. Back it up separately.
+> **Critical:** `cycling.db` is gitignored and must be kept locally at `pipeline/cycling.db`. It is **not regenerable** — most historical years' raw scrape files no longer exist. Back it up with `python3 pipeline/db_backup.py` (rotating snapshots in `pipeline/db_backups/`, newest 5 kept; `add_stages.py` snapshots automatically before its destructive delete step). All raw scraped data (`tdf_*_full.json`, `scrapes/`, `giro_scrapes/`, `vuelta_scrapes/`) IS tracked in git.
 
-> **`build_db.py` is stale — do not use it to add a year.** Despite being the script named in older instructions here, it (a) writes to `/tmp/cycling.db`, not the real DB, and (b) unconditionally wipes and rebuilds *every* edition in a hardcoded `EDITIONS` list, which requires raw scrape files for years that mostly no longer exist locally. **`add_pre1960.py` is the real tool**, despite its pre-1960-sounding name — it reads a CLI year argument (`python3 add_pre1960.py 2026`), writes additively to the real `pipeline/cycling.db`, and skips (never wipes) any year already present. See "Adding a New Year" below.
+> **`add_pre1960.py` is the tool for adding a TDF year**, despite its pre-1960-sounding name — it reads a CLI year argument (`python3 add_pre1960.py 2026`), writes additively to the real `pipeline/cycling.db`, and skips (never wipes) any year already present. (The old `build_db.py` was deleted — it was stale and dangerous.) See "Adding a New Year" below.
 
 ---
 
@@ -183,7 +182,7 @@ tdf-analytics/
 ```
 PCS website  →  tdf_YEAR_full.json  (scraped via a real browser — see note below)
                        ↓
-                add_pre1960.py  →  cycling.db      (NOT build_db.py — see warning above)
+                add_pre1960.py  →  cycling.db
                                       │
               ┌───────────────────────┴──────────────────────────────┐
               │  supplemental JSON files:                             │
@@ -452,7 +451,7 @@ git push
 
 1. **Scrape PCS data** for the new year into `tdf_2026_full.json` (`{"stages": [{"n": 1, "info": {...}, "rows": [...]}], "classifications": {}}`). For a live/in-progress Tour, this must be done via a real browser — see "Scraping a live/in-progress Tour" below for the exact method and DOM structure. Each row is `[rnk, gc_pos, gc_lag, bib, age, rider_name, rider_slug, nat, team_name, team_slug, uci_pts, pcs_pts, bonus_txt, abs_time_txt, gap_txt]` — only the stage winner (`rnk == "1"`) needs a real `abs_time_txt`; every other rider just needs `gap_txt` (finish time is computed as `winner_seconds + gap_seconds`). `gc_pos`/`gc_lag` can be left blank for stage 1 — there's a carry-forward fallback that fills them from the stage rank/gap.
 
-2. **Add to DB — use `add_pre1960.py`, not `build_db.py`:**
+2. **Add to DB with `add_pre1960.py`:**
    ```bash
    cd pipeline
    python3 add_pre1960.py 2026 --dry-run   # sanity check first
@@ -611,7 +610,9 @@ After scraping new stage files into `giro_scrapes/`:
 ```bash
 cd pipeline
 
-# 1. If adding to an existing edition, delete it first (ingest_giro.py refuses if edition exists)
+# 1. NOTE: ingest_giro.py deletes and re-creates any edition it touches (atomically,
+#    preserving vertical_meters/profile_score). No manual delete needed. It refuses
+#    a bare no-arg run (which would rebuild every year) without --all.
 python3 -c "
 import sqlite3
 conn = sqlite3.connect('cycling.db')
@@ -676,7 +677,7 @@ python3 export_gc.py --race vuelta              # re-export to pick up elevation
 python3 export_vuelta_races_summary.py
 ```
 
-> **Warning — always pass a year range to `ingest_vuelta.py`.** Unlike Giro, `ingest_vuelta.py` **deletes and re-creates** any edition it touches (it does not refuse existing editions — it wipes and reimports them). Running it with no arguments triggers `discover_years()`, which finds every year in `vuelta_scrapes/` and re-ingests all of them, setting `vertical_meters = NULL` for every stage across all years. Always pass the specific range you're adding (e.g. `ingest_vuelta.py 1970-1989`) to avoid wiping elevation data for years you didn't intend to touch. After ingest, only `scrape_vuelta_stage_info.py` needs to be run for the newly ingested years — not all years — since the others were untouched.
+> **Note on re-ingesting.** Both `ingest_vuelta.py` and `ingest_giro.py` **delete and re-create** any edition they touch, but do so atomically (a failed insert rolls the delete back) and **preserve `vertical_meters`/`profile_score`** from the existing edition, so re-ingesting no longer wipes elevation data. A bare no-arg run (which would rebuild every year found in the scrapes directory) is refused unless you pass `--all`. Still prefer passing the specific range you changed (e.g. `ingest_vuelta.py 1970-1989`). `scrape_vuelta_stage_info.py` only needs to run for years that never had elevation scraped.
 
 **PCS rate limiting:** Use `SCRAPE_DELAY=4.0` for recent years (2015+). Older years can often use `2.0`. The scraper handles 429 with a 30s backoff.
 
@@ -937,5 +938,5 @@ python3 validate_gc.py --summary   # one line per year
 ## File Locations on Eric's Machine
 
 - **Repo:** `~/Documents/GitHub/tdf-analytics/`
-- **Database:** `~/Documents/GitHub/tdf-analytics/pipeline/cycling.db` (gitignored — back up separately)
+- **Database:** `~/Documents/GitHub/tdf-analytics/pipeline/cycling.db` (gitignored — back up with `pipeline/db_backup.py`)
 - **Main site repo** (separate): hosts `www.ericshiflet.com`; TDF app lives at `/tdf-analytics/`
