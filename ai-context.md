@@ -149,15 +149,17 @@ tdf-analytics/
     │   └── YEAR/stage_N.json         # Organized by year subdirectory (e.g. vuelta_scrapes/2025/stage_1.json)
     ├── vuelta_sprint_points.json     # Vuelta sprint points per rider per stage
     ├── vuelta_kom_points.json        # Vuelta KOM points per rider per stage
-    ├── scrape_vuelta_gc_pages.py     # Fetches PCS per-stage GC pages ({slug}-gc) → vuelta_scrapes/YEAR/gc_pages/
+    ├── scrape_vuelta_gc_pages.py     # Fetches PCS per-stage GC pages ({slug}-gc) → {race}_scrapes/YEAR/gc_pages/
     │                                 #   Saves per-day: info, profile_icon, full result_rows, gc_rows (GC standings
     │                                 #   table top-N). Also writes _slugs.json (true race-day list incl. prologue)
+    │                                 #   Takes --race giro (as do the two scripts below) — Giro uses giro_scrapes/
     ├── make_missing_vuelta_days.py   # Diffs gc_pages/_slugs.json vs stage files; creates stage_0.json (n=0)
     │                                 #   for missing prologues (1979–1987 all had one) or inserts+renumbers a
     │                                 #   missing mid-race day. Run before build_vuelta_gc_standings.py
-    ├── build_vuelta_gc_standings.py  # Derives per-stage GC for every rider → vuelta_scrapes/YEAR/gc_standings.json
+    ├── build_vuelta_gc_standings.py  # Derives per-stage GC for every rider → {race}_scrapes/YEAR/gc_standings.json
     │                                 #   (real PCS per-stage GC + validated cumulative time chains; see
-    │                                 #   "Vuelta per-stage GC standings" below). Consumed by ingest_vuelta.py
+    │                                 #   "Vuelta & Giro per-stage GC standings" below). Consumed by
+    │                                 #   ingest_vuelta.py / ingest_giro.py
     ├── check_vuelta_gc_times.py      # Fetches PCS GC standings for all 80 Vuelta years, extracts winner time,
     │                                 #   compares to DB; writes vuelta_gc_winner_times.json (all years) and
     │                                 #   vuelta_gc_time_corrections.json (mismatched years only)
@@ -886,7 +888,7 @@ python3 export_giro_races_summary.py  # → regenerates all_races_summary.json
 
 The PCS GC page extraction uses regex `r'(?<!\+)(?<!\d)(\d{1,3}:\d{2}:\d{2})(?!\d)'` — finds time strings NOT preceded by `+` (gaps have `+` prefix; the winner's total time does not).
 
-### Vuelta per-stage GC standings (July 2026 rebuild)
+### Vuelta & Giro per-stage GC standings (July 2026 rebuild)
 
 PCS stage-result pages **before 1998** embed GC standings for only ~1–30 riders
 per stage (often just the leader; the full field only at the final stage), and
@@ -930,8 +932,30 @@ shift; rank order unaffected). 1986 and 1988-style years where PCS lists only
 **`build_vuelta_points.py` numeric-sort fix**: it used to sort stage files
 lexicographically, misaligning sprint/KOM points arrays with DB stage order
 for EVERY year with 10+ stages (export_gc.py indexes arrays by stage
-position). Rebuilt 2026-07; the Giro's `build_giro_points.py`/`ingest_giro.py`
-still have the same bugs (flagged as follow-up work).
+position). Rebuilt 2026-07; `build_giro_points.py`/`ingest_giro.py` got the
+same fixes.
+
+**Giro (same rebuild, July 2026)**: identical disease, identical cure. All
+three scripts take `--race giro` (they live under their `vuelta_` names but
+are race-parameterized; scrapes land in `giro_scrapes/YEAR/gc_pages/`).
+`ingest_giro.py` consumes `gc_standings.json` the same way. Giro-specific
+notes:
+- PCS has **full per-day GC tables from 1990 onward** for the Giro (Vuelta
+  only from 1998), so 1990–1997 are fully authoritative.
+- 1912 was contested as a *team* classification — PCS has no individual GC
+  and the rebuild correctly emits nothing for it.
+- Missing prologues materialized for 1968/1973/1977–1982/1984–1987; missing
+  split-stage halves / dropped days inserted for 1936, 1950, 1960, 1970,
+  1988→no-op, 1990, 1991, 1992, 1995.
+- `make_missing_vuelta_days.py` matching was hardened during the Giro port:
+  one-to-one day matching (1988's 21a/21b share date+finish — key-based
+  matching wrongly saw 21b as covered) and insertion positions anchored to
+  neighbouring days' actual file numbers (1992's files contain a Genova
+  prologue the PCS dropdown omits, shifting file numbers vs slug positions).
+- Persistent PCS page failures (server-side): 1912/stage-4, 1946/stage-12,
+  1956/stage-9b, 1969/stage-20, 1971/prologue, 1983/prologue; and the 1989
+  final-TT `-gc` page is near-empty on PCS itself. All degrade gracefully
+  (the stage files still carry the data used).
 
 ### Vuelta GC winner time overrides
 
