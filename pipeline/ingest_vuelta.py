@@ -102,7 +102,25 @@ def parse_year_args(args: list[str]) -> list[int]:
 
 def find_stage_files_for_year(year: int) -> list[str]:
     year_dir = os.path.join(SCRAPES_DIR, str(year))
-    return sorted(glob(os.path.join(year_dir, "stage_*.json")))
+    # numeric sort — plain sorted() is lexicographic (stage_1, stage_10, ...,
+    # stage_2) which scrambles any logic that walks stages in race order
+    return sorted(
+        glob(os.path.join(year_dir, "stage_*.json")),
+        key=lambda p: int(re.search(r"stage_(\d+)\.json$", p).group(1)),
+    )
+
+
+def load_gc_standings(year: int) -> dict | None:
+    """Per-stage GC from build_vuelta_gc_standings.py, if present.
+
+    Returns {stage_number(int): {rider_slug: [rank_or_None, gap_seconds]}}.
+    """
+    path = os.path.join(SCRAPES_DIR, str(year), "gc_standings.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    return {int(n): entries for n, entries in data.get("stages", {}).items()}
 
 
 def discover_years() -> list[int]:
@@ -155,7 +173,7 @@ def ingest_year(conn, race_id: int, year: int, stage_files: list[str]) -> int:
     riders_seen = {r["rider_id"] for r in cur.execute("SELECT rider_id FROM riders")}
     teams_seen = {r["team_id"] for r in cur.execute("SELECT team_id FROM teams")}
 
-    last_known_gc = {}
+    gc_standings = load_gc_standings(year)
     total_results = 0
 
     for sf in stage_files:
@@ -211,17 +229,26 @@ def ingest_year(conn, race_id: int, year: int, stage_files: list[str]) -> int:
             if not rider_slug:
                 continue
 
-            if not gc_pos:
-                carried = last_known_gc.get(rider_slug)
-                if carried:
-                    gc_pos, gc_lag = carried
-                elif n == 1:
+            # Per-stage GC. Preferred source: gc_standings.json (real PCS GC
+            # merged with cumulative times computed from actual stage results —
+            # see build_vuelta_gc_standings.py). Historical PCS result pages
+            # carry GC for only a few riders per stage, so the raw columns are
+            # sparse pre-1998; NEVER carry values across stages (a rider's gap
+            # changes every stage — stale values are fabricated data).
+            gc_rank_v = None
+            gc_gap_v = None
+            if gc_standings is not None:
+                entry = gc_standings.get(n, {}).get(rider_slug)
+                if entry:
+                    gc_rank_v, gc_gap_v = entry[0], entry[1]
+            else:
+                if not gc_pos and n == 1:
                     stage_rank_fallback = parse_int(rnk)
                     if stage_rank_fallback is not None:
                         gc_pos = str(stage_rank_fallback)
                         gc_lag = gap_txt
-            if gc_pos:
-                last_known_gc[rider_slug] = (gc_pos, gc_lag)
+                gc_rank_v = parse_int(gc_pos)
+                gc_gap_v = parse_time_to_seconds(gc_lag)
 
             if nat and nat not in countries_seen:
                 countries_seen.add(nat)
@@ -246,10 +273,12 @@ def ingest_year(conn, race_id: int, year: int, stage_files: list[str]) -> int:
                     (team_slug, team_name, season_year),
                 )
 
+            # NOTE: "DF" is deliberately NOT an exit status — on historical PCS
+            # pages it marks riders who finished the stage without a recorded
+            # position/time (often the whole peloton); they stay in the race.
             status = "FINISHED"
-            if rnk in ("DNF", "DNS", "OTL", "NP", "DSQ", "DEL", "DF"):
-                status = {"DNF": "DNF", "DNS": "DNS", "OTL": "OTL",
-                          "NP": "NP", "DSQ": "DSQ", "DEL": "DEL", "DF": "DNF"}.get(rnk, "DNF")
+            if rnk in ("DNF", "DNS", "OTL", "NP", "DSQ", "DEL"):
+                status = rnk
 
             abs_secs = parse_time_to_seconds(abs_time_txt)
             gap_secs = parse_time_to_seconds(gap_txt)
@@ -266,8 +295,8 @@ def ingest_year(conn, race_id: int, year: int, stage_files: list[str]) -> int:
 
             bonus_secs = parse_bonus_seconds(bonus_txt)
             stage_rank = parse_int(rnk) if status == "FINISHED" else None
-            gc_rank = parse_int(gc_pos)
-            gc_gap_secs = parse_time_to_seconds(gc_lag)
+            gc_rank = gc_rank_v
+            gc_gap_secs = gc_gap_v
 
             cur.execute(
                 """INSERT OR IGNORE INTO stage_results

@@ -149,6 +149,15 @@ tdf-analytics/
     │   └── YEAR/stage_N.json         # Organized by year subdirectory (e.g. vuelta_scrapes/2025/stage_1.json)
     ├── vuelta_sprint_points.json     # Vuelta sprint points per rider per stage
     ├── vuelta_kom_points.json        # Vuelta KOM points per rider per stage
+    ├── scrape_vuelta_gc_pages.py     # Fetches PCS per-stage GC pages ({slug}-gc) → vuelta_scrapes/YEAR/gc_pages/
+    │                                 #   Saves per-day: info, profile_icon, full result_rows, gc_rows (GC standings
+    │                                 #   table top-N). Also writes _slugs.json (true race-day list incl. prologue)
+    ├── make_missing_vuelta_days.py   # Diffs gc_pages/_slugs.json vs stage files; creates stage_0.json (n=0)
+    │                                 #   for missing prologues (1979–1987 all had one) or inserts+renumbers a
+    │                                 #   missing mid-race day. Run before build_vuelta_gc_standings.py
+    ├── build_vuelta_gc_standings.py  # Derives per-stage GC for every rider → vuelta_scrapes/YEAR/gc_standings.json
+    │                                 #   (real PCS per-stage GC + validated cumulative time chains; see
+    │                                 #   "Vuelta per-stage GC standings" below). Consumed by ingest_vuelta.py
     ├── check_vuelta_gc_times.py      # Fetches PCS GC standings for all 80 Vuelta years, extracts winner time,
     │                                 #   compares to DB; writes vuelta_gc_winner_times.json (all years) and
     │                                 #   vuelta_gc_time_corrections.json (mismatched years only)
@@ -876,6 +885,53 @@ python3 export_giro_races_summary.py  # → regenerates all_races_summary.json
 ```
 
 The PCS GC page extraction uses regex `r'(?<!\+)(?<!\d)(\d{1,3}:\d{2}:\d{2})(?!\d)'` — finds time strings NOT preceded by `+` (gaps have `+` prefix; the winner's total time does not).
+
+### Vuelta per-stage GC standings (July 2026 rebuild)
+
+PCS stage-result pages **before 1998** embed GC standings for only ~1–30 riders
+per stage (often just the leader; the full field only at the final stage), and
+many historical stages list most of the peloton as `DF` ("did finish" — no
+recorded position/time; NOT a DNF). The original `ingest_vuelta.py` "carried
+forward" the last seen GC values per rider — in lexicographic file order
+(stage_1, stage_10, …, stage_2) — which fabricated per-stage GC by replicating
+stale/final gaps across stages. All Vuelta years were rebuilt in July 2026:
+
+1. `scrape_vuelta_gc_pages.py 1979-1997` — fetches each race day's `{slug}-gc`
+   PCS page into `vuelta_scrapes/YEAR/gc_pages/` (full result table, GC
+   standings top-N, info block, true race-day slug list `_slugs.json`).
+2. `make_missing_vuelta_days.py` — creates `stage_0.json` (n=0, labeled "P")
+   for the prologues the original scraper missed (1979–1987 all had one), or
+   inserts+renumbers a missing mid-race day.
+3. `build_vuelta_gc_standings.py` — writes `vuelta_scrapes/YEAR/gc_standings.json`:
+   - **authoritative entries**: PCS's own per-stage GC (rows' GC columns +
+     gc_pages standings tables) — exact, bonus-inclusive;
+   - **computed entries**: cumulative sums of scraped per-stage gaps
+     ("score", gap-space so day winners' absolute times cancel), tied to real
+     GC via a per-day offset estimated from riders present in both, propagated
+     forward AND backward so one truncated stage doesn't break a chain;
+   - **validation**: any rider whose computed values ever disagree with a PCS
+     authoritative entry beyond 5s is dropped from computed output (their
+     authoritative entries remain). Old PCS pages don't publish time bonuses,
+     so bonus-earning riders fail validation by design — better absent than
+     wrong. A rider-stage with no derivable value gets NO entry (nulls in the
+     export; the frontend draws line gaps).
+   - gc_rank is emitted only when ≥85% of active riders are known that day
+     (otherwise rank=null, gap only — the GC Time display mode still shows
+     these riders; the GC Position mode shows only truly ranked ones).
+4. `ingest_vuelta.py` consumes `gc_standings.json` when present (per stage
+   `n`, per rider); the carry-forward is gone. Stage files sort numerically.
+   `DF` now ingests as FINISHED with null time/rank.
+
+Caveats: mid-race computed gaps can omit the leader's accumulated time
+bonuses on days where the only authoritative anchor is the leader (uniform
+shift; rank order unaffected). 1986 and 1988-style years where PCS lists only
+~top-10 per stage stay sparse — that's all the data PCS has.
+
+**`build_vuelta_points.py` numeric-sort fix**: it used to sort stage files
+lexicographically, misaligning sprint/KOM points arrays with DB stage order
+for EVERY year with 10+ stages (export_gc.py indexes arrays by stage
+position). Rebuilt 2026-07; the Giro's `build_giro_points.py`/`ingest_giro.py`
+still have the same bugs (flagged as follow-up work).
 
 ### Vuelta GC winner time overrides
 

@@ -14,10 +14,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCRAPES_DIR = os.path.join(HERE, "vuelta_scrapes")
 
 
+def stage_num(path: str) -> int:
+    import re
+    return int(re.search(r"stage_(\d+)\.json$", path).group(1))
+
+
 def load_year(stage_files: list[str]) -> tuple[list[dict], list[dict]]:
     sprint_by_stage = []
     kom_by_stage = []
-    for sf in sorted(stage_files):
+    # numeric sort: plain sorted() is lexicographic (stage_1, stage_10, ...,
+    # stage_2), which misaligns the arrays with DB stage order for any year
+    # with 10+ stages — export_gc.py indexes these arrays by stage position
+    for sf in sorted(stage_files, key=stage_num):
         with open(sf, encoding="utf-8") as f:
             data = json.load(f)
         sprint_by_stage.append(data.get("sprint_points", {}))
