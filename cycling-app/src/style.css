@@ -785,6 +785,43 @@ svg text {
   opacity: 1;
 }
 
+.toggle-divider {
+  color: var(--panel-border, #555);
+  font-size: 18px;
+  line-height: 30px;
+  margin: 0 2px;
+  user-select: none;
+  align-self: center;
+}
+
+.classif-toggle-btn {
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 5px;
+  border: 1px solid var(--panel-border, #555);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.classif-toggle-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+.classif-toggle-btn.inactive {
+  opacity: 0.4;
+}
+
+.classif-toggle-btn:hover {
+  opacity: 1;
+}
+
 .rider-career-chart {
   flex: 1;
   min-height: 0;

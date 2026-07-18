@@ -2269,12 +2269,15 @@ async function drawRiderDetail(riderId: string): Promise<void> {
   header.append(backBtn, nameEl, metaEl);
   ridersChartEl.appendChild(header);
 
-  // ── Race toggle buttons ──────────────────────────────────────────────────────
-  const activeRaces = new Set<RaceId>(byRace.keys());
+  // ── Toggle bar: race buttons (T/G/V) + divider + classification buttons ───────
+  type ClassifId = "gc" | "sprint" | "kom";
+  const activeRaces   = new Set<RaceId>(byRace.keys());
+  const activeClassifs = new Set<ClassifId>(["gc", "sprint", "kom"]);
 
   const toggleGroup = document.createElement("div");
   toggleGroup.className = "race-toggle-group";
 
+  // Race toggles
   for (const race of RACE_IDS) {
     const btn = document.createElement("button");
     btn.className = "race-toggle-btn";
@@ -2284,14 +2287,13 @@ async function drawRiderDetail(riderId: string): Promise<void> {
     btn.title = RACES[race].name;
     btn.style.setProperty("--race-color", badge.bg);
     btn.style.setProperty("--race-text", badge.text);
-
     if (!hasData) {
       btn.classList.add("no-data");
     } else {
       btn.classList.add("active");
       btn.addEventListener("click", () => {
         if (activeRaces.has(race)) {
-          if (activeRaces.size === 1) return; // keep at least one active
+          if (activeRaces.size === 1) return;
           activeRaces.delete(race);
           btn.classList.replace("active", "inactive");
         } else {
@@ -2301,6 +2303,32 @@ async function drawRiderDetail(riderId: string): Promise<void> {
         redrawChart();
       });
     }
+    toggleGroup.appendChild(btn);
+  }
+
+  // Divider
+  const divider = document.createElement("span");
+  divider.className = "toggle-divider";
+  divider.textContent = "|";
+  toggleGroup.appendChild(divider);
+
+  // Classification toggles
+  for (const classif of (["gc", "sprint", "kom"] as ClassifId[])) {
+    const label = classif === "gc" ? "GC" : classif === "sprint" ? "Sprint" : "KOM";
+    const btn = document.createElement("button");
+    btn.className = "classif-toggle-btn active";
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      if (activeClassifs.has(classif)) {
+        if (activeClassifs.size === 1) return;
+        activeClassifs.delete(classif);
+        btn.classList.replace("active", "inactive");
+      } else {
+        activeClassifs.add(classif);
+        btn.classList.replace("inactive", "active");
+      }
+      redrawChart();
+    });
     toggleGroup.appendChild(btn);
   }
   ridersChartEl.appendChild(toggleGroup);
@@ -2335,14 +2363,24 @@ async function drawRiderDetail(riderId: string): Promise<void> {
       const rect = chartContainer.getBoundingClientRect();
       const W = Math.max(rect.width || 800, 500);
       const H = Math.max(rect.height || 380, 280);
-      const margin = { top: 30, right: 40, bottom: 44, left: 60 };
+      const margin = { top: 42, right: 40, bottom: 44, left: 60 };
       const iW = W - margin.left - margin.right;
       const iH = H - margin.top - margin.bottom;
 
-      const finishPts = allPoints.filter((p) => p.finalRank < 9999);
-      const dnfPts    = allPoints.filter((p) => p.finalRank >= 9999);
-      const maxRank = Math.max(d3.max(finishPts, (p) => p.finalRank) ?? 10, 10);
-      const DNF_H = dnfPts.length > 0 ? 36 : 0;
+      // Max rank across all active classifications
+      const rankValues: number[] = [];
+      for (const p of allPoints) {
+        if (activeClassifs.has("gc")     && p.finalRank  < 9999) rankValues.push(p.finalRank);
+        if (activeClassifs.has("sprint") && p.sprintRank < 9999) rankValues.push(p.sprintRank);
+        if (activeClassifs.has("kom")    && p.komRank    < 9999) rankValues.push(p.komRank);
+      }
+      const maxRank = Math.max(d3.max(rankValues) ?? 10, 10);
+
+      // GC DNF zone (only when GC is active)
+      const gcDnfPts = activeClassifs.has("gc")
+        ? allPoints.filter((p) => p.finalRank >= 9999)
+        : [];
+      const DNF_H = gcDnfPts.length > 0 ? 36 : 0;
       const mainH = iH - DNF_H - (DNF_H > 0 ? 8 : 0);
 
       const xPad = Math.max((maxYear - minYear) * 0.06, 1.5);
@@ -2352,6 +2390,21 @@ async function drawRiderDetail(riderId: string): Promise<void> {
       const yScale2 = d3.scaleLinear()
         .domain([1, maxRank])
         .range([0, mainH]);
+
+      // Per-year x offset so dots from different races sharing a year sit
+      // side-by-side (touching) rather than on top of each other.
+      const uniqueYears = [...new Set(allPoints.map((p) => p.year))].sort((a, b) => a - b);
+      const racesPerYear = new Map<number, RaceId[]>();
+      for (const year of uniqueYears) {
+        racesPerYear.set(year, [...activeRaces].filter((r) => allPoints.some((p) => p.race === r && p.year === year)));
+      }
+      const DOT_R = 5;
+      function xPos(race: RaceId, year: number): number {
+        const at = racesPerYear.get(year) ?? [];
+        if (at.length <= 1) return xScale2(year);
+        const idx = at.indexOf(race);
+        return xScale2(year) + (idx - (at.length - 1) / 2) * (DOT_R * 2 + 1);
+      }
 
       const svg = d3.select(chartContainer).append("svg")
         .attr("width", W).attr("height", H)
@@ -2368,7 +2421,6 @@ async function drawRiderDetail(riderId: string): Promise<void> {
         .call(d3.axisLeft(yScale2).tickValues(yTickVals).tickFormat((d) => `#${d}`));
 
       // X axis — tick only years present in active data
-      const uniqueYears = [...new Set(allPoints.map((p) => p.year))].sort((a, b) => a - b);
       const xAxis = d3.axisBottom(xScale2)
         .ticks(Math.min(uniqueYears.length, 12))
         .tickFormat((d) => String(d));
@@ -2383,13 +2435,13 @@ async function drawRiderDetail(riderId: string): Promise<void> {
       g.append("text").attr("class", "axis-label")
         .attr("transform", `translate(${-margin.left + 14},${mainH / 2}) rotate(-90)`)
         .attr("text-anchor", "middle")
-        .text("GC Rank");
+        .text("Rank");
       g.append("text").attr("class", "axis-label")
         .attr("x", iW / 2).attr("y", iH + margin.bottom - 8)
         .attr("text-anchor", "middle")
         .text("Year");
 
-      // Legend (top-right): one colored entry per active race
+      // Legend row 1 (y=-28): race colors
       const activeList = [...activeRaces];
       let legendX = iW;
       for (let i = activeList.length - 1; i >= 0; i--) {
@@ -2398,19 +2450,41 @@ async function drawRiderDetail(riderId: string): Promise<void> {
         const label = race === "tour" ? "Tour" : race === "giro" ? "Giro" : "Vuelta";
         const textW = label.length * 7;
         g.append("text")
-          .attr("x", legendX).attr("y", -14)
+          .attr("x", legendX).attr("y", -28)
           .attr("text-anchor", "end").attr("dominant-baseline", "middle")
-          .attr("font-size", "11px").attr("fill", color)
-          .text(label);
+          .attr("font-size", "11px").attr("fill", color).text(label);
         g.append("line")
           .attr("x1", legendX - textW - 16).attr("x2", legendX - textW - 4)
-          .attr("y1", -14).attr("y2", -14)
+          .attr("y1", -28).attr("y2", -28)
           .attr("stroke", color).attr("stroke-width", 2);
-        legendX = legendX - textW - 22;
+        legendX -= textW + 22;
+      }
+
+      // Legend row 2 (y=-13): classification line styles (neutral color)
+      const classifLegend: { id: ClassifId; label: string; dash: string }[] = [
+        { id: "gc",     label: "GC",     dash: "" },
+        { id: "sprint", label: "Sprint", dash: "4,3" },
+        { id: "kom",    label: "KOM",    dash: "2,3" },
+      ];
+      let legendX2 = iW;
+      for (let i = classifLegend.length - 1; i >= 0; i--) {
+        const { id, label, dash } = classifLegend[i];
+        if (!activeClassifs.has(id)) continue;
+        const textW = label.length * 7;
+        g.append("text")
+          .attr("x", legendX2).attr("y", -13)
+          .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+          .attr("font-size", "10px").attr("fill", "var(--text-dim)").text(label);
+        const ln = g.append("line")
+          .attr("x1", legendX2 - textW - 16).attr("x2", legendX2 - textW - 4)
+          .attr("y1", -13).attr("y2", -13)
+          .attr("stroke", "var(--text-dim)").attr("stroke-width", 1.5);
+        if (dash) ln.attr("stroke-dasharray", dash);
+        legendX2 -= textW + 22;
       }
 
       // DNF zone divider
-      if (dnfPts.length > 0) {
+      if (gcDnfPts.length > 0) {
         g.append("line")
           .attr("x1", 0).attr("x2", iW)
           .attr("y1", mainH + 4).attr("y2", mainH + 4)
@@ -2422,13 +2496,16 @@ async function drawRiderDetail(riderId: string): Promise<void> {
           .text("DNF/DNS");
       }
 
-      // Helper: draw GC line for one race, split on >5yr gaps
-      function drawLine(data: CrossPt[], yFn: (d: CrossPt) => number, color: string) {
+      // Helper: draw a classification line split on >5yr gaps, with optional dash
+      function drawLine(
+        data: CrossPt[],
+        xFn: (d: CrossPt) => number,
+        yFn: (d: CrossPt) => number,
+        color: string,
+        dashArray = "",
+      ) {
         if (data.length < 2) return;
-        const lineGen = d3.line<CrossPt>()
-          .x((d) => xScale2(d.year))
-          .y((d) => yFn(d))
-          .curve(d3.curveMonotoneX);
+        const lineGen = d3.line<CrossPt>().x(xFn).y(yFn).curve(d3.curveMonotoneX);
         const segs: CrossPt[][] = [];
         let seg: CrossPt[] = [data[0]];
         for (let i = 1; i < data.length; i++) {
@@ -2438,28 +2515,39 @@ async function drawRiderDetail(riderId: string): Promise<void> {
         segs.push(seg);
         for (const s of segs) {
           if (s.length > 1) {
-            g.append("path").datum(s)
+            const p = g.append("path").datum(s)
               .attr("fill", "none").attr("stroke", color)
               .attr("stroke-width", 1.5).attr("stroke-opacity", 0.5)
               .attr("d", lineGen);
+            if (dashArray) p.attr("stroke-dasharray", dashArray);
           }
         }
       }
 
-      // Draw one GC line + dots per active race
-      for (const race of activeRaces) {
-        const racePts  = allPoints.filter((p) => p.race === race).sort((a, b) => a.year - b.year);
-        const gcFinish = racePts.filter((p) => p.finalRank < 9999);
-        const dnfRace  = racePts.filter((p) => p.finalRank >= 9999);
-        const color    = RACES[race].chart.gc;
-        const { sprint: sprintColor, kom: komColor } = RACES[race].chart;
+      // Shared dot-click handler: switch race + year + metric then load stage chart
+      function doNavigate(d: CrossPt, metric: "gc" | "points" | "kom") {
+        setRace(d.race);
+        currentYear = String(d.year);
+        yearSelectEl.value = currentYear;
+        currentMetric = metric;
+        metricSelectEl.value = metric;
+        loadDataset(currentYear).then(() => {
+          selected = new Set([riderId]);
+          buildLegend();
+          switchView("stage");
+        }).catch(showLoadError);
+      }
 
-        drawLine(gcFinish, (d) => yScale2(d.finalRank), color);
+      // Draw lines + dots per active race × classification
+      for (const race of activeRaces) {
+        const racePts = allPoints.filter((p) => p.race === race).sort((a, b) => a.year - b.year);
+        const { gc: gcColor, sprint: sprintColor, kom: komColor } = RACES[race].chart;
+        const xFn = (d: CrossPt) => xPos(d.race, d.year);
 
         const showTip = (event: MouseEvent, d: CrossPt) => {
-          const gcPart     = d.finalRank < 9999 ? `<div>GC #${d.finalRank}</div>` : "<div>GC DNF/DNS</div>";
+          const gcPart     = d.finalRank  < 9999 ? `<div>GC #${d.finalRank}</div>` : "<div>GC DNF/DNS</div>";
           const sprintPart = d.sprintRank < 9999 ? `<div style="color:${sprintColor}">Sprint #${d.sprintRank}</div>` : "";
-          const komPart    = d.komRank < 9999    ? `<div style="color:${komColor}">KOM #${d.komRank}</div>` : "";
+          const komPart    = d.komRank    < 9999 ? `<div style="color:${komColor}">KOM #${d.komRank}</div>` : "";
           tooltipEl.innerHTML = `
             <div class="t-name">${d.year} ${RACES[d.race].name}</div>
             <div class="t-team">${d.team ?? "—"}</div>
@@ -2469,37 +2557,55 @@ async function drawRiderDetail(riderId: string): Promise<void> {
           positionTooltip(event);
         };
 
-        const handleClick = (_e: MouseEvent, d: CrossPt) => {
-          setRace(d.race);
-          currentYear = String(d.year);
-          yearSelectEl.value = currentYear;
-          currentMetric = "gc";
-          metricSelectEl.value = "gc";
-          loadDataset(currentYear).then(() => {
-            selected = new Set([riderId]);
-            buildLegend();
-            switchView("stage");
-          }).catch(showLoadError);
-        };
-
-        // GC finish dots
-        g.selectAll<SVGCircleElement, CrossPt>(`.career-gc-${race}`)
-          .data(gcFinish).join("circle")
-          .attr("class", `career-gc-${race}`)
-          .attr("cx", (d) => xScale2(d.year)).attr("cy", (d) => yScale2(d.finalRank))
-          .attr("r", 5).attr("fill", color).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
-          .style("cursor", "pointer")
-          .on("mousemove", showTip).on("mouseleave", () => hideTooltip()).on("click", handleClick);
-
-        // DNF dots (hollow circle in DNF zone)
-        if (dnfRace.length > 0) {
-          g.selectAll<SVGCircleElement, CrossPt>(`.career-dnf-${race}`)
-            .data(dnfRace).join("circle")
-            .attr("class", `career-dnf-${race}`)
-            .attr("cx", (d) => xScale2(d.year)).attr("cy", mainH + DNF_H / 2 + 4)
-            .attr("r", 6).attr("fill", "transparent").attr("stroke", BADGE[race].bg).attr("stroke-width", 1.5)
+        if (activeClassifs.has("gc")) {
+          const gcFinish = racePts.filter((p) => p.finalRank < 9999);
+          drawLine(gcFinish, xFn, (d) => yScale2(d.finalRank), gcColor);
+          g.selectAll<SVGCircleElement, CrossPt>(`.career-gc-${race}`)
+            .data(gcFinish).join("circle")
+            .attr("class", `career-gc-${race}`)
+            .attr("cx", xFn).attr("cy", (d) => yScale2(d.finalRank))
+            .attr("r", DOT_R).attr("fill", gcColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
             .style("cursor", "pointer")
-            .on("mousemove", showTip).on("mouseleave", () => hideTooltip()).on("click", handleClick);
+            .on("mousemove", showTip).on("mouseleave", () => hideTooltip())
+            .on("click", (_e, d) => doNavigate(d, "gc"));
+
+          const dnfRace = racePts.filter((p) => p.finalRank >= 9999);
+          if (dnfRace.length > 0 && gcDnfPts.length > 0) {
+            g.selectAll<SVGCircleElement, CrossPt>(`.career-dnf-${race}`)
+              .data(dnfRace).join("circle")
+              .attr("class", `career-dnf-${race}`)
+              .attr("cx", xFn).attr("cy", mainH + DNF_H / 2 + 4)
+              .attr("r", 6).attr("fill", "transparent").attr("stroke", BADGE[race].bg).attr("stroke-width", 1.5)
+              .style("cursor", "pointer")
+              .on("mousemove", showTip).on("mouseleave", () => hideTooltip())
+              .on("click", (_e, d) => doNavigate(d, "gc"));
+          }
+        }
+
+        if (activeClassifs.has("sprint")) {
+          const sprintData = racePts.filter((p) => p.sprintRank < 9999);
+          drawLine(sprintData, xFn, (d) => yScale2(d.sprintRank), sprintColor, "4,3");
+          g.selectAll<SVGCircleElement, CrossPt>(`.career-sprint-${race}`)
+            .data(sprintData).join("circle")
+            .attr("class", `career-sprint-${race}`)
+            .attr("cx", xFn).attr("cy", (d) => yScale2(d.sprintRank))
+            .attr("r", 4).attr("fill", sprintColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
+            .style("cursor", "pointer")
+            .on("mousemove", showTip).on("mouseleave", () => hideTooltip())
+            .on("click", (_e, d) => doNavigate(d, "points"));
+        }
+
+        if (activeClassifs.has("kom")) {
+          const komData = racePts.filter((p) => p.komRank < 9999);
+          drawLine(komData, xFn, (d) => yScale2(d.komRank), komColor, "2,3");
+          g.selectAll<SVGCircleElement, CrossPt>(`.career-kom-${race}`)
+            .data(komData).join("circle")
+            .attr("class", `career-kom-${race}`)
+            .attr("cx", xFn).attr("cy", (d) => yScale2(d.komRank))
+            .attr("r", 4).attr("fill", komColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
+            .style("cursor", "pointer")
+            .on("mousemove", showTip).on("mouseleave", () => hideTooltip())
+            .on("click", (_e, d) => doNavigate(d, "kom"));
         }
       }
     }, 0);
