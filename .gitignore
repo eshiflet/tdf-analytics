@@ -12,14 +12,13 @@ cycling-app/tsconfig.tsbuildinfo
 # AI Context file for Claude for future development
 ai-context.md
 
-# Database (large binary — regenerate with: python3 pipeline/build_db.py)
+# Database (large binary — NOT regenerable; back up with pipeline/db_backup.py)
 pipeline/cycling.db
+pipeline/cycling.db.bak*
+pipeline/db_backups/
 
-# Raw scraped data (large — only needed to rebuild the DB from scratch)
-pipeline/tdf_*.json
-pipeline/scrapes/
-pipeline/giro_scrapes/
-pipeline/vuelta_scrapes/
+# Raw scraped data (tdf_*_full.json, scrapes/, giro_scrapes/, vuelta_scrapes/)
+# is deliberately TRACKED in git — it is the only copy outside this machine.
 
 # Claude Code — machine-specific settings (launch.json is committed; settings.local.json is not)
 .claude/settings.local.json
