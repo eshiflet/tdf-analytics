@@ -20,7 +20,7 @@ The app visualizes per-rider performance across every stage of multiple Grand To
 - **Giro**: Pink (#E4007C) = GC, Purple (#8B1FA1) = Sprint, Blue (#0083CA) = KOM
 - **Vuelta**: Red (#E30613) = GC, Green (#3FA535) = Sprint, White with blue (#0057B8) polka-dots = KOM, White = Youth
 
-The frontend is race-aware — `jerseyIconSvg()` returns the correct color based on `currentRace`. `komJerseySvg(dotColor)` accepts a color parameter (default `"#E4002B"` for TDF red dots; pass `"#0057B8"` for Vuelta blue dots). `drawRiderDetail()` uses local `gcColor`/`sprintColor`/`komColor` constants (not hardcoded) so chart lines match the correct race's colors. Jersey tooltips are also race-aware (`jerseyTooltipLabel()` returns e.g. "Pink jersey — GC winner" for Giro, "Red jersey — GC winner" for Vuelta).
+The frontend is race-aware via the `RACES` registry in main.ts (see "Race registry" below): jersey icon colors, career-chart colors, jersey tooltip labels, war bands, and the youth-button visibility all come from each race's config entry.
 
 **Three views:**
 
@@ -379,18 +379,15 @@ All chart logic is in `cycling-app/src/main.ts` (~2,290 lines). Key functions:
 - **`buildStageFilters()`** — rebuilds the Team/Nation dropdown checkbox lists for the current year's dataset; prunes `stageFilterTeams`/`stageFilterNations` to only values that still exist (carrying filter state across a year change), reapplies the filter if anything survived, or forces an empty selection if a filter was active but nothing carried over
 - **`applyStageTeamNationFilter()`** — recomputes `selected` from `stageFilterTeams`/`stageFilterNations` (OR within a facet, AND across facets); no-ops if both are empty so it never fights with the quick-select buttons
 
-**Hash routing (deep links)**: every view is URL-addressable — `#<year>/stage/<metric>` (metric: `gc`|`gc-time`|`points`|`sprint-points`|`kom`|`kom-points`), `#<year>/overview`, `#allraces`, `#riders`, `#riders/<rider-slug>` (slug = rider id minus the `rider/` prefix). The `-time`/`-points` suffixes select the alternate y-axis display mode for that metric. `computeHash()` derives the hash from state; `updateHash()` writes it via `location.hash` (pushes a history entry, so back/forward walk app states); `applyHash()` parses `location.hash` back onto state (async — awaits `loadDataset`/`ensureRiderIndex`). Loop protection: `applyHash` no-ops when the hash already equals `computeHash()` (our own write), and the `applyingHash` flag suppresses `updateHash` during an apply so intermediate draws don't push partial states. `init()` applies the initial hash, falling back to defaults + `history.replaceState` seed when the hash is empty/unrecognized; after applying, it loads the default dataset whenever none is in memory — this covers riders/allraces deep links (so stage/overview work on later navigation) AND deep links that exactly match the default state, which `applyHash()` short-circuits as "already in sync" without loading anything. When adding new app state that should be shareable, extend `computeHash` + `applyHash` together.
+**Hash routing (deep links)**: every view is URL-addressable and race-aware. An optional leading race segment selects the race: `#giro/2026/stage/gc`, `#vuelta/allraces`, `#giro/riders/fausto-coppi`. No race segment means `tour` (backward compatible with all pre-multi-race links). Patterns: `#[race/]<year>/stage/<metric>` (metric: `gc`|`gc-time`|`points`|`sprint-points`|`kom`|`kom-points`), `#[race/]<year>/overview`, `#[race/]allraces`, `#[race/]riders`, `#[race/]riders/<rider-slug>` (slug = rider id minus the `rider/` prefix). `computeHash()` emits the race prefix for non-tour races only, keeping tour hashes canonical and stable. The `-time`/`-points` suffixes select the alternate y-axis display mode for that metric. `computeHash()` derives the hash from state; `updateHash()` writes it via `location.hash` (pushes a history entry, so back/forward walk app states); `applyHash()` parses `location.hash` back onto state (async — awaits `loadDataset`/`ensureRiderIndex`). Loop protection: `applyHash` no-ops when the hash already equals `computeHash()` (our own write), and the `applyingHash` flag suppresses `updateHash` during an apply so intermediate draws don't push partial states. `init()` applies the initial hash, falling back to defaults + `history.replaceState` seed when the hash is empty/unrecognized; after applying, it loads the default dataset whenever none is in memory — this covers riders/allraces deep links (so stage/overview work on later navigation) AND deep links that exactly match the default state, which `applyHash()` short-circuits as "already in sync" without loading anything. When adding new app state that should be shareable, extend `computeHash` + `applyHash` together.
 
 **No-data overlays**: If `currentMetric === "points"` and `year < 1953`, or `currentMetric === "kom"` and `year < 1933`, the chart area shows an explanatory text message instead of chart elements.
 
-**`RaceId` type**: `"tdf" | "giro" | "vuelta"`. All `Record<RaceId, ...>` maps — `URLS_BY_RACE`, `ALL_RACES_BY_RACE`, `riderIndexByRace`, `allTeamsSortedByRace`, `allNationalitiesSortedByRace`, `riderIndexBuilt`, `RIDERS_INDEX_URL` — must include a `vuelta` key. TypeScript enforces this at compile time.
+**Race registry (`RACES`)**: `RaceId` is `"tour" | "giro" | "vuelta"` — the slug doubles as the data subdirectory name and the hash segment. A single `RACES: Record<RaceId, RaceConfig>` object at the top of main.ts is the source of truth for per-race display name, career-chart colors, jersey icon colors (solid vs polka-dot KOM), jersey tooltip labels, war bands, and `hasYouth`. All per-race `Record` maps (`URLS_BY_RACE`, `ALL_RACES_BY_RACE`, `riderIndexByRace`, `RIDERS_INDEX_URL`, etc.) are derived from `RACE_IDS` via `emptyPerRace()`, and the race dropdown options are generated from the registry (index.html has an empty `<select>`). **Adding a race = one `RACES` entry + data files in `src/data/<slug>/`** — the wildcard globs (`./data/*/gc_by_stage_*.json`, `./data/*/all_races_summary.json`, `./data/*/riders_index.json`) discover them automatically.
 
-**War bands by race** (shaded regions on All Races Overview):
-- TDF: `[{ start: 1914.5, end: 1918.5, label: "WWI" }, { start: 1939.5, end: 1946.5, label: "WWII" }]`
-- Giro: `[{ start: 1914.5, end: 1918.5, label: "WWI" }, { start: 1940.5, end: 1945.5, label: "WWII" }]`
-- Vuelta: `[{ start: 1935.5, end: 1944.5, label: "Civil War / WWII" }]` (Vuelta started 1935; Spanish Civil War + WWII gap covers 1936–1944)
+**War bands by race** (shaded regions on All Races Overview) live in each race's `RACES` entry (`warBands`): TDF has WWI 1914–1918 + WWII 1939–1946, Giro has WWI + WWII 1940–1945, Vuelta has "Civil War / WWII" 1935–1944 (Vuelta started 1935).
 
-**Data loading (performance-critical)**: Per-year files are discovered with **three eager `?url` globs** — one for TDF (`./data/gc_by_stage_*.json`), one for Giro (`./data/giro/gc_by_stage_*.json`), one for Vuelta (`./data/vuelta/gc_by_stage_*.json`). These put only the hashed asset *URLs* in the main bundle via `URLS_BY_RACE` (a `Record<RaceId, Record<string, string>>`); the data itself is emitted as raw `.json` assets and loaded via `fetch()` + `JSON.parse` on demand. The `currentRace` variable (`"tdf"` | `"giro"` | `"vuelta"`) selects which URL map to use; `YEARS` is rebuilt from `getYearsForRace(currentRace)` on race change. Do **not** switch back to module imports (plain glob / dynamic `import()`): the browser's ES-module registry pins every imported module for the page's lifetime, so LRU eviction would no longer free memory, and parsing JSON-as-JS is slower than `JSON.parse`. Adding a new race is: drop files in a new subdirectory under `data/`, add a glob for that path, extend `URLS_BY_RACE` and the `RaceId` type, and add an `<option>` to the race dropdown in `index.html`. The Riders page's cross-year `riders_index.json` is fetched the same way (its URL comes from a `riders_index.json?url` import). Only the tiny `all_races_summary.json` files are eagerly bundled. d3 is imported as modular submodules (`d3-selection`, `d3-scale`, `d3-axis`, `d3-shape`, `d3-array`) via a small `d3` shim object, not the full `d3` meta-package. Net result: initial download for the default stage view is ~76 KB gzipped, and only LRU-cached years (max 6) stay in memory.
+**Data loading (performance-critical)**: Per-year files are discovered with **one eager wildcard `?url` glob** — `./data/*/gc_by_stage_*.json` — which puts only the hashed asset *URLs* in the main bundle via `URLS_BY_RACE` (a `Record<RaceId, Record<string, string>>`, keyed by the directory slug); the data itself is emitted as raw `.json` assets and loaded via `fetch()` + `JSON.parse` on demand. `currentRace` selects which URL map to use; `setRace()` rebuilds `YEARS` and the year dropdown. Do **not** switch back to module imports (plain glob / dynamic `import()`): the browser's ES-module registry pins every imported module for the page's lifetime, so LRU eviction would no longer free memory, and parsing JSON-as-JS is slower than `JSON.parse`. Adding a new race is: add a `RACES` entry and drop files in `data/<slug>/` — no glob or dropdown changes needed. The Riders page's cross-year `riders_index.json` URLs come from a matching wildcard glob (`./data/*/riders_index.json?url`). Only the tiny `all_races_summary.json` files are eagerly bundled. d3 is imported as modular submodules (`d3-selection`, `d3-scale`, `d3-axis`, `d3-shape`, `d3-array`) via a small `d3` shim object, not the full `d3` meta-package. Net result: initial download for the default stage view is ~76 KB gzipped, and only LRU-cached years (max 6) stay in memory.
 
 ---
 
@@ -711,31 +708,25 @@ This is exactly the same pattern as `scrape_giro_stage_info.py` — if you forge
 The Riders page shows GC / Sprint / KOM / Youth jersey filter buttons for **all three races**. Youth wins are not tracked for Giro or Vuelta (the pipeline captures sprint and KOM winners but not youth), so the youth button is hidden on non-TDF:
 
 ```typescript
-if (category === "youth" && currentRace !== "tdf") btn.style.display = "none";
+if (category === "youth" && !raceConfig().hasYouth) btn.style.display = "none";
 ```
 
 The button group itself is always rendered — only the youth button is hidden per-category. The AND semantics (selecting multiple jerseys narrows to riders who've won every selected category) apply on all races.
 
-`jerseyIconSvg(category)` is already race-aware via `currentRace` and returns the correct jersey colors automatically — no per-race changes needed there.
+`jerseyIconSvg(category)` reads jersey colors from `raceConfig().jersey` (solid fill, or white-with-dots when the config uses `{ dots: color }`).
 
-**If you add a new race:** check whether youth wins are tracked in its pipeline. If not, the `btn.style.display = "none"` condition must include the new race ID.
+**If you add a new race:** set `hasYouth` in its `RACES` entry according to whether youth wins are tracked in its pipeline.
 
 ### Rider detail chart colors and race name (`drawRiderDetail`)
 
-The `drawRiderDetail()` function uses local constants for chart line/dot colors — not hardcoded — so they match each race's jersey palette. These must be three-way ternaries:
+`drawRiderDetail()` pulls chart line/dot colors and the tooltip race name from the registry:
 
 ```typescript
-const gcColor     = currentRace === "giro" ? "#E4007C" : currentRace === "vuelta" ? "#E30613" : "var(--accent)";
-const sprintColor = currentRace === "giro" ? "#8B1FA1" : currentRace === "vuelta" ? "#3FA535" : "#22c55e";
-const komColor    = currentRace === "giro" ? "#0083CA" : currentRace === "vuelta" ? "#0057B8" : "#ef4444";
+const { gc: gcColor, sprint: sprintColor, kom: komColor } = raceConfig().chart;
+// tooltip: `${d.year} ${raceConfig().name}`
 ```
 
-The tooltip race name is also a three-way ternary:
-```typescript
-currentRace === "tdf" ? "Tour de France" : currentRace === "giro" ? "Giro d'Italia" : "Vuelta a España"
-```
-
-**If you add a new race:** add a branch to each of these four expressions (the three color constants + the tooltip ternary). Failing to do so means the new race gets TDF colors and "Vuelta a España" in its tooltip — a silent visual bug.
+**If you add a new race:** its `RACES` entry's `chart` colors and `name` are used automatically — nothing to edit here.
 
 ---
 
