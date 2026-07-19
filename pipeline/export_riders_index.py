@@ -2,12 +2,14 @@
 """
 Build a compact cross-year rider index for the Riders page.
 
-The web app's Riders view needs every rider's per-year Tour result without
-loading all 113 per-year data files into the browser. This script collapses
-the already-exported gc_by_stage_*.json files into a single small index
-so the per-year files can be lazy-loaded on demand.
+The web app's Riders view needs every rider's per-year result without
+loading all the per-year data files into the browser. This script collapses
+the already-exported gc_by_stage_*.json files into a single small index so
+the per-year files can be lazy-loaded on demand. Replaces the old
+export_riders_index.py (TDF-only) / export_giro_riders_index.py /
+export_vuelta_riders_index.py — the latter two were ~97% identical.
 
-Output: cycling-app/src/data/riders_index.json
+Output: cycling-app/src/data/<slug>/riders_index.json
   {
     "teams": ["<team name>", ...],            # string table, sorted
     "riders": {
@@ -15,7 +17,8 @@ Output: cycling-app/src/data/riders_index.json
         "n": "<name>",
         "c": "<nationality or null>",
         "yw": [1984, 1989],                    # years rider won young-rider (white jersey)
-                                                # classification; omitted if never
+                                                # classification; omitted if never. TDF only —
+                                                # Giro/Vuelta don't track this classification.
         "y": { "<year>": [gcRank, teamIdx]                        # no points rankings
                | [gcRank, teamIdx, sprintRank, komRank], ... }    # 0 = that rank absent
       }
@@ -31,31 +34,34 @@ values for ~65% of entries. gcRank 9999 = DNF/DNS.
 GC/sprint/KOM winning years are derived client-side from gcRank/sprintRank/
 komRank === 1 per year, so only the young-rider (white jersey) win needs its
 own field here — that classification isn't tracked anywhere else in the
-exported per-year JSON, only in the DB's classification_standings table.
+exported per-year JSON, only in the DB's classification_standings table
+(and only for the TDF; see race_common.EXPORT_RACE_INFO).
 
 Run after export_gc.py (it reads that script's output for everything except
 the youth-winner years, which come directly from cycling.db).
 
 Usage:
-  python3 export_riders_index.py
+  python3 export_riders_index.py                 # TDF (default)
+  python3 export_riders_index.py --race giro
+  python3 export_riders_index.py --race vuelta
 """
 
 import glob
 import json
 import os
 import sqlite3
+import sys
 from collections import defaultdict
 
+from race_common import DB_PATH, resolve_race_arg
+
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour")
-OUT_PATH = os.path.join(DATA_DIR, "riders_index.json")
-DB_PATH = os.path.join(HERE, "cycling.db")
 
 
 def load_youth_winners():
     """Maps rider_id -> sorted list of years with a rank=1 finish in the
     youth (white jersey) classification, per cycling.db's
-    classification_standings table."""
+    classification_standings table. TDF only."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -71,11 +77,19 @@ def load_youth_winners():
 
 
 def main():
-    youth_winners = load_youth_winners()
+    _, subdir = resolve_race_arg(sys.argv)
+    data_dir = os.path.join(HERE, "..", "cycling-app", "src", "data", subdir)
+    out_path = os.path.join(data_dir, "riders_index.json")
+
+    youth_winners = load_youth_winners() if subdir == "tour" else {}
 
     riders = {}
     team_names = set()
-    files = sorted(glob.glob(os.path.join(DATA_DIR, "gc_by_stage_*.json")))
+    files = sorted(glob.glob(os.path.join(data_dir, "gc_by_stage_*.json")))
+    if not files:
+        print(f"No {subdir} gc_by_stage_*.json files found")
+        return
+
     raw_years = []  # (entry, year, rider_record) triples for the second pass
     for path in files:
         year = os.path.basename(path).removeprefix("gc_by_stage_").removesuffix(".json")
@@ -113,13 +127,13 @@ def main():
             ]
 
     index = {"teams": teams, "riders": riders}
-    with open(OUT_PATH, "w", encoding="utf-8") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(index, f, separators=(",", ":"), ensure_ascii=False)
 
-    size_kb = os.path.getsize(OUT_PATH) / 1024
+    size_kb = os.path.getsize(out_path) / 1024
     print(
         f"Wrote {len(riders):,} riders / {len(teams)} teams across "
-        f"{len(files)} years -> {OUT_PATH} ({size_kb:.0f} KB)"
+        f"{len(files)} years -> {out_path} ({size_kb:.0f} KB)"
     )
 
 

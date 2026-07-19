@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Shared constants and PCS stage-result parsing helpers for the Giro/Vuelta
-ingest pipeline.
+Shared constants and helpers for the multi-race pipeline.
 
-Both races' scrape files come from the same PCS result-table structure, so
-the parsing logic here is identical across races — only race identity (DB
-name/country, scrape directory, legacy layout quirks) differs. That
-per-race identity lives in RACES below; ingest_race.py is the only script
-that should need to branch on race name.
+Two independent groups live here:
+
+  - PCS stage-result parsing helpers + the ingest-only RACES registry
+    (Giro/Vuelta only — TDF's ingest mechanism, add_pre1960.py/add_stages.py,
+    is unrelated). Used by ingest_race.py.
+
+  - resolve_race_arg(), for the export scripts that cover all three races
+    (export_riders_index.py, export_race_summary.py). TDF/Giro/Vuelta share
+    an export format but TDF's scrape/ingest pipeline predates and differs
+    from the other two, so it has no entry in the ingest-only RACES below.
 """
 
 import os
@@ -115,3 +119,25 @@ def parse_year_args(args: list[str]) -> list[int]:
         if a.isdigit():
             years.append(int(a))
     return sorted(set(years))
+
+
+# ── Export-script race resolution (TDF + Giro + Vuelta) ─────────────────────
+# Matches export_gc.py's own inline convention: --race {tdf,giro,vuelta},
+# defaulting to tdf. race_subdir is both the src/data/<slug> directory name
+# and the frontend's RaceId; race_arg "tdf" is historical (predates the
+# tour/giro/vuelta slug scheme) and maps to subdir "tour".
+EXPORT_RACE_INFO = {
+    "tdf": ("Tour de France", "tour"),
+    "giro": ("Giro d'Italia", "giro"),
+    "vuelta": ("Vuelta a España", "vuelta"),
+}
+
+
+def resolve_race_arg(argv: list[str]) -> tuple[str, str]:
+    """Reads --race from argv (default 'tdf'). Returns (db_name, data_subdir)."""
+    race_arg = "tdf"
+    if "--race" in argv:
+        race_arg = argv[argv.index("--race") + 1]
+    if race_arg not in EXPORT_RACE_INFO:
+        raise SystemExit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
+    return EXPORT_RACE_INFO[race_arg]

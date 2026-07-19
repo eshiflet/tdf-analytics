@@ -458,8 +458,8 @@ def main():
     print("  python3 build_vuelta_points.py")
     print("  python3 ingest_race.py --race vuelta")
     print("  python3 export_gc.py --race vuelta")
-    print("  python3 export_vuelta_races_summary.py")
-    print("  python3 export_vuelta_riders_index.py")
+    print("  python3 export_race_summary.py --race vuelta")
+    print("  python3 export_riders_index.py --race vuelta")
 
 
 if __name__ == "__main__":
