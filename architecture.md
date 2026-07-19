@@ -124,10 +124,9 @@ flowchart TD
 ## Data Model
 
 `cycling.db` is one SQLite database shared by all three races, distinguished by
-`races.race_id`. Every table below actually exists in the live DB; note that `riders`
-has three columns (`first_name`, `last_name`, `birthday`) added by an `ALTER TABLE`
-migration that `schema.sql` itself doesn't reflect — the live schema (shown here) is
-the accurate one.
+`races.race_id`. Every table below actually exists in the live DB. `riders` has three
+extra columns (`first_name`, `last_name`, `birthday`) that were added via `ALTER TABLE`
+by `scrape_rider_details.py` — `schema.sql` has been updated to reflect them.
 
 ```mermaid
 erDiagram
