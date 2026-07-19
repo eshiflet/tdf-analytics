@@ -2253,7 +2253,6 @@ async function drawRiderDetail(riderId: string): Promise<void> {
   const metaEl = document.createElement("div");
   metaEl.className = "rider-detail-meta";
   const metaParts: string[] = [];
-  if (primaryEntry.nationality) metaParts.push(primaryEntry.nationality);
   for (const [race, entry] of byRace) {
     const yrs = [...entry.years.keys()].sort((a, b) => a - b);
     const finished = yrs.filter((yr) => entry.years.get(yr)!.finalRank < 9999);
@@ -2265,7 +2264,7 @@ async function drawRiderDetail(riderId: string): Promise<void> {
     if (best !== null) part += ` · Best #${best}`;
     metaParts.push(part);
   }
-  metaEl.textContent = metaParts.join("    ");
+  metaEl.textContent = metaParts.join(", ");
   header.append(backBtn, nameEl, metaEl);
   ridersChartEl.appendChild(header);
 
@@ -2363,7 +2362,7 @@ async function drawRiderDetail(riderId: string): Promise<void> {
       const rect = chartContainer.getBoundingClientRect();
       const W = Math.max(rect.width || 800, 500);
       const H = Math.max(rect.height || 380, 280);
-      const margin = { top: 42, right: 40, bottom: 44, left: 60 };
+      const margin = { top: 50, right: 40, bottom: 44, left: 60 };
       const iW = W - margin.left - margin.right;
       const iH = H - margin.top - margin.bottom;
 
@@ -2441,46 +2440,72 @@ async function drawRiderDetail(riderId: string): Promise<void> {
         .attr("text-anchor", "middle")
         .text("Year");
 
-      // Legend row 1 (y=-28): race colors
+      // Legend: 1–3 rows depending on active classifications.
+      // Build y positions from bottom up so rows stack neatly above the chart.
       const activeList = [...activeRaces];
+      const raceLegendX = new Map<RaceId, number>(); // right edge x per race
+      let nextLegendY = -6;
+      const komY    = activeClassifs.has("kom")    ? nextLegendY : null;
+      if (komY    !== null) nextLegendY -= 13;
+      const sprintY = activeClassifs.has("sprint") ? nextLegendY : null;
+      if (sprintY !== null) nextLegendY -= 13;
+      const raceY   = nextLegendY;
+
+      // Row 1: race name + solid GC line in race color
       let legendX = iW;
       for (let i = activeList.length - 1; i >= 0; i--) {
         const race = activeList[i];
         const color = RACES[race].chart.gc;
         const label = race === "tour" ? "Tour" : race === "giro" ? "Giro" : "Vuelta";
         const textW = label.length * 7;
+        raceLegendX.set(race, legendX);
         g.append("text")
-          .attr("x", legendX).attr("y", -28)
+          .attr("x", legendX).attr("y", raceY)
           .attr("text-anchor", "end").attr("dominant-baseline", "middle")
           .attr("font-size", "11px").attr("fill", color).text(label);
         g.append("line")
           .attr("x1", legendX - textW - 16).attr("x2", legendX - textW - 4)
-          .attr("y1", -28).attr("y2", -28)
+          .attr("y1", raceY).attr("y2", raceY)
           .attr("stroke", color).attr("stroke-width", 2);
         legendX -= textW + 22;
       }
 
-      // Legend row 2 (y=-13): classification line styles (neutral color)
-      const classifLegend: { id: ClassifId; label: string; dash: string }[] = [
-        { id: "gc",     label: "GC",     dash: "" },
-        { id: "sprint", label: "Sprint", dash: "4,3" },
-        { id: "kom",    label: "KOM",    dash: "2,3" },
-      ];
-      let legendX2 = iW;
-      for (let i = classifLegend.length - 1; i >= 0; i--) {
-        const { id, label, dash } = classifLegend[i];
-        if (!activeClassifs.has(id)) continue;
+      // Row 2: Sprint per active race, dashed in each race's sprint color
+      if (sprintY !== null) {
+        const label = "Sprint";
         const textW = label.length * 7;
-        g.append("text")
-          .attr("x", legendX2).attr("y", -13)
-          .attr("text-anchor", "end").attr("dominant-baseline", "middle")
-          .attr("font-size", "10px").attr("fill", "var(--text-dim)").text(label);
-        const ln = g.append("line")
-          .attr("x1", legendX2 - textW - 16).attr("x2", legendX2 - textW - 4)
-          .attr("y1", -13).attr("y2", -13)
-          .attr("stroke", "var(--text-dim)").attr("stroke-width", 1.5);
-        if (dash) ln.attr("stroke-dasharray", dash);
-        legendX2 -= textW + 22;
+        for (const race of activeList) {
+          const x = raceLegendX.get(race)!;
+          const color = RACES[race].chart.sprint;
+          g.append("text")
+            .attr("x", x).attr("y", sprintY)
+            .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+            .attr("font-size", "10px").attr("fill", color).text(label);
+          g.append("line")
+            .attr("x1", x - textW - 16).attr("x2", x - textW - 4)
+            .attr("y1", sprintY).attr("y2", sprintY)
+            .attr("stroke", color).attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", "4,3");
+        }
+      }
+
+      // Row 3: KOM per active race, dotted in each race's kom color
+      if (komY !== null) {
+        const label = "KOM";
+        const textW = label.length * 7;
+        for (const race of activeList) {
+          const x = raceLegendX.get(race)!;
+          const color = RACES[race].chart.kom;
+          g.append("text")
+            .attr("x", x).attr("y", komY)
+            .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+            .attr("font-size", "10px").attr("fill", color).text(label);
+          g.append("line")
+            .attr("x1", x - textW - 16).attr("x2", x - textW - 4)
+            .attr("y1", komY).attr("y2", komY)
+            .attr("stroke", color).attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", "2,3");
+        }
       }
 
       // DNF zone divider
