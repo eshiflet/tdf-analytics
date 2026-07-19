@@ -25,7 +25,7 @@ Sources, in trust order:
 Output: vuelta_scrapes/YEAR/gc_standings.json
   { "year": 1985, "stages": { "1": { "rider/slug": [gc_rank, gap_seconds], ... } } }
 gc_rank may be null when coverage is too sparse to rank reliably; gap_seconds
-is always real. Consumed by ingest_vuelta.py. A per-year validation report is
+is always real. Consumed by ingest_race.py. A per-year validation report is
 printed; use --report for per-day detail.
 
 Usage:
@@ -49,8 +49,7 @@ if "--race" in sys.argv:
         sys.exit(f"error: unknown race '{RACE}' (use vuelta or giro)")
 SCRAPES_DIR = os.path.join(HERE, f"{RACE}_scrapes")
 
-from ingest_vuelta import parse_time_to_seconds, parse_int  # noqa: E402
-from scrape_vuelta import parse_year_args  # noqa: E402
+from race_common import parse_time_to_seconds, parse_int, parse_year_args  # noqa: E402
 
 TOL = 5               # max seconds computed may deviate from authoritative
 MAX_GAP = 4 * 3600    # larger values in a gap cell are absolute-time leakage

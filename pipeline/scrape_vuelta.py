@@ -3,7 +3,7 @@
 Scrape Vuelta a España stage results from procyclingstats.com.
 
 Produces per-stage JSON files in vuelta_scrapes/YEAR/stage_N.json, compatible
-with ingest_vuelta.py and build_vuelta_points.py.
+with ingest_race.py --race vuelta and build_vuelta_points.py.
 
 Usage:
   python3 scrape_vuelta.py 2025              # single year
@@ -456,7 +456,7 @@ def main():
     print(f"\n{'='*60}")
     print("Done. Next steps:")
     print("  python3 build_vuelta_points.py")
-    print("  python3 ingest_vuelta.py")
+    print("  python3 ingest_race.py --race vuelta")
     print("  python3 export_gc.py --race vuelta")
     print("  python3 export_vuelta_races_summary.py")
     print("  python3 export_vuelta_riders_index.py")

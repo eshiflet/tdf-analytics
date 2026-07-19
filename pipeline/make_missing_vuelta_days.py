@@ -14,7 +14,7 @@ two and materializes any missing day as a normal stage_N.json scrape file:
     renamed, their internal "n" rewritten) and slots in at its position
 
 Run AFTER scrape_vuelta_gc_pages.py and BEFORE build_vuelta_gc_standings.py /
-build_vuelta_points.py / ingest_vuelta.py.
+build_vuelta_points.py / ingest_race.py --race vuelta.
 
 Usage:
   python3 make_missing_vuelta_days.py 1979-1997

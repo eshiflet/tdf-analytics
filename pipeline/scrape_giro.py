@@ -3,7 +3,7 @@
 Scrape Giro d'Italia stage results from procyclingstats.com.
 
 Produces per-stage JSON files in giro_scrapes/YEAR/stage_N.json, compatible
-with ingest_giro.py and build_giro_points.py.
+with ingest_race.py --race giro and build_giro_points.py.
 
 Usage:
   python3 scrape_giro.py 1990 1991 1992    # specific years
@@ -485,7 +485,7 @@ def main():
     print("Done. Next steps:")
     print("  python3 build_giro_points.py")
     print("  # delete existing editions, then:")
-    print("  python3 ingest_giro.py")
+    print("  python3 ingest_race.py --race giro")
     print("  python3 export_gc.py --race giro")
 
 

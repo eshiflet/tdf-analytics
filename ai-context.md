@@ -47,7 +47,7 @@ A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen olde
 **Data safety (pipeline):**
 - All raw scraped data (`pipeline/tdf_*_full.json`, `scrapes/`, `giro_scrapes/`, `vuelta_scrapes/`) is now **tracked in git** — it used to be gitignored with the only copy on one machine.
 - `cycling.db` is NOT regenerable; back it up with `python3 pipeline/db_backup.py` (rotating snapshots in `pipeline/db_backups/`). `add_stages.py` snapshots automatically before its destructive delete.
-- `ingest_giro.py` / `ingest_vuelta.py`: `--dry-run` is now truly read-only (it used to delete the edition!), delete+reinsert is atomic, `vertical_meters`/`profile_score` are preserved across re-ingest, and a bare no-arg run is refused without `--all`.
+- `ingest_race.py --race {giro,vuelta}` (merged from `ingest_giro.py`/`ingest_vuelta.py` 2026-07-18 — see below): `--dry-run` is truly read-only (it used to delete the edition!), delete+reinsert is atomic, `vertical_meters`/`profile_score` are preserved across re-ingest, and a bare no-arg run is refused without `--all`.
 - All TDF-only scripts filter `race_editions` by the TDF race_id (year-only lookups could silently hit a Giro/Vuelta edition of the same year).
 - `build_db.py` was deleted (stale, dangerous). `validate_exports.py` validates **all three races** (302 files).
 - Exports write compact JSON (`separators=(",", ":")`) — ~10% smaller payloads.
@@ -57,7 +57,9 @@ A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen olde
 - The `RACES` registry in main.ts is the single source of truth for per-race name, colors, jerseys, war bands, capabilities. Adding a race = one registry entry + a `src/data/<slug>/` directory (wildcard globs auto-discover the files).
 - URL hashes are race-aware: `#giro/2026/stage/gc`, `#vuelta/allraces`, `#giro/riders/<slug>`; bare hashes (no race segment) mean `tour`, so all old links still work.
 
-**Planned direction:** one-day classics (e.g. Paris–Roubaix) will be added as races with a single stage. The DB schema already supports this (`races.race_type`); the remaining work is (a) capability flags in the `RACES` registry so stage-chart/sprint/KOM views disable for one-day races, (b) consolidating the near-duplicate `ingest_giro.py`/`ingest_vuelta.py` and per-race export scripts into slug-parameterized versions, and (c) moving TDF's unprefixed supplemental files (`sprint_points.json` etc.) into a per-race layout — deferred until after the 2026 Tour ends.
+**Pipeline consolidation (2026-07-18):** `ingest_giro.py`/`ingest_vuelta.py` (the near-duplicate ingest scripts flagged below as planned cleanup) have been merged into a single `ingest_race.py --race {giro,vuelta}`, backed by a new `pipeline/race_common.py` module holding the shared PCS-parsing helpers (`parse_time_to_seconds`, `parse_int`, `parse_bonus_seconds`, `detect_route_type`, `parse_year_args`, `COUNTRY_NAMES`) and a small per-race `RaceInfo` registry (DB name/country, scrapes dirname, Giro's legacy flat-2026-fallback flag). Race-specific behavior (that fallback, and Giro's automatic `fix_giro_rider_names.py` post-ingest pass) is now an explicit `race == "giro"` branch instead of being duplicated wholesale. Verified byte-identical against the old scripts across all 80 existing years of both races (2,120 Giro stages + 1,644 Vuelta stages + 8,973 rider names) before deletion. `build_vuelta_gc_standings.py` now imports its parsing helpers from `race_common` instead of reaching into `ingest_vuelta`/`scrape_vuelta`. The per-race export scripts (riders-index, races-summary) are still separate and are the remaining piece of the plan below.
+
+**Planned direction:** one-day classics (e.g. Paris–Roubaix) will be added as races with a single stage. The DB schema already supports this (`races.race_type`); the remaining work is (a) capability flags in the `RACES` registry so stage-chart/sprint/KOM views disable for one-day races, (b) consolidating the per-race riders-index and races-summary export scripts into slug-parameterized versions (the ingest scripts were consolidated 2026-07-18, see above), and (c) moving TDF's unprefixed supplemental files (`sprint_points.json` etc.) into a per-race layout — deferred until after the 2026 Tour ends.
 
 ---
 
@@ -95,6 +97,11 @@ tdf-analytics/
     ├── db_backup.py                  # Rotating DB backups → db_backups/ (auto-run by add_stages.py before deletes)
     ├── export_gc.py                  # Main exporter: cycling.db + JSON supplements → src/data/
     │                                 #   --year N for single year, --race giro|tdf to select race
+    ├── race_common.py                # Shared Giro/Vuelta ingest helpers (parse_time_to_seconds, parse_int,
+    │                                 #   parse_bonus_seconds, detect_route_type, parse_year_args, COUNTRY_NAMES)
+    │                                 #   and the RACES: {giro, vuelta} -> RaceInfo registry (db name/country,
+    │                                 #   scrapes dirname, legacy flat-2026-fallback flag). Used by ingest_race.py
+    │                                 #   and build_vuelta_gc_standings.py.
     ├── export_riders_index.py        # Builds riders_index.json from the exported per-year files
     ├── export_all_races_summary.py   # Builds all_races_summary.json from cycling.db + supplements
     ├── add_pre1960.py                # The actual tool for adding ANY TDF year additively (name is historical)
@@ -107,13 +114,15 @@ tdf-analytics/
     ├── scrape_giro.py                # Background scraper: downloads multiple years from PCS into giro_scrapes/YEAR/
     │                                 #   Usage: python3 scrape_giro.py 1970-1979  (range or individual years)
     │                                 #   Saves per-stage JSON: giro_scrapes/YEAR/stage_N.json
-    ├── ingest_giro.py                # Reads giro_scrapes/YEAR/stage_N.json → inserts into cycling.db
+    ├── ingest_race.py --race giro    # Reads giro_scrapes/YEAR/stage_N.json → inserts into cycling.db
     │                                 #   Creates race "Giro d'Italia" (race_id=2) if not present
     │                                 #   Auto-runs fix_giro_rider_names.py at end of non-dry-run
+    │                                 #   (merged from old ingest_giro.py/ingest_vuelta.py 2026-07-18; see
+    │                                 #   "Pipeline consolidation" note above)
     ├── build_giro_points.py          # Extracts sprint/KOM points from giro_scrapes/ → giro_*_points.json
     ├── fix_giro_rider_names.py       # Fixes single-word rider names in the Giro data by reconstructing
     │                                 #   "LASTNAME Firstname" from the rider slug (e.g. rider/fausto-coppi → "Coppi Fausto")
-    │                                 #   Strips disambiguation digits (rider/pozzi2 → pozzi). Auto-run by ingest_giro.py.
+    │                                 #   Strips disambiguation digits (rider/pozzi2 → pozzi). Auto-run by ingest_race.py --race giro.
     ├── export_giro_races_summary.py  # Builds data/giro/all_races_summary.json from cycling.db (Giro only)
     │                                 #   Merges giro_races_summary_overrides.json after computing DB defaults
     ├── export_giro_riders_index.py   # Builds data/giro/riders_index.json from exported Giro gc_by_stage files
@@ -135,7 +144,7 @@ tdf-analytics/
     │                                 #   Usage: python3 scrape_vuelta.py 2025  (same pattern as scrape_giro.py)
     │                                 #   PCS base URL: /race/vuelta-a-espana/YEAR/
     ├── build_vuelta_points.py        # Extracts sprint/KOM points from vuelta_scrapes/ → vuelta_*_points.json
-    ├── ingest_vuelta.py              # Reads vuelta_scrapes/YEAR/stage_N.json → inserts into cycling.db
+    ├── ingest_race.py --race vuelta  # Reads vuelta_scrapes/YEAR/stage_N.json → inserts into cycling.db
     │                                 #   Creates race "Vuelta a España" (race_id=3) if not present
     │                                 #   No auto-run of fix_giro_rider_names (modern PCS format, names are correct)
     ├── scrape_vuelta_stage_info.py    # Fetches vertical_meters + profile_score for Vuelta stages from PCS
@@ -158,8 +167,7 @@ tdf-analytics/
     │                                 #   missing mid-race day. Run before build_vuelta_gc_standings.py
     ├── build_vuelta_gc_standings.py  # Derives per-stage GC for every rider → {race}_scrapes/YEAR/gc_standings.json
     │                                 #   (real PCS per-stage GC + validated cumulative time chains; see
-    │                                 #   "Vuelta & Giro per-stage GC standings" below). Consumed by
-    │                                 #   ingest_vuelta.py / ingest_giro.py
+    │                                 #   "Vuelta & Giro per-stage GC standings" below). Consumed by ingest_race.py.
     ├── check_vuelta_gc_times.py      # Fetches PCS GC standings for all 80 Vuelta years, extracts winner time,
     │                                 #   compares to DB; writes vuelta_gc_winner_times.json (all years) and
     │                                 #   vuelta_gc_time_corrections.json (mismatched years only)
@@ -247,7 +255,7 @@ PCS website  →  giro_scrapes/YEAR/stage_N.json  (via scrape_giro.py for histor
                        ↓
                build_giro_points.py  →  giro_sprint_points.json + giro_kom_points.json
                        ↓
-               ingest_giro.py  →  cycling.db  (race_id=2, "Giro d'Italia")
+               ingest_race.py --race giro  →  cycling.db  (race_id=2, "Giro d'Italia")
                   └─ auto-runs fix_giro_rider_names.py to correct single-word names
                        ↓
                export_gc.py --race giro
@@ -263,7 +271,7 @@ PCS website  →  giro_scrapes/YEAR/stage_N.json  (via scrape_giro.py for histor
 cd pipeline
 python3 scrape_giro.py 1970-1979         # background-friendly; saves to giro_scrapes/YEAR/
 python3 build_giro_points.py
-python3 ingest_giro.py 1970-1979         # also accepts individual years or no-arg for all
+python3 ingest_race.py --race giro 1970-1979  # also accepts individual years or --all
 python3 export_gc.py --race giro
 python3 export_giro_races_summary.py
 python3 export_giro_riders_index.py
@@ -275,7 +283,7 @@ PCS website  →  vuelta_scrapes/YEAR/stage_N.json  (via scrape_vuelta.py)
                        ↓
                build_vuelta_points.py  →  vuelta_sprint_points.json + vuelta_kom_points.json
                        ↓
-               ingest_vuelta.py  →  cycling.db  (race_id=3, "Vuelta a España")
+               ingest_race.py --race vuelta  →  cycling.db  (race_id=3, "Vuelta a España")
                        ↓
                export_gc.py --race vuelta
                        ↓
@@ -290,7 +298,7 @@ PCS website  →  vuelta_scrapes/YEAR/stage_N.json  (via scrape_vuelta.py)
 cd pipeline
 python3 scrape_vuelta.py 2024         # saves to vuelta_scrapes/2024/
 python3 build_vuelta_points.py
-python3 ingest_vuelta.py 2024
+python3 ingest_race.py --race vuelta 2024
 python3 export_gc.py --race vuelta
 python3 export_vuelta_races_summary.py
 python3 export_vuelta_riders_index.py
@@ -595,7 +603,7 @@ tail -f /tmp/giro_1970s.log
 
 # After scraper finishes, run the full pipeline:
 python3 build_giro_points.py
-python3 ingest_giro.py 1970-1979
+python3 ingest_race.py --race giro 1970-1979
 python3 export_gc.py --race giro
 python3 export_giro_races_summary.py
 python3 export_giro_riders_index.py
@@ -615,7 +623,7 @@ PCS stage result pages for historical Giro years can produce single-word names (
 - Builds the corrected name with last name uppercased + original first name
 - Strips disambiguation suffixes (e.g. `rider/pozzi2` → last name `Pozzi`, `rider/sierra-1` → drops the `1`)
 
-`ingest_giro.py` automatically runs this script at the end of every non-dry-run ingest. Run it standalone with `python3 fix_giro_rider_names.py [--dry-run]`.
+`ingest_race.py --race giro` automatically runs this script at the end of every non-dry-run ingest. Run it standalone with `python3 fix_giro_rider_names.py [--dry-run]`.
 
 **`INSERT OR IGNORE` name precedence:** The `riders` table uses `INSERT OR IGNORE`, so the **first insert wins**. TDF-sourced rider names (which came from TDF scraping) take precedence over Giro-scraped names for any rider who raced both.
 
@@ -648,7 +656,7 @@ After scraping new stage files into `giro_scrapes/`:
 ```bash
 cd pipeline
 
-# 1. NOTE: ingest_giro.py deletes and re-creates any edition it touches (atomically,
+# 1. NOTE: ingest_race.py --race giro deletes and re-creates any edition it touches (atomically,
 #    preserving vertical_meters/profile_score). No manual delete needed. It refuses
 #    a bare no-arg run (which would rebuild every year) without --all.
 python3 -c "
@@ -669,7 +677,7 @@ conn.close()
 python3 build_giro_points.py
 
 # 3. Re-ingest all stages into DB
-python3 ingest_giro.py
+python3 ingest_race.py --race giro
 
 # 4. Export to frontend
 python3 export_gc.py --race giro --year 2026
@@ -706,7 +714,7 @@ The Vuelta pipeline mirrors the Giro pipeline exactly (same scrape format, same 
 cd pipeline
 python3 scrape_vuelta.py 2020-2024          # saves to vuelta_scrapes/YEAR/ (use SCRAPE_DELAY=4.0 for recent years)
 python3 build_vuelta_points.py
-python3 ingest_vuelta.py 2020-2024          # ALWAYS pass a year range — see warning below
+python3 ingest_race.py --race vuelta 2020-2024   # ALWAYS pass a year range — see warning below
 python3 export_gc.py --race vuelta
 python3 export_vuelta_races_summary.py
 python3 export_vuelta_riders_index.py
@@ -715,7 +723,7 @@ python3 export_gc.py --race vuelta              # re-export to pick up elevation
 python3 export_vuelta_races_summary.py
 ```
 
-> **Note on re-ingesting.** Both `ingest_vuelta.py` and `ingest_giro.py` **delete and re-create** any edition they touch, but do so atomically (a failed insert rolls the delete back) and **preserve `vertical_meters`/`profile_score`** from the existing edition, so re-ingesting no longer wipes elevation data. A bare no-arg run (which would rebuild every year found in the scrapes directory) is refused unless you pass `--all`. Still prefer passing the specific range you changed (e.g. `ingest_vuelta.py 1970-1989`). `scrape_vuelta_stage_info.py` only needs to run for years that never had elevation scraped.
+> **Note on re-ingesting.** `ingest_race.py --race {vuelta,giro}` **deletes and re-creates** any edition it touches, but does so atomically (a failed insert rolls the delete back) and **preserves `vertical_meters`/`profile_score`** from the existing edition, so re-ingesting no longer wipes elevation data. A bare no-arg run (which would rebuild every year found in the scrapes directory) is refused unless you pass `--all`. Still prefer passing the specific range you changed (e.g. `ingest_race.py --race vuelta 1970-1989`). `scrape_vuelta_stage_info.py` only needs to run for years that never had elevation scraped.
 
 **PCS rate limiting:** Use `SCRAPE_DELAY=4.0` for recent years (2015+). Older years can often use `2.0`. The scraper handles 429 with a 30s backoff.
 
@@ -838,7 +846,7 @@ done
 # Then run the pipeline (Giro example — see "Processing scraped Giro stages" section)
 python3 build_giro_points.py
 # delete existing edition if needed...
-python3 ingest_giro.py
+python3 ingest_race.py --race giro
 python3 export_gc.py --race giro --year 2026
 ```
 
@@ -920,9 +928,9 @@ stale/final gaps across stages. All Vuelta years were rebuilt in July 2026:
    - gc_rank is emitted only when ≥85% of active riders are known that day
      (otherwise rank=null, gap only — the GC Time display mode still shows
      these riders; the GC Position mode shows only truly ranked ones).
-4. `ingest_vuelta.py` consumes `gc_standings.json` when present (per stage
-   `n`, per rider); the carry-forward is gone. Stage files sort numerically.
-   `DF` now ingests as FINISHED with null time/rank.
+4. `ingest_race.py --race vuelta` consumes `gc_standings.json` when present
+   (per stage `n`, per rider); the carry-forward is gone. Stage files sort
+   numerically. `DF` now ingests as FINISHED with null time/rank.
 
 Caveats: mid-race computed gaps can omit the leader's accumulated time
 bonuses on days where the only authoritative anchor is the leader (uniform
@@ -932,13 +940,13 @@ shift; rank order unaffected). 1986 and 1988-style years where PCS lists only
 **`build_vuelta_points.py` numeric-sort fix**: it used to sort stage files
 lexicographically, misaligning sprint/KOM points arrays with DB stage order
 for EVERY year with 10+ stages (export_gc.py indexes arrays by stage
-position). Rebuilt 2026-07; `build_giro_points.py`/`ingest_giro.py` got the
-same fixes.
+position). Rebuilt 2026-07; `build_giro_points.py`/`ingest_race.py --race giro`
+got the same fixes.
 
 **Giro (same rebuild, July 2026)**: identical disease, identical cure. All
 three scripts take `--race giro` (they live under their `vuelta_` names but
 are race-parameterized; scrapes land in `giro_scrapes/YEAR/gc_pages/`).
-`ingest_giro.py` consumes `gc_standings.json` the same way. Giro-specific
+`ingest_race.py --race giro` consumes `gc_standings.json` the same way. Giro-specific
 notes:
 - PCS has **full per-day GC tables from 1990 onward** for the Giro (Vuelta
   only from 1998), so 1990–1997 are fully authoritative.
