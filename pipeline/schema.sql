@@ -34,7 +34,10 @@ CREATE TABLE IF NOT EXISTS riders (
     rider_id            TEXT PRIMARY KEY,
     full_name           TEXT NOT NULL,
     nationality_code    TEXT REFERENCES countries(code),
-    birth_year_approx    INTEGER   -- derived from age-at-race snapshots; approximate
+    birth_year_approx   INTEGER,   -- derived from age-at-race snapshots; approximate
+    first_name          TEXT,      -- scraped from PCS rider page (scrape_rider_details.py)
+    last_name           TEXT,      -- scraped from PCS rider page
+    birthday            TEXT       -- ISO date 'YYYY-MM-DD'; may be NULL if not on PCS
 );
 
 -- A team roster for one season (team identity is re-created each year in pro cycling,
