@@ -22,7 +22,7 @@ The app visualizes per-rider performance across every stage of multiple Grand To
 
 The frontend is race-aware via the `RACES` registry in main.ts (see "Race registry" below): jersey icon colors, career-chart colors, jersey tooltip labels, war bands, and the youth-button visibility all come from each race's config entry.
 
-**Three views:**
+**Four views:**
 
 1. **By Stage** — bump chart showing each rider's rank after every stage. Three selectable metrics:
    - *GC Position* — cumulative general classification rank
@@ -37,6 +37,8 @@ The frontend is race-aware via the `RACES` registry in main.ts (see "Race regist
    - Total Elevation (m)
    - GC Winner Time (h)
    - Average Speed (km/h) — GC winner (green) and slowest finisher (red) on shared axis
+
+4. **Riders** — a searchable/filterable grid of every rider (current race only: name search, year/team/nationality filters, GC/Sprint/KOM/Youth jersey-win filters), and a per-rider detail page. The detail page is **cross-race** (not filtered to the current race): it shows every race the rider has results in, with toggle buttons to show/hide each race and each classification (GC/Sprint/KOM) independently — see "Rider detail chart" below.
 
 ---
 
@@ -435,14 +437,14 @@ All chart logic is in `cycling-app/src/main.ts` (~2,500 lines). It opens with th
 - **`setHighlight(id)`** — O(1) hover path: restyles only the previous and new highlighted rider's elements (line + dot + label) via `restyleRider()`, instead of sweeping all ~180 riders. `updateLineClasses()` still exists for full-sweep scenarios (selection changes, presets, filters).
 - **`drawOverview()`** — renders the Race Overview bar charts
 - **`drawAllRacesOverview()`** — renders the 4-panel All Races Overview. Uses `ALL_RACES` (imported from `all_races_summary.json`) and a shared `crosshairLines[]` array for the synchronized hover line
-- **`drawRidersPage()`** — **async**; awaits `ensureRiderIndex()` (shows "Loading riders…" on first open) then renders the search/filter grid. `drawRiderDetail(id)` renders a rider's career chart.
-- **`ensureRiderIndex()`** — idempotent; `fetch()`es `riders_index.json` once (URL via `?url` import) and builds `riderIndex` (Map) + `allTeamsSorted`. Lazy so it never weighs down first paint. The file is `{ teams: [names], riders: { slug: {...} } }`: rider keys are slugs (the `rider/` prefix is re-added on load) and teams are integer indexes into the shared `teams` string table (`-1` = no team) — both shrink the payload versus inlining strings. Year-tuples are `[gcRank, teamIdx]` (no points rankings that year) or `[gcRank, teamIdx, sprintRank, komRank]` with `0` = absent rank; normalized to `9999` sentinels on load.
+- **`drawRidersPage()`** — **async**; awaits `ensureRiderIndex()` (shows "Loading riders…" on first open) then renders the search/filter grid, filtered to `currentRace`. `drawRiderDetail(id)` renders a rider's cross-race career chart (see below) — it is not filtered to `currentRace`.
+- **`ensureRiderIndexFor(race)`** — idempotent per race (tracked via `riderIndexBuilt: Record<RaceId, boolean>`); `fetch()`es that race's `riders_index.json` once (URL via `RIDERS_INDEX_URL[race]`, a `?url` import) and builds `riderIndexByRace[race]` (Map) + `allTeamsSortedByRace[race]`. Lazy so it never weighs down first paint. `ensureRiderIndex()` is a thin convenience wrapper calling `ensureRiderIndexFor(currentRace)` — the Riders grid only needs the current race's index, but `drawRiderDetail` awaits all three in parallel (`Promise.all(RACE_IDS.map(ensureRiderIndexFor))`) since a rider's cross-race chart needs every race's data regardless of which one is currently selected. The index file is `{ teams: [names], riders: { slug: {...} } }`: rider keys are slugs (the `rider/` prefix is re-added on load) and teams are integer indexes into the shared `teams` string table (`-1` = no team) — both shrink the payload versus inlining strings. Year-tuples are `[gcRank, teamIdx]` (no points rankings that year) or `[gcRank, teamIdx, sprintRank, komRank]` with `0` = absent rank; normalized to `9999` sentinels on load.
 - **`switchView(view)`** — handles "stage" | "overview" | "allraces" | "riders" transitions; calls `updateHash()` at the end
 - **`wireControls()`** — attaches all event listeners (year select, metric select, sidebar buttons, view buttons, Team/Nation filter dropdowns)
 - **`buildStageFilters()`** — rebuilds the Team/Nation dropdown checkbox lists for the current year's dataset; prunes `stageFilterTeams`/`stageFilterNations` to only values that still exist (carrying filter state across a year change), reapplies the filter if anything survived, or forces an empty selection if a filter was active but nothing carried over
 - **`applyStageTeamNationFilter()`** — recomputes `selected` from `stageFilterTeams`/`stageFilterNations` (OR within a facet, AND across facets); no-ops if both are empty so it never fights with the quick-select buttons
 
-**Hash routing (deep links)**: every view is URL-addressable and race-aware. An optional leading race segment selects the race: `#giro/2026/stage/gc`, `#vuelta/allraces`, `#giro/riders/fausto-coppi`. No race segment means `tour` (backward compatible with all pre-multi-race links). Patterns: `#[race/]<year>/stage/<metric>` (metric: `gc`|`gc-time`|`points`|`sprint-points`|`kom`|`kom-points`), `#[race/]<year>/overview`, `#[race/]allraces`, `#[race/]riders`, `#[race/]riders/<rider-slug>` (slug = rider id minus the `rider/` prefix). `computeHash()` emits the race prefix for non-tour races only, keeping tour hashes canonical and stable. The `-time`/`-points` suffixes select the alternate y-axis display mode for that metric. `computeHash()` derives the hash from state; `updateHash()` writes it via `location.hash` (pushes a history entry, so back/forward walk app states); `applyHash()` parses `location.hash` back onto state (async — awaits `loadDataset`/`ensureRiderIndex`). Loop protection: `applyHash` no-ops when the hash already equals `computeHash()` (our own write), and the `applyingHash` flag suppresses `updateHash` during an apply so intermediate draws don't push partial states. `init()` applies the initial hash, falling back to defaults + `history.replaceState` seed when the hash is empty/unrecognized; after applying, it loads the default dataset whenever none is in memory — this covers riders/allraces deep links (so stage/overview work on later navigation) AND deep links that exactly match the default state, which `applyHash()` short-circuits as "already in sync" without loading anything. When adding new app state that should be shareable, extend `computeHash` + `applyHash` together.
+**Hash routing (deep links)**: every view is URL-addressable and race-aware. An optional leading race segment selects the race: `#giro/2026/stage/gc`, `#vuelta/allraces`, `#giro/riders/fausto-coppi`. No race segment means `tour` (backward compatible with all pre-multi-race links). Patterns: `#[race/]<year>/stage/<metric>` (metric: `gc`|`gc-time`|`points`|`sprint-points`|`kom`|`kom-points`), `#[race/]<year>/overview`, `#[race/]allraces`, `#[race/]riders`, `#[race/]riders/<rider-slug>` (slug = rider id minus the `rider/` prefix). `computeHash()` emits the race prefix for non-tour races only, keeping tour hashes canonical and stable. The `-time`/`-points` suffixes select the alternate y-axis display mode for that metric. `computeHash()` derives the hash from state; `updateHash()` writes it via `location.hash` (pushes a history entry, so back/forward walk app states); `applyHash()` parses `location.hash` back onto state (async — awaits `loadDataset` for stage/overview routes, or `drawRiderDetail` for a rider route, which itself awaits all three races' `ensureRiderIndexFor`). Loop protection: `applyHash` no-ops when the hash already equals `computeHash()` (our own write), and the `applyingHash` flag suppresses `updateHash` during an apply so intermediate draws don't push partial states. `init()` applies the initial hash, falling back to defaults + `history.replaceState` seed when the hash is empty/unrecognized; after applying, it loads the default dataset whenever none is in memory — this covers riders/allraces deep links (so stage/overview work on later navigation) AND deep links that exactly match the default state, which `applyHash()` short-circuits as "already in sync" without loading anything. When adding new app state that should be shareable, extend `computeHash` + `applyHash` together.
 
 **No-data overlays**: If `currentMetric === "points"` and `year < 1953`, or `currentMetric === "kom"` and `year < 1933`, the chart area shows an explanatory text message instead of chart elements.
 
@@ -780,16 +782,21 @@ The button group itself is always rendered — only the youth button is hidden p
 
 **If you add a new race:** set `hasYouth` in its `RACES` entry according to whether youth wins are tracked in its pipeline.
 
-### Rider detail chart colors and race name (`drawRiderDetail`)
+### Rider detail chart: cross-race, with race + classification toggles (`drawRiderDetail`)
 
-`drawRiderDetail()` pulls chart line/dot colors and the tooltip race name from the registry:
+`drawRiderDetail(riderId)` is **async and cross-race** — it is not filtered to `currentRace`. It awaits all three races' rider indexes in parallel (`Promise.all(RACE_IDS.map(ensureRiderIndexFor))`), builds a `Map<RaceId, RiderEntry>` of every race the rider appears in (`byRace`), and returns early if the rider is in none. The header/meta line (`"7 TDF · Best #1, 8 Giro · Best #1, 1 Vuelta · Best #1"`) is built from `byRace` directly — no nationality text (the flag next to the name + its hover tooltip already convey it).
 
-```typescript
-const { gc: gcColor, sprint: sprintColor, kom: komColor } = raceConfig().chart;
-// tooltip: `${d.year} ${raceConfig().name}`
-```
+**Toggle bar**, above the chart: race buttons (T/G/V, one per race in `RACE_IDS`) then a `|` divider then classification buttons (GC/Sprint/KOM). Both toggle groups behave the same way — clicking toggles membership in a `Set` (`activeRaces` / `activeClassifs`), refusing to deactivate the last remaining member so the chart is never empty; a `BADGE: Record<RaceId, {bg, text, label}>` constant (not `RACES[race].chart`, for reliable hex values in SVG `stroke`/`fill` attributes) drives each race button's color and letter. A race button is disabled (`.no-data`) if the rider has no entry for that race at all.
 
-**If you add a new race:** its `RACES` entry's `chart` colors and `name` are used automatically — nothing to edit here.
+**Overlapping-year dot offset:** when a rider raced two+ active races in the same year, their dots would otherwise land on identical x-coordinates. `xPos(race, year)` looks up which active races have data for that year and offsets each by `±(DOT_R*2+1)` px (currently 11px, for `DOT_R=5`) around the shared center, so same-year dots from different races sit side-by-side, touching, instead of stacking.
+
+**Classifications:** GC draws a solid line (in `RACES[race].chart.gc`), Sprint a `4,3`-dashed line (`chart.sprint`), KOM a `2,3`-dotted line (`chart.kom`) — all three independently toggleable per race via the classification buttons; the y-axis (`"Rank"`) and its domain expand to cover whichever classifications are active. The DNF/DNS zone below the main chart only appears when GC is active.
+
+**Legend** (top-right, above the chart, up to 3 rows): row 1 is one column per active race (name + solid line, in that race's GC color); rows 2/3 (only if Sprint/KOM are active) repeat under each race's column ("Sprint"/"KOM", dashed/dotted, in that race's sprint/kom color) — columns are left-aligned to a fixed per-column x so "Tour"/"Sprint"/"KOM" (and same for Giro/Vuelta) line up vertically.
+
+**Click a dot** to jump to that race/year's stage chart at the matching metric (`gc`, `points` for Sprint, or `kom` for KOM) — `setRace()` + `loadDataset()` + `switchView("stage")`.
+
+**If you add a new race:** its `RACES` entry's `chart` colors and `name` are used automatically for the cross-race chart and legend; add a `BADGE` entry too (hex color, not a CSS var) for its toggle button and DNF-dot outline.
 
 ---
 
