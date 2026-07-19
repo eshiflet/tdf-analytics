@@ -11,11 +11,15 @@ cycling-app/tsconfig.tsbuildinfo
 
 # AI Context file for Claude for future development
 ai-context.md
+architecture.md
 
 # Database (large binary — NOT regenerable; back up with pipeline/db_backup.py)
 pipeline/cycling.db
 pipeline/cycling.db.bak*
 pipeline/db_backups/
+
+# Rider detail scrape cache (intermediate; ingested into cycling.db via scrape_rider_details.py)
+pipeline/rider_scrapes/
 
 # Raw scraped data (tdf_*_full.json, scrapes/, giro_scrapes/, vuelta_scrapes/)
 # is deliberately TRACKED in git — it is the only copy outside this machine.
