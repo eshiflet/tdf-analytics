@@ -94,7 +94,7 @@ yearSelect.dispatchEvent(new window.Event("change", { bubbles: true }));
 await new Promise((r) => setTimeout(r, 200));
 const legendCount1995 = doc.querySelectorAll("#legend .legend-item").length;
 const firstLegendName1995 = doc.querySelector("#legend .legend-item .legend-name")?.textContent;
-console.log("legend rows (1995):", legendCount1995, "first rider:", firstLegendName1995, "(expect Induráin Miguel)");
+console.log("legend rows (1995):", legendCount1995, "first rider:", firstLegendName1995, "(expect Miguel Induráin)");
 
 // switch to 1999 (20 stages, oldest era's other stage-count variant)
 yearSelect.value = "1999";
@@ -102,7 +102,7 @@ yearSelect.dispatchEvent(new window.Event("change", { bubbles: true }));
 await new Promise((r) => setTimeout(r, 200));
 const legendCount1999 = doc.querySelectorAll("#legend .legend-item").length;
 const firstLegendName1999 = doc.querySelector("#legend .legend-item .legend-name")?.textContent;
-console.log("legend rows (1999):", legendCount1999, "first rider:", firstLegendName1999, "(expect Armstrong Lance)");
+console.log("legend rows (1999):", legendCount1999, "first rider:", firstLegendName1999, "(expect Lance Armstrong)");
 
 // switch to 1988 (no prologue that year -- the "Prélude" was unofficial and excluded)
 yearSelect.value = "1988";
@@ -110,7 +110,7 @@ yearSelect.dispatchEvent(new window.Event("change", { bubbles: true }));
 await new Promise((r) => setTimeout(r, 200));
 const legendCount1988 = doc.querySelectorAll("#legend .legend-item").length;
 const firstLegendName1988 = doc.querySelector("#legend .legend-item .legend-name")?.textContent;
-console.log("legend rows (1988):", legendCount1988, "first rider:", firstLegendName1988, "(expect Delgado Pedro)");
+console.log("legend rows (1988):", legendCount1988, "first rider:", firstLegendName1988, "(expect Pedro Delgado)");
 
 // switch to 1980 (has split stages 1a/1b and 7a/7b)
 yearSelect.value = "1980";
@@ -118,7 +118,7 @@ yearSelect.dispatchEvent(new window.Event("change", { bubbles: true }));
 await new Promise((r) => setTimeout(r, 200));
 const legendCount1980 = doc.querySelectorAll("#legend .legend-item").length;
 const firstLegendName1980 = doc.querySelector("#legend .legend-item .legend-name")?.textContent;
-console.log("legend rows (1980):", legendCount1980, "first rider:", firstLegendName1980, "(expect Zoetemelk Joop)");
+console.log("legend rows (1980):", legendCount1980, "first rider:", firstLegendName1980, "(expect Joop Zoetemelk)");
 
 // switch to 1971 (prologue was a team time trial -- required a custom merge fix)
 yearSelect.value = "1971";
@@ -126,7 +126,7 @@ yearSelect.dispatchEvent(new window.Event("change", { bubbles: true }));
 await new Promise((r) => setTimeout(r, 200));
 const legendCount1971 = doc.querySelectorAll("#legend .legend-item").length;
 const firstLegendName1971 = doc.querySelector("#legend .legend-item .legend-name")?.textContent;
-console.log("legend rows (1971):", legendCount1971, "first rider:", firstLegendName1971, "(expect Merckx Eddy)");
+console.log("legend rows (1971):", legendCount1971, "first rider:", firstLegendName1971, "(expect Eddy Merckx)");
 
 // switch to 1960 (oldest year, newly added, national teams era, no prologue)
 yearSelect.value = "1960";
@@ -134,7 +134,7 @@ yearSelect.dispatchEvent(new window.Event("change", { bubbles: true }));
 await new Promise((r) => setTimeout(r, 200));
 const legendCount1960 = doc.querySelectorAll("#legend .legend-item").length;
 const firstLegendName1960 = doc.querySelector("#legend .legend-item .legend-name")?.textContent;
-console.log("legend rows (1960):", legendCount1960, "first rider:", firstLegendName1960, "(expect Nencini Gastone)");
+console.log("legend rows (1960):", legendCount1960, "first rider:", firstLegendName1960, "(expect Gastone Nencini)");
 
 // hover the top-axis stage-1 tick and confirm the new start/finish/distance
 // tooltip populates (1960 stage 1: Lille -> Brussel, flat)
@@ -162,20 +162,20 @@ const pass =
   tooltipText.includes("km") &&
   tooltipText.includes("F") &&
   legendCount2010 > 0 &&
-  firstLegendName2010 === "Contador Alberto" &&
+  firstLegendName2010 === "Alberto Contador" &&
   legendCount2017 > 0 &&
-  firstLegendName2017 === "Froome Chris" &&
+  firstLegendName2017 === "Chris Froome" &&
   legendCount1995 > 0 &&
-  firstLegendName1995 === "Induráin Miguel" &&
+  firstLegendName1995 === "Miguel Induráin" &&
   legendCount1999 > 0 &&
-  firstLegendName1999 === "Armstrong Lance" &&
+  firstLegendName1999 === "Lance Armstrong" &&
   legendCount1988 > 0 &&
-  firstLegendName1988 === "Delgado Pedro" &&
+  firstLegendName1988 === "Pedro Delgado" &&
   legendCount1980 > 0 &&
-  firstLegendName1980 === "Zoetemelk Joop" &&
+  firstLegendName1980 === "Joop Zoetemelk" &&
   legendCount1971 > 0 &&
-  firstLegendName1971 === "Merckx Eddy" &&
+  firstLegendName1971 === "Eddy Merckx" &&
   legendCount1960 > 0 &&
-  firstLegendName1960 === "Nencini Gastone";
+  firstLegendName1960 === "Gastone Nencini";
 console.log(pass ? "PASS" : "FAIL");
 process.exit(pass ? 0 : 1);

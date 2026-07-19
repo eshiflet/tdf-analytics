@@ -94,7 +94,7 @@ function check(name, cond, detail) {
   // Class renamed to career-gc-{race} in the cross-race refactor
   const dots = doc.querySelectorAll("[class^='career-gc-']").length;
   // .rider-detail-name also carries a trailing nationality flag emoji.
-  check("rider detail deep link shows rider", name?.startsWith("Merckx Eddy") ?? false, `name=${JSON.stringify(name)}`);
+  check("rider detail deep link shows rider", name?.startsWith("Eddy Merckx") ?? false, `name=${JSON.stringify(name)}`);
   check("career chart has GC dots", dots >= 6, `${dots} dots`);
 }
 
