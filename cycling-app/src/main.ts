@@ -93,6 +93,7 @@ const RACES: Record<RaceId, RaceConfig> = {
 };
 
 const RACE_IDS = Object.keys(RACES) as RaceId[];
+const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España" };
 function isRaceId(s: string | undefined): s is RaceId {
   return s !== undefined && s in RACES;
 }
@@ -2053,11 +2054,32 @@ let ridersFilterTeam = "";
 let ridersFilterNationality = "";
 // AND semantics: a rider must have won every selected category, not just one.
 const ridersFilterJerseys = new Set<JerseyCategory>();
+// empty = all races shown; non-empty = only the listed races
+const ridersFilterRaces = new Set<RaceId>();
+
+function selectedRacesForRiders(): RaceId[] {
+  return ridersFilterRaces.size === 0 ? [...RACE_IDS] : RACE_IDS.filter((r) => ridersFilterRaces.has(r));
+}
 
 function filteredRiders(): RiderEntry[] {
   const q = ridersSearchQuery.toLowerCase();
   const yr = ridersFilterYear ? parseInt(ridersFilterYear) : null;
-  return [...riderIndex().values()]
+  // Merge entries from all selected races, deduplicating by rider ID.
+  const mergedById = new Map<string, RiderEntry>();
+  for (const race of selectedRacesForRiders()) {
+    for (const [id, entry] of riderIndexByRace[race]) {
+      if (mergedById.has(id)) {
+        const existing = mergedById.get(id)!;
+        for (const [year, yearData] of entry.years) {
+          if (!existing.years.has(year)) existing.years.set(year, yearData);
+        }
+        for (const team of entry.teams) existing.teams.add(team);
+      } else {
+        mergedById.set(id, { ...entry, years: new Map(entry.years), teams: new Set(entry.teams) });
+      }
+    }
+  }
+  return [...mergedById.values()]
     .filter((e) => {
       if (q && !e.name.toLowerCase().includes(q) && !displayName(e).toLowerCase().includes(q)) return false;
       if (yr !== null && !e.years.has(yr)) return false;
@@ -2078,16 +2100,27 @@ async function drawRidersPage() {
   currentRiderId = null;
   updateHash();
   ridersChartEl.innerHTML = "";
-  if (!riderIndexBuilt[currentRace]) {
+
+  const racesToLoad = selectedRacesForRiders();
+  const needsLoad = racesToLoad.some((r) => !riderIndexBuilt[r]);
+  if (needsLoad) {
     const loading = document.createElement("div");
     loading.className = "riders-count-label";
     loading.textContent = "Loading riders…";
     ridersChartEl.appendChild(loading);
-    await ensureRiderIndex();
+    await Promise.all(racesToLoad.map((r) => ensureRiderIndexFor(r)));
     // Bail out if the user navigated away, or if a rider detail took over.
     if (currentView !== "riders" || currentRiderId !== null) return;
     ridersChartEl.innerHTML = "";
   }
+
+  // Compute year/team/nationality options from all currently-selected races.
+  const allYears = [...new Set(racesToLoad.flatMap((r) => Object.keys(URLS_BY_RACE[r])))]
+    .sort().reverse();
+  const allTeams = [...new Set(racesToLoad.flatMap((r) => allTeamsSortedByRace[r]))].sort();
+  const allNats = [...new Set(racesToLoad.flatMap((r) => allNationalitiesSortedByRace[r]))].sort();
+  // Show youth jersey filter only when at least one selected race tracks it.
+  const anyHasYouth = racesToLoad.some((r) => RACES[r].hasYouth);
 
   const controls = document.createElement("div");
   controls.className = "riders-controls";
@@ -2100,37 +2133,111 @@ async function drawRidersPage() {
 
   const yearSel = document.createElement("select");
   yearSel.className = "riders-filter-select";
-  [["", "All years"], ...YEARS.map((y) => [y, y])].forEach(([val, label]) => {
+  [["", "All years"], ...allYears.map((y) => [y, y])].forEach(([val, label]) => {
     const opt = document.createElement("option");
     opt.value = val;
     opt.textContent = label;
     yearSel.appendChild(opt);
   });
-  yearSel.value = ridersFilterYear;
+  yearSel.value = allYears.includes(ridersFilterYear) ? ridersFilterYear : "";
+  if (!allYears.includes(ridersFilterYear)) ridersFilterYear = "";
+
+  // ── Races multi-select dropdown ───────────────────────────────────────────
+  const raceDropdownWrap = document.createElement("div");
+  raceDropdownWrap.className = "filter-dropdown";
+
+  const raceDropdownBtn = document.createElement("button");
+  raceDropdownBtn.type = "button";
+  raceDropdownBtn.className = "riders-filter-select riders-race-dropdown-btn";
+  function updateRaceDropdownBtn() {
+    raceDropdownBtn.textContent = ridersFilterRaces.size === 0
+      ? "All races"
+      : RACE_IDS.filter((r) => ridersFilterRaces.has(r)).map((r) => RACE_ABBR[r]).join(", ");
+    raceDropdownBtn.classList.toggle("active", ridersFilterRaces.size > 0);
+  }
+  updateRaceDropdownBtn();
+
+  const racePanel = document.createElement("div");
+  racePanel.className = "filter-panel";
+  racePanel.hidden = true;
+
+  const raceShowAll = document.createElement("div");
+  raceShowAll.className = "filter-panel-actions";
+  const raceShowAllBtn = document.createElement("button");
+  raceShowAllBtn.type = "button";
+  raceShowAllBtn.className = "filter-panel-clear";
+  raceShowAllBtn.textContent = "Show all";
+  raceShowAllBtn.addEventListener("click", () => {
+    ridersFilterRaces.clear();
+    racePanel.querySelectorAll<HTMLInputElement>("input[type=checkbox]")
+      .forEach((cb) => (cb.checked = false));
+    updateRaceDropdownBtn();
+    racePanel.hidden = true;
+    drawRidersPage().catch(showLoadError);
+  });
+  raceShowAll.appendChild(raceShowAllBtn);
+  racePanel.appendChild(raceShowAll);
+
+  for (const raceId of RACE_IDS) {
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = raceId;
+    cb.checked = ridersFilterRaces.has(raceId);
+    cb.addEventListener("change", () => {
+      if (cb.checked) ridersFilterRaces.add(raceId);
+      else ridersFilterRaces.delete(raceId);
+      // If the user unchecks all boxes, treat it as "all races".
+      if (ridersFilterRaces.size === 0) {
+        racePanel.querySelectorAll<HTMLInputElement>("input[type=checkbox]")
+          .forEach((c) => (c.checked = false));
+      }
+      updateRaceDropdownBtn();
+      racePanel.hidden = true;
+      drawRidersPage().catch(showLoadError);
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(RACE_ABBR[raceId]));
+    racePanel.appendChild(label);
+  }
+
+  raceDropdownBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    racePanel.hidden = !racePanel.hidden;
+  });
+  // Close the panel when clicking outside it.
+  const closeRacePanel = (e: MouseEvent) => {
+    if (!raceDropdownWrap.contains(e.target as Node)) racePanel.hidden = true;
+  };
+  document.addEventListener("click", closeRacePanel);
+
+  raceDropdownWrap.append(raceDropdownBtn, racePanel);
 
   const teamSel = document.createElement("select");
   teamSel.className = "riders-filter-select";
-  [["", "All teams"], ...allTeamsSorted().map((t) => [t, t])].forEach(([val, label]) => {
+  [["", "All teams"], ...allTeams.map((t) => [t, t])].forEach(([val, label]) => {
     const opt = document.createElement("option");
     opt.value = val;
     opt.textContent = label;
     teamSel.appendChild(opt);
   });
-  teamSel.value = ridersFilterTeam;
+  teamSel.value = allTeams.includes(ridersFilterTeam) ? ridersFilterTeam : "";
+  if (!allTeams.includes(ridersFilterTeam)) ridersFilterTeam = "";
 
   const nationalitySel = document.createElement("select");
   nationalitySel.className = "riders-filter-select";
-  [["", "All nationalities"], ...allNationalitiesSorted().map((n) => [n, n])].forEach(([val, label]) => {
+  [["", "All nationalities"], ...allNats.map((n) => [n, n])].forEach(([val, label]) => {
     const opt = document.createElement("option");
     opt.value = val;
     opt.textContent = label;
     nationalitySel.appendChild(opt);
   });
-  nationalitySel.value = ridersFilterNationality;
+  nationalitySel.value = allNats.includes(ridersFilterNationality) ? ridersFilterNationality : "";
+  if (!allNats.includes(ridersFilterNationality)) ridersFilterNationality = "";
 
   // Jersey filter toggles. AND semantics: selecting more than one narrows to
   // riders who've won every selected category, not any one of them.
-  // Youth wins are only tracked for TDF; hide that button on other races.
+  // Youth wins are only tracked for TDF; hide that button when no selected race tracks it.
   const jerseyFilterGroup = document.createElement("div");
   jerseyFilterGroup.className = "jersey-filter-group";
   const jerseyFilterBtns = (Object.keys(JERSEY_LABELS) as JerseyCategory[]).map((category) => {
@@ -2141,7 +2248,7 @@ async function drawRidersPage() {
     btn.title = `Filter to ${JERSEY_LABELS[category]}s`;
     btn.innerHTML = jerseyIconSvg(category);
     btn.dataset.category = category;
-    if (category === "youth" && !raceConfig().hasYouth) btn.style.display = "none";
+    if (category === "youth" && !anyHasYouth) btn.style.display = "none";
     jerseyFilterGroup.appendChild(btn);
     return btn;
   });
@@ -2154,7 +2261,7 @@ async function drawRidersPage() {
   const countLabel = document.createElement("span");
   countLabel.className = "riders-count-label";
 
-  controls.append(searchInput, yearSel, teamSel, nationalitySel, jerseyFilterGroup, clearBtn, countLabel);
+  controls.append(searchInput, yearSel, raceDropdownWrap, teamSel, nationalitySel, jerseyFilterGroup, clearBtn, countLabel);
   ridersChartEl.appendChild(controls);
 
   const grid = document.createElement("div");
@@ -2207,12 +2314,14 @@ async function drawRidersPage() {
     ridersFilterTeam = "";
     ridersFilterNationality = "";
     ridersFilterJerseys.clear();
+    ridersFilterRaces.clear();
     searchInput.value = "";
     yearSel.value = "";
     teamSel.value = "";
     nationalitySel.value = "";
     for (const btn of jerseyFilterBtns) btn.classList.remove("active");
-    refreshGrid();
+    document.removeEventListener("click", closeRacePanel);
+    drawRidersPage().catch(showLoadError);
   });
   refreshGrid();
 }

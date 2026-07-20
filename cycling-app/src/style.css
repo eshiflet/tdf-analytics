@@ -616,6 +616,17 @@ svg text {
   border-color: var(--accent);
 }
 
+.riders-race-dropdown-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  white-space: nowrap;
+}
+
+.riders-race-dropdown-btn.active {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .jersey-filter-group {
   display: flex;
   gap: 4px;
