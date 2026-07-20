@@ -382,6 +382,7 @@ body {
   height: 10px;
   border-radius: 2px;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .legend-rank {
@@ -396,6 +397,10 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+.legend-name:hover {
+  text-decoration: underline;
 }
 
 .nationality-flag {

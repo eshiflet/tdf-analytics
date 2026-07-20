@@ -1347,7 +1347,8 @@ function buildLegend() {
     const flag = nationalityFlagEl(rider.nationality);
     if (flag) row.appendChild(flag);
 
-    row.addEventListener("click", () => {
+    swatch.addEventListener("click", (e) => {
+      e.stopPropagation();
       if (selected.has(rider.id)) {
         selected.delete(rider.id);
       } else {
@@ -1355,6 +1356,12 @@ function buildLegend() {
       }
       refreshLegendState();
       updateLineClasses();
+    });
+
+    name.addEventListener("click", (e) => {
+      e.stopPropagation();
+      switchView("riders");
+      drawRiderDetail(rider.id);
     });
 
     row.addEventListener("mouseenter", () => {
