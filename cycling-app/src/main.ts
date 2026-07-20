@@ -2148,7 +2148,7 @@ async function drawRidersPage() {
 
   const raceDropdownBtn = document.createElement("button");
   raceDropdownBtn.type = "button";
-  raceDropdownBtn.className = "riders-filter-select riders-race-dropdown-btn";
+  raceDropdownBtn.className = "riders-race-dropdown-btn";
   function updateRaceDropdownBtn() {
     raceDropdownBtn.textContent = ridersFilterRaces.size === 0
       ? "All races"
