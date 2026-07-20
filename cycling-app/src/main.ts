@@ -1234,6 +1234,7 @@ function komJerseySvg(dotColor = "#E4002B"): string {
 }
 
 const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint winner", kom: "KOM winner", youth: "Young rider winner" } as const;
+const JERSEY_SIMPLE_LABEL: Record<JerseyCategory, string> = { gc: "GC", sprint: "Sprint", kom: "KOM", youth: "Youth" };
 function jerseyTooltipLabel(category: JerseyCategory): string {
   return raceConfig().jerseyTooltips[category];
 }
@@ -1267,6 +1268,16 @@ function jerseyYearsWon(entry: RiderEntry): Record<JerseyCategory, number[]> {
 
 function jerseyIconSvg(category: JerseyCategory): string {
   const jersey = raceConfig().jersey;
+  if (category === "gc") return jerseySvg(jersey.gc);
+  if (category === "sprint") return jerseySvg(jersey.sprint);
+  if (category === "kom") {
+    return "dots" in jersey.kom ? komJerseySvg(jersey.kom.dots) : jerseySvg(jersey.kom.solid);
+  }
+  return jerseySvg("#FFFFFF", "#888888");
+}
+
+function jerseyIconSvgForRace(category: JerseyCategory, race: RaceId): string {
+  const jersey = RACES[race].jersey;
   if (category === "gc") return jerseySvg(jersey.gc);
   if (category === "sprint") return jerseySvg(jersey.sprint);
   if (category === "kom") {
@@ -2053,7 +2064,8 @@ let ridersFilterYear = "";
 let ridersFilterTeam = "";
 let ridersFilterNationality = "";
 // AND semantics: a rider must have won every selected category, not just one.
-const ridersFilterJerseys = new Set<JerseyCategory>();
+// Keys are "raceId:category" format (e.g. "tour:gc", "giro:sprint").
+const ridersFilterJerseys = new Set<string>();
 // empty = all races shown; non-empty = only the listed races
 const ridersFilterRaces = new Set<RaceId>();
 
@@ -2086,9 +2098,12 @@ function filteredRiders(): RiderEntry[] {
       if (ridersFilterTeam && !e.teams.has(ridersFilterTeam)) return false;
       if (ridersFilterNationality && e.nationality !== ridersFilterNationality) return false;
       if (ridersFilterJerseys.size > 0) {
-        const won = jerseyYearsWon(e);
-        for (const category of ridersFilterJerseys) {
-          if (won[category].length === 0) return false;
+        const selectedRaces = selectedRacesForRiders();
+        for (const key of ridersFilterJerseys) {
+          const [raceId, category] = key.split(":") as [RaceId, JerseyCategory];
+          if (!selectedRaces.includes(raceId)) continue;
+          const raceEntry = riderIndexByRace[raceId].get(e.id);
+          if (!raceEntry || jerseyYearsWon(raceEntry)[category].length === 0) return false;
         }
       }
       return true;
@@ -2119,9 +2134,6 @@ async function drawRidersPage() {
     .sort().reverse();
   const allTeams = [...new Set(racesToLoad.flatMap((r) => allTeamsSortedByRace[r]))].sort();
   const allNats = [...new Set(racesToLoad.flatMap((r) => allNationalitiesSortedByRace[r]))].sort();
-  // Show youth jersey filter only when at least one selected race tracks it.
-  const anyHasYouth = racesToLoad.some((r) => RACES[r].hasYouth);
-
   const controls = document.createElement("div");
   controls.className = "riders-controls";
 
@@ -2150,9 +2162,10 @@ async function drawRidersPage() {
   raceDropdownBtn.type = "button";
   raceDropdownBtn.className = "riders-race-dropdown-btn";
   function updateRaceDropdownBtn() {
-    raceDropdownBtn.textContent = ridersFilterRaces.size === 0
+    const label = ridersFilterRaces.size === 0
       ? "All races"
       : RACE_IDS.filter((r) => ridersFilterRaces.has(r)).map((r) => RACE_ABBR[r]).join(", ");
+    raceDropdownBtn.textContent = label + " ▾";
     raceDropdownBtn.classList.toggle("active", ridersFilterRaces.size > 0);
   }
   updateRaceDropdownBtn();
@@ -2235,22 +2248,31 @@ async function drawRidersPage() {
   nationalitySel.value = allNats.includes(ridersFilterNationality) ? ridersFilterNationality : "";
   if (!allNats.includes(ridersFilterNationality)) ridersFilterNationality = "";
 
-  // Jersey filter toggles. AND semantics: selecting more than one narrows to
-  // riders who've won every selected category, not any one of them.
-  // Youth wins are only tracked for TDF; hide that button when no selected race tracks it.
+  // Jersey filter toggles grouped by race. AND semantics: selecting more than
+  // one narrows to riders who've won every selected category in that race.
   const jerseyFilterGroup = document.createElement("div");
   jerseyFilterGroup.className = "jersey-filter-group";
-  const jerseyFilterBtns = (Object.keys(JERSEY_LABELS) as JerseyCategory[]).map((category) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "jersey-filter-btn";
-    btn.classList.toggle("active", ridersFilterJerseys.has(category));
-    btn.title = `Filter to ${JERSEY_LABELS[category]}s`;
-    btn.innerHTML = jerseyIconSvg(category);
-    btn.dataset.category = category;
-    if (category === "youth" && !anyHasYouth) btn.style.display = "none";
-    jerseyFilterGroup.appendChild(btn);
-    return btn;
+  const jerseyFilterBtns: HTMLButtonElement[] = [];
+  racesToLoad.forEach((race, raceIdx) => {
+    if (raceIdx > 0) {
+      const sep = document.createElement("span");
+      sep.className = "jersey-filter-sep";
+      sep.textContent = " - ";
+      jerseyFilterGroup.appendChild(sep);
+    }
+    (Object.keys(JERSEY_LABELS) as JerseyCategory[]).forEach((category) => {
+      if (category === "youth" && !RACES[race].hasYouth) return;
+      const key = `${race}:${category}`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "jersey-filter-btn";
+      btn.classList.toggle("active", ridersFilterJerseys.has(key));
+      btn.title = `${RACE_ABBR[race]} - ${JERSEY_SIMPLE_LABEL[category]}`;
+      btn.innerHTML = jerseyIconSvgForRace(category, race);
+      btn.dataset.key = key;
+      jerseyFilterGroup.appendChild(btn);
+      jerseyFilterBtns.push(btn);
+    });
   });
 
   const clearBtn = document.createElement("button");
@@ -2301,10 +2323,10 @@ async function drawRidersPage() {
   nationalitySel.addEventListener("change", () => { ridersFilterNationality = nationalitySel.value; refreshGrid(); });
   for (const btn of jerseyFilterBtns) {
     btn.addEventListener("click", () => {
-      const category = btn.dataset.category as JerseyCategory;
-      if (ridersFilterJerseys.has(category)) ridersFilterJerseys.delete(category);
-      else ridersFilterJerseys.add(category);
-      btn.classList.toggle("active", ridersFilterJerseys.has(category));
+      const key = btn.dataset.key!;
+      if (ridersFilterJerseys.has(key)) ridersFilterJerseys.delete(key);
+      else ridersFilterJerseys.add(key);
+      btn.classList.toggle("active", ridersFilterJerseys.has(key));
       refreshGrid();
     });
   }

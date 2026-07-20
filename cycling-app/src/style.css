@@ -642,6 +642,13 @@ svg text {
 .jersey-filter-group {
   display: flex;
   gap: 4px;
+  align-items: center;
+}
+
+.jersey-filter-sep {
+  color: var(--text-dim);
+  font-size: 13px;
+  user-select: none;
 }
 
 .jersey-filter-btn {
