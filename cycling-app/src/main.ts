@@ -1300,6 +1300,26 @@ function jerseyIconsEl(entry: RiderEntry): HTMLSpanElement[] {
     });
 }
 
+/** Jersey icons for the riders grid, one per race that the rider won a
+ *  classification in. Each jersey is colored for its specific race. */
+function jerseyIconsElMultiRace(entry: RiderEntry, races: RaceId[]): HTMLSpanElement[] {
+  const out: HTMLSpanElement[] = [];
+  for (const race of races) {
+    const raceEntry = riderIndexByRace[race].get(entry.id);
+    if (!raceEntry) continue;
+    const won = jerseyYearsWon(raceEntry);
+    for (const category of Object.keys(JERSEY_LABELS) as JerseyCategory[]) {
+      if (won[category].length === 0) continue;
+      const el = document.createElement("span");
+      el.className = "jersey-icon";
+      el.title = `${RACE_ABBR[race]} - ${JERSEY_SIMPLE_LABEL[category]}`;
+      el.innerHTML = jerseyIconSvgForRace(category, race);
+      out.push(el);
+    }
+  }
+  return out;
+}
+
 /** Jersey icons + a "(year, year, ...)" label after each — rider detail page
  *  only; the Riders grid uses the plain icons from jerseyIconsEl(). */
 function jerseyIconsWithYearsEl(entry: RiderEntry): HTMLSpanElement[] {
@@ -2301,7 +2321,7 @@ async function drawRidersPage() {
       btn.appendChild(document.createTextNode(displayName(entry)));
       const flag = nationalityFlagEl(entry.nationality);
       if (flag) btn.appendChild(flag);
-      for (const jersey of jerseyIconsEl(entry)) btn.appendChild(jersey);
+      for (const jersey of jerseyIconsElMultiRace(entry, racesToLoad)) btn.appendChild(jersey);
       btn.title = displayName(entry);
       btn.dataset.id = entry.id;
       frag.appendChild(btn);
