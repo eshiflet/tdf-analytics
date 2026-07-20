@@ -1360,8 +1360,8 @@ function buildLegend() {
 
     name.addEventListener("click", (e) => {
       e.stopPropagation();
-      switchView("riders");
-      drawRiderDetail(rider.id);
+      const slug = rider.id.replace(/^rider\//, "");
+      window.location.hash = `#riders/${slug}`;
     });
 
     row.addEventListener("mouseenter", () => {
@@ -2084,8 +2084,8 @@ async function drawRidersPage() {
     loading.textContent = "Loading riders…";
     ridersChartEl.appendChild(loading);
     await ensureRiderIndex();
-    // Bail out if the user navigated away while the index was loading.
-    if (currentView !== "riders") return;
+    // Bail out if the user navigated away, or if a rider detail took over.
+    if (currentView !== "riders" || currentRiderId !== null) return;
     ridersChartEl.innerHTML = "";
   }
 
@@ -2218,6 +2218,9 @@ async function drawRidersPage() {
 }
 
 async function drawRiderDetail(riderId: string): Promise<void> {
+  // Claim the slot before the first await so drawRidersPage can bail if it
+  // resumes from its own await and sees a detail is now in flight.
+  currentRiderId = riderId;
   ridersChartEl.innerHTML = "";
 
   // Load all race indexes in parallel, then find rider in each
@@ -2229,7 +2232,6 @@ async function drawRiderDetail(riderId: string): Promise<void> {
   }
   if (byRace.size === 0) return;
 
-  currentRiderId = riderId;
   updateHash();
 
   // Prefer entry from currentRace for name/nationality; fall back to first found
