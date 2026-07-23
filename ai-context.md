@@ -1,6 +1,6 @@
 # Cycling Analytics — AI Context
 
-Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), and the **Vuelta a España** (80 editions with data, back to 1935). The 2026 Tour de France is in progress — **stages 1–12 are in the DB as of 2026-07-16** (stage 12: Merlier win, Nevers → Chalon-sur-Saône); stages are added incrementally as the race runs. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), and the **Vuelta a España** (80 editions with data, back to 1935). The 2026 Tour de France is in progress — **stages 1–17 are in the DB as of 2026-07-22** (stage 17: Philipsen win, Chambéry → Voiron); stages are added incrementally as the race runs. Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
 ---
 
