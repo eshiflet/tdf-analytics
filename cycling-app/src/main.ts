@@ -94,6 +94,7 @@ const RACES: Record<RaceId, RaceConfig> = {
 
 const RACE_IDS = Object.keys(RACES) as RaceId[];
 const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España" };
+const RACE_SHORT_LABEL: Record<RaceId, string> = { tour: "Tour", giro: "Giro", vuelta: "Vuelta" };
 function isRaceId(s: string | undefined): s is RaceId {
   return s !== undefined && s in RACES;
 }
@@ -2297,6 +2298,16 @@ async function drawRidersPage() {
       sep.textContent = " - ";
       jerseyFilterGroup.appendChild(sep);
     }
+    const raceGroup = document.createElement("div");
+    raceGroup.className = "jersey-filter-race-group";
+    const raceLabel = document.createElement("div");
+    raceLabel.className = "jersey-filter-race-label";
+    raceLabel.textContent = RACE_SHORT_LABEL[race];
+    raceGroup.appendChild(raceLabel);
+    const raceBtns = document.createElement("div");
+    raceBtns.className = "jersey-filter-race-btns";
+    raceGroup.appendChild(raceBtns);
+    jerseyFilterGroup.appendChild(raceGroup);
     (Object.keys(JERSEY_LABELS) as JerseyCategory[]).forEach((category) => {
       if (category === "youth" && !RACES[race].hasYouth) return;
       const key = `${race}:${category}`;
@@ -2307,7 +2318,7 @@ async function drawRidersPage() {
       btn.title = `${RACE_ABBR[race]} - ${JERSEY_SIMPLE_LABEL[category]}`;
       btn.innerHTML = jerseyIconSvgForRace(category, race);
       btn.dataset.key = key;
-      jerseyFilterGroup.appendChild(btn);
+      raceBtns.appendChild(btn);
       jerseyFilterBtns.push(btn);
     });
   });
