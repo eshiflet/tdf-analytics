@@ -1217,7 +1217,7 @@ const JERSEY_PATH = "M9,2 L4,2 L1,6 L5,9 L5,22 L19,22 L19,9 L23,6 L20,2 L15,2 Q1
 
 function jerseySvg(fill: string, stroke = "#00000055", letter?: string): string {
   const label = letter
-    ? `<text x="12" y="16" text-anchor="middle" font-size="10" font-weight="700" font-family="sans-serif" fill="#000" stroke="#fff" stroke-width="2.5" paint-order="stroke" style="user-select:none">${letter}</text>`
+    ? `<text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700" font-family="Helvetica, Arial, sans-serif" style="fill:#000; user-select:none">${letter}</text>`
     : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.3em" height="1.3em"><path d="${JERSEY_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="1" stroke-linejoin="round"/>${label}</svg>`;
 }
