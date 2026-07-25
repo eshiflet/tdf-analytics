@@ -559,13 +559,11 @@ git push
 
 **Automated workflow** using `add_stages.py` + `scrape_stage_template.js`:
 
-1. **Scrape each new stage** from PCS via the browser. For each stage N:
-   - Navigate to `https://www.procyclingstats.com/race/tour-de-france/2026/stage-N`
-   - Run the `EXTRACT_RESULTS` JS from `scrape_stage_template.js` via `javascript_tool`
-   - Read the page text (`get_page_text`) and save as `pipeline/scrapes/stage_N.json`
-   - Navigate to `.../stage-N-points`
-   - Run the `EXTRACT_POINTS` JS via `javascript_tool`
-   - Read the page text, parse the JSON, merge `sprint_points` and `kom_points` into `scrapes/stage_N.json`
+1. **Scrape each new stage** from PCS via the browser. Use the streamlined `EXTRACT_ALL`
+   flow (one JS injection per stage, POSTs straight to a local save server) — see "Scraping
+   a live/in-progress race from PCS" below for the full step-by-step, including the
+   two-page `EXTRACT_RESULTS`/`EXTRACT_POINTS` manual fallback if the save server isn't
+   running.
 
 2. **Run `add_stages.py`** — this handles everything else automatically:
    ```bash
@@ -573,7 +571,15 @@ git push
    python3 add_stages.py 10 11        # stage numbers to add
    python3 add_stages.py 10 --dry-run # preview without writing
    ```
-   It updates `tdf_2026_full.json`, `sprint_points.json`, `kom_points_reconciled.json`, `profile_icons.json`, deletes/re-inserts the year in `cycling.db`, runs all three exports, and validates.
+   First it runs `detect_name_swaps.py`'s bib-consistency check against the *entire*
+   on-disk year (not just the new stages) and **aborts with no changes if any bib maps to
+   more than one rider identity anywhere** — this is a hard gate added 2026-07-25, not
+   optional, and it will refuse to add a new stage while an older stage still has an
+   unresolved swap. Fix the flagged scrape file(s) (swap `name`/`slug`/`nat` back using
+   `race_common.swap_identity()`) and re-run. Only after that passes does it update
+   `tdf_2026_full.json`, `sprint_points.json`, `kom_points_reconciled.json`,
+   `profile_icons.json`, delete/re-insert the year in `cycling.db`, run all three exports,
+   and validate.
 
 Each `scrapes/stage_N.json` contains:
 ```json
@@ -586,12 +592,18 @@ Each `scrapes/stage_N.json` contains:
   "kom_points": { "rider/slug": 3, ... }
 }
 ```
+Each row is parsed via `race_common.StageRow.from_list()` (added 2026-07-25) rather than
+raw positional indexing — a row that isn't exactly 15 fields raises a clear error instead
+of silently corrupting or dropping data (this caught a real bug: a malformed 14-field row
+had silently dropped a rider from one stage for a while before the switch to `StageRow`).
 
 **Key notes:**
 - `add_stages.py` safely replaces stages that already exist in the data files (idempotent)
 - The scrape files persist in `pipeline/scrapes/` so stages don't need re-scraping
 - `--scrapes-only` flag updates just the JSON files without touching the DB or running exports
 - `add_pre1960.py` is still the underlying DB inserter; `add_stages.py` orchestrates around it
+- `fix_2026_name_swaps.py`'s SWAPS list (stages 1-15) is stale/already-applied — do not run
+  it without `--dry-run` first, it isn't idempotent and would swap correct riders back to wrong
 
 > **Never pre-fill or estimate time gaps.** Even flat sprint stages produce real time gaps — crashes and incidents can leave riders at the back losing 3–7+ minutes, and riders can DNS/DNF on any stage type. Every `gap_txt` value in a scrape file must come from actual PCS data. Do not write stage files until the real PCS results page has been scraped.
 

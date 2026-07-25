@@ -71,12 +71,19 @@ flowchart TD
 - **Raw scrape JSON** (`{race}_scrapes/YEAR/stage_N.json`) — the scraper's direct output,
   one file per stage. Tracked in git (this used to be gitignored with the only copy on one
   machine — a past near-loss that's now fixed). This is the only re-derivable source if
-  `cycling.db` is ever lost.
+  `cycling.db` is ever lost. Each row is a 15-field list parsed via the shared
+  `race_common.StageRow` schema (added 2026-07-25) instead of raw positional indexing — a
+  malformed row now raises a clear error instead of silently corrupting or dropping data.
 
 - **Ingest** (`ingest_race.py --race {giro,vuelta}`, `add_pre1960.py`/`add_stages.py` for
   TDF) — parses the raw scrape JSON and writes rows into `cycling.db`. Re-ingesting a year
   deletes and re-creates that edition atomically, preserving fields (`vertical_meters`,
   `profile_score`) that come from separate scrapers, not the main stage scrape.
+  `add_stages.py` (TDF) additionally gates on `detect_name_swaps.py`'s bib-consistency
+  check before touching anything — it aborts if any bib maps to more than one rider
+  identity anywhere in the on-disk year, catching the PCS-side "adjacent-row swap"
+  rendering artifact (ai-context.md's "Scraping a live/in-progress race" section) before
+  it reaches the DB.
 
 - **cycling.db** — the single SQLite database backing all three races (see Data Model
   below). Gitignored and **not regenerable** in general — many historical years' raw PCS
