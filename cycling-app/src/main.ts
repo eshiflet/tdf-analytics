@@ -2293,9 +2293,16 @@ async function drawRidersPage() {
   const jerseyFilterBtns: HTMLButtonElement[] = [];
   racesToLoad.forEach((race, raceIdx) => {
     if (raceIdx > 0) {
-      const sep = document.createElement("span");
+      const sep = document.createElement("div");
       sep.className = "jersey-filter-sep";
-      sep.textContent = " - ";
+      const spacer = document.createElement("div");
+      spacer.className = "jersey-filter-sep-spacer";
+      spacer.setAttribute("aria-hidden", "true");
+      spacer.textContent = " "; // matches jersey-filter-race-label's line height exactly
+      const dash = document.createElement("div");
+      dash.className = "jersey-filter-sep-dash";
+      dash.textContent = "-";
+      sep.append(spacer, dash);
       jerseyFilterGroup.appendChild(sep);
     }
     const raceGroup = document.createElement("div");
