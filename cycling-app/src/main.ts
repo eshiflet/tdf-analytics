@@ -2093,12 +2093,21 @@ function selectedRacesForRiders(): RaceId[] {
   return ridersFilterRaces.size === 0 ? [...RACE_IDS] : RACE_IDS.filter((r) => ridersFilterRaces.has(r));
 }
 
-function filteredRiders(): RiderEntry[] {
-  const q = ridersSearchQuery.toLowerCase();
-  const yr = ridersFilterYear ? parseInt(ridersFilterYear) : null;
-  // Merge entries from all selected races, deduplicating by rider ID.
+// Merging clones every rider entry (new Map/Set per rider) across all selected
+// races, which is wasted work when only the search text or a non-race filter
+// changed. Cache the merge, keyed on the selected race set — safe because
+// drawRidersPage() always awaits ensureRiderIndexFor() for every selected race
+// before filteredRiders() can run, and a race's index never mutates afterward.
+let mergedRidersCache: { racesKey: string; entries: RiderEntry[] } | null = null;
+
+function mergedRidersForSelectedRaces(): RiderEntry[] {
+  const races = selectedRacesForRiders();
+  const racesKey = races.join(",");
+  if (mergedRidersCache && mergedRidersCache.racesKey === racesKey) {
+    return mergedRidersCache.entries;
+  }
   const mergedById = new Map<string, RiderEntry>();
-  for (const race of selectedRacesForRiders()) {
+  for (const race of races) {
     for (const [id, entry] of riderIndexByRace[race]) {
       if (mergedById.has(id)) {
         const existing = mergedById.get(id)!;
@@ -2111,14 +2120,22 @@ function filteredRiders(): RiderEntry[] {
       }
     }
   }
-  return [...mergedById.values()]
+  const entries = [...mergedById.values()];
+  mergedRidersCache = { racesKey, entries };
+  return entries;
+}
+
+function filteredRiders(): RiderEntry[] {
+  const q = ridersSearchQuery.toLowerCase();
+  const yr = ridersFilterYear ? parseInt(ridersFilterYear) : null;
+  const selectedRaces = selectedRacesForRiders();
+  return mergedRidersForSelectedRaces()
     .filter((e) => {
       if (q && !e.name.toLowerCase().includes(q) && !displayName(e).toLowerCase().includes(q)) return false;
       if (yr !== null && !e.years.has(yr)) return false;
       if (ridersFilterTeam && !e.teams.has(ridersFilterTeam)) return false;
       if (ridersFilterNationality && e.nationality !== ridersFilterNationality) return false;
       if (ridersFilterJerseys.size > 0) {
-        const selectedRaces = selectedRacesForRiders();
         for (const key of ridersFilterJerseys) {
           const [raceId, category] = key.split(":") as [RaceId, JerseyCategory];
           if (!selectedRaces.includes(raceId)) continue;
