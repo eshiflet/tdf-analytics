@@ -79,6 +79,25 @@ def main():
         rows = len(scrapes[n].get("rows", []))
         print(f"  Stage {n}: {rows} rows, profile={scrapes[n].get('profile_icon')}")
 
+    # ── Gate: reject if any bib-identity swap exists anywhere in the year ──
+    # Catches PCS/scrape artifacts where a bib number's name/slug/nat flips
+    # across stages (e.g. two riders' identities transposed in the results
+    # table). Checked against the full on-disk picture (tdf_{year}_full.json +
+    # scrapes/stage_N.json), so it also re-validates stages not being touched
+    # by this run — a run should not proceed while known swaps are unresolved.
+    if year == 2026:
+        from detect_name_swaps import check_bib_consistency_tdf2026
+        swap_findings = check_bib_consistency_tdf2026()
+        if swap_findings:
+            print(f"\nERROR: {len(swap_findings)} bib-identity anomaly(ies) found — fix before adding stages:")
+            for f in swap_findings:
+                maj = f["majority_identity"]
+                print(f"  bib {f['bib']} → majority: {maj[0]} ({maj[2]})")
+                for stage_n, outlier_name in zip(f["outlier_stages"], f["outlier_names"]):
+                    print(f"        stage {stage_n}: shows '{outlier_name}' instead")
+            print("\nRun `python3 detect_name_swaps.py --year 2026` for details, fix the scrape file(s), then re-run.")
+            sys.exit(1)
+
     year_str = str(year)
 
     # ── 1. Update tdf_YEAR_full.json ──
