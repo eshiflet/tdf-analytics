@@ -1215,8 +1215,11 @@ function nationalityFlagEl(nationality: string | null | undefined): HTMLSpanElem
 // all four, colored/patterned per classification.
 const JERSEY_PATH = "M9,2 L4,2 L1,6 L5,9 L5,22 L19,22 L19,9 L23,6 L20,2 L15,2 Q12,5 9,2 Z";
 
-function jerseySvg(fill: string, stroke = "#00000055"): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.3em" height="1.3em"><path d="${JERSEY_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="1" stroke-linejoin="round"/></svg>`;
+function jerseySvg(fill: string, stroke = "#00000055", letter?: string): string {
+  const label = letter
+    ? `<text x="12" y="16" text-anchor="middle" font-size="10" font-weight="700" font-family="sans-serif" fill="#000" stroke="#fff" stroke-width="2.5" paint-order="stroke" style="user-select:none">${letter}</text>`
+    : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.3em" height="1.3em"><path d="${JERSEY_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="1" stroke-linejoin="round"/>${label}</svg>`;
 }
 
 let komJerseyClipCounter = 0;
@@ -1280,7 +1283,12 @@ function jerseyIconSvg(category: JerseyCategory): string {
 function jerseyIconSvgForRace(category: JerseyCategory, race: RaceId): string {
   const jersey = RACES[race].jersey;
   if (category === "gc") return jerseySvg(jersey.gc);
-  if (category === "sprint") return jerseySvg(jersey.sprint);
+  if (category === "sprint") {
+    // Tour and Vuelta both use green for the sprint jersey — letter them so
+    // they're distinguishable when shown side by side (rider grid, filters).
+    const letter = race === "tour" ? "T" : race === "vuelta" ? "V" : undefined;
+    return jerseySvg(jersey.sprint, undefined, letter);
+  }
   if (category === "kom") {
     return "dots" in jersey.kom ? komJerseySvg(jersey.kom.dots) : jerseySvg(jersey.kom.solid);
   }
