@@ -7,6 +7,15 @@ between the two rows in tdf_2026_full.json AND in scrapes/stage_N.json
 (for stages 8+).  Then rebuilds cycling.db for 2026 and re-exports.
 
 Run with --dry-run to preview without writing anything.
+
+STALE — the SWAPS list below (stages 1-15) has already been applied for
+real; verified 2026-07-25 via `python3 detect_name_swaps.py --year 2026`
+(reports clean) and by checking bib 83/51 in cycling.db (consistently
+Foss/Seixas across all 20 stages). Do NOT run this without --dry-run
+first: since it's not idempotent, re-applying an already-fixed SWAPS
+entry swaps the two riders back to *wrong*. Newly-found swaps since
+stage 16+ were fixed directly in the scrape files instead (see
+add_stages.py's swap-detection gate) rather than added here.
 """
 
 import json
@@ -14,6 +23,8 @@ import os
 import sqlite3
 import subprocess
 import sys
+
+from race_common import StageRow, swap_identity
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FULL_JSON   = os.path.join(HERE, "tdf_2026_full.json")
@@ -79,9 +90,14 @@ def swap_names_in_rows(rows, bib_a, bib_b, stage_n, source):
     """Swap name/slug/nat between the two rows identified by bib."""
     row_a = row_b = None
     for row in rows:
-        if row[3] == bib_a:
+        if len(row) != 15:
+            print(f"  WARN stage {stage_n} ({source}): skipping malformed row "
+                  f"(expected 15 fields, got {len(row)}): {row!r}")
+            continue
+        sr = StageRow.from_list(row)
+        if sr.bib == bib_a:
             row_a = row
-        elif row[3] == bib_b:
+        elif sr.bib == bib_b:
             row_b = row
     if row_a is None or row_b is None:
         missing = []
@@ -89,9 +105,7 @@ def swap_names_in_rows(rows, bib_a, bib_b, stage_n, source):
         if row_b is None: missing.append(bib_b)
         print(f"  WARN stage {stage_n} ({source}): bib(s) {missing} not found — skipped")
         return False
-    # Indices: name=5, slug=6, nat=7
-    for i in (5, 6, 7):
-        row_a[i], row_b[i] = row_b[i], row_a[i]
+    swap_identity(row_a, row_b)
     print(f"  swapped stage {stage_n} ({source}): "
           f"bib {bib_a} ({row_a[5]}) ↔ bib {bib_b} ({row_b[5]})")
     return True

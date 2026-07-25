@@ -24,6 +24,8 @@ import sqlite3
 import sys
 from datetime import datetime
 
+from race_common import StageRow
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH     = os.path.join(HERE, "cycling.db")
 ICONS_PATH  = os.path.join(HERE, "profile_icons.json")
@@ -202,8 +204,13 @@ def insert_edition(conn, race_id, year, icons_for_year, countries_seen, riders_s
         for row in rows:
             if len(row) < 15:
                 continue
-            (rnk, gc_pos, gc_lag, bib, age, rider_name, rider_slug, nat,
-             team_name, team_slug, uci_pts, pcs_pts, bonus_txt, abs_time_txt, gap_txt) = row
+            sr = StageRow.from_list(row)
+            rnk, gc_pos, gc_lag = sr.rnk, sr.gc_pos, sr.gc_lag
+            bib, age = sr.bib, sr.age
+            rider_name, rider_slug, nat = sr.name, sr.slug, sr.nat
+            team_name, team_slug = sr.team, sr.team_slug
+            uci_pts, pcs_pts = sr.uci_pts, sr.pcs_pts
+            bonus_txt, abs_time_txt, gap_txt = sr.bonus, sr.abs_time, sr.gap
 
             if not rider_slug:
                 desc = rider_name or rnk or ""

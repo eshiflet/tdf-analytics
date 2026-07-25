@@ -26,6 +26,8 @@ import os
 import sys
 from collections import defaultdict
 
+from race_common import StageRow
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data")
 
@@ -37,14 +39,13 @@ def load_json(path):
 
 
 def parse_row(row):
-    """Return (bib, name, slug, nat, team_slug) from a scrape row."""
-    # row = [rnk, gc_pos, gc_lag, bib, age, name, slug, nat, team, team_slug, ...]
-    if len(row) < 10:
+    """Return (bib, name, slug, nat) from a scrape row."""
+    if len(row) != 15:
         return None
-    bib, name, slug, nat = row[3], row[5], row[6], row[7]
-    if not bib or not slug:
+    sr = StageRow.from_list(row)
+    if not sr.bib or not sr.slug:
         return None
-    return bib, name, slug, nat
+    return sr.bib, sr.name, sr.slug, sr.nat
 
 
 # ── Check 1: bib consistency from raw scrape files ───────────────────────────

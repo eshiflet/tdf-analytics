@@ -2,11 +2,18 @@
 """
 Shared constants and helpers for the multi-race pipeline.
 
-Two independent groups live here:
+Three independent groups live here:
+
+  - StageRow, the canonical schema for a single rider's row from a scraped
+    stage-results table. All three races' ingest paths (add_pre1960.py for
+    TDF, ingest_race.py for Giro/Vuelta) and the swap-detection/fix tools
+    (detect_name_swaps.py, fix_2026_name_swaps.py) parse rows through this
+    one type instead of indexing raw lists by position — see its docstring.
 
   - PCS stage-result parsing helpers + the ingest-only RACES registry
     (Giro/Vuelta only — TDF's ingest mechanism, add_pre1960.py/add_stages.py,
-    is unrelated). Used by ingest_race.py.
+    predates this and has its own file discovery/DB logic). Used by
+    ingest_race.py.
 
   - resolve_race_arg(), for the export scripts that cover all three races
     (export_riders_index.py, export_race_summary.py). TDF/Giro/Vuelta share
@@ -17,6 +24,69 @@ Two independent groups live here:
 import os
 import re
 from dataclasses import dataclass
+
+
+STAGE_ROW_LEN = 15
+
+
+@dataclass
+class StageRow:
+    """
+    One rider's row from a scraped stage-results table, in the canonical
+    field order produced by EXTRACT_RESULTS in scrape_stage_template.js:
+
+      [rnk, gc_pos, gc_lag, bib, age, name, slug, nat, team, team_slug,
+       uci_pts, pcs_pts, bonus, abs_time, gap]
+
+    All fields are raw strings exactly as scraped (a row may represent a
+    non-finisher, e.g. rnk="DNF"); use parse_int/parse_time_to_seconds/
+    parse_bonus_seconds below to convert. Keep this field order in sync with
+    the JS template if the extraction format ever changes — both sides
+    reference each other in their docstrings so a mismatch is easy to spot.
+    """
+    rnk: str
+    gc_pos: str
+    gc_lag: str
+    bib: str
+    age: str
+    name: str
+    slug: str
+    nat: str
+    team: str
+    team_slug: str
+    uci_pts: str
+    pcs_pts: str
+    bonus: str
+    abs_time: str
+    gap: str
+
+    @classmethod
+    def from_list(cls, row: list) -> "StageRow":
+        if len(row) != STAGE_ROW_LEN:
+            raise ValueError(
+                f"stage row must have exactly {STAGE_ROW_LEN} fields, got {len(row)}: {row!r}"
+            )
+        return cls(*row)
+
+    def to_list(self) -> list:
+        return [self.rnk, self.gc_pos, self.gc_lag, self.bib, self.age, self.name,
+                self.slug, self.nat, self.team, self.team_slug, self.uci_pts,
+                self.pcs_pts, self.bonus, self.abs_time, self.gap]
+
+
+def swap_identity(row_a: list, row_b: list) -> None:
+    """
+    Swap name/slug/nat — the three fields a PCS table-extraction artifact
+    commonly transposes between two adjacent rows — between row_a and row_b
+    in place. bib/age/team/gc/time fields are left untouched, since those
+    have consistently stayed correctly tied to the row in every swap found
+    so far (see detect_name_swaps.py).
+    """
+    sr_a, sr_b = StageRow.from_list(row_a), StageRow.from_list(row_b)
+    row_a[5], row_b[5] = sr_b.name, sr_a.name
+    row_a[6], row_b[6] = sr_b.slug, sr_a.slug
+    row_a[7], row_b[7] = sr_b.nat, sr_a.nat
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")

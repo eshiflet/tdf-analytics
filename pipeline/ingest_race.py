@@ -27,6 +27,7 @@ from glob import glob
 from race_common import (
     RACES,
     DB_PATH,
+    StageRow,
     detect_route_type,
     parse_bonus_seconds,
     parse_int,
@@ -177,8 +178,13 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         for row in rows:
             if len(row) < 15:
                 continue
-            (rnk, gc_pos, gc_lag, bib, age, rider_name, rider_slug, nat,
-             team_name, team_slug, uci_pts, pcs_pts, bonus_txt, abs_time_txt, gap_txt) = row
+            sr = StageRow.from_list(row)
+            rnk, gc_pos, gc_lag = sr.rnk, sr.gc_pos, sr.gc_lag
+            bib, age = sr.bib, sr.age
+            rider_name, rider_slug, nat = sr.name, sr.slug, sr.nat
+            team_name, team_slug = sr.team, sr.team_slug
+            uci_pts, pcs_pts = sr.uci_pts, sr.pcs_pts
+            bonus_txt, abs_time_txt, gap_txt = sr.bonus, sr.abs_time, sr.gap
 
             if not rider_slug:
                 continue
