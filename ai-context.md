@@ -810,10 +810,10 @@ PCS blocks plain HTTP scraping with a Cloudflare "Just a moment…" challenge (`
 
 #### Step 1: Start a local save server
 
-Use `pipeline/giro_scrapes/save_server.py` (or copy it for TDF into `pipeline/scrapes/`). It runs on `localhost:8765` and accepts POSTed JSON, saving each stage to `stage_N.json`.
+`pipeline/giro_scrapes/save_server.py` and `pipeline/scrapes/save_server.py` (TDF; ported 2026-07-25) are identical scripts, one per race's scrape directory. Each runs on `localhost:8765` and accepts POSTed JSON, saving each stage to `stage_N.json` in its own directory (only run one at a time — they share a port).
 
 ```bash
-cd pipeline/giro_scrapes   # IMPORTANT: run from the correct directory
+cd pipeline/scrapes       # TDF; use pipeline/giro_scrapes or pipeline/vuelta_scrapes for those races
 nohup python3 save_server.py > /dev/null 2>&1 &
 echo "PID: $!"
 ```
@@ -833,6 +833,8 @@ For each stage, navigate to the PCS page in the browser (this passes Cloudflare)
 1. Parses the results table from the already-loaded DOM (no fetch needed for the main page)
 2. Fetches the `-points` and `-kom` sub-pages via same-origin `fetch()` (these 2 fetches share the navigation's Cloudflare session and stay under the rate limit)
 3. POSTs the combined JSON payload directly to `localhost:8765`
+
+**For TDF**, `pipeline/scrape_stage_template.js`'s `EXTRACT_ALL` is exactly this — inject it via `javascript_tool` on `.../stage-N`, it does steps 1-3 itself (points only, no separate KOM sub-page for TDF — see below) and returns a JSON status summary (row count, whether the points fetch succeeded, and any same-stage duplicate-bib warnings). `EXTRACT_RESULTS`/`EXTRACT_POINTS` in the same file are the older two-page, dump-to-`<pre>` fallback for when the save server isn't running.
 
 This approach uses **2 tool calls per stage** (navigate + javascript_tool) and **zero context window overhead** for the data itself — the extracted JSON goes straight to disk via the save server, never flowing through the conversation.
 
@@ -899,6 +901,8 @@ python3 export_gc.py --race giro --year 2026
 4. **Stage 21 (final stage) often has 0 sprint and 0 KOM points** — this is normal for a processional/criterium-style final stage, not a scraping error.
 
 5. **Adjacent-row name swaps in EXTRACT_RESULTS** (TDF `scrape_stage_template.js` method): On some PCS pages, a rider's name anchor renders one row off in the HTML, causing two adjacent rows to have their name/slug/nationality silently swapped while their bib, team, GC rank, and times stay on the correct row. Found in 2026 TDF stages 5 and 10 — discovered only when a user noticed a GC rank jump (Quinn went from #2 → #147 for one stage). Detection: after scraping, spot-check any rider whose GC rank jumps by 50+ positions in a single stage, or check for bib/team inconsistencies across stages. Fix: swap indices 5, 6, 7 (name, slug, nat) between the two affected rows in the scrape file and in `tdf_YEAR_full.json`, then re-run `add_pre1960.py YEAR` and exports. See "Adjacent-row name-swap artifact" in the PCS page structure section above for a one-liner to detect bib conflicts automatically.
+
+6. **The swap artifact is persistent per-page, not transient.** Confirmed 2026-07-25: re-scraping TDF stage 19 (to test `EXTRACT_ALL`) reproduced the exact same 4 rider swaps (Hindley/Martinez, Evenepoel/del Toro, Braz Afonso/Simmons, Benoot/Cattaneo) that had already been fixed earlier that session — PCS's rendering of that specific page is durably wrong, it doesn't fix itself between requests. Also confirmed: `EXTRACT_ALL`'s same-stage duplicate-bib self-check (`dupWarnings`) reported clean (`[]`) on this same re-scrape, because none of those 4 swaps involve a bib appearing twice in one stage — each bib appears once, just with the wrong rider attached. **A clean same-stage self-check does not mean a stage is swap-free.** The only check that reliably catches this class of swap is the cross-stage bib-consistency gate in `detect_name_swaps.py` (wired into `add_stages.py`) — always run the full pipeline (which invokes it) rather than trusting a single stage's extraction output in isolation.
 
 ---
 
