@@ -393,8 +393,20 @@ def scrape_year(year: int, out_dir: str) -> bool:
     print(f"  Found {len(slugs)} stages")
     os.makedirs(out_dir, exist_ok=True)
 
-    for i, slug in enumerate(slugs):
-        stage_num = i + 1
+    saved_nums = []
+    for slug in slugs:
+        # Stage number comes from the slug itself, NOT from position in the
+        # discovered list. discover_stages() silently drops any stage whose
+        # probe fails (transient Cloudflare block, network hiccup, etc.) —
+        # numbering by position would then quietly shift every later stage
+        # down by one, mislabeling it as the wrong stage entirely. A gap in
+        # the numbering is a much safer failure mode: it's visible (missing
+        # file) and re-scrapable, instead of silently wrong data.
+        m = re.match(r"^stage-(\d+)[a-d]?$", slug)
+        if not m:
+            print(f"  WARN: could not parse stage number from slug '{slug}', skipping")
+            continue
+        stage_num = int(m.group(1))
         out_path = os.path.join(out_dir, f"stage_{stage_num}.json")
 
         print(f"  {slug} → stage_{stage_num}.json ... ", end="", flush=True)
@@ -405,6 +417,7 @@ def scrape_year(year: int, out_dir: str) -> bool:
             sp = len(result["sprint_points"])
             kp = len(result["kom_points"])
             print(f"{len(result['rows'])}r {sp}sp {kp}km")
+            saved_nums.append(stage_num)
         else:
             print("FAILED")
 
@@ -412,6 +425,14 @@ def scrape_year(year: int, out_dir: str) -> bool:
 
     saved = len([f for f in os.listdir(out_dir) if f.startswith("stage_") and f.endswith(".json")])
     print(f"  {year}: {saved}/{len(slugs)} stages saved to {out_dir}")
+
+    if saved_nums:
+        expected = set(range(min(saved_nums), max(saved_nums) + 1))
+        missing = sorted(expected - set(saved_nums))
+        if missing:
+            print(f"  WARNING: gap in stage numbering — missing stage(s) {missing} "
+                  f"between {min(saved_nums)} and {max(saved_nums)}. Re-run to retry them.")
+
     return saved > 0
 
 
