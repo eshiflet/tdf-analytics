@@ -61,11 +61,19 @@ def main():
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    last_year = cur.execute("SELECT MAX(year) FROM race_editions").fetchone()[0]
+    race_id = cur.execute(
+        "SELECT race_id FROM races WHERE name='Tour de France'"
+    ).fetchone()[0]
+
+    last_year = cur.execute(
+        "SELECT MAX(year) FROM race_editions WHERE race_id=?", (race_id,)
+    ).fetchone()[0]
 
     editions = {
         r["year"]: r["edition_id"]
-        for r in cur.execute("SELECT year, edition_id FROM race_editions")
+        for r in cur.execute(
+            "SELECT year, edition_id FROM race_editions WHERE race_id=?", (race_id,)
+        )
     }
 
     out = []
