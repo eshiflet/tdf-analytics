@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+"""
+Main exporter: cycling.db + JSON supplements -> src/data/<slug>/gc_by_stage_YYYY.json
+
+Usage:
+  python3 export_gc.py                          # TDF (default), all years
+  python3 export_gc.py --race {tdf,giro,vuelta}  # all years for that race
+  python3 export_gc.py --race vuelta --year 2020 # single year only
+
+--year MUST be passed as its own flag ("--year 2020"), not a bare
+positional ("... vuelta 2020") — a bare positional is silently ignored
+and the script falls back to exporting every year for that race, which
+regenerates riders_index.json/all_races_summary.json downstream too
+(they always do a full cross-year rebuild). Unrecognized arguments now
+raise an error instead of being silently dropped, to prevent exactly
+that mistake.
+"""
 import json
 import os
 import sqlite3
@@ -329,6 +345,25 @@ def export_year(year, out_path, race_id):
 
 
 if __name__ == "__main__":
+    # Reject stray/unrecognized arguments instead of silently ignoring them
+    # (a bare positional year like "2020" used to be dropped, falling back
+    # to a full all-years export — see module docstring).
+    _consumed = {0}
+    for _flag in ("--race", "--year"):
+        if _flag in sys.argv:
+            _i = sys.argv.index(_flag)
+            _consumed.add(_i)
+            if _i + 1 >= len(sys.argv):
+                sys.exit(f"error: {_flag} requires a value")
+            _consumed.add(_i + 1)
+    _stray = [a for i, a in enumerate(sys.argv) if i not in _consumed]
+    if _stray:
+        sys.exit(
+            f"error: unrecognized argument(s) {_stray} — "
+            f"did you mean '--year {_stray[0]}'? "
+            f"Usage: python3 export_gc.py [--race {{tdf,giro,vuelta}}] [--year YYYY]"
+        )
+
     # Determine which race to export
     race_name = "Tour de France"
     race_subdir = "tour"
