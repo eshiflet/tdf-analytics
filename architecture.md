@@ -66,7 +66,16 @@ flowchart TD
   `scrape_kom_points.py`) — fetch PCS pages and write raw per-stage JSON. PCS blocks plain
   HTTP scraping with a Cloudflare challenge for live/recent data, so in-progress-race
   scraping goes through a browser + local save-server instead (see `ai-context.md`'s
-  "Scraping a live/in-progress race" section).
+  "Scraping a live/in-progress race" section). `scrape_vuelta.py`/`scrape_giro.py`
+  `scrape_year()` derives each stage's file number from the PCS slug (`stage-12` → 12,
+  fixed 2026-07-25) rather than its position in the discovered-stage list — the old
+  positional numbering silently shifted every later stage down by one whenever a single
+  probe failed mid-scrape, which is how the 2020 Vuelta lost Stage 12 (Alto de l'Angliru)
+  for years without anyone noticing. A gap in saved stage numbers now prints a warning.
+  Separately, `scrape_vuelta.py`'s row parser can silently leave `gc_pos`/`gc_lag` blank
+  for an entire stage when the results table has no `GC`/`Timelag` column — confirmed on
+  a team-time-trial stage (2025 Vuelta Stage 5); not yet fixed at the source, see
+  ai-context.md lesson 7 under "Lessons learned from Giro 2026 scraping".
 
 - **Raw scrape JSON** (`{race}_scrapes/YEAR/stage_N.json`) — the scraper's direct output,
   one file per stage. Tracked in git (this used to be gitignored with the only copy on one
@@ -94,7 +103,13 @@ flowchart TD
   `export_all_races_summary.py`) — read `cycling.db` (+ a few JSON supplements like
   `sprint_points.json`, `*_gc_winner_times.json`) and write the compact per-race JSON files
   the frontend actually bundles. All are `--race`-parameterized except
-  `export_all_races_summary.py`, which is TDF-only (predates the other races).
+  `export_all_races_summary.py`, which is TDF-only (predates the other races). Only
+  `export_gc.py` takes `--year YYYY` to scope a run to one edition — it must be passed as
+  its own flag (`--year 2020`), not a bare positional, which is rejected with an error as
+  of 2026-07-25 (previously silently ignored, causing every year to re-export).
+  `export_riders_index.py`/`export_race_summary.py` have no such flag and never will: each
+  writes one combined cross-year file, so a single-year fix still touches every year's
+  entry in the diff — that's expected, not a bug.
 
 - **validate_exports.py** — a post-export sanity check (not a data source): catches
   decreasing cumulative point totals, malformed stage sequences, and KOM-total drift
