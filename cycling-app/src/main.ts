@@ -203,6 +203,7 @@ const viewAllRacesBtn = document.getElementById("view-all-races") as HTMLButtonE
 const allRacesChartEl = document.getElementById("all-races-chart") as HTMLDivElement;
 const viewRidersBtn = document.getElementById("view-riders") as HTMLButtonElement;
 const ridersChartEl = document.getElementById("riders-chart") as HTMLDivElement;
+const allRacesUnitToggleBtn = document.getElementById("all-races-unit-toggle") as HTMLButtonElement;
 const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
 const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement | null;
 const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
@@ -224,6 +225,7 @@ for (const [path, summary] of Object.entries(summaryModules)) {
 }
 
 let currentView: "stage" | "overview" | "allraces" | "riders" = "stage";
+let allRacesUnit: "metric" | "imperial" = "metric";
 
 function fmtTotalTime(seconds: number | null): string {
   if (!seconds) return "—";
@@ -557,6 +559,11 @@ function updateKomModeToggle() {
     : "Rank → Points";
 }
 
+function updateUnitToggle() {
+  allRacesUnitToggleBtn.hidden = currentView !== "allraces";
+  allRacesUnitToggleBtn.textContent = allRacesUnit === "metric" ? "km → mi" : "mi → km";
+}
+
 function buildRankMapsFromField(
   getRank: (sp: RiderStagePoint) => number | null | undefined,
   getCumPts: (sp: RiderStagePoint) => number,
@@ -686,6 +693,7 @@ function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   updateGcTimeToggle();
   updateSprintModeToggle();
   updateKomModeToggle();
+  updateUnitToggle();
   viewStageBtn.classList.toggle("active", view === "stage");
   viewOverviewBtn.classList.toggle("active", view === "overview");
   viewAllRacesBtn.classList.toggle("active", view === "allraces");
@@ -813,22 +821,26 @@ function drawAllRacesOverview() {
   const speed = (distKm: number | null, timeSec: number | null) =>
     distKm && timeSec ? distKm / (timeSec / 3600) : null;
 
+  const imperial = allRacesUnit === "imperial";
+  const KM_TO_MI = 0.621371;
+  const M_TO_FT = 3.28084;
+
   const panels: PanelDef[] = [
     {
-      yLabel: "Distance (km)",
+      yLabel: imperial ? "Distance (mi)" : "Distance (km)",
       series: [{
         label: "Total Distance",
-        value: (r) => r.totalDistanceKm,
-        fmt: (v) => `${Math.round(v).toLocaleString()} km`,
+        value: (r) => r.totalDistanceKm != null ? (imperial ? r.totalDistanceKm * KM_TO_MI : r.totalDistanceKm) : null,
+        fmt: (v) => imperial ? `${Math.round(v).toLocaleString()} mi` : `${Math.round(v).toLocaleString()} km`,
         color: "var(--accent)",
       }],
     },
     {
-      yLabel: "Elevation (m)",
+      yLabel: imperial ? "Elevation (ft)" : "Elevation (m)",
       series: [{
         label: "Total Elevation",
-        value: (r) => r.totalElevationM,
-        fmt: (v) => `${Math.round(v).toLocaleString()} m`,
+        value: (r) => r.totalElevationM != null ? (imperial ? r.totalElevationM * M_TO_FT : r.totalElevationM) : null,
+        fmt: (v) => imperial ? `${Math.round(v).toLocaleString()} ft` : `${Math.round(v).toLocaleString()} m`,
         color: "var(--accent)",
       }],
     },
@@ -842,18 +854,18 @@ function drawAllRacesOverview() {
       }],
     },
     {
-      yLabel: "Avg Speed (km/h)",
+      yLabel: imperial ? "Avg Speed (mph)" : "Avg Speed (km/h)",
       series: [
         {
           label: "GC Winner",
-          value: (r) => speed(r.totalDistanceKm, r.gcWinnerTimeSeconds),
-          fmt: (v) => `${v.toFixed(1)} km/h`,
+          value: (r) => { const s = speed(r.totalDistanceKm, r.gcWinnerTimeSeconds); return s != null ? (imperial ? s * KM_TO_MI : s) : null; },
+          fmt: (v) => imperial ? `${v.toFixed(1)} mph` : `${v.toFixed(1)} km/h`,
           color: "#22c55e",
         },
         {
           label: "Slowest Finisher",
-          value: (r) => speed(r.totalDistanceKm, r.slowestFinisherTimeSeconds),
-          fmt: (v) => `${v.toFixed(1)} km/h`,
+          value: (r) => { const s = speed(r.totalDistanceKm, r.slowestFinisherTimeSeconds); return s != null ? (imperial ? s * KM_TO_MI : s) : null; },
+          fmt: (v) => imperial ? `${v.toFixed(1)} mph` : `${v.toFixed(1)} km/h`,
           color: "#ef4444",
         },
       ],
@@ -1147,6 +1159,12 @@ function wireControls() {
     updateKomModeToggle();
     updateHash();
     drawChart();
+  });
+
+  allRacesUnitToggleBtn.addEventListener("click", () => {
+    allRacesUnit = allRacesUnit === "metric" ? "imperial" : "metric";
+    updateUnitToggle();
+    drawAllRacesOverview();
   });
 }
 

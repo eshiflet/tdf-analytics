@@ -113,6 +113,33 @@ body {
   display: none;
 }
 
+.unit-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--panel);
+  border: 1px solid var(--text-dim);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  z-index: 5;
+}
+
+.unit-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.unit-toggle[hidden] {
+  display: none;
+}
+
 .metric-inline {
   background: transparent;
   border: none;
