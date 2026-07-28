@@ -301,6 +301,25 @@ def export_year(year, out_path, race_id):
             if last_sp["komRank"] is None and final_stage_idx < len(kom_ranks_by_stage):
                 last_sp["komRank"] = kom_ranks_by_stage[final_stage_idx].get(rider_id)
 
+        # Fallback: if finalRank is still 9999 (rider not in final stage data),
+        # use the last known gc_rank from byStage when it's within 2 stages of the
+        # final stage and the rider's last status was FINISHED. This repairs old
+        # races where PCS final-stage pages omit legitimate finishers (e.g. the
+        # 1963 Giro winner Balmamion appears in gc_standings through stage 20 but
+        # not in stage 21's result rows).
+        if final_rank == 9999 and by_stage:
+            final_stage_number = stages[-1]["stage_number"]
+            last_gc = next(
+                (sp for sp in reversed(by_stage) if sp.get("gcRank") is not None),
+                None,
+            )
+            if (
+                last_gc is not None
+                and by_stage[-1].get("status") == "FINISHED"
+                and (final_stage_number - last_gc["stage"]) <= 2
+            ):
+                final_rank = last_gc["gcRank"]
+
         entry: dict = {
             "id": rider_id,
             "name": info["name"],

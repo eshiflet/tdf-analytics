@@ -278,6 +278,24 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             )
             total_results += 1
 
+        # Supplement with gc_standings entries for riders absent from result rows.
+        # Old PCS stage pages often omit mid-pack riders entirely; gc_standings has
+        # computed GC positions for them. INSERT OR IGNORE skips existing rows.
+        if gc_standings is not None:
+            for slug, entry in gc_standings.get(n, {}).items():
+                gc_rank_s, gc_gap_s = entry[0], entry[1]
+                if gc_rank_s is None:
+                    continue
+                try:
+                    cur.execute(
+                        "INSERT OR IGNORE INTO stage_results "
+                        "(stage_id, rider_id, status, gc_rank, gc_gap_seconds) "
+                        "VALUES (?,?,'FINISHED',?,?)",
+                        (stage_id, slug, gc_rank_s, gc_gap_s),
+                    )
+                except Exception:
+                    pass  # rider not in riders table; skip
+
         print(f"  Stage {n}: {len(rows)} rows inserted")
 
     conn.commit()
