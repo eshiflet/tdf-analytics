@@ -312,10 +312,12 @@ function drawOverview() {
   const usesGradeAwareScore = stages.some((s) => s.profile_score != null);
   const difficultyLabel = `Difficulty Score (${usesGradeAwareScore ? "grade aware" : "simple ascent"})`;
 
+  const hasElevationData = stages.some((s) => (s.vertical_meters ?? 0) > 0);
+
   const panels = [
-    { key: "distance",   label: "Distance (km)",      value: (s: StageInfo) => s.distance_km ?? 0 },
-    { key: "elevation",  label: "Elevation Gain (m)",  value: (s: StageInfo) => s.vertical_meters ?? 0 },
-    { key: "difficulty", label: difficultyLabel,       value: difficultyScore },
+    { key: "distance",   label: "Distance (km)",      value: (s: StageInfo) => s.distance_km ?? 0,     noData: false },
+    { key: "elevation",  label: "Elevation Gain (m)",  value: (s: StageInfo) => s.vertical_meters ?? 0, noData: !hasElevationData },
+    { key: "difficulty", label: difficultyLabel,       value: difficultyScore,                           noData: !hasElevationData },
   ];
 
   const panelHeight = Math.floor((totalHeight - margin.top - margin.bottom - (panels.length - 1) * 12) / panels.length);
@@ -335,9 +337,6 @@ function drawOverview() {
     const yTop = margin.top + pi * (panelHeight + 12);
     const g = svg.append("g").attr("transform", `translate(${margin.left},${yTop})`);
 
-    const maxVal = d3.max(stages, panel.value) ?? 1;
-    const yScale = d3.scaleLinear().domain([0, maxVal * 1.08]).range([panelHeight, 0]);
-
     // Panel label (rotated vertical)
     g.append("text")
       .attr("class", "overview-panel-label")
@@ -346,39 +345,62 @@ function drawOverview() {
       .attr("dominant-baseline", "middle")
       .text(panel.label);
 
-    // Y-axis (3 ticks)
-    const yAxis = d3.axisLeft(yScale).ticks(3).tickSize(-innerWidth);
-    g.append("g")
-      .attr("class", "axis y-axis overview-y-axis")
-      .call(yAxis)
-      .call((ax) => ax.select(".domain").remove())
-      .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
-      .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
+    if (panel.noData) {
+      // Draw a subtle empty panel background
+      g.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", innerWidth)
+        .attr("height", panelHeight)
+        .attr("fill", "currentColor")
+        .attr("opacity", 0.04)
+        .attr("rx", 4);
 
-    // Bars
-    g.selectAll<SVGRectElement, StageInfo>(".overview-bar")
-      .data(stages)
-      .join("rect")
-      .attr("class", "overview-bar")
-      .attr("x", (s) => xScale(String(s.stage_number)) ?? 0)
-      .attr("y", (s) => yScale(panel.value(s)))
-      .attr("width", xScale.bandwidth())
-      .attr("height", (s) => panelHeight - yScale(panel.value(s)))
-      .attr("rx", 2)
-      .attr("fill", (s) => ROUTE_COLOR[s.route_type ?? "F"] ?? ROUTE_COLOR.F)
-      .on("mousemove", (event: MouseEvent, s: StageInfo) => {
-        const diff = difficultyScore(s);
-        tooltipEl.innerHTML = `
-          <div class="t-name">Stage ${s.stage_label}</div>
-          <div class="t-team">${s.start_location ?? "—"} → ${s.finish_location ?? "—"}</div>
-          <div>${ROUTE_LABEL[s.route_type ?? "F"] ?? s.route_type}</div>
-          <div>Distance: ${s.distance_km != null ? Math.round(s.distance_km) + " km" : "—"}</div>
-          <div>Elevation: ${s.vertical_meters != null ? s.vertical_meters.toLocaleString() + " m" : "—"}</div>
-          <div>Difficulty: ${diff.toFixed(1)}</div>
-        `;
-        positionTooltip(event);
-      })
-      .on("mouseleave", () => hideTooltip());
+      g.append("text")
+        .attr("x", innerWidth / 2)
+        .attr("y", panelHeight / 2)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .attr("class", "overview-no-data-label")
+        .text("No data available");
+    } else {
+      const maxVal = d3.max(stages, panel.value) ?? 1;
+      const yScale = d3.scaleLinear().domain([0, maxVal * 1.08]).range([panelHeight, 0]);
+
+      // Y-axis (3 ticks)
+      const yAxis = d3.axisLeft(yScale).ticks(3).tickSize(-innerWidth);
+      g.append("g")
+        .attr("class", "axis y-axis overview-y-axis")
+        .call(yAxis)
+        .call((ax) => ax.select(".domain").remove())
+        .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
+        .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
+
+      // Bars
+      g.selectAll<SVGRectElement, StageInfo>(".overview-bar")
+        .data(stages)
+        .join("rect")
+        .attr("class", "overview-bar")
+        .attr("x", (s) => xScale(String(s.stage_number)) ?? 0)
+        .attr("y", (s) => yScale(panel.value(s)))
+        .attr("width", xScale.bandwidth())
+        .attr("height", (s) => panelHeight - yScale(panel.value(s)))
+        .attr("rx", 2)
+        .attr("fill", (s) => ROUTE_COLOR[s.route_type ?? "F"] ?? ROUTE_COLOR.F)
+        .on("mousemove", (event: MouseEvent, s: StageInfo) => {
+          const diff = difficultyScore(s);
+          tooltipEl.innerHTML = `
+            <div class="t-name">Stage ${s.stage_label}</div>
+            <div class="t-team">${s.start_location ?? "—"} → ${s.finish_location ?? "—"}</div>
+            <div>${ROUTE_LABEL[s.route_type ?? "F"] ?? s.route_type}</div>
+            <div>Distance: ${s.distance_km != null ? Math.round(s.distance_km) + " km" : "—"}</div>
+            <div>Elevation: ${s.vertical_meters != null ? s.vertical_meters.toLocaleString() + " m" : "—"}</div>
+            <div>Difficulty: ${diff.toFixed(1)}</div>
+          `;
+          positionTooltip(event);
+        })
+        .on("mouseleave", () => hideTooltip());
+    }
 
     // X-axis on last panel only
     if (pi === panels.length - 1) {
