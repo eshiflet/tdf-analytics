@@ -189,27 +189,33 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             if not rider_slug:
                 continue
 
-            # Per-stage GC. Preferred source: gc_standings.json (real PCS GC
-            # merged with cumulative times computed from actual stage results —
-            # see build_vuelta_gc_standings.py --race giro|vuelta). Historical
-            # PCS result pages carry GC for only a few riders per stage, so the
-            # raw columns are sparse pre-1998; NEVER carry values across stages
-            # (a rider's gap changes every stage — stale values are fabricated
-            # data).
-            gc_rank_v = None
-            gc_gap_v = None
-            if gc_standings is not None:
+            # Per-stage GC. Priority: (1) raw scraped gc_pos/gc_lag from this
+            # stage's own result row — authoritative when present; (2)
+            # gc_standings.json (real PCS GC merged with cumulative times
+            # computed from actual stage results — see
+            # build_vuelta_gc_standings.py --race giro|vuelta), which fills
+            # gaps for historical PCS result pages that carried GC for only a
+            # few riders per stage (sparse pre-1998). Never carry values
+            # across stages (a rider's gap changes every stage — stale values
+            # are fabricated data).
+            #
+            # NOTE: gc_standings.json must NEVER override a present raw value.
+            # It used to be preferred outright whenever the file existed,
+            # which silently discarded good raw gc_pos for any rider it
+            # didn't happen to cover — confirmed to have dropped 26-48% of
+            # finishers' GC rank on several recent Giro editions (found
+            # 2026-08-01 investigating a "79 finishers instead of 151" report).
+            if not gc_pos and n == 1:
+                stage_rank_fallback = parse_int(rnk)
+                if stage_rank_fallback is not None:
+                    gc_pos = str(stage_rank_fallback)
+                    gc_lag = gap_txt
+            gc_rank_v = parse_int(gc_pos)
+            gc_gap_v = parse_time_to_seconds(gc_lag)
+            if gc_rank_v is None and gc_standings is not None:
                 entry = gc_standings.get(n, {}).get(rider_slug)
                 if entry:
                     gc_rank_v, gc_gap_v = entry[0], entry[1]
-            else:
-                if not gc_pos and n == 1:
-                    stage_rank_fallback = parse_int(rnk)
-                    if stage_rank_fallback is not None:
-                        gc_pos = str(stage_rank_fallback)
-                        gc_lag = gap_txt
-                gc_rank_v = parse_int(gc_pos)
-                gc_gap_v = parse_time_to_seconds(gc_lag)
 
             if nat and nat not in countries_seen:
                 countries_seen.add(nat)

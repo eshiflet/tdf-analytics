@@ -1002,6 +1002,26 @@ stale/final gaps across stages. All Vuelta years were rebuilt in July 2026:
    (per stage `n`, per rider); the carry-forward is gone. Stage files sort
    numerically. `DF` now ingests as FINISHED with null time/rank.
 
+**Follow-on bug (found + fixed 2026-08-01): `gc_standings.json` was overriding good raw
+data, not just filling gaps in it.** `ingest_race.py` originally used `gc_standings.json`
+as the *exclusive* GC source for a year whenever the file existed at all — completely
+ignoring that stage's own scraped `gc_pos`/`gc_lag` columns even for riders
+`gc_standings.json` had no entry for. Since `gc_standings.json` is built to intentionally
+leave gaps rather than guess (see "validation" above), any rider it didn't cover lost a
+perfectly good raw GC rank for nothing. Surfaced by a user report that the 2026 Giro showed
+79 finishers instead of the real 151 (Jonathan Milan — a sprinter with no reason to be
+missing — had a raw `gc_pos` of 124 in the scrape file that was being silently discarded).
+Checking further: this wasn't 2026-specific — 67 of 109 Giro years and 54 of 80 Vuelta years
+had at least one rider losing their final-stage GC rank this way, totaling 1,251 Giro +
+711 Vuelta riders (14.9% / 10.0% of all final-stage rows). Fixed by changing the priority
+to **raw first, `gc_standings.json` only as fallback when the raw value is missing** —
+matches `gc_standings.json`'s own internal source priority (authoritative raw > computed
+> drop), and can only recover data, never regress the pre-1998 years the reconstruction was
+built for. Full re-ingest + re-export of both races after the fix recovered 1,930 riders'
+GC ranks; ~192 remain genuinely missing (no value in either source — old, sparse editions,
+not a bug). If you see a suspiciously low finisher count for a Giro/Vuelta year again, check
+whether raw `gc_pos` is present in the stage scrape before assuming it's a scraping gap.
+
 Caveats: mid-race computed gaps can omit the leader's accumulated time
 bonuses on days where the only authoritative anchor is the leader (uniform
 shift; rank order unaffected). 1986 and 1988-style years where PCS lists only
