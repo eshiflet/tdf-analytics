@@ -41,7 +41,7 @@ flowchart TD
 
     subgraph CLIENT["Browser (runtime)"]
         direction TB
-        MAINTS["main.ts<br/>state + hash routing + D3 chart drawing"]
+        MAINTS["Frontend runtime (src/*.ts)<br/>state + hash routing + D3 chart drawing"]
         DOM(["Rendered SPA:<br/>By Stage · Race Overview ·<br/>All Races Overview · Riders"])
         MAINTS --> DOM
     end
@@ -132,10 +132,44 @@ flowchart TD
 
 - **GitHub Actions / GitHub Pages** — see the CI/CD Flow diagram below for the exact steps.
 
-- **main.ts (runtime)** — a single TypeScript module holding all app state (current
-  race/year/metric/selection), D3 chart-drawing functions for all four views, and hash-based
-  routing so every view is a shareable URL. Per-year datasets are fetched on demand and
-  LRU-cached (max 6) in the browser, not preloaded.
+- **Frontend runtime (`cycling-app/src/`)** — split into modules (2026-08-01; previously one
+  2,900-line `main.ts`) along the boundaries the file's own `// ─── Section ───` comments
+  already implied. Per-year datasets are fetched on demand and LRU-cached (max 6) in the
+  browser, not preloaded. Pure reorganization — same Vite build, no behavior change.
+
+  | File | Role |
+  |---|---|
+  | `d3.ts` | Modular d3 imports re-exported as a `d3` namespace (keeps `d3.select(...)` call sites unchanged) |
+  | `dom.ts` | Every module-level `document.getElementById(...)` element ref, resolved once |
+  | `utils.ts` | Generic helpers with no app dependency (`debounce`) |
+  | `raceRegistry.ts` | `RaceId`, `RaceConfig`, the `RACES` registry, and the `URLS_BY_RACE`/`ALL_RACES_BY_RACE` glob-discovery of per-race data files |
+  | `state.ts` | The shared **mutable state object** — see note below — plus `raceConfig()` |
+  | `formatters.ts` | Time/gap string formatting, route-type colors, difficulty score |
+  | `riderDisplay.ts` | `displayName`, nationality flag rendering — shared across 3+ views |
+  | `tooltip.ts` | Generic tooltip positioning/show/hide (the rider-hover tooltip content itself lives in `stageChart.ts` — too coupled to that view's state to be a leaf) |
+  | `jerseyIcons.ts` | Jersey SVG builders, per-classification win-year lookups |
+  | `dataLoading.ts` | Pure fetch + LRU cache for per-year datasets (`getDataset`) |
+  | `riderIndexData.ts` | Loads/caches the compact `riders_index.json` per race |
+  | `hashRouting.ts` | `computeHash`/`updateHash` only — `applyHash()` stays in `main.ts` (see below) |
+  | `views/overview.ts` | Race Overview (per-stage distance/elevation/difficulty bars) |
+  | `views/allRaces.ts` | All Races Overview (4-panel cross-year comparison) |
+  | `views/stageChart.ts` | By Stage bump chart + its legend and Team/Nation filters — the app's biggest, most state-coupled view, kept as one file since ranking computation, rendering, legend, and filters are genuinely one unit |
+  | `views/riders.ts` | Riders grid: search/filter and the merged-index cache |
+  | `views/riderDetail.ts` | Cross-race rider career chart (446 lines — was the single largest function in the old `main.ts`) |
+  | `main.ts` | Orchestration only: `init()`, `wireControls()`, `setRace()`, `switchView()`, `loadDataset()`, `applyHash()` — the last two stay here rather than in `dataLoading.ts`/`hashRouting.ts` because both call into nearly every view module to trigger redraws |
+
+  **Shared mutable state:** ES modules can't reassign an imported `let` binding from outside
+  the module that declared it, so every field that used to be a bare `let currentYear = ...`
+  now lives as a property on one exported `state` object (`state.currentYear`); every module
+  does `state.foo = x` instead. Only `state` itself is ever imported, never reassigned, which
+  keeps this valid — the standard pattern for sharing mutable state across plain-TS files
+  without a framework.
+
+  **A real but safe circular import:** `views/riders.ts` and `views/riderDetail.ts` call each
+  other for grid↔detail navigation, and both call back into `main.ts`'s
+  `setRace`/`loadDataset`/`switchView`. Every cross-reference happens inside event handlers,
+  never at module-evaluation time, so Vite/esbuild resolve it correctly — this is the normal
+  shape of a router-plus-views SPA without a framework, not a bug to design around.
 
 - **User** — interacts entirely client-side after the initial page load; race/year
   switches, filters, and the Riders search all `fetch()` additional JSON on demand rather

@@ -13,14 +13,14 @@ The app visualizes per-rider performance across every stage of multiple Grand To
 - Data: SQLite → Python export → JSON files bundled by Vite
 - Hosting: GitHub Pages, deployed via GitHub Actions on push to `main`
 
-**Multi-race support:** Each race has a canonical **slug** — `tour`, `giro`, `vuelta` — used consistently for the data subdirectory (`src/data/<slug>/gc_by_stage_*.json`), the frontend `RaceId` type, the race dropdown value, and the URL hash segment. The frontend race dropdown is populated from the `RACES` registry in main.ts (see "Race registry" below); every view (stage chart, Race Overview, All Races Overview, Riders) works for all three races, and deep links are race-aware (`#giro/2026/stage/gc`). The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). Editions with data: TDF 113 (1903–2026), Giro 109 (~4,700 riders), Vuelta 80 (1935–2025, ~4,400 riders).
+**Multi-race support:** Each race has a canonical **slug** — `tour`, `giro`, `vuelta` — used consistently for the data subdirectory (`src/data/<slug>/gc_by_stage_*.json`), the frontend `RaceId` type, the race dropdown value, and the URL hash segment. The frontend race dropdown is populated from the `RACES` registry in raceRegistry.ts (see "Race registry" below); every view (stage chart, Race Overview, All Races Overview, Riders) works for all three races, and deep links are race-aware (`#giro/2026/stage/gc`). The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). Editions with data: TDF 113 (1903–2026), Giro 109 (~4,700 riders), Vuelta 80 (1935–2025, ~4,400 riders).
 
 **Jersey colors by race:**
 - **TDF**: Yellow = GC, Green = Sprint, Red polka-dot = KOM, White = Youth
 - **Giro**: Pink (#E4007C) = GC, Purple (#8B1FA1) = Sprint, Blue (#0083CA) = KOM
 - **Vuelta**: Red (#E30613) = GC, Green (#3FA535) = Sprint, White with blue (#0057B8) polka-dots = KOM, White = Youth
 
-The frontend is race-aware via the `RACES` registry in main.ts (see "Race registry" below): jersey icon colors, career-chart colors, jersey tooltip labels, war bands, and the youth-button visibility all come from each race's config entry.
+The frontend is race-aware via the `RACES` registry in raceRegistry.ts (see "Race registry" below): jersey icon colors, career-chart colors, jersey tooltip labels, war bands, and the youth-button visibility all come from each race's config entry.
 
 **Four views:**
 
@@ -56,7 +56,7 @@ A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen olde
 
 **Multi-race frontend (see "Race registry" and "Hash routing" sections):**
 - Canonical race slugs: `tour`, `giro`, `vuelta` (the frontend's old `"tdf"` id is gone).
-- The `RACES` registry in main.ts is the single source of truth for per-race name, colors, jerseys, war bands, capabilities. Adding a race = one registry entry + a `src/data/<slug>/` directory (wildcard globs auto-discover the files).
+- The `RACES` registry in raceRegistry.ts is the single source of truth for per-race name, colors, jerseys, war bands, capabilities. Adding a race = one registry entry + a `src/data/<slug>/` directory (wildcard globs auto-discover the files).
 - URL hashes are race-aware: `#giro/2026/stage/gc`, `#vuelta/allraces`, `#giro/riders/<slug>`; bare hashes (no race segment) mean `tour`, so all old links still work.
 
 **Pipeline consolidation (2026-07-18):** the near-duplicate per-race pipeline scripts have been merged into slug-parameterized versions in four steps:
@@ -83,7 +83,12 @@ tdf-analytics/
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
-│       ├── main.ts                   # All chart logic, D3 rendering, event handling (~2,500 lines; starts with the RACES registry)
+│       ├── main.ts                   # Orchestration only (init/wireControls/loadDataset/applyHash) — split
+│       │                             #   from a 2,900-line monolith 2026-08-01; see architecture.md's
+│       │                             #   "Frontend module map" for the full file-by-file breakdown
+│       ├── raceRegistry.ts           # RaceId/RACES config — single source of truth for per-race identity
+│       ├── state.ts                  # Shared mutable app state (one object; see architecture.md for why)
+│       ├── views/                    # One file per view: overview, allRaces, stageChart, riders, riderDetail
 │       ├── types.ts                  # TypeScript interfaces
 │       ├── style.css                 # All styles
 │       └── data/                     # Generated JSON — one per year + summary
@@ -430,9 +435,15 @@ This is the most important script. It reads cycling.db + all supplemental JSON f
 
 ---
 
-## Frontend — main.ts
+## Frontend — cycling-app/src/*.ts
 
-All chart logic is in `cycling-app/src/main.ts` (~2,500 lines). It opens with the **`RACES` registry** — the single source of truth for per-race config (see "Race registry" below). Key functions:
+Chart logic is split across `cycling-app/src/*.ts` and `views/*.ts` (split 2026-08-01 from a
+2,900-line `main.ts` monolith — see `architecture.md`'s "Frontend module map" for the
+file-by-file layout, the shared-mutable-state pattern, and the riders↔riderDetail circular
+import). `raceRegistry.ts` holds the **`RACES` registry** — the single source of truth for
+per-race config (see "Race registry" below). The function-level behavior described here is
+unchanged by the split, just physically relocated; check architecture.md if you need to know
+which file a given function now lives in. Key functions:
 
 - **`loadDataset(year)`** — **async**; awaits `getDataset(year)` (lazy chunk fetch + LRU), updates UI state, triggers chart redraw. Callers that depend on the result (year-select change, career-dot click-through) must handle the promise — the career-dot click does `loadDataset(...).then(() => switchView("stage"))` to avoid rendering the previously-loaded year.
 - **`getDataset(year)`** — resolves a year's dataset from a 6-entry LRU (`DATASET_CACHE`, keyed by `race:year`); on miss it `fetch()`es the year's JSON asset (URL from `URLS_BY_RACE[currentRace]`) and `JSON.parse`s it. Re-visiting an evicted year re-fetches from the browser HTTP cache (no network, only re-parse).
@@ -452,7 +463,7 @@ All chart logic is in `cycling-app/src/main.ts` (~2,500 lines). It opens with th
 
 **No-data overlays**: If `currentMetric === "points"` and `year < 1953`, or `currentMetric === "kom"` and `year < 1933`, the chart area shows an explanatory text message instead of chart elements.
 
-**Race registry (`RACES`)**: `RaceId` is `"tour" | "giro" | "vuelta"` — the slug doubles as the data subdirectory name and the hash segment. A single `RACES: Record<RaceId, RaceConfig>` object at the top of main.ts is the source of truth for per-race display name, career-chart colors, jersey icon colors (solid vs polka-dot KOM), jersey tooltip labels, war bands, and `hasYouth`. All per-race `Record` maps (`URLS_BY_RACE`, `ALL_RACES_BY_RACE`, `riderIndexByRace`, `RIDERS_INDEX_URL`, etc.) are derived from `RACE_IDS` via `emptyPerRace()`, and the race dropdown options are generated from the registry (index.html has an empty `<select>`). **Adding a race = one `RACES` entry + data files in `src/data/<slug>/`** — the wildcard globs (`./data/*/gc_by_stage_*.json`, `./data/*/all_races_summary.json`, `./data/*/riders_index.json`) discover them automatically.
+**Race registry (`RACES`)**: `RaceId` is `"tour" | "giro" | "vuelta"` — the slug doubles as the data subdirectory name and the hash segment. A single `RACES: Record<RaceId, RaceConfig>` object in raceRegistry.ts is the source of truth for per-race display name, career-chart colors, jersey icon colors (solid vs polka-dot KOM), jersey tooltip labels, war bands, and `hasYouth`. All per-race `Record` maps (`URLS_BY_RACE`, `ALL_RACES_BY_RACE`, `riderIndexByRace`, `RIDERS_INDEX_URL`, etc.) are derived from `RACE_IDS` via `emptyPerRace()`, and the race dropdown options are generated from the registry (index.html has an empty `<select>`). **Adding a race = one `RACES` entry + data files in `src/data/<slug>/`** — the wildcard globs (`./data/*/gc_by_stage_*.json`, `./data/*/all_races_summary.json`, `./data/*/riders_index.json`) discover them automatically.
 
 **War bands by race** (shaded regions on All Races Overview) live in each race's `RACES` entry (`warBands`): TDF has WWI 1914–1918 + WWII 1939–1946, Giro has WWI + WWII 1940–1945, Vuelta has "Civil War / WWII" 1935–1944 (Vuelta started 1935).
 

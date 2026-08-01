@@ -1,519 +1,74 @@
-// Modular d3 imports — pulls only the submodules we use instead of the full
-// d3 meta-package (which bundles geo, force, hierarchy, zoom, etc. unused here).
-import { select, selectAll, type Selection } from "d3-selection";
-import { scaleLinear, scaleBand, scaleOrdinal, type ScaleLinear, type ScaleOrdinal } from "d3-scale";
-import { axisLeft, axisBottom, axisTop } from "d3-axis";
-import { line, curveMonotoneX } from "d3-shape";
-import { max, min, range } from "d3-array";
-import type { NumberValue } from "d3-scale";
+// App entry point and orchestration layer: wires up the DOM controls, owns
+// the top-level init/view-switch/hash-apply flow, and calls into the view
+// modules (views/*.ts) to actually render. See architecture.md's "Frontend
+// module map" for the full file layout and why loadDataset()/applyHash()
+// live here rather than in dataLoading.ts/hashRouting.ts — both call into
+// nearly every view module to trigger redraws, which makes them orchestration
+// rather than leaf logic.
+import { d3 } from "./d3";
+import type { RaceId } from "./raceRegistry";
+import { RACE_IDS, RACES, isRaceId, URLS_BY_RACE, getYearsForRace } from "./raceRegistry";
+import { state } from "./state";
+import {
+  raceSelectEl, chartEl, overviewChartEl, legendEl, sidebarEl, searchEl,
+  yearSelectEl, metricSelectEl, gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn,
+  viewStageBtn, viewOverviewBtn, viewAllRacesBtn, allRacesChartEl, viewRidersBtn,
+  ridersChartEl, allRacesUnitToggleBtn, overviewSummaryEl, subtitleStage, subtitleOverview,
+  teamFilterBtn, teamFilterPanel, nationFilterBtn, nationFilterPanel,
+} from "./dom";
+import { getDataset } from "./dataLoading";
+import { PALETTE } from "./formatters";
+import { computeHash, updateHash } from "./hashRouting";
+import { debounce } from "./utils";
+import { displayName } from "./riderDisplay";
+import {
+  drawChart, buildLegend, refreshLegendState, updateLineClasses, applyDefaultSelection,
+  computePointsRankings, buildStageFilters, closeFilterPanels, clearStageTeamNationFilters,
+  applyStageTeamNationFilter, cssEscape,
+} from "./views/stageChart";
+import { drawOverview } from "./views/overview";
+import { drawAllRacesOverview } from "./views/allRaces";
+import { drawRidersPage } from "./views/riders";
+import { drawRiderDetail } from "./views/riderDetail";
 
-// Thin shim so existing `d3.*` call sites keep working without churn.
-const d3 = {
-  select, selectAll,
-  scaleLinear, scaleBand, scaleOrdinal,
-  axisLeft, axisBottom, axisTop,
-  line, curveMonotoneX,
-  max, min, range,
-};
-
-import type { GcDataset, RiderSeries, RiderStagePoint, StageInfo } from "./types";
-
-const PALETTE = [
-  "#ffce00", "#ff6b6b", "#4dabf7", "#69db7c", "#da77f2",
-  "#ff922b", "#22b8cf", "#f783ac", "#94d82d", "#9775fa",
-  "#ffa94d", "#3bc9db", "#ff8787", "#63e6be", "#e599f7",
-  "#74c0fc", "#ffd43b", "#b2f2bb", "#eebefa", "#a9e34b",
-];
-
-// ─── Race registry ───────────────────────────────────────────────────────────
-// Single source of truth for per-race identity, colors, and capabilities.
-// Adding a race = add an entry here + drop its data files in ./data/<slug>/
-// (gc_by_stage_*.json, all_races_summary.json, riders_index.json) — the
-// wildcard globs below pick them up automatically. The slug is used in the
-// data path, the race dropdown, and the URL hash.
-
-type RaceId = "tour" | "giro" | "vuelta";
-type JerseyCategoryId = "gc" | "sprint" | "kom" | "youth";
-
-interface RaceConfig {
-  name: string;
-  /** Line/dot colors on the rider-detail career chart. */
-  chart: { gc: string; sprint: string; kom: string };
-  /** Jersey icon fills; kom is a solid jersey or white with polka dots. */
-  jersey: { gc: string; sprint: string; kom: { solid: string } | { dots: string } };
-  jerseyTooltips: Record<JerseyCategoryId, string>;
-  /** Shaded no-race bands on the All Races Overview. */
-  warBands: { start: number; end: number; label: string }[];
-  /** Youth-classification wins tracked in the pipeline for this race? */
-  hasYouth: boolean;
-}
-
-const RACES: Record<RaceId, RaceConfig> = {
-  tour: {
-    name: "Tour de France",
-    chart: { gc: "var(--accent)", sprint: "#22c55e", kom: "#ef4444" },
-    jersey: { gc: "#FFD400", sprint: "#3FA535", kom: { dots: "#E4002B" } },
-    jerseyTooltips: {
-      gc: "Yellow jersey — GC winner", sprint: "Green jersey — Sprint winner",
-      kom: "Polka dot jersey — KOM winner", youth: "White jersey — Young rider winner",
-    },
-    warBands: [
-      { start: 1914.5, end: 1918.5, label: "WWI" },
-      { start: 1939.5, end: 1946.5, label: "WWII" },
-    ],
-    hasYouth: true,
-  },
-  giro: {
-    name: "Giro d'Italia",
-    chart: { gc: "#E4007C", sprint: "#8B1FA1", kom: "#0083CA" },
-    jersey: { gc: "#E4007C", sprint: "#8B1FA1", kom: { solid: "#0083CA" } },
-    jerseyTooltips: {
-      gc: "Pink jersey — GC winner", sprint: "Purple jersey — Sprint winner",
-      kom: "Blue jersey — KOM winner", youth: "White jersey — Young rider winner",
-    },
-    warBands: [
-      { start: 1914.5, end: 1918.5, label: "WWI" },
-      { start: 1940.5, end: 1945.5, label: "WWII" },
-    ],
-    hasYouth: false,
-  },
-  vuelta: {
-    name: "Vuelta a España",
-    chart: { gc: "#E30613", sprint: "#3FA535", kom: "#0057B8" },
-    jersey: { gc: "#E30613", sprint: "#3FA535", kom: { dots: "#0057B8" } },
-    jerseyTooltips: {
-      gc: "Red jersey — GC winner", sprint: "Green jersey — Sprint winner",
-      kom: "Polka dot jersey — KOM winner", youth: "White jersey — Young rider winner",
-    },
-    warBands: [
-      { start: 1935.5, end: 1944.5, label: "Civil War / WWII" },
-    ],
-    hasYouth: false,
-  },
-};
-
-const RACE_IDS = Object.keys(RACES) as RaceId[];
-const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España" };
-const RACE_SHORT_LABEL: Record<RaceId, string> = { tour: "Tour", giro: "Giro", vuelta: "Vuelta" };
-function isRaceId(s: string | undefined): s is RaceId {
-  return s !== undefined && s in RACES;
-}
-function emptyPerRace<T>(make: () => T): Record<RaceId, T> {
-  return Object.fromEntries(RACE_IDS.map((r) => [r, make()])) as Record<RaceId, T>;
-}
-
-// Auto-discover per-year datasets for every race with one wildcard glob:
-// ./data/<slug>/gc_by_stage_<year>.json → hashed asset URL.
-const yearUrlModules = import.meta.glob<string>("./data/*/gc_by_stage_*.json", {
-  query: "?url",
-  import: "default",
-  eager: true,
-});
-const URLS_BY_RACE = emptyPerRace<Record<string, string>>(() => ({}));
-for (const [path, url] of Object.entries(yearUrlModules)) {
-  const match = path.match(/\.\/data\/([^/]+)\/gc_by_stage_(\d+)\.json$/);
-  if (match && isRaceId(match[1])) URLS_BY_RACE[match[1]][match[2]] = url;
-}
-
-let currentRace: RaceId = "tour";
-function raceConfig(): RaceConfig {
-  return RACES[currentRace];
-}
-let YEARS = Object.keys(URLS_BY_RACE[currentRace]).sort().reverse();
-
-function getYearsForRace(race: RaceId): string[] {
-  return Object.keys(URLS_BY_RACE[race]).sort().reverse();
-}
-
-// Bounded LRU of parsed per-year datasets, so a long session that hops between
-// many years never grows memory without limit. Re-visiting an evicted year
-// re-fetches from the browser's HTTP cache (no network), only re-parsing.
-const DATASET_CACHE = new Map<string, GcDataset>();
-const DATASET_CACHE_MAX = 6;
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load ${url}: HTTP ${res.status}`);
-  return res.json() as Promise<T>;
-}
-
-async function getDataset(year: string): Promise<GcDataset> {
-  const cacheKey = `${currentRace}:${year}`;
-  const cached = DATASET_CACHE.get(cacheKey);
-  if (cached) {
-    DATASET_CACHE.delete(cacheKey);
-    DATASET_CACHE.set(cacheKey, cached);
-    return cached;
-  }
-  const url = URLS_BY_RACE[currentRace][year];
-  const ds = await fetchJson<GcDataset>(url);
-  DATASET_CACHE.set(cacheKey, ds);
-  if (DATASET_CACHE.size > DATASET_CACHE_MAX) {
-    const oldest = DATASET_CACHE.keys().next().value;
-    if (oldest !== undefined) DATASET_CACHE.delete(oldest);
-  }
-  return ds;
-}
-let currentYear = YEARS[0];
-let currentMetric: "gc" | "points" | "kom" = "gc";
-let currentPreset = "20";
-let sprintDisplayMode: "rank" | "points" = "rank";
-let komDisplayMode: "rank" | "points" = "rank";
-// Only meaningful when currentMetric === "gc" — toggles the "by Stage" chart
-// between ranking-based ("position") and gap-to-leader-based ("time") display.
-let gcDisplayMode: "position" | "time" = "position";
-
-let dataset: GcDataset;
-let selected: Set<string> = new Set();
-let highlighted: string | null = null;
-// Team/Nation filter state for the "by Stage" view — reset whenever the
-// dataset (year) changes since team/nation membership is year-specific.
-let stageFilterTeams: Set<string> = new Set();
-let stageFilterNations: Set<string> = new Set();
-// Rider whose career chart is open on the Riders view (null = grid). Only
-// consulted for hash routing while currentView === "riders".
-let currentRiderId: string | null = null;
-let colorScale: ScaleOrdinal<string, string>;
-
-// Per-dataset points/KOM rankings, recomputed on year change.
-let pointsRankAtStage = new Map<number, Map<string, number>>();
-let finalPointsRank = new Map<string, number>();
-let ridersAtFinalPointsRank = new Map<number, { riders: RiderSeries[]; points: number }>();
-
-let komRankAtStage = new Map<number, Map<string, number>>();
-let finalKomRank = new Map<string, number>();
-let ridersAtFinalKomRank = new Map<number, { riders: RiderSeries[]; points: number }>();
-
-const raceSelectEl = document.getElementById("race-select") as HTMLSelectElement;
-const chartEl = document.getElementById("chart") as HTMLDivElement;
-const overviewChartEl = document.getElementById("overview-chart") as HTMLDivElement;
-const legendEl = document.getElementById("legend") as HTMLDivElement;
-const sidebarEl = document.getElementById("sidebar") as HTMLElement;
-const tooltipEl = document.getElementById("tooltip") as HTMLDivElement;
-const chartAreaEl = tooltipEl.parentElement as HTMLDivElement;
-const searchEl = document.getElementById("search") as HTMLInputElement;
-const yearSelectEl = document.getElementById("year-select") as HTMLSelectElement;
-const metricSelectEl = document.getElementById("metric-select") as HTMLSelectElement;
-const gcTimeToggleBtn = document.getElementById("gc-time-toggle") as HTMLButtonElement;
-const sprintModeToggleBtn = document.getElementById("sprint-mode-toggle") as HTMLButtonElement;
-const komModeToggleBtn = document.getElementById("kom-mode-toggle") as HTMLButtonElement;
-const viewStageBtn = document.getElementById("view-stage") as HTMLButtonElement;
-const viewOverviewBtn = document.getElementById("view-overview") as HTMLButtonElement;
-const viewAllRacesBtn = document.getElementById("view-all-races") as HTMLButtonElement;
-const allRacesChartEl = document.getElementById("all-races-chart") as HTMLDivElement;
-const viewRidersBtn = document.getElementById("view-riders") as HTMLButtonElement;
-const ridersChartEl = document.getElementById("riders-chart") as HTMLDivElement;
-const allRacesUnitToggleBtn = document.getElementById("all-races-unit-toggle") as HTMLButtonElement;
-const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
-const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement | null;
-const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
-const teamFilterBtn = document.getElementById("team-filter-btn") as HTMLButtonElement;
-const teamFilterPanel = document.getElementById("team-filter-panel") as HTMLDivElement;
-const nationFilterBtn = document.getElementById("nation-filter-btn") as HTMLButtonElement;
-const nationFilterPanel = document.getElementById("nation-filter-panel") as HTMLDivElement;
-
-interface RaceSummary { year: number; totalDistanceKm: number | null; totalElevationM: number | null; gcWinnerTimeSeconds: number | null; slowestFinisherTimeSeconds: number | null; }
-// Small summary files, eagerly bundled — one glob picks up every race's file.
-const summaryModules = import.meta.glob<RaceSummary[]>("./data/*/all_races_summary.json", {
-  import: "default",
-  eager: true,
-});
-const ALL_RACES_BY_RACE = emptyPerRace<RaceSummary[]>(() => []);
-for (const [path, summary] of Object.entries(summaryModules)) {
-  const match = path.match(/\.\/data\/([^/]+)\/all_races_summary\.json$/);
-  if (match && isRaceId(match[1])) ALL_RACES_BY_RACE[match[1]] = summary;
-}
-
-let currentView: "stage" | "overview" | "allraces" | "riders" = "stage";
-let allRacesUnit: "metric" | "imperial" = "metric";
-
-function fmtTotalTime(seconds: number | null): string {
-  if (!seconds) return "—";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function stageLabel(stageNum: number): string {
-  return dataset?.stages.find((s) => s.stage_number === stageNum)?.stage_label ?? String(stageNum);
-}
-
-function fmtGap(seconds: number | null): string {
-  if (seconds === null || seconds === undefined) return "—";
-  if (seconds === 0) return "leader";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  const parts = h > 0 ? [h, m, s] : [m, s];
-  return "+" + parts.map((p, i) => (i === 0 ? String(p) : String(p).padStart(2, "0"))).join(":");
-}
-
-/** Zero-padded HH:MM:SS, for the GC Time y-axis. */
-function fmtHms(totalSeconds: number): string {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-}
-
-// ─── Route type colors & difficulty ──────────────────────────────────────────
-
-const ROUTE_COLOR: Record<string, string> = {
-  P:   "#9b59b6",  // prologue — purple
-  TT:  "#7f8c8d",  // time trial — gray
-  TTT: "#95a5a6",  // team TT — light gray
-  F:   "#27ae60",  // flat — green
-  H:   "#e67e22",  // hilly — orange
-  M:   "#e74c3c",  // mountain — red
-};
-
-const ROUTE_LABEL: Record<string, string> = {
-  P: "Prologue", TT: "Time Trial", TTT: "Team TT",
-  F: "Flat", H: "Hilly", M: "Mountain",
-};
-
-const ROUTE_MULTIPLIER: Record<string, number> = {
-  P: 0.3, TT: 0.5, TTT: 0.6, F: 1.0, H: 1.3, M: 1.8,
-};
-
-function difficultyScore(stage: StageInfo): number {
-  if (stage.profile_score != null) return stage.profile_score;
-  const vm = stage.vertical_meters ?? 0;
-  const dk = stage.distance_km ?? 0;
-  if (dk === 0) return 0;
-  const mult = ROUTE_MULTIPLIER[stage.route_type ?? "F"] ?? 1.0;
-  return (vm * vm) / (dk * 1000) * mult;
-}
-
-function drawOverview() {
-  if (!dataset) return; // initial fetch in flight; loadDataset() redraws
-  overviewChartEl.innerHTML = "";
-  const stages = dataset.stages;
-  if (!stages.length) return;
-
-  // Totals summary in the topbar
-  const totalDist = stages.reduce((s, st) => s + (st.distance_km ?? 0), 0);
-  const totalElev = stages.reduce((s, st) => s + (st.vertical_meters ?? 0), 0);
-  overviewSummaryEl.innerHTML = `
-    <span class="overview-summary-item"><span class="overview-summary-label">Total Distance</span> <span class="overview-summary-value">${Math.round(totalDist).toLocaleString()} km</span></span>
-    <span class="overview-summary-sep">·</span>
-    <span class="overview-summary-item"><span class="overview-summary-label">Total Elevation</span> <span class="overview-summary-value">${totalElev.toLocaleString()} m</span></span>
-  `;
-
-  const containerRect = overviewChartEl.getBoundingClientRect();
-  const totalWidth = Math.max(containerRect.width || 800, 600);
-  const totalHeight = Math.max(containerRect.height || 500, 400);
-
-  const margin = { top: 12, right: 24, bottom: 32, left: 80 };
-  const innerWidth = totalWidth - margin.left - margin.right;
-
-  const usesGradeAwareScore = stages.some((s) => s.profile_score != null);
-  const difficultyLabel = `Difficulty Score (${usesGradeAwareScore ? "grade aware" : "simple ascent"})`;
-
-  const hasElevationData = stages.some((s) => (s.vertical_meters ?? 0) > 0);
-
-  const panels = [
-    { key: "distance",   label: "Distance (km)",      value: (s: StageInfo) => s.distance_km ?? 0,     noData: false },
-    { key: "elevation",  label: "Elevation Gain (m)",  value: (s: StageInfo) => s.vertical_meters ?? 0, noData: !hasElevationData },
-    { key: "difficulty", label: difficultyLabel,       value: difficultyScore,                           noData: !hasElevationData },
-  ];
-
-  const panelHeight = Math.floor((totalHeight - margin.top - margin.bottom - (panels.length - 1) * 12) / panels.length);
-
-  const svg = d3.select(overviewChartEl)
-    .append("svg")
-    .attr("width", totalWidth)
-    .attr("height", totalHeight);
-
-  const stageNums = stages.map((s) => s.stage_number);
-  const xScale = d3.scaleBand()
-    .domain(stageNums.map(String))
-    .range([0, innerWidth])
-    .padding(0.15);
-
-  panels.forEach((panel, pi) => {
-    const yTop = margin.top + pi * (panelHeight + 12);
-    const g = svg.append("g").attr("transform", `translate(${margin.left},${yTop})`);
-
-    // Panel label (rotated vertical)
-    g.append("text")
-      .attr("class", "overview-panel-label")
-      .attr("transform", `translate(${-margin.left + 12},${panelHeight / 2}) rotate(-90)`)
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .text(panel.label);
-
-    if (panel.noData) {
-      // Draw a subtle empty panel background
-      g.append("rect")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("width", innerWidth)
-        .attr("height", panelHeight)
-        .attr("fill", "currentColor")
-        .attr("opacity", 0.04)
-        .attr("rx", 4);
-
-      g.append("text")
-        .attr("x", innerWidth / 2)
-        .attr("y", panelHeight / 2)
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "middle")
-        .attr("class", "overview-no-data-label")
-        .text("No data available");
-    } else {
-      const maxVal = d3.max(stages, panel.value) ?? 1;
-      const yScale = d3.scaleLinear().domain([0, maxVal * 1.08]).range([panelHeight, 0]);
-
-      // Y-axis (3 ticks)
-      const yAxis = d3.axisLeft(yScale).ticks(3).tickSize(-innerWidth);
-      g.append("g")
-        .attr("class", "axis y-axis overview-y-axis")
-        .call(yAxis)
-        .call((ax) => ax.select(".domain").remove())
-        .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
-        .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
-
-      // Bars
-      g.selectAll<SVGRectElement, StageInfo>(".overview-bar")
-        .data(stages)
-        .join("rect")
-        .attr("class", "overview-bar")
-        .attr("x", (s) => xScale(String(s.stage_number)) ?? 0)
-        .attr("y", (s) => yScale(panel.value(s)))
-        .attr("width", xScale.bandwidth())
-        .attr("height", (s) => panelHeight - yScale(panel.value(s)))
-        .attr("rx", 2)
-        .attr("fill", (s) => ROUTE_COLOR[s.route_type ?? "F"] ?? ROUTE_COLOR.F)
-        .on("mousemove", (event: MouseEvent, s: StageInfo) => {
-          const diff = difficultyScore(s);
-          tooltipEl.innerHTML = `
-            <div class="t-name">Stage ${s.stage_label}</div>
-            <div class="t-team">${s.start_location ?? "—"} → ${s.finish_location ?? "—"}</div>
-            <div>${ROUTE_LABEL[s.route_type ?? "F"] ?? s.route_type}</div>
-            <div>Distance: ${s.distance_km != null ? Math.round(s.distance_km) + " km" : "—"}</div>
-            <div>Elevation: ${s.vertical_meters != null ? s.vertical_meters.toLocaleString() + " m" : "—"}</div>
-            <div>Difficulty: ${diff.toFixed(1)}</div>
-          `;
-          positionTooltip(event);
-        })
-        .on("mouseleave", () => hideTooltip());
-    }
-
-    // X-axis on last panel only
-    if (pi === panels.length - 1) {
-      g.append("g")
-        .attr("class", "axis x-axis")
-        .attr("transform", `translate(0,${panelHeight})`)
-        .call(
-          d3.axisBottom(xScale)
-            .tickFormat((d) => {
-              const s = stages.find((st) => String(st.stage_number) === d);
-              return s?.stage_label ?? d;
-            })
-        )
-        .call((ax) => ax.select(".domain").remove())
-        .call((ax) => ax.selectAll(".tick line").remove());
-    }
-  });
-
-  // Route type legend below the chart
-  const legendData = [...new Set(stages.map((s) => s.route_type ?? "F"))].sort();
-  const legendDiv = document.createElement("div");
-  legendDiv.className = "route-legend";
-  legendDiv.style.paddingLeft = `${margin.left}px`;
-  for (const rt of legendData) {
-    const item = document.createElement("div");
-    item.className = "route-legend-item";
-    const swatch = document.createElement("div");
-    swatch.className = "route-legend-swatch";
-    swatch.style.background = ROUTE_COLOR[rt] ?? "#888";
-    const label = document.createElement("span");
-    label.textContent = ROUTE_LABEL[rt] ?? rt;
-    item.appendChild(swatch);
-    item.appendChild(label);
-    legendDiv.appendChild(item);
-  }
-  overviewChartEl.appendChild(legendDiv);
-}
-
-function init() {
-  try {
-    buildRaceSelect();
-    buildYearSelect();
-    buildMetricSelect();
-    wireControls();
-    // Single resize handler for the lifetime of the page — redraws whichever
-    // view is active. (Previously re-registered on every drawChart() call,
-    // leaking a listener per year/metric switch.)
-    window.addEventListener("resize", debounce(() => {
-      if (currentView === "stage") drawChart();
-      else if (currentView === "overview") drawOverview();
-      else if (currentView === "allraces") drawAllRacesOverview();
-    }, 200));
-    window.addEventListener("hashchange", () => {
-      applyHash().catch(showLoadError);
-    });
-    applyHash()
-      .then((handled) => {
-        if (!handled) {
-          // No (or unrecognized) hash: seed the URL without adding a history
-          // entry, then fall through to the default load below.
-          window.history.replaceState(null, "", computeHash());
-        }
-        // Load whenever no dataset is in memory yet. This covers three cases:
-        // empty/unrecognized hash, deep links landing on riders/allraces (which
-        // need a dataset for later stage/overview navigation), and deep links
-        // that exactly match the default state — applyHash() treats those as
-        // "already in sync" and returns without loading anything.
-        if (!dataset) return loadDataset(currentYear);
-      })
-      .catch(showLoadError);
-  } catch (err) {
-    showLoadError(err);
-  }
-}
-
-function showLoadError(err: unknown) {
+export function showLoadError(err: unknown) {
   chartEl.innerHTML = `<p style="color:#ff6b6b">Failed to load data: ${err}</p>`;
   console.error(err);
 }
 
 function rebuildYearOptions() {
   yearSelectEl.innerHTML = "";
-  for (const year of YEARS) {
+  for (const year of state.YEARS) {
     const opt = document.createElement("option");
     opt.value = year;
     opt.textContent = year;
     yearSelectEl.appendChild(opt);
   }
-  yearSelectEl.value = currentYear;
+  yearSelectEl.value = state.currentYear;
 }
 
 function buildYearSelect() {
   rebuildYearOptions();
   yearSelectEl.addEventListener("change", () => {
-    currentYear = yearSelectEl.value;
+    state.currentYear = yearSelectEl.value;
     updateHash();
-    loadDataset(currentYear).catch(showLoadError);
+    loadDataset(state.currentYear).catch(showLoadError);
   });
 }
 
 /** Switch the active race: updates the dropdowns, year list, and per-race
  *  filter state. Callers handle hash + data loading. */
-function setRace(race: RaceId) {
-  currentRace = race;
+export function setRace(race: RaceId) {
+  state.currentRace = race;
   raceSelectEl.value = race;
-  YEARS = getYearsForRace(race);
-  currentYear = YEARS[0];
+  state.YEARS = getYearsForRace(race);
+  state.currentYear = state.YEARS[0];
   rebuildYearOptions();
   // Reset riders filter state so stale year/team selections don't carry over
-  ridersFilterYear = "";
-  ridersFilterTeam = "";
-  ridersFilterNationality = "";
-  ridersFilterJerseys.clear();
+  state.ridersFilterYear = "";
+  state.ridersFilterTeam = "";
+  state.ridersFilterNationality = "";
+  state.ridersFilterJerseys.clear();
 }
 
 function buildRaceSelect() {
@@ -525,24 +80,24 @@ function buildRaceSelect() {
     opt.textContent = RACES[raceId].name;
     raceSelectEl.appendChild(opt);
   }
-  raceSelectEl.value = currentRace;
+  raceSelectEl.value = state.currentRace;
   raceSelectEl.addEventListener("change", () => {
     setRace(raceSelectEl.value as RaceId);
     updateHash();
-    loadDataset(currentYear).catch(showLoadError);
+    loadDataset(state.currentYear).catch(showLoadError);
   });
 }
 
 function buildMetricSelect() {
-  metricSelectEl.value = currentMetric;
+  metricSelectEl.value = state.currentMetric;
   updateGcTimeToggle();
   updateSprintModeToggle();
   updateKomModeToggle();
   metricSelectEl.addEventListener("change", () => {
-    currentMetric = metricSelectEl.value as "gc" | "points" | "kom";
-    if (currentMetric !== "gc") gcDisplayMode = "position";
-    if (currentMetric !== "points") sprintDisplayMode = "rank";
-    if (currentMetric !== "kom") komDisplayMode = "rank";
+    state.currentMetric = metricSelectEl.value as "gc" | "points" | "kom";
+    if (state.currentMetric !== "gc") state.gcDisplayMode = "position";
+    if (state.currentMetric !== "points") state.sprintDisplayMode = "rank";
+    if (state.currentMetric !== "kom") state.komDisplayMode = "rank";
     updateGcTimeToggle();
     updateSprintModeToggle();
     updateKomModeToggle();
@@ -561,157 +116,68 @@ function buildMetricSelect() {
 /** Shows/hides the GC Time toggle (only relevant in GC Position "by Stage"
  *  view) and reflects whether it's currently engaged. */
 function updateGcTimeToggle() {
-  gcTimeToggleBtn.hidden = !(currentView === "stage" && currentMetric === "gc");
-  gcTimeToggleBtn.textContent = gcDisplayMode === "time"
+  gcTimeToggleBtn.hidden = !(state.currentView === "stage" && state.currentMetric === "gc");
+  gcTimeToggleBtn.textContent = state.gcDisplayMode === "time"
     ? "GC Time → GC Position"
     : "GC Position → GC Time";
 }
 
 function updateSprintModeToggle() {
-  sprintModeToggleBtn.hidden = !(currentView === "stage" && currentMetric === "points");
-  sprintModeToggleBtn.textContent = sprintDisplayMode === "points"
+  sprintModeToggleBtn.hidden = !(state.currentView === "stage" && state.currentMetric === "points");
+  sprintModeToggleBtn.textContent = state.sprintDisplayMode === "points"
     ? "Points → Rank"
     : "Rank → Points";
 }
 
 function updateKomModeToggle() {
-  komModeToggleBtn.hidden = !(currentView === "stage" && currentMetric === "kom");
-  komModeToggleBtn.textContent = komDisplayMode === "points"
+  komModeToggleBtn.hidden = !(state.currentView === "stage" && state.currentMetric === "kom");
+  komModeToggleBtn.textContent = state.komDisplayMode === "points"
     ? "Points → Rank"
     : "Rank → Points";
 }
 
 function updateUnitToggle() {
-  allRacesUnitToggleBtn.hidden = currentView !== "allraces";
-  allRacesUnitToggleBtn.textContent = allRacesUnit === "metric" ? "km → mi" : "mi → km";
+  allRacesUnitToggleBtn.hidden = state.currentView !== "allraces";
+  allRacesUnitToggleBtn.textContent = state.allRacesUnit === "metric" ? "km → mi" : "mi → km";
 }
 
-function buildRankMapsFromField(
-  getRank: (sp: RiderStagePoint) => number | null | undefined,
-  getCumPts: (sp: RiderStagePoint) => number,
-): {
-  rankAtStage: Map<number, Map<string, number>>;
-  finalRank: Map<string, number>;
-  ridersAtFinal: Map<number, { riders: RiderSeries[]; points: number }>;
-} {
-  // One pass over each rider's byStage array instead of a per-stage
-  // rider.byStage.find() scan (which was O(stages × riders × stages)).
-  const rankAtStage = new Map<number, Map<string, number>>();
-  for (const stage of dataset.stages) rankAtStage.set(stage.stage_number, new Map());
-  for (const rider of dataset.riders) {
-    for (const sp of rider.byStage) {
-      const rank = getRank(sp);
-      if (rank != null) rankAtStage.get(sp.stage)?.set(rider.id, rank);
-    }
-  }
-  // Build finalRank only for riders who reached the final stage; DNF riders
-  // keep their mid-race rank in rankAtStage but are excluded from finalRank
-  // so they don't pollute "Top N" selection or the legend ordering.
-  const finalStageNum = Math.max(...dataset.stages.map((s) => s.stage_number));
-  const finalRank = new Map<string, number>();
-  for (const rider of dataset.riders) {
-    if (rider.byStage.length === 0) continue;
-    const lastSp = rider.byStage[rider.byStage.length - 1];
-    if (lastSp.stage !== finalStageNum) continue;
-    const rank = getRank(lastSp);
-    if (rank != null) finalRank.set(rider.id, rank);
-  }
-  const ridersAtFinal = new Map<number, { riders: RiderSeries[]; points: number }>();
-  for (const rider of dataset.riders) {
-    const rank = finalRank.get(rider.id);
-    if (rank === undefined) continue;
-    const lastSp = rider.byStage.length > 0 ? rider.byStage[rider.byStage.length - 1] : undefined;
-    const ptsVal = lastSp ? getCumPts(lastSp) : 0;
-    if (!ridersAtFinal.has(rank)) ridersAtFinal.set(rank, { riders: [], points: ptsVal });
-    ridersAtFinal.get(rank)!.riders.push(rider);
-  }
-  return { rankAtStage, finalRank, ridersAtFinal };
-}
-
-function computePointsRankings() {
-  ({ rankAtStage: pointsRankAtStage, finalRank: finalPointsRank, ridersAtFinal: ridersAtFinalPointsRank } =
-    buildRankMapsFromField((sp) => sp.sprintRank, (sp) => sp.cumulativePoints));
-  ({ rankAtStage: komRankAtStage, finalRank: finalKomRank, ridersAtFinal: ridersAtFinalKomRank } =
-    buildRankMapsFromField((sp) => sp.komRank, (sp) => sp.cumulativeKomPoints));
-}
-
-function activeRankMap(stageNum: number): Map<string, number> | undefined {
-  if (currentMetric === "kom") return komRankAtStage.get(stageNum);
-  return pointsRankAtStage.get(stageNum);
-}
-
-/** Build the display-value series for a rider to feed into d3 line/dot/label
- *  rendering. The "rank" field doubles as the plotted y-value: it's an actual
- *  rank in every mode except GC Time, where it holds gcGapSeconds instead —
- *  0 for the stage leader, increasing for riders further behind. */
-function getDisplayPoints(rider: RiderSeries): Array<{ stage: number; rank: number | null }> {
-  if (currentMetric === "gc") {
-    if (gcDisplayMode === "time") {
-      return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcGapSeconds }));
-    }
-    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcRank }));
-  }
-  if (currentMetric === "points" && sprintDisplayMode === "points") {
-    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativePoints }));
-  }
-  if (currentMetric === "kom" && komDisplayMode === "points") {
-    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativeKomPoints }));
-  }
-  return rider.byStage.map((p) => ({
-    stage: p.stage,
-    rank: activeRankMap(p.stage)?.get(rider.id) ?? null,
-  }));
-}
-
-/** Returns the "effective final rank" for a rider under the current metric. */
-function effectiveFinalRank(rider: RiderSeries): number {
-  if (currentMetric === "gc") return rider.finalRank;
-  if (currentMetric === "kom") return finalKomRank.get(rider.id) ?? 9999;
-  return finalPointsRank.get(rider.id) ?? 9999;
-}
-
-function applyDefaultSelection(preset = 20) {
-  if (!dataset) return; // initial fetch in flight; loadDataset() reapplies
-  selected = new Set(dataset.riders.filter((r) => effectiveFinalRank(r) <= preset).map((r) => r.id));
-}
-
-async function loadDataset(year: string) {
-  dataset = await getDataset(year);
-  colorScale = d3
+export async function loadDataset(year: string) {
+  state.dataset = await getDataset(year);
+  state.colorScale = d3
     .scaleOrdinal<string, string>()
-    .domain(dataset.riders.map((r) => r.id))
+    .domain(state.dataset.riders.map((r) => r.id))
     .range(PALETTE);
 
   computePointsRankings();
-  if (currentPreset === "all") {
-    selected = new Set(dataset.riders.map((r) => r.id));
-  } else if (currentPreset === "none") {
-    selected = new Set();
+  if (state.currentPreset === "all") {
+    state.selected = new Set(state.dataset.riders.map((r) => r.id));
+  } else if (state.currentPreset === "none") {
+    state.selected = new Set();
   } else {
-    applyDefaultSelection(parseInt(currentPreset, 10));
+    applyDefaultSelection(parseInt(state.currentPreset, 10));
   }
 
-  highlighted = null;
+  state.highlighted = null;
   searchEl.value = "";
   document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
     b.classList.remove("active"),
   );
-  document.querySelector<HTMLButtonElement>(`.button-row button[data-preset="${currentPreset}"]`)?.classList.add(
+  document.querySelector<HTMLButtonElement>(`.button-row button[data-preset="${state.currentPreset}"]`)?.classList.add(
     "active",
   );
 
-  viewOverviewBtn.textContent = `${currentYear} Race Overview`;
+  viewOverviewBtn.textContent = `${state.currentYear} Race Overview`;
 
   buildStageFilters();
   closeFilterPanels();
   buildLegend();
-  if (currentView === "stage") drawChart();
-  else if (currentView === "overview") drawOverview();
-  else if (currentView === "allraces") drawAllRacesOverview();
+  if (state.currentView === "stage") drawChart();
+  else if (state.currentView === "overview") drawOverview();
+  else if (state.currentView === "allraces") drawAllRacesOverview();
 }
 
-function switchView(view: "stage" | "overview" | "allraces" | "riders") {
-  currentView = view;
+export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
+  state.currentView = view;
   updateGcTimeToggle();
   updateSprintModeToggle();
   updateKomModeToggle();
@@ -735,41 +201,6 @@ function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   updateHash();
 }
 
-// ─── Hash routing ────────────────────────────────────────────────────────────
-// Formats: #<year>/stage/<metric> (metric: gc | gc-time | points | kom)
-//          · #<year>/overview · #allraces · #riders · #riders/<rider-slug>
-// State changes push a hash entry (so back/forward walk through app states);
-// hashchange applies the hash back onto app state. The compare-with-
-// computeHash() guard on both sides breaks the write→event→write loop.
-
-function computeHash(): string {
-  // "tour" stays implicit so pre-multi-race links (#2026/stage/gc) remain
-  // canonical; other races get a leading race segment (#giro/2026/stage/gc).
-  const race = currentRace === "tour" ? "" : `${currentRace}/`;
-  if (currentView === "riders") {
-    return currentRiderId
-      ? `#${race}riders/${currentRiderId.replace(/^rider\//, "")}`
-      : `#${race}riders`;
-  }
-  if (currentView === "allraces") return `#${race}allraces`;
-  if (currentView === "overview") return `#${race}${currentYear}/overview`;
-  const metricSeg = currentMetric === "gc" && gcDisplayMode === "time" ? "gc-time"
-    : currentMetric === "points" && sprintDisplayMode === "points" ? "sprint-points"
-    : currentMetric === "kom" && komDisplayMode === "points" ? "kom-points"
-    : currentMetric;
-  return `#${race}${currentYear}/stage/${metricSeg}`;
-}
-
-// Suppresses hash writes while a hash is being applied, so the intermediate
-// draw calls inside applyHash() don't push partial states onto the history.
-let applyingHash = false;
-
-function updateHash() {
-  if (applyingHash) return;
-  const h = computeHash();
-  if (window.location.hash !== h) window.location.hash = h;
-}
-
 /** Applies the current location.hash to app state. Returns false if the hash
  *  was empty/unrecognized and the caller should fall back to defaults. */
 async function applyHash(): Promise<boolean> {
@@ -781,9 +212,9 @@ async function applyHash(): Promise<boolean> {
   // with pre-multi-race links).
   const race: RaceId = isRaceId(parts[0]) ? (parts[0] as RaceId) : "tour";
   if (isRaceId(parts[0])) parts.shift();
-  applyingHash = true;
+  state.applyingHash = true;
   try {
-    if (race !== currentRace) setRace(race);
+    if (race !== state.currentRace) setRace(race);
     if (parts[0] === "allraces") {
       switchView("allraces");
       return true;
@@ -801,311 +232,42 @@ async function applyHash(): Promise<boolean> {
     }
 
     const [year, view, metric] = parts;
-    if (!URLS_BY_RACE[currentRace][year]) return false;
-    currentYear = year;
+    if (!URLS_BY_RACE[state.currentRace][year]) return false;
+    state.currentYear = year;
     yearSelectEl.value = year;
     if (view !== "overview") {
-      currentMetric = (metric === "points" || metric === "sprint-points") ? "points"
+      state.currentMetric = (metric === "points" || metric === "sprint-points") ? "points"
         : (metric === "kom" || metric === "kom-points") ? "kom" : "gc";
-      gcDisplayMode = metric === "gc-time" ? "time" : "position";
-      sprintDisplayMode = metric === "sprint-points" ? "points" : "rank";
-      komDisplayMode = metric === "kom-points" ? "points" : "rank";
-      metricSelectEl.value = currentMetric;
+      state.gcDisplayMode = metric === "gc-time" ? "time" : "position";
+      state.sprintDisplayMode = metric === "sprint-points" ? "points" : "rank";
+      state.komDisplayMode = metric === "kom-points" ? "points" : "rank";
+      metricSelectEl.value = state.currentMetric;
     }
     await loadDataset(year);
     switchView(view === "overview" ? "overview" : "stage");
     return true;
   } finally {
-    applyingHash = false;
+    state.applyingHash = false;
   }
-}
-
-function drawAllRacesOverview() {
-  allRacesChartEl.innerHTML = "";
-
-  const ALL_RACES = ALL_RACES_BY_RACE[currentRace];
-  const raceName = raceConfig().name;
-
-  const containerRect = allRacesChartEl.getBoundingClientRect();
-  const totalWidth = Math.max(containerRect.width || 800, 600);
-  const totalHeight = Math.max(containerRect.height || 500, 400);
-  const margin = { top: 20, right: 36, bottom: 40, left: 80 };
-  const innerWidth = totalWidth - margin.left - margin.right;
-
-  type SeriesDef = {
-    value: (r: RaceSummary) => number | null;
-    fmt: (v: number) => string;
-    label: string;     // legend / tooltip label
-    color: string;
-  };
-  type PanelDef = { yLabel: string; series: SeriesDef[] };
-
-  const speed = (distKm: number | null, timeSec: number | null) =>
-    distKm && timeSec ? distKm / (timeSec / 3600) : null;
-
-  const imperial = allRacesUnit === "imperial";
-  const KM_TO_MI = 0.621371;
-  const M_TO_FT = 3.28084;
-
-  const panels: PanelDef[] = [
-    {
-      yLabel: imperial ? "Distance (mi)" : "Distance (km)",
-      series: [{
-        label: "Total Distance",
-        value: (r) => r.totalDistanceKm != null ? (imperial ? r.totalDistanceKm * KM_TO_MI : r.totalDistanceKm) : null,
-        fmt: (v) => imperial ? `${Math.round(v).toLocaleString()} mi` : `${Math.round(v).toLocaleString()} km`,
-        color: "var(--accent)",
-      }],
-    },
-    {
-      yLabel: imperial ? "Elevation (ft)" : "Elevation (m)",
-      series: [{
-        label: "Total Elevation",
-        value: (r) => r.totalElevationM != null ? (imperial ? r.totalElevationM * M_TO_FT : r.totalElevationM) : null,
-        fmt: (v) => imperial ? `${Math.round(v).toLocaleString()} ft` : `${Math.round(v).toLocaleString()} m`,
-        color: "var(--accent)",
-      }],
-    },
-    {
-      yLabel: "Winner Time (h)",
-      series: [{
-        label: "GC Winner Time",
-        value: (r) => r.gcWinnerTimeSeconds != null ? r.gcWinnerTimeSeconds / 3600 : null,
-        fmt: (v) => `${v.toFixed(1)} h`,
-        color: "var(--accent)",
-      }],
-    },
-    {
-      yLabel: imperial ? "Avg Speed (mph)" : "Avg Speed (km/h)",
-      series: [
-        {
-          label: "GC Winner",
-          value: (r) => { const s = speed(r.totalDistanceKm, r.gcWinnerTimeSeconds); return s != null ? (imperial ? s * KM_TO_MI : s) : null; },
-          fmt: (v) => imperial ? `${v.toFixed(1)} mph` : `${v.toFixed(1)} km/h`,
-          color: "#22c55e",
-        },
-        {
-          label: "Slowest Finisher",
-          value: (r) => { const s = speed(r.totalDistanceKm, r.slowestFinisherTimeSeconds); return s != null ? (imperial ? s * KM_TO_MI : s) : null; },
-          fmt: (v) => imperial ? `${v.toFixed(1)} mph` : `${v.toFixed(1)} km/h`,
-          color: "#ef4444",
-        },
-      ],
-    },
-  ];
-
-  const panelHeight = Math.floor(
-    (totalHeight - margin.top - margin.bottom - (panels.length - 1) * 16) / panels.length
-  );
-
-  const svg = d3.select(allRacesChartEl)
-    .append("svg")
-    .attr("width", totalWidth)
-    .attr("height", totalHeight)
-    .attr("viewBox", `0 0 ${totalWidth} ${totalHeight}`);
-
-  const minYear = ALL_RACES[0].year;
-  const maxYear = ALL_RACES[ALL_RACES.length - 1].year;
-  const xScale = d3.scaleLinear()
-    .domain([minYear, maxYear])
-    .range([0, innerWidth]);
-
-  const firstTickDecade = Math.ceil(minYear / 10) * 10;
-  const tickYears = d3.range(firstTickDecade, maxYear + 1, 10).filter((y) => y <= maxYear);
-
-  // One crosshair line per panel — populated during the forEach below.
-  // Event handlers close over this array by reference, so by the time a
-  // user can hover, all entries are present.
-  const crosshairLines: Selection<SVGLineElement, unknown, null, undefined>[] = [];
-
-  const showCrosshair = (year: number) => {
-    const cx = xScale(year);
-    crosshairLines.forEach((line) =>
-      line.attr("x1", cx).attr("x2", cx).attr("visibility", "visible")
-    );
-  };
-  const hideCrosshair = () =>
-    crosshairLines.forEach((line) => line.attr("visibility", "hidden"));
-
-  panels.forEach((panel, pi) => {
-    const yTop = margin.top + pi * (panelHeight + 16);
-    const g = svg.append("g").attr("transform", `translate(${margin.left},${yTop})`);
-
-    // y domain spans all series in this panel
-    const allVals = panel.series.flatMap((s) =>
-      ALL_RACES.map((r) => s.value(r)).filter((v): v is number => v != null)
-    );
-    const maxVal = d3.max(allVals) ?? 1;
-    const minVal = panel.series.length > 1 ? (d3.min(allVals) ?? 0) * 0.97 : 0;
-    const yScale = d3.scaleLinear().domain([minVal, maxVal * 1.03]).range([panelHeight, 0]);
-
-    // Panel y-label
-    g.append("text")
-      .attr("class", "overview-panel-label")
-      .attr("transform", `translate(${-margin.left + 12},${panelHeight / 2}) rotate(-90)`)
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .text(panel.yLabel);
-
-    // War-year shaded bands (draw before data lines so they sit behind)
-    raceConfig().warBands.forEach(({ start, end, label }) => {
-      const bx = xScale(start);
-      const bw = xScale(end) - bx;
-      g.append("rect")
-        .attr("x", bx).attr("y", 0)
-        .attr("width", bw).attr("height", panelHeight)
-        .attr("fill", "rgba(239,68,68,0.14)")
-        .attr("pointer-events", "none");
-      // Label on top panel only to avoid repetition
-      if (pi === 0) {
-        g.append("text")
-          .attr("x", bx + bw / 2).attr("y", panelHeight / 2)
-          .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
-          .attr("font-size", "11px").attr("fill", "rgba(239,68,68,0.45)")
-          .attr("pointer-events", "none")
-          .text(label);
-      }
-    });
-
-    // Y gridlines — y=0 tick gets a brighter stroke
-    g.append("g")
-      .attr("class", "axis y-axis overview-y-axis")
-      .call(d3.axisLeft(yScale).ticks(4).tickSize(-innerWidth))
-      .call((ax) => ax.select(".domain").remove())
-      .call((ax) => ax.selectAll(".tick line").attr("stroke", "#4a5160").attr("stroke-opacity", 0.4))
-      .call((ax) => ax.selectAll<SVGGElement, number>(".tick").filter((d) => d === 0)
-        .select("line").attr("stroke", "#8a9ab0").attr("stroke-opacity", 0.85))
-      .call((ax) => ax.selectAll(".tick text").attr("x", -6).attr("text-anchor", "end"));
-
-    // Draw each series
-    panel.series.forEach((s, si) => {
-      const defined = (r: RaceSummary) => s.value(r) != null;
-      const lineGen = d3.line<RaceSummary>()
-        .defined(defined)
-        .x((r) => xScale(r.year))
-        .y((r) => yScale(s.value(r) as number))
-        .curve(d3.curveMonotoneX);
-
-      g.append("path")
-        .datum(ALL_RACES)
-        .attr("fill", "none")
-        .attr("stroke", s.color)
-        .attr("stroke-width", 1.5)
-        .attr("d", lineGen);
-
-      g.selectAll<SVGCircleElement, RaceSummary>(`.all-races-dot-s${si}`)
-        .data(ALL_RACES.filter(defined))
-        .join("circle")
-        .attr("class", `all-races-dot all-races-dot-s${si}`)
-        .attr("cx", (r) => xScale(r.year))
-        .attr("cy", (r) => yScale(s.value(r) as number))
-        .attr("r", 3)
-        .attr("fill", s.color)
-        .on("mousemove", (event: MouseEvent, r: RaceSummary) => {
-          const val = s.value(r)!;
-          tooltipEl.innerHTML = `
-            <div class="t-name">${r.year} ${raceName}</div>
-            <div>${s.label}: ${s.fmt(val)}</div>
-          `;
-          positionTooltip(event);
-          showCrosshair(r.year);
-        })
-        .on("mouseleave", () => { hideTooltip(); hideCrosshair(); });
-    });
-
-    // Crosshair line for this panel (appended after series so it sits on top;
-    // pointer-events:none so dots underneath remain hoverable)
-    crosshairLines.push(
-      g.append("line")
-        .attr("class", "all-races-crosshair")
-        .attr("y1", 0).attr("y2", panelHeight)
-        .attr("stroke", "rgba(255,255,255,0.5)")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "3,3")
-        .attr("pointer-events", "none")
-        .attr("visibility", "hidden")
-    );
-
-    // Legend for multi-series panels
-    if (panel.series.length > 1) {
-      panel.series.forEach((s, si) => {
-        const lx = innerWidth - 160 + si * 100;
-        g.append("line")
-          .attr("x1", lx).attr("x2", lx + 18)
-          .attr("y1", 8).attr("y2", 8)
-          .attr("stroke", s.color).attr("stroke-width", 2);
-        g.append("text")
-          .attr("x", lx + 22).attr("y", 8)
-          .attr("dominant-baseline", "middle")
-          .attr("font-size", "11px")
-          .attr("fill", "var(--text-muted, #888)")
-          .text(s.label);
-      });
-    }
-
-    // Vertical gridlines
-    g.append("g")
-      .attr("class", "axis x-axis all-races-x-grid")
-      .attr("transform", `translate(0,${panelHeight})`)
-      .call(
-        d3.axisBottom(xScale)
-          .tickValues(tickYears)
-          .tickSize(-panelHeight)
-          .tickFormat(() => "")
-      )
-      .call((ax) => ax.select(".domain").remove())
-      .call((ax) => ax.selectAll(".tick line")
-        .attr("stroke", "#4a5160")
-        .attr("stroke-opacity", 0.4));
-
-    // Decade tick marks on every panel's bottom edge
-    g.append("g")
-      .attr("class", "axis x-axis all-races-x-ticks")
-      .attr("transform", `translate(0,${panelHeight})`)
-      .call(
-        d3.axisBottom(xScale)
-          .tickValues(tickYears)
-          .tickSize(4)
-          .tickFormat(() => "")
-      )
-      .call((ax) => ax.select(".domain").remove())
-      .call((ax) => ax.selectAll(".tick line")
-        .attr("stroke", "#8a9ab0")
-        .attr("stroke-opacity", 0.7));
-
-    // X-axis labels on last panel only
-    if (pi === panels.length - 1) {
-      g.append("g")
-        .attr("class", "axis x-axis")
-        .attr("transform", `translate(0,${panelHeight})`)
-        .call(
-          d3.axisBottom(xScale)
-            .tickValues(tickYears)
-            .tickFormat((y) => String(y))
-        )
-        .call((ax) => ax.select(".domain").remove())
-        .call((ax) => ax.selectAll(".tick line").remove());
-    }
-  });
 }
 
 function wireControls() {
   document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (!dataset) return; // initial fetch in flight; selection state comes with it
+      if (!state.dataset) return; // initial fetch in flight; selection state comes with it
       document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
         b.classList.remove("active"),
       );
       btn.classList.add("active");
       const preset = btn.dataset.preset;
-      currentPreset = preset ?? "20";
+      state.currentPreset = preset ?? "20";
       if (preset === "all") {
-        selected = new Set(dataset.riders.map((r) => r.id));
+        state.selected = new Set(state.dataset.riders.map((r) => r.id));
         // "All" already selects every rider, which subsumes any Team/Nation
         // filter — clear both so the filter buttons don't show a stale state.
         clearStageTeamNationFilters();
       } else if (preset === "none") {
-        selected = new Set();
+        state.selected = new Set();
         // "None" doubles as a Clear All for the Team/Nation filters.
         clearStageTeamNationFilters();
       } else {
@@ -1135,18 +297,18 @@ function wireControls() {
   });
 
   searchEl.addEventListener("input", () => {
-    if (!dataset) return; // initial fetch in flight; nothing to search yet
+    if (!state.dataset) return; // initial fetch in flight; nothing to search yet
     const q = searchEl.value.trim().toLowerCase();
     if (!q) {
-      highlighted = null;
+      state.highlighted = null;
       updateLineClasses();
       refreshLegendState();
       return;
     }
-    const match = dataset.riders.find((r) => r.name.toLowerCase().includes(q) || displayName(r).toLowerCase().includes(q));
+    const match = state.dataset.riders.find((r) => r.name.toLowerCase().includes(q) || displayName(r).toLowerCase().includes(q));
     if (match) {
-      selected.add(match.id);
-      highlighted = match.id;
+      state.selected.add(match.id);
+      state.highlighted = match.id;
       const legendRow = legendEl.querySelector<HTMLDivElement>(`[data-id="${cssEscape(match.id)}"]`);
       legendRow?.scrollIntoView({ block: "nearest" });
     }
@@ -1163,1738 +325,68 @@ function wireControls() {
   viewRidersBtn.addEventListener("click", () => switchView("riders"));
 
   gcTimeToggleBtn.addEventListener("click", () => {
-    gcDisplayMode = gcDisplayMode === "time" ? "position" : "time";
+    state.gcDisplayMode = state.gcDisplayMode === "time" ? "position" : "time";
     updateGcTimeToggle();
     updateHash();
     drawChart();
   });
 
   sprintModeToggleBtn.addEventListener("click", () => {
-    sprintDisplayMode = sprintDisplayMode === "points" ? "rank" : "points";
+    state.sprintDisplayMode = state.sprintDisplayMode === "points" ? "rank" : "points";
     updateSprintModeToggle();
     updateHash();
     drawChart();
   });
 
   komModeToggleBtn.addEventListener("click", () => {
-    komDisplayMode = komDisplayMode === "points" ? "rank" : "points";
+    state.komDisplayMode = state.komDisplayMode === "points" ? "rank" : "points";
     updateKomModeToggle();
     updateHash();
     drawChart();
   });
 
   allRacesUnitToggleBtn.addEventListener("click", () => {
-    allRacesUnit = allRacesUnit === "metric" ? "imperial" : "metric";
+    state.allRacesUnit = state.allRacesUnit === "metric" ? "imperial" : "metric";
     updateUnitToggle();
     drawAllRacesOverview();
   });
 }
 
-function cssEscape(s: string): string {
-  return s.replace(/[^a-zA-Z0-9_-]/g, (c) => "\\" + c);
-}
-
-// "Soviet Union" and "Yugoslavia" are genuine historical entities with no
-// current ISO 3166-1 code / flag emoji, so they get hand-built inline SVGs
-// (official Wikimedia Commons artwork) instead of an emoji lookup — see
-// HISTORICAL_FLAG_SVG below. The star/hammer/sickle on the Soviet flag are
-// enlarged (1.6x, per request) relative to the official proportions so the
-// emblem stays legible at the small size these render at in the app.
-const HISTORICAL_FLAG_SVG: Record<string, string> = {
-  "Soviet Union": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1.3em" height="0.65em"><path fill="#bc0000" fill-opacity="1" d="M0 0h1200v600H0z" style="fill:#cc0000;fill-opacity:1" /><g transform="translate(209.5,90) scale(1.6) translate(-209.5,-90)"><path d="m 200.0005,37.5 -8.41933,25.911886 H 164.336 L 186.37777,79.426122 177.95844,105.338 200.0005,89.323465 222.04257,105.338 213.62324,79.426122 235.665,63.411886 h -27.24516 z m 0,13.499987 5.38828,16.583473 h 17.43718 l -14.107,10.249496 5.38827,16.583472 L 200.0005,84.167224 185.89378,94.416428 191.28205,77.832956 177.17504,67.58346 h 17.43718 z" style="fill:#ffd700;fill-opacity:1;stroke:none;stroke-width:0.14999977px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" /><g style="fill:#ffd700;fill-opacity:1" transform="matrix(0.98931879,0,0,0.98673811,3.8297658,3.7659398)"><path d="m 137.43744,171.69421 18.86296,18.9937 17.78834,-17.66589 c 27.05847,29.021 55.43807,56.99501 82.28704,86.12782 4.03444,4.06233 10.59815,4.085 14.66056,0.0506 4.06232,-4.03445 4.08499,-10.59815 0.0506,-14.66056 -28.81871,-27.1901 -57.72545,-54.60143 -86.55328,-81.89095 l 23.96499,-23.80003 -33.34026,-4.61605 z" style="fill:#ffd700;fill-opacity:1;stroke:none;stroke-width:0.48919073;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" /><path d="m 198.2887,110.1955 c 15.51743,8.7394 27.29872,21.28122 34.2484,34.3924 7.04394,13.28902 10.13959,27.16218 10.20325,38.25433 0.13054,22.74374 -18.43771,41.18184 -41.18183,41.18184 -12.13597,0 -23.04607,-5.24868 -30.58302,-13.60085 l -4.16863,3.51033 c -0.70999,-0.27231 -1.46387,-0.41221 -2.22429,-0.41276 -1.82948,1.9e-4 -3.56621,0.80531 -4.74859,2.20136 -2.97368,0.38896 -5.46251,2.44529 -6.40534,5.29224 -3.13486,6.28843 -8.63524,11.21997 -15.29104,13.4776 -0.0637,0.0216 -0.11992,0.05 -0.1758,0.0783 -3.07749,1.12758 -6.16259,3.1643 -8.78919,5.80245 -5.19155,5.23656 -7.72858,11.93658 -6.30024,16.63822 -0.14098,0.40857 -0.21361,0.83759 -0.21498,1.26979 1.5e-4,2.17082 1.75991,3.93058 3.93073,3.93073 0.54341,-0.002 1.08053,-0.11639 1.57745,-0.33632 4.69369,1.05881 11.06885,-1.54582 16.05444,-6.55917 2.82624,-2.85072 4.94356,-6.22349 5.98303,-9.53062 2.31696,-6.62278 7.29699,-12.01856 13.62281,-15.05312 0.15105,-0.0725 0.27303,-0.14714 0.38218,-0.22358 2.12082,-1.01408 3.67251,-2.92895 4.225,-5.2139 9.70222,11.44481 24.25255,18.75299 40.51876,19.13577 29.83352,0.70205 52.13299,-21.25802 53.16414,-52.83642 0.51894,-15.89259 -5.62993,-36.3847 -19.6412,-53.19089 -10.70835,-12.84441 -26.40987,-23.50795 -44.18699,-28.20777 z" style="fill:#ffd700;fill-opacity:1;stroke:none;stroke-width:0.50003481;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" /></g></g></svg>',
-  Yugoslavia: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" width="1.3em" height="0.65em"><path fill="#003893" d="M0 0h1000v500H0z"/><path fill="#fff" d="M0 166.667h1000V500H0z"/><g fill="#de0000"><path d="M0 333.333h1000V500H0z"/><path fill-rule="evenodd" stroke="#fcd115" stroke-width="8.89" d="m500 97.716 34.193 105.222 110.638.005-89.506 65.035 34.185 105.225-89.51-65.03-89.511 65.029 34.185-105.225-89.506-65.035 110.638-.005z"/></g></svg>',
-};
-
-// Every current-country nationality string that appears in the exported
-// data (checked against all 112 years).
-const NATIONALITY_TO_ISO: Record<string, string> = {
-  Algeria: "DZ", Argentina: "AR", Australia: "AU", Austria: "AT", Belarus: "BY",
-  Belgium: "BE", Brazil: "BR", Canada: "CA", China: "CN", Colombia: "CO",
-  "Costa Rica": "CR", Croatia: "HR", "Czech Republic": "CZ", Denmark: "DK",
-  Ecuador: "EC", Eritrea: "ER", Estonia: "EE", Ethiopia: "ET", Finland: "FI",
-  France: "FR", Germany: "DE", "Great Britain": "GB", Hungary: "HU",
-  Ireland: "IE", Israel: "IL", Italy: "IT", Japan: "JP", Kazakhstan: "KZ",
-  Latvia: "LV", Liechtenstein: "LI", Lithuania: "LT", Luxembourg: "LU",
-  Mexico: "MX", Moldova: "MD", Monaco: "MC", Morocco: "MA", Netherlands: "NL",
-  "New Zealand": "NZ", Norway: "NO", Poland: "PL", Portugal: "PT",
-  Romania: "RO", Russia: "RU", Slovakia: "SK", Slovenia: "SI",
-  "South Africa": "ZA", Spain: "ES", Sweden: "SE", Switzerland: "CH",
-  Tunisia: "TN", Ukraine: "UA", "United States": "US", Uzbekistan: "UZ",
-  Venezuela: "VE",
-};
-
-// Regional Indicator Symbols: each ISO 3166-1 alpha-2 letter maps to a
-// Unicode codepoint offset by 127397, so "FR" renders as the French flag
-// emoji. No image assets or network requests needed.
-function isoToFlagEmoji(iso2: string): string {
-  return [...iso2.toUpperCase()].map((c) => String.fromCodePoint(127397 + c.charCodeAt(0))).join("");
-}
-
-/** Small flag <span> for a nationality, or null if unrecognized/absent. */
-function nationalityFlagEl(nationality: string | null | undefined): HTMLSpanElement | null {
-  if (!nationality) return null;
-  const flag = document.createElement("span");
-  flag.className = "nationality-flag";
-  flag.title = nationality;
-  const historicalSvg = HISTORICAL_FLAG_SVG[nationality];
-  if (historicalSvg) {
-    flag.innerHTML = historicalSvg;
-    return flag;
-  }
-  const iso2 = NATIONALITY_TO_ISO[nationality];
-  if (!iso2) return null;
-  flag.textContent = isoToFlagEmoji(iso2);
-  return flag;
-}
-
-// ─── Jersey Icons (Riders page only) ────────────────────────────────────────
-// One icon per classification a rider has ever won at least once (GC winners
-// across multiple years — e.g. Greg LeMond's 3 yellow jerseys — still get a
-// single icon, since riderJerseysWon() only checks "won at least once").
-// Hand-drawn generic jersey silhouette (not official ASO artwork) reused for
-// all four, colored/patterned per classification.
-const JERSEY_PATH = "M9,2 L4,2 L1,6 L5,9 L5,22 L19,22 L19,9 L23,6 L20,2 L15,2 Q12,5 9,2 Z";
-
-function jerseySvg(fill: string, stroke = "#00000055", letter?: string): string {
-  const label = letter
-    ? `<text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700" font-family="Helvetica, Arial, sans-serif" style="fill:#000; user-select:none">${letter}</text>`
-    : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.3em" height="1.3em"><path d="${JERSEY_PATH}" fill="${fill}" stroke="${stroke}" stroke-width="1" stroke-linejoin="round"/>${label}</svg>`;
-}
-
-let komJerseyClipCounter = 0;
-/** White jersey + polka dots (red for TDF, blue for Vuelta), clipped to the jersey silhouette. */
-function komJerseySvg(dotColor = "#E4002B"): string {
-  const clipId = `komclip${komJerseyClipCounter++}`;
-  const dots = [6, 10, 14, 18]
-    .flatMap((y, row) => {
-      const offset = row % 2 ? 2 : 0;
-      return [5 + offset, 10 + offset, 15 + offset, 20 + offset].map(
-        (x) => `<circle cx="${x}" cy="${y}" r="1.3" fill="${dotColor}"/>`,
-      );
-    })
-    .join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1.3em" height="1.3em"><defs><clipPath id="${clipId}"><path d="${JERSEY_PATH}"/></clipPath></defs><path d="${JERSEY_PATH}" fill="#FFFFFF" stroke="#888888" stroke-width="1" stroke-linejoin="round"/><g clip-path="url(#${clipId})">${dots}</g></svg>`;
-}
-
-const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint winner", kom: "KOM winner", youth: "Young rider winner" } as const;
-const JERSEY_SIMPLE_LABEL: Record<JerseyCategory, string> = { gc: "GC", sprint: "Sprint", kom: "KOM", youth: "Youth" };
-function jerseyTooltipLabel(category: JerseyCategory): string {
-  return raceConfig().jerseyTooltips[category];
-}
-
-// Doping notes shown next to GC jersey years on the rider detail page.
-const DOPING_GC_NOTES: Record<string, string> = {
-  "rider/lance-armstrong": "Stripped of yellow jersey due to doping",
-  "rider/floyd-landis": "Stripped of yellow jersey due to doping",
-  "rider/alberto-contador": "Stripped of 2010 yellow jersey due to doping",
-};
-type JerseyCategory = keyof typeof JERSEY_LABELS;
-
-/** Every year this rider won each classification (GC/sprint/KOM derived from
- *  per-year rank data; youth from the pipeline's classification_standings
- *  lookup, since that classification isn't in the per-year JSON at all). */
-function jerseyYearsWon(entry: RiderEntry): Record<JerseyCategory, number[]> {
-  const gc: number[] = [], sprint: number[] = [], kom: number[] = [];
-  for (const [year, y] of entry.years) {
-    if (y.finalRank === 1) gc.push(year);
-    if (y.sprintRank === 1) sprint.push(year);
-    if (y.komRank === 1) kom.push(year);
-  }
-  const sortAsc = (a: number, b: number) => a - b;
-  return {
-    gc: gc.sort(sortAsc),
-    sprint: sprint.sort(sortAsc),
-    kom: kom.sort(sortAsc),
-    youth: [...entry.youthWinYears].sort(sortAsc),
-  };
-}
-
-function jerseyIconSvg(category: JerseyCategory): string {
-  const jersey = raceConfig().jersey;
-  if (category === "gc") return jerseySvg(jersey.gc);
-  if (category === "sprint") return jerseySvg(jersey.sprint);
-  if (category === "kom") {
-    return "dots" in jersey.kom ? komJerseySvg(jersey.kom.dots) : jerseySvg(jersey.kom.solid);
-  }
-  return jerseySvg("#FFFFFF", "#888888");
-}
-
-function jerseyIconSvgForRace(category: JerseyCategory, race: RaceId): string {
-  const jersey = RACES[race].jersey;
-  if (category === "gc") return jerseySvg(jersey.gc);
-  if (category === "sprint") {
-    // Tour and Vuelta both use green for the sprint jersey — letter them so
-    // they're distinguishable when shown side by side (rider grid, filters).
-    const letter = race === "tour" ? "T" : race === "vuelta" ? "V" : undefined;
-    return jerseySvg(jersey.sprint, undefined, letter);
-  }
-  if (category === "kom") {
-    return "dots" in jersey.kom ? komJerseySvg(jersey.kom.dots) : jerseySvg(jersey.kom.solid);
-  }
-  return jerseySvg("#FFFFFF", "#888888");
-}
-
-/** Small jersey <span> icons for every classification a rider has won. */
-function jerseyIconsEl(entry: RiderEntry): HTMLSpanElement[] {
-  const years = jerseyYearsWon(entry);
-  return (Object.keys(JERSEY_LABELS) as JerseyCategory[])
-    .filter((category) => years[category].length > 0)
-    .map((category) => {
-      const el = document.createElement("span");
-      el.className = "jersey-icon";
-      el.title = JERSEY_LABELS[category];
-      el.innerHTML = jerseyIconSvg(category);
-      return el;
+function init() {
+  try {
+    buildRaceSelect();
+    buildYearSelect();
+    buildMetricSelect();
+    wireControls();
+    // Single resize handler for the lifetime of the page — redraws whichever
+    // view is active. (Previously re-registered on every drawChart() call,
+    // leaking a listener per year/metric switch.)
+    window.addEventListener("resize", debounce(() => {
+      if (state.currentView === "stage") drawChart();
+      else if (state.currentView === "overview") drawOverview();
+      else if (state.currentView === "allraces") drawAllRacesOverview();
+    }, 200));
+    window.addEventListener("hashchange", () => {
+      applyHash().catch(showLoadError);
     });
-}
-
-/** Jersey icons for the riders grid, one per race that the rider won a
- *  classification in. Each jersey is colored for its specific race. */
-function jerseyIconsElMultiRace(entry: RiderEntry, races: RaceId[]): HTMLSpanElement[] {
-  const out: HTMLSpanElement[] = [];
-  for (const race of races) {
-    const raceEntry = riderIndexByRace[race].get(entry.id);
-    if (!raceEntry) continue;
-    const won = jerseyYearsWon(raceEntry);
-    for (const category of Object.keys(JERSEY_LABELS) as JerseyCategory[]) {
-      if (won[category].length === 0) continue;
-      const el = document.createElement("span");
-      el.className = "jersey-icon";
-      el.title = `${RACE_ABBR[race]} - ${JERSEY_SIMPLE_LABEL[category]}`;
-      el.innerHTML = jerseyIconSvgForRace(category, race);
-      out.push(el);
-    }
-  }
-  return out;
-}
-
-/** Jersey icons + a "(year, year, ...)" label after each — rider detail page
- *  only; the Riders grid uses the plain icons from jerseyIconsEl(). */
-function jerseyIconsWithYearsEl(entry: RiderEntry): HTMLSpanElement[] {
-  const years = jerseyYearsWon(entry);
-  const out: HTMLSpanElement[] = [];
-  for (const category of Object.keys(JERSEY_LABELS) as JerseyCategory[]) {
-    if (years[category].length === 0) continue;
-    const icon = document.createElement("span");
-    icon.className = "jersey-icon";
-    icon.innerHTML = jerseyIconSvg(category);
-    icon.addEventListener("mouseenter", (e) => {
-      tooltipEl.innerHTML = `<div class="t-name">${jerseyTooltipLabel(category)}</div>`;
-      positionTooltip(e as MouseEvent);
-    });
-    icon.addEventListener("mouseleave", () => { tooltipEl.hidden = true; });
-    out.push(icon);
-    const yearsEl = document.createElement("span");
-    yearsEl.className = "jersey-years";
-    yearsEl.textContent = `(${years[category].join(", ")})`;
-    out.push(yearsEl);
-    if (category === "gc" && DOPING_GC_NOTES[entry.id]) {
-      const noteEl = document.createElement("span");
-      noteEl.className = "jersey-stripped-note";
-      noteEl.textContent = DOPING_GC_NOTES[entry.id];
-      out.push(noteEl);
-    }
-  }
-  return out;
-}
-
-function buildLegend() {
-  if (!dataset) return; // initial fetch in flight; loadDataset() rebuilds
-  legendEl.innerHTML = "";
-  // Sort legend by effective final rank for the current metric
-  const sorted = [...dataset.riders].sort((a, b) => effectiveFinalRank(a) - effectiveFinalRank(b));
-  for (const rider of sorted) {
-    const row = document.createElement("div");
-    row.className = "legend-item";
-    row.dataset.id = rider.id;
-
-    const rank = document.createElement("span");
-    rank.className = "legend-rank";
-    const r = effectiveFinalRank(rider);
-    rank.textContent = r < 9999 ? String(r) : "–";
-
-    const swatch = document.createElement("span");
-    swatch.className = "legend-swatch";
-
-    const name = document.createElement("span");
-    name.className = "legend-name";
-    name.textContent = displayName(rider);
-    name.title = `${displayName(rider)} — ${rider.team ?? ""}`;
-
-    row.appendChild(rank);
-    row.appendChild(swatch);
-    row.appendChild(name);
-    const flag = nationalityFlagEl(rider.nationality);
-    if (flag) row.appendChild(flag);
-
-    swatch.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (selected.has(rider.id)) {
-        selected.delete(rider.id);
-      } else {
-        selected.add(rider.id);
-      }
-      refreshLegendState();
-      updateLineClasses();
-    });
-
-    name.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const slug = rider.id.replace(/^rider\//, "");
-      window.location.hash = `#riders/${slug}`;
-    });
-
-    row.addEventListener("mouseenter", () => {
-      setHighlight(rider.id);
-    });
-    row.addEventListener("mouseleave", () => {
-      setHighlight(null);
-    });
-
-    legendEl.appendChild(row);
-  }
-  refreshLegendState();
-}
-
-function refreshLegendState() {
-  legendEl.querySelectorAll<HTMLDivElement>(".legend-item").forEach((row) => {
-    const id = row.dataset.id!;
-    const isSelected = selected.has(id);
-    row.classList.toggle("active", isSelected);
-    const swatch = row.querySelector<HTMLSpanElement>(".legend-swatch")!;
-    swatch.style.background = isSelected ? colorScale(id) : "var(--line-dim)";
-  });
-}
-
-/** Recomputes `selected` from the active team/nation filters (OR within a
- *  facet, AND across facets). No-op if neither filter has a selection, so it
- *  never fights with the Top 10/20/All quick-select buttons when unused. */
-function applyStageTeamNationFilter() {
-  if (!dataset) return;
-  if (stageFilterTeams.size === 0 && stageFilterNations.size === 0) return;
-  selected = new Set(
-    dataset.riders
-      .filter(
-        (r) =>
-          (stageFilterTeams.size === 0 || (r.team && stageFilterTeams.has(r.team))) &&
-          (stageFilterNations.size === 0 || (r.nationality && stageFilterNations.has(r.nationality))),
-      )
-      .map((r) => r.id),
-  );
-  document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
-    b.classList.remove("active"),
-  );
-}
-
-function updateFilterButtonLabel(btn: HTMLButtonElement, base: string, count: number) {
-  btn.textContent = count > 0 ? `${base} (${count})` : base;
-  btn.classList.toggle("active", count > 0);
-}
-
-function closeFilterPanels() {
-  teamFilterPanel.hidden = true;
-  nationFilterPanel.hidden = true;
-}
-
-function clearStageTeamNationFilters() {
-  stageFilterTeams.clear();
-  stageFilterNations.clear();
-  updateFilterButtonLabel(teamFilterBtn, "Team", 0);
-  updateFilterButtonLabel(nationFilterBtn, "Nation", 0);
-  teamFilterPanel.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(
-    (cb) => (cb.checked = false),
-  );
-  nationFilterPanel.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(
-    (cb) => (cb.checked = false),
-  );
-  closeFilterPanels();
-}
-
-function buildFilterPanel(
-  panel: HTMLDivElement,
-  options: string[],
-  activeSet: Set<string>,
-  btn: HTMLButtonElement,
-  baseLabel: string,
-  showFlags = false,
-) {
-  panel.innerHTML = "";
-
-  const actions = document.createElement("div");
-  actions.className = "filter-panel-actions";
-  const clear = document.createElement("button");
-  clear.type = "button";
-  clear.className = "filter-panel-clear";
-  clear.textContent = "Clear";
-  clear.addEventListener("click", () => {
-    activeSet.clear();
-    panel.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((cb) => (cb.checked = false));
-    updateFilterButtonLabel(btn, baseLabel, activeSet.size);
-    applyStageTeamNationFilter();
-    refreshLegendState();
-    updateLineClasses();
-  });
-  actions.appendChild(clear);
-  panel.appendChild(actions);
-
-  for (const option of options) {
-    const label = document.createElement("label");
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.value = option;
-    cb.checked = activeSet.has(option);
-    cb.addEventListener("change", () => {
-      if (cb.checked) activeSet.add(option);
-      else activeSet.delete(option);
-      updateFilterButtonLabel(btn, baseLabel, activeSet.size);
-      applyStageTeamNationFilter();
-      refreshLegendState();
-      updateLineClasses();
-    });
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(option));
-    if (showFlags) {
-      const flag = nationalityFlagEl(option);
-      if (flag) label.appendChild(flag);
-    }
-    panel.appendChild(label);
-  }
-}
-
-/** Rebuilds the Team/Nation dropdown contents for the current dataset and
- *  resets both filters (team/nation membership is specific to each year). */
-function buildStageFilters() {
-  if (!dataset) return;
-  const hadActiveFilter = stageFilterTeams.size > 0 || stageFilterNations.size > 0;
-
-  const teams = [...new Set(dataset.riders.map((r) => r.team).filter((t): t is string => !!t))].sort();
-  const nations = [...new Set(dataset.riders.map((r) => r.nationality).filter((n): n is string => !!n))].sort();
-
-  // Carry the filter *values* over across a year change, dropping only the
-  // ones that don't exist in the new year's teams/nations (e.g. a team name
-  // from 2024 that didn't race in 2022).
-  stageFilterTeams = new Set([...stageFilterTeams].filter((t) => teams.includes(t)));
-  stageFilterNations = new Set([...stageFilterNations].filter((n) => nations.includes(n)));
-
-  updateFilterButtonLabel(teamFilterBtn, "Team", stageFilterTeams.size);
-  updateFilterButtonLabel(nationFilterBtn, "Nation", stageFilterNations.size);
-
-  buildFilterPanel(teamFilterPanel, teams, stageFilterTeams, teamFilterBtn, "Team");
-  buildFilterPanel(nationFilterPanel, nations, stageFilterNations, nationFilterBtn, "Nation", true);
-
-  if (stageFilterTeams.size > 0 || stageFilterNations.size > 0) {
-    applyStageTeamNationFilter();
-  } else if (hadActiveFilter) {
-    // Every previously-selected team/nation was absent from this year —
-    // nothing carries over, so behave like the "None" button was pressed.
-    selected = new Set();
-    document.querySelectorAll<HTMLButtonElement>(".button-row button").forEach((b) =>
-      b.classList.remove("active"),
-    );
-  }
-}
-
-let xScale: ScaleLinear<number, number>;
-let yScale: ScaleLinear<number, number>;
-
-function drawChart() {
-  // The initial dataset fetch may still be in flight (clicking a view button
-  // or resizing during load lands here). loadDataset() redraws the current
-  // view when it resolves, so bailing out is safe.
-  if (!dataset) return;
-  chartEl.innerHTML = "";
-  const containerRect = chartEl.getBoundingClientRect();
-  const width = Math.max(containerRect.width, 600);
-  const height = Math.max(containerRect.height, 480);
-  const margin = { top: 32, right: 36, bottom: 36, left: currentMetric === "gc" ? 72 : 44 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-
-  const stages = dataset.stages;
-  const minStage = d3.min(stages, (s) => s.stage_number) ?? 0;
-  const maxStage = d3.max(stages, (s) => s.stage_number) ?? 21;
-  const isGcTime = currentMetric === "gc" && gcDisplayMode === "time";
-  const isSprintPoints = currentMetric === "points" && sprintDisplayMode === "points";
-  const isKomPoints = currentMetric === "kom" && komDisplayMode === "points";
-
-  // Compute each rider's display series once per draw; the line generator,
-  // hit paths, end dots, and end labels all read from these maps.
-  const displayPointsById = new Map<string, Array<{ stage: number; rank: number | null }>>();
-  const lastDefinedById = new Map<string, { stage: number; rank: number | null } | null>();
-  let maxRank = 1;
-  for (const r of dataset.riders) {
-    const dp = getDisplayPoints(r);
-    displayPointsById.set(r.id, dp);
-    let last: { stage: number; rank: number | null } | null = null;
-    for (let i = dp.length - 1; i >= 0; i--) {
-      if (dp[i].rank !== null) { last = dp[i]; break; }
-    }
-    lastDefinedById.set(r.id, last);
-    for (const p of dp) {
-      if (p.rank !== null && p.rank > maxRank) maxRank = p.rank;
-    }
-  }
-
-  xScale = d3.scaleLinear().domain([minStage, maxStage]).range([0, innerWidth]);
-  yScale = d3.scaleLinear()
-    .domain(isGcTime ? [0, maxRank] : (isSprintPoints || isKomPoints) ? [maxRank, 0] : [1, maxRank])
-    .range([0, innerHeight]);
-
-  const svg = d3
-    .select(chartEl)
-    .append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", `0 0 ${width} ${height}`);
-
-  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-  // No-data overlays for classifications that didn't exist yet
-  const noDataMessage =
-    currentMetric === "points" && parseInt(currentYear) < 1953
-      ? "No data because the green jersey sprint points competition started in 1953"
-      : currentMetric === "kom" && parseInt(currentYear) < 1933
-      ? "No data because the KOM points competition started in 1933, though the polka dot jersey wasn't used until 1975"
-      : null;
-
-  if (noDataMessage) {
-    g.append("text")
-      .attr("x", innerWidth / 2)
-      .attr("y", 60)
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .attr("fill", "var(--text-muted, #888)")
-      .attr("font-size", "22px")
-      .text(noDataMessage);
-    return;
-  }
-
-  // gridlines (horizontal) — "nice" ticks in GC Time / Sprint Points mode, every 10 ranks otherwise
-  const yTickValues = isGcTime || isSprintPoints || isKomPoints
-    ? d3.scaleLinear().domain([0, maxRank]).nice().ticks(6).filter((v) => v > 0)
-    : d3.range(10, maxRank + 1, 10);
-  g.append("g")
-    .attr("class", "grid grid-y")
-    .call(
-      d3
-        .axisLeft(yScale)
-        .tickValues(yTickValues)
-        .tickSize(-innerWidth)
-        .tickFormat(() => ""),
-    );
-
-  // gridlines (vertical, one per stage)
-  g.append("g")
-    .attr("class", "grid grid-x")
-    .attr("transform", `translate(0,${innerHeight})`)
-    .call(
-      d3
-        .axisBottom(xScale)
-        .tickValues(d3.range(minStage, maxStage + 1))
-        .tickSize(-innerHeight)
-        .tickFormat(() => ""),
-    );
-
-  const stagesByNumber = new Map(stages.map((s) => [s.stage_number, s]));
-  const stageLabelFmt = (d: NumberValue) => stagesByNumber.get(+d)?.stage_label ?? String(d);
-
-  // x axis — bottom
-  g.append("g")
-    .attr("class", "axis x-axis")
-    .attr("transform", `translate(0,${innerHeight})`)
-    .call(
-      d3
-        .axisBottom(xScale)
-        .ticks(maxStage)
-        .tickFormat(stageLabelFmt),
-    );
-
-  // x axis — top (with stage-info hover)
-  const xAxisTop = g
-    .append("g")
-    .attr("class", "axis x-axis x-axis-top")
-    .call(
-      d3
-        .axisTop(xScale)
-        .ticks(maxStage)
-        .tickFormat(stageLabelFmt),
-    );
-  xAxisTop
-    .selectAll<SVGGElement, number>(".tick")
-    .style("cursor", (d) => (stagesByNumber.has(d) ? "help" : null))
-    .on("mousemove", (event, d) => {
-      const stage = stagesByNumber.get(d);
-      if (stage) showStageTooltip(event, stage);
-    })
-    .on("mouseleave", () => hideTooltip());
-
-  g.append("text")
-    .attr("class", "axis-label")
-    .attr("x", innerWidth / 2)
-    .attr("y", innerHeight + margin.bottom - 4)
-    .attr("text-anchor", "middle")
-    .text("Stage");
-
-  // y axis
-  g.append("g")
-    .attr("class", "axis y-axis")
-    .call(
-      d3
-        .axisLeft(yScale)
-        .tickValues(isGcTime || isSprintPoints || isKomPoints ? [0, ...yTickValues] : [1, ...yTickValues])
-        .tickFormat((d) => isGcTime ? fmtHms(d as number) : (isSprintPoints || isKomPoints) ? String(d) : `#${d}`),
-    );
-
-
-  const lineGen = d3
-    .line<{ stage: number; rank: number | null }>()
-    .defined((d) => d.rank !== null)
-    .x((d) => xScale(d.stage))
-    .y((d) => yScale(d.rank as number))
-    .curve(d3.curveMonotoneX);
-
-  const lineLayer = g.append("g").attr("class", "lines");
-  const dotLayer = g.append("g").attr("class", "dots");
-  const hitLayer = g.append("g").attr("class", "hit-areas");
-
-  lineLayer
-    .selectAll<SVGPathElement, RiderSeries>("path")
-    .data(dataset.riders, (r) => r.id)
-    .join("path")
-    .attr("class", "rider-line")
-    .attr("data-id", (r) => r.id)
-    .attr("d", (r) => lineGen(displayPointsById.get(r.id)!))
-    .attr("stroke", "var(--line-dim)");
-
-  // invisible wide hit-path per rider, for easier hover targeting
-  hitLayer
-    .selectAll<SVGPathElement, RiderSeries>("path")
-    .data(dataset.riders, (r) => r.id)
-    .join("path")
-    .attr("fill", "none")
-    .attr("stroke", "transparent")
-    .attr("stroke-width", 10)
-    .attr("d", (r) => lineGen(displayPointsById.get(r.id)!))
-    .style("cursor", "pointer")
-    .on("mouseenter", (_event, r) => {
-      setHighlight(r.id);
-    })
-    .on("mousemove", (event, r) => showTooltip(event, r))
-    .on("mouseleave", () => {
-      setHighlight(null);
-      hideTooltip();
-    })
-    .on("click", (_event, r) => {
-      if (selected.has(r.id)) selected.delete(r.id);
-      else selected.add(r.id);
-      refreshLegendState();
-      updateLineClasses();
-    });
-
-  // end-of-line dots + labels for selected riders
-  dotLayer
-    .selectAll<SVGCircleElement, RiderSeries>("circle")
-    .data(dataset.riders, (r) => r.id)
-    .join("circle")
-    .attr("class", "rider-dot")
-    .attr("data-id", (r) => r.id)
-    .attr("r", 3)
-    .attr("cx", (r) => {
-      const last = lastDefinedById.get(r.id);
-      return last ? xScale(last.stage) : -100;
-    })
-    .attr("cy", (r) => {
-      const last = lastDefinedById.get(r.id);
-      return last ? yScale(last.rank as number) : -100;
-    });
-
-  const labelLayer = g.append("g").attr("class", "labels");
-  labelLayer
-    .selectAll<SVGTextElement, RiderSeries>("text")
-    .data(dataset.riders, (r) => r.id)
-    .join("text")
-    .attr("class", "rider-end-label")
-    .attr("data-id", (r) => r.id)
-    .attr("x", (r) => {
-      const last = lastDefinedById.get(r.id);
-      return last ? xScale(last.stage) + 6 : -100;
-    })
-    .attr("y", (r) => {
-      const last = lastDefinedById.get(r.id);
-      return last ? yScale(last.rank as number) + 3 : -100;
-    })
-    .style("font-size", "10px")
-    .text((r) => {
-      if (currentMetric !== "gc") {
-        const isKom = currentMetric === "kom";
-        const finalRank = isKom ? finalKomRank : finalPointsRank;
-        const ridersAtFinal = isKom ? ridersAtFinalKomRank : ridersAtFinalPointsRank;
-        const group = ridersAtFinal.get(finalRank.get(r.id)!);
-        if (group && group.riders.length > 1) return `(${group.riders.length}) ${riderLabel(r)}`;
-      }
-      return riderLabel(r);
-    })
-    .style("cursor", (r) => currentMetric === "gc" ? "default" : "pointer")
-    .on("mouseover", (event: MouseEvent, r: RiderSeries) => {
-      if (currentMetric === "gc") {
-        const lastStage = r.byStage[r.byStage.length - 1];
-        const gcRank = lastStage?.gcRank ?? r.finalRank;
-        const gap = lastStage?.gcGapSeconds ?? null;
-        const gcWinner = dataset.riders.find((rd) => rd.finalRank === 1);
-        const winnerTime = fmtTotalTime(gcWinner?.totalTimeSeconds ?? null);
-        const timeStr = gap === 0 || gcRank === 1
-          ? winnerTime
-          : fmtGap(gap);
-        tooltipEl.innerHTML = `
-          <div class="t-name">${displayName(r)}</div>
-          <div class="t-team">${r.team ?? ""}</div>
-          <div>GC #${gcRank ?? "—"} &middot; ${timeStr}</div>
-        `;
-        positionTooltip(event);
-        return;
-      }
-      const isKom = currentMetric === "kom";
-      const finalRank = isKom ? finalKomRank : finalPointsRank;
-      const ridersAtFinal = isKom ? ridersAtFinalKomRank : ridersAtFinalPointsRank;
-      const rank = finalRank.get(r.id);
-      if (rank === undefined) return;
-      const group = ridersAtFinal.get(rank);
-      if (!group) return;
-      const label = isKom ? "KOM" : "Points";
-      const names = group.riders.map((rd) => displayName(rd)).join("<br>");
-      tooltipEl.innerHTML = `
-        <div class="t-name">Final ${label} Rank #${rank}</div>
-        <div class="t-team">${group.points} pts</div>
-        <div>${names}</div>
-      `;
-      positionTooltip(event);
-    })
-    .on("mouseout", () => { tooltipEl.hidden = true; });
-
-  updateLineClasses();
-}
-
-/** "Firstname Lastname" when scrape data is present; falls back to PCS "LastName Firstname". */
-function displayName(r: { name: string; firstName?: string; lastName?: string }): string {
-  return r.firstName && r.lastName ? `${r.firstName} ${r.lastName}` : r.name;
-}
-
-/** Short label for chart lines: last name when available, else last word of full_name. */
-function riderLabel(r: RiderSeries): string {
-  if (r.lastName) return r.lastName;
-  const parts = r.name.trim().split(" ");
-  return parts[parts.length - 1];
-}
-
-// Restyle one rider's line based on current selected/highlighted state.
-function styleRiderLine(pathEl: SVGPathElement) {
-  const el = d3.select(pathEl);
-  const id = pathEl.getAttribute("data-id")!;
-  const isSelected = selected.has(id);
-  const isHighlighted = highlighted === id;
-  el.classed("hidden-line", false);
-  el.classed("dimmed", !isSelected && !isHighlighted);
-  el.classed("highlighted", isHighlighted);
-  el.attr("stroke", isSelected || isHighlighted ? colorScale(id) : "var(--line-dim)");
-  el.style("stroke-opacity", isHighlighted ? 1 : isSelected ? 0.95 : 0.12);
-}
-
-// Restyle one rider's end dot or end label (same visibility rules for both).
-function styleRiderMarker(el: SVGCircleElement | SVGTextElement) {
-  const id = el.getAttribute("data-id")!;
-  const isSelected = selected.has(id);
-  const isHighlighted = highlighted === id;
-  d3.select(el)
-    .style("opacity", isSelected || isHighlighted ? 1 : 0)
-    .attr("fill", isSelected || isHighlighted ? colorScale(id) : "var(--line-dim)");
-}
-
-// Full sweep across every rider — needed when the selection set changes
-// (legend clicks, presets, filters) or after a redraw.
-function updateLineClasses() {
-  d3.selectAll<SVGPathElement, unknown>(".lines .rider-line").each(function () {
-    styleRiderLine(this as SVGPathElement);
-  });
-  d3.selectAll<SVGCircleElement, unknown>(".dots .rider-dot").each(function () {
-    styleRiderMarker(this as SVGCircleElement);
-  });
-  d3.selectAll<SVGTextElement, unknown>(".labels .rider-end-label").each(function () {
-    styleRiderMarker(this as SVGTextElement);
-  });
-}
-
-// Restyle just one rider's three chart elements (line, end dot, end label).
-function restyleRider(id: string) {
-  const esc = cssEscape(id);
-  const line = chartEl.querySelector<SVGPathElement>(`.lines .rider-line[data-id="${esc}"]`);
-  if (line) styleRiderLine(line);
-  const dot = chartEl.querySelector<SVGCircleElement>(`.dots .rider-dot[data-id="${esc}"]`);
-  if (dot) styleRiderMarker(dot);
-  const label = chartEl.querySelector<SVGTextElement>(`.labels .rider-end-label[data-id="${esc}"]`);
-  if (label) styleRiderMarker(label);
-}
-
-// O(1) hover path: only the previously-highlighted rider and the new one
-// change appearance, so restyle exactly those two instead of sweeping all
-// ~200 lines + dots + labels on every mouseenter/mouseleave.
-function setHighlight(id: string | null) {
-  if (highlighted === id) return;
-  const prev = highlighted;
-  highlighted = id;
-  if (prev) restyleRider(prev);
-  if (id) restyleRider(id);
-}
-
-function showTooltip(event: MouseEvent, rider: RiderSeries) {
-  const containerRect = chartEl.getBoundingClientRect();
-  const margin = { left: currentMetric === "gc" ? 72 : 44, top: 16 };
-  const mouseX = event.clientX - containerRect.left - margin.left;
-  const stageGuess = Math.round(xScale.invert(mouseX));
-
-  if (currentMetric === "gc") {
-    const point =
-      rider.byStage.find((p) => p.stage === stageGuess && p.gcRank !== null) ??
-      ((): typeof rider.byStage[0] | null => {
-        for (let i = rider.byStage.length - 1; i >= 0; i--) {
-          if (rider.byStage[i].gcRank !== null) return rider.byStage[i];
+    applyHash()
+      .then((handled) => {
+        if (!handled) {
+          // No (or unrecognized) hash: seed the URL without adding a history
+          // entry, then fall through to the default load below.
+          window.history.replaceState(null, "", computeHash());
         }
-        return null;
-      })();
-    if (!point) return;
-    tooltipEl.innerHTML = `
-      <div class="t-name">${displayName(rider)}</div>
-      <div class="t-team">${rider.team ?? ""}</div>
-      <div>Stage ${stageLabel(point.stage)} &middot; GC #${point.gcRank ?? "—"}</div>
-      <div>Gap: ${fmtGap(point.gcGapSeconds)}</div>
-      ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
-    `;
-  } else {
-    const point =
-      rider.byStage.find((p) => p.stage === stageGuess) ??
-      rider.byStage[rider.byStage.length - 1];
-    if (!point) return;
-    if (currentMetric === "kom") {
-      const komRank = komRankAtStage.get(point.stage)?.get(rider.id) ?? null;
-      tooltipEl.innerHTML = `
-        <div class="t-name">${displayName(rider)}</div>
-        <div class="t-team">${rider.team ?? ""}</div>
-        <div>Stage ${stageLabel(point.stage)} &middot; KOM rank #${komRank ?? "—"}</div>
-        <div>Cumulative KOM pts: ${point.cumulativeKomPoints}</div>
-        ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
-      `;
-    } else {
-      const ptsRank = pointsRankAtStage.get(point.stage)?.get(rider.id) ?? null;
-      tooltipEl.innerHTML = `
-        <div class="t-name">${displayName(rider)}</div>
-        <div class="t-team">${rider.team ?? ""}</div>
-        <div>Stage ${stageLabel(point.stage)} &middot; Points rank #${ptsRank ?? "—"}</div>
-        <div>Cumulative pts: ${point.cumulativePoints}</div>
-        ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
-      `;
-    }
+        // Load whenever no dataset is in memory yet. This covers three cases:
+        // empty/unrecognized hash, deep links landing on riders/allraces (which
+        // need a dataset for later stage/overview navigation), and deep links
+        // that exactly match the default state — applyHash() treats those as
+        // "already in sync" and returns without loading anything.
+        if (!state.dataset) return loadDataset(state.currentYear);
+      })
+      .catch(showLoadError);
+  } catch (err) {
+    showLoadError(err);
   }
-
-  positionTooltip(event);
-}
-
-function showStageTooltip(event: MouseEvent, stage: StageInfo) {
-  const distance = stage.distance_km != null ? `${Math.round(stage.distance_km)} km` : "—";
-  const vertical = stage.vertical_meters != null ? `${stage.vertical_meters} m` : "—";
-  const type = stage.route_type ?? "—";
-
-  tooltipEl.innerHTML = `
-    <div>${stage.start_location ?? "—"}</div>
-    <div>${stage.finish_location ?? "—"}</div>
-    <div>${distance}, ${vertical}, ${type}</div>
-  `;
-  positionTooltip(event);
-}
-
-function hideTooltip() {
-  tooltipEl.hidden = true;
-}
-
-// Shows the tooltip at the pointer, flipping to the left of the cursor when
-// it would overflow the right edge of the window. Offsets are computed from
-// chartAreaEl because that's the tooltip's positioning parent (.chart-area is
-// position:relative) — measuring any other container skews the placement by
-// that container's padding offset.
-function positionTooltip(event: MouseEvent) {
-  tooltipEl.hidden = false;
-  const areaRect = chartAreaEl.getBoundingClientRect();
-  tooltipEl.style.top = `${event.clientY - areaRect.top - 10}px`;
-  const tw = tooltipEl.offsetWidth;
-  tooltipEl.style.left = window.innerWidth - event.clientX < tw + 24
-    ? `${event.clientX - areaRect.left - tw - 10}px`
-    : `${event.clientX - areaRect.left + 24}px`;
-}
-
-function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
-  let timer: ReturnType<typeof setTimeout>;
-  return ((...args: any[]) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  }) as T;
-}
-
-// ─── Rider Index ─────────────────────────────────────────────────────────────
-
-interface RiderEntry {
-  id: string;
-  name: string;
-  firstName?: string;
-  lastName?: string;
-  nationality: string | null;
-  youthWinYears: number[];
-  years: Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>;
-  teams: Set<string>;
-}
-
-const riderIndexByRace = emptyPerRace<Map<string, RiderEntry>>(() => new Map());
-const allTeamsSortedByRace = emptyPerRace<string[]>(() => []);
-const allNationalitiesSortedByRace = emptyPerRace<string[]>(() => []);
-
-// Convenience accessors for the current race
-function riderIndex() { return riderIndexByRace[currentRace]; }
-function allTeamsSorted() { return allTeamsSortedByRace[currentRace]; }
-function allNationalitiesSorted() { return allNationalitiesSortedByRace[currentRace]; }
-
-// URL-only glob (see the year-data comment up top for why we fetch instead
-// of importing the JSON as a module).
-const riderIndexUrlModules = import.meta.glob<string>("./data/*/riders_index.json", {
-  query: "?url",
-  import: "default",
-  eager: true,
-});
-const RIDERS_INDEX_URL = emptyPerRace<string>(() => "");
-for (const [path, url] of Object.entries(riderIndexUrlModules)) {
-  const match = path.match(/\.\/data\/([^/]+)\/riders_index\.json$/);
-  if (match && isRaceId(match[1])) RIDERS_INDEX_URL[match[1]] = url;
-}
-
-// Compact prebuilt index (pipeline/export_riders_index.py): one small file
-// instead of reading all 113 per-year datasets just to populate the Riders
-// page. Lazy-loaded as its own chunk the first time the Riders view opens, so
-// it never weighs down first paint (the default view is the stage chart).
-// Shape: { teams: [names], riders: { slug: { n, c, y: { year: tuple } } } }
-// Rider keys are slugs (id minus the "rider/" prefix, re-added on load) and
-// teams are integer indexes into the shared string table (-1 = no team) —
-// both cut the payload versus repeating the strings inline.
-// Year tuple: [gcRank, teamIdx] when the rider had no sprint/KOM ranking that
-// year (the common case), or [gcRank, teamIdx, sprintRank, komRank] with 0
-// standing in for an absent rank. Normalized to 9999 sentinels on load.
-type RawYearTuple =
-  | [number, number]
-  | [number, number, number, number];
-type RawRiderIndex = {
-  teams: string[];
-  riders: Record<string, { n: string; fn?: string; ln?: string; c: string | null; yw?: number[]; y: Record<string, RawYearTuple> }>;
-};
-
-const riderIndexBuilt = emptyPerRace<boolean>(() => false);
-
-async function ensureRiderIndexFor(race: RaceId): Promise<void> {
-  if (riderIndexBuilt[race]) return;
-  const raw = await fetchJson<RawRiderIndex>(RIDERS_INDEX_URL[race]);
-  const teamTable = raw.teams;
-  const index = riderIndexByRace[race];
-  for (const [slug, rec] of Object.entries(raw.riders)) {
-    const id = `rider/${slug}`;
-    const years = new Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>();
-    const teams = new Set<string>();
-    for (const [yearStr, [finalRank, teamIdx, sprintRank, komRank]] of Object.entries(rec.y)) {
-      const team = teamIdx >= 0 ? teamTable[teamIdx] : null;
-      years.set(parseInt(yearStr), {
-        finalRank,
-        sprintRank: sprintRank || 9999,
-        komRank: komRank || 9999,
-        team,
-      });
-      if (team) teams.add(team);
-    }
-    index.set(id, { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams });
-  }
-  allTeamsSortedByRace[race] = [...teamTable].sort();
-  allNationalitiesSortedByRace[race] = [...new Set(
-    [...index.values()].map((r) => r.nationality).filter((n): n is string => !!n),
-  )].sort();
-  riderIndexBuilt[race] = true;
-}
-
-async function ensureRiderIndex(): Promise<void> {
-  return ensureRiderIndexFor(currentRace);
-}
-
-// ─── Riders Page ─────────────────────────────────────────────────────────────
-
-let ridersSearchQuery = "";
-let ridersFilterYear = "";
-let ridersFilterTeam = "";
-let ridersFilterNationality = "";
-// AND semantics: a rider must have won every selected category, not just one.
-// Keys are "raceId:category" format (e.g. "tour:gc", "giro:sprint").
-const ridersFilterJerseys = new Set<string>();
-// empty = all races shown; non-empty = only the listed races
-const ridersFilterRaces = new Set<RaceId>();
-
-function selectedRacesForRiders(): RaceId[] {
-  return ridersFilterRaces.size === 0 ? [...RACE_IDS] : RACE_IDS.filter((r) => ridersFilterRaces.has(r));
-}
-
-// Merging clones every rider entry (new Map/Set per rider) across all selected
-// races, which is wasted work when only the search text or a non-race filter
-// changed. Cache the merge, keyed on the selected race set — safe because
-// drawRidersPage() always awaits ensureRiderIndexFor() for every selected race
-// before filteredRiders() can run, and a race's index never mutates afterward.
-let mergedRidersCache: { racesKey: string; entries: RiderEntry[] } | null = null;
-
-function mergedRidersForSelectedRaces(): RiderEntry[] {
-  const races = selectedRacesForRiders();
-  const racesKey = races.join(",");
-  if (mergedRidersCache && mergedRidersCache.racesKey === racesKey) {
-    return mergedRidersCache.entries;
-  }
-  const mergedById = new Map<string, RiderEntry>();
-  for (const race of races) {
-    for (const [id, entry] of riderIndexByRace[race]) {
-      if (mergedById.has(id)) {
-        const existing = mergedById.get(id)!;
-        for (const [year, yearData] of entry.years) {
-          if (!existing.years.has(year)) existing.years.set(year, yearData);
-        }
-        for (const team of entry.teams) existing.teams.add(team);
-      } else {
-        mergedById.set(id, { ...entry, years: new Map(entry.years), teams: new Set(entry.teams) });
-      }
-    }
-  }
-  const entries = [...mergedById.values()];
-  mergedRidersCache = { racesKey, entries };
-  return entries;
-}
-
-function filteredRiders(): RiderEntry[] {
-  const q = ridersSearchQuery.toLowerCase();
-  const yr = ridersFilterYear ? parseInt(ridersFilterYear) : null;
-  const selectedRaces = selectedRacesForRiders();
-  return mergedRidersForSelectedRaces()
-    .filter((e) => {
-      if (q && !e.name.toLowerCase().includes(q) && !displayName(e).toLowerCase().includes(q)) return false;
-      if (yr !== null && !e.years.has(yr)) return false;
-      if (ridersFilterTeam && !e.teams.has(ridersFilterTeam)) return false;
-      if (ridersFilterNationality && e.nationality !== ridersFilterNationality) return false;
-      if (ridersFilterJerseys.size > 0) {
-        for (const key of ridersFilterJerseys) {
-          const [raceId, category] = key.split(":") as [RaceId, JerseyCategory];
-          if (!selectedRaces.includes(raceId)) continue;
-          const raceEntry = riderIndexByRace[raceId].get(e.id);
-          if (!raceEntry || jerseyYearsWon(raceEntry)[category].length === 0) return false;
-        }
-      }
-      return true;
-    })
-    .sort((a, b) => (a.lastName ?? a.name).localeCompare(b.lastName ?? b.name));
-}
-
-async function drawRidersPage() {
-  currentRiderId = null;
-  updateHash();
-  ridersChartEl.innerHTML = "";
-
-  const racesToLoad = selectedRacesForRiders();
-  const needsLoad = racesToLoad.some((r) => !riderIndexBuilt[r]);
-  if (needsLoad) {
-    const loading = document.createElement("div");
-    loading.className = "riders-count-label";
-    loading.textContent = "Loading riders…";
-    ridersChartEl.appendChild(loading);
-    await Promise.all(racesToLoad.map((r) => ensureRiderIndexFor(r)));
-    // Bail out if the user navigated away, or if a rider detail took over.
-    if (currentView !== "riders" || currentRiderId !== null) return;
-    ridersChartEl.innerHTML = "";
-  }
-
-  // Compute year/team/nationality options from all currently-selected races.
-  const allYears = [...new Set(racesToLoad.flatMap((r) => Object.keys(URLS_BY_RACE[r])))]
-    .sort().reverse();
-  const allTeams = [...new Set(racesToLoad.flatMap((r) => allTeamsSortedByRace[r]))].sort();
-  const allNats = [...new Set(racesToLoad.flatMap((r) => allNationalitiesSortedByRace[r]))].sort();
-  const controls = document.createElement("div");
-  controls.className = "riders-controls";
-
-  const searchInput = document.createElement("input");
-  searchInput.type = "text";
-  searchInput.placeholder = "Search rider name…";
-  searchInput.className = "riders-search-input";
-  searchInput.value = ridersSearchQuery;
-
-  const yearSel = document.createElement("select");
-  yearSel.className = "riders-filter-select";
-  [["", "All years"], ...allYears.map((y) => [y, y])].forEach(([val, label]) => {
-    const opt = document.createElement("option");
-    opt.value = val;
-    opt.textContent = label;
-    yearSel.appendChild(opt);
-  });
-  yearSel.value = allYears.includes(ridersFilterYear) ? ridersFilterYear : "";
-  if (!allYears.includes(ridersFilterYear)) ridersFilterYear = "";
-
-  // ── Races multi-select dropdown ───────────────────────────────────────────
-  const raceDropdownWrap = document.createElement("div");
-  raceDropdownWrap.className = "filter-dropdown";
-
-  const raceDropdownBtn = document.createElement("button");
-  raceDropdownBtn.type = "button";
-  raceDropdownBtn.className = "riders-race-dropdown-btn";
-  function updateRaceDropdownBtn() {
-    const label = ridersFilterRaces.size === 0
-      ? "All races"
-      : RACE_IDS.filter((r) => ridersFilterRaces.has(r)).map((r) => RACE_ABBR[r]).join(", ");
-    raceDropdownBtn.textContent = label + " ▾";
-    raceDropdownBtn.classList.toggle("active", ridersFilterRaces.size > 0);
-  }
-  updateRaceDropdownBtn();
-
-  const racePanel = document.createElement("div");
-  racePanel.className = "filter-panel";
-  racePanel.hidden = true;
-
-  const raceShowAll = document.createElement("div");
-  raceShowAll.className = "filter-panel-actions";
-  const raceShowAllBtn = document.createElement("button");
-  raceShowAllBtn.type = "button";
-  raceShowAllBtn.className = "filter-panel-clear";
-  raceShowAllBtn.textContent = "Show all";
-  raceShowAllBtn.addEventListener("click", () => {
-    ridersFilterRaces.clear();
-    racePanel.querySelectorAll<HTMLInputElement>("input[type=checkbox]")
-      .forEach((cb) => (cb.checked = false));
-    updateRaceDropdownBtn();
-    racePanel.hidden = true;
-    drawRidersPage().catch(showLoadError);
-  });
-  raceShowAll.appendChild(raceShowAllBtn);
-  racePanel.appendChild(raceShowAll);
-
-  for (const raceId of RACE_IDS) {
-    const label = document.createElement("label");
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.value = raceId;
-    cb.checked = ridersFilterRaces.has(raceId);
-    cb.addEventListener("change", () => {
-      if (cb.checked) ridersFilterRaces.add(raceId);
-      else ridersFilterRaces.delete(raceId);
-      // If the user unchecks all boxes, treat it as "all races".
-      if (ridersFilterRaces.size === 0) {
-        racePanel.querySelectorAll<HTMLInputElement>("input[type=checkbox]")
-          .forEach((c) => (c.checked = false));
-      }
-      updateRaceDropdownBtn();
-      racePanel.hidden = true;
-      drawRidersPage().catch(showLoadError);
-    });
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(RACE_ABBR[raceId]));
-    racePanel.appendChild(label);
-  }
-
-  raceDropdownBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    racePanel.hidden = !racePanel.hidden;
-  });
-  // Close the panel when clicking outside it.
-  const closeRacePanel = (e: MouseEvent) => {
-    if (!raceDropdownWrap.contains(e.target as Node)) racePanel.hidden = true;
-  };
-  document.addEventListener("click", closeRacePanel);
-
-  raceDropdownWrap.append(raceDropdownBtn, racePanel);
-
-  const teamSel = document.createElement("select");
-  teamSel.className = "riders-filter-select";
-  [["", "All teams"], ...allTeams.map((t) => [t, t])].forEach(([val, label]) => {
-    const opt = document.createElement("option");
-    opt.value = val;
-    opt.textContent = label;
-    teamSel.appendChild(opt);
-  });
-  teamSel.value = allTeams.includes(ridersFilterTeam) ? ridersFilterTeam : "";
-  if (!allTeams.includes(ridersFilterTeam)) ridersFilterTeam = "";
-
-  const nationalitySel = document.createElement("select");
-  nationalitySel.className = "riders-filter-select";
-  [["", "All nationalities"], ...allNats.map((n) => [n, n])].forEach(([val, label]) => {
-    const opt = document.createElement("option");
-    opt.value = val;
-    opt.textContent = label;
-    nationalitySel.appendChild(opt);
-  });
-  nationalitySel.value = allNats.includes(ridersFilterNationality) ? ridersFilterNationality : "";
-  if (!allNats.includes(ridersFilterNationality)) ridersFilterNationality = "";
-
-  // Jersey filter toggles grouped by race. AND semantics: selecting more than
-  // one narrows to riders who've won every selected category in that race.
-  const jerseyFilterGroup = document.createElement("div");
-  jerseyFilterGroup.className = "jersey-filter-group";
-  const jerseyFilterBtns: HTMLButtonElement[] = [];
-  racesToLoad.forEach((race, raceIdx) => {
-    if (raceIdx > 0) {
-      const sep = document.createElement("div");
-      sep.className = "jersey-filter-sep";
-      const spacer = document.createElement("div");
-      spacer.className = "jersey-filter-sep-spacer";
-      spacer.setAttribute("aria-hidden", "true");
-      spacer.textContent = " "; // matches jersey-filter-race-label's line height exactly
-      const dash = document.createElement("div");
-      dash.className = "jersey-filter-sep-dash";
-      dash.textContent = "-";
-      sep.append(spacer, dash);
-      jerseyFilterGroup.appendChild(sep);
-    }
-    const raceGroup = document.createElement("div");
-    raceGroup.className = "jersey-filter-race-group";
-    const raceLabel = document.createElement("div");
-    raceLabel.className = "jersey-filter-race-label";
-    raceLabel.textContent = RACE_SHORT_LABEL[race];
-    raceGroup.appendChild(raceLabel);
-    const raceBtns = document.createElement("div");
-    raceBtns.className = "jersey-filter-race-btns";
-    raceGroup.appendChild(raceBtns);
-    jerseyFilterGroup.appendChild(raceGroup);
-    (Object.keys(JERSEY_LABELS) as JerseyCategory[]).forEach((category) => {
-      if (category === "youth" && !RACES[race].hasYouth) return;
-      const key = `${race}:${category}`;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "jersey-filter-btn";
-      btn.classList.toggle("active", ridersFilterJerseys.has(key));
-      btn.title = `${RACE_ABBR[race]} - ${JERSEY_SIMPLE_LABEL[category]}`;
-      btn.innerHTML = jerseyIconSvgForRace(category, race);
-      btn.dataset.key = key;
-      raceBtns.appendChild(btn);
-      jerseyFilterBtns.push(btn);
-    });
-  });
-
-  const clearBtn = document.createElement("button");
-  clearBtn.type = "button";
-  clearBtn.className = "riders-clear-btn";
-  clearBtn.textContent = "Clear All";
-
-  const countLabel = document.createElement("span");
-  countLabel.className = "riders-count-label";
-
-  controls.append(searchInput, yearSel, raceDropdownWrap, teamSel, nationalitySel, jerseyFilterGroup, clearBtn, countLabel);
-  ridersChartEl.appendChild(controls);
-
-  const grid = document.createElement("div");
-  grid.className = "riders-grid";
-  ridersChartEl.appendChild(grid);
-
-  function refreshGrid() {
-    const results = filteredRiders();
-    countLabel.textContent = `${results.length.toLocaleString()} rider${results.length !== 1 ? "s" : ""}`;
-    grid.innerHTML = "";
-    const frag = document.createDocumentFragment();
-    for (const entry of results) {
-      const btn = document.createElement("button");
-      btn.className = "rider-name-btn";
-      btn.appendChild(document.createTextNode(displayName(entry)));
-      const flag = nationalityFlagEl(entry.nationality);
-      if (flag) btn.appendChild(flag);
-      for (const jersey of jerseyIconsElMultiRace(entry, racesToLoad)) btn.appendChild(jersey);
-      btn.title = displayName(entry);
-      btn.dataset.id = entry.id;
-      frag.appendChild(btn);
-    }
-    grid.appendChild(frag);
-  }
-
-  // One delegated listener instead of one closure per button (~5,400 of them).
-  grid.addEventListener("click", (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".rider-name-btn");
-    if (btn?.dataset.id) drawRiderDetail(btn.dataset.id);
-  });
-
-  // Debounced: refreshGrid rebuilds the whole grid, so don't do it per keystroke.
-  const debouncedSearch = debounce(() => { ridersSearchQuery = searchInput.value; refreshGrid(); }, 150);
-  searchInput.addEventListener("input", debouncedSearch);
-  yearSel.addEventListener("change", () => { ridersFilterYear = yearSel.value; refreshGrid(); });
-  teamSel.addEventListener("change", () => { ridersFilterTeam = teamSel.value; refreshGrid(); });
-  nationalitySel.addEventListener("change", () => { ridersFilterNationality = nationalitySel.value; refreshGrid(); });
-  for (const btn of jerseyFilterBtns) {
-    btn.addEventListener("click", () => {
-      const key = btn.dataset.key!;
-      if (ridersFilterJerseys.has(key)) ridersFilterJerseys.delete(key);
-      else ridersFilterJerseys.add(key);
-      btn.classList.toggle("active", ridersFilterJerseys.has(key));
-      refreshGrid();
-    });
-  }
-  clearBtn.addEventListener("click", () => {
-    ridersSearchQuery = "";
-    ridersFilterYear = "";
-    ridersFilterTeam = "";
-    ridersFilterNationality = "";
-    ridersFilterJerseys.clear();
-    ridersFilterRaces.clear();
-    searchInput.value = "";
-    yearSel.value = "";
-    teamSel.value = "";
-    nationalitySel.value = "";
-    for (const btn of jerseyFilterBtns) btn.classList.remove("active");
-    document.removeEventListener("click", closeRacePanel);
-    drawRidersPage().catch(showLoadError);
-  });
-  refreshGrid();
-}
-
-async function drawRiderDetail(riderId: string): Promise<void> {
-  // Claim the slot before the first await so drawRidersPage can bail if it
-  // resumes from its own await and sees a detail is now in flight.
-  currentRiderId = riderId;
-  ridersChartEl.innerHTML = "";
-
-  // Load all race indexes in parallel, then find rider in each
-  await Promise.all(RACE_IDS.map((r) => ensureRiderIndexFor(r)));
-  const byRace = new Map<RaceId, RiderEntry>();
-  for (const race of RACE_IDS) {
-    const e = riderIndexByRace[race].get(riderId);
-    if (e) byRace.set(race, e);
-  }
-  if (byRace.size === 0) return;
-
-  updateHash();
-
-  // Prefer entry from currentRace for name/nationality; fall back to first found
-  const primaryEntry = byRace.get(currentRace) ?? [...byRace.values()][0];
-
-  // Badge config per race (for toggle buttons and DNF dot outlines)
-  const BADGE: Record<RaceId, { bg: string; text: string; label: string }> = {
-    tour:   { bg: "#FFD400", text: "#111", label: "T" },
-    giro:   { bg: "#E4007C", text: "#fff", label: "G" },
-    vuelta: { bg: "#E30613", text: "#fff", label: "V" },
-  };
-
-  // ── Header ──────────────────────────────────────────────────────────────────
-  const header = document.createElement("div");
-  header.className = "rider-detail-header";
-
-  const backBtn = document.createElement("button");
-  backBtn.className = "rider-back-btn";
-  backBtn.textContent = "← All Riders";
-  backBtn.addEventListener("click", () => drawRidersPage());
-
-  const nameEl = document.createElement("h2");
-  nameEl.className = "rider-detail-name";
-  nameEl.appendChild(document.createTextNode(displayName(primaryEntry)));
-  const detailFlag = nationalityFlagEl(primaryEntry.nationality);
-  if (detailFlag) nameEl.appendChild(detailFlag);
-
-  const metaEl = document.createElement("div");
-  metaEl.className = "rider-detail-meta";
-  const metaParts: string[] = [];
-  for (const [race, entry] of byRace) {
-    const yrs = [...entry.years.keys()].sort((a, b) => a - b);
-    const finished = yrs.filter((yr) => entry.years.get(yr)!.finalRank < 9999);
-    const best = finished.length > 0
-      ? Math.min(...finished.map((yr) => entry.years.get(yr)!.finalRank))
-      : null;
-    const raceName = race === "tour" ? "TDF" : race === "giro" ? "Giro" : "Vuelta";
-    let part = `${yrs.length} ${raceName}`;
-    if (best !== null) part += ` · Best #${best}`;
-    metaParts.push(part);
-  }
-  metaEl.textContent = metaParts.join(", ");
-  header.append(backBtn, nameEl, metaEl);
-  ridersChartEl.appendChild(header);
-
-  // ── Toggle bar: race buttons (T/G/V) + divider + classification buttons ───────
-  type ClassifId = "gc" | "sprint" | "kom";
-  const activeRaces   = new Set<RaceId>(byRace.keys());
-  const activeClassifs = new Set<ClassifId>(["gc", "sprint", "kom"]);
-
-  const toggleGroup = document.createElement("div");
-  toggleGroup.className = "race-toggle-group";
-
-  // Race toggles
-  for (const race of RACE_IDS) {
-    const btn = document.createElement("button");
-    btn.className = "race-toggle-btn";
-    const hasData = byRace.has(race);
-    const badge = BADGE[race];
-    btn.textContent = badge.label;
-    btn.title = RACES[race].name;
-    btn.style.setProperty("--race-color", badge.bg);
-    btn.style.setProperty("--race-text", badge.text);
-    if (!hasData) {
-      btn.classList.add("no-data");
-    } else {
-      btn.classList.add("active");
-      btn.addEventListener("click", () => {
-        if (activeRaces.has(race)) {
-          if (activeRaces.size === 1) return;
-          activeRaces.delete(race);
-          btn.classList.replace("active", "inactive");
-        } else {
-          activeRaces.add(race);
-          btn.classList.replace("inactive", "active");
-        }
-        redrawChart();
-      });
-    }
-    toggleGroup.appendChild(btn);
-  }
-
-  // Divider
-  const divider = document.createElement("span");
-  divider.className = "toggle-divider";
-  divider.textContent = "|";
-  toggleGroup.appendChild(divider);
-
-  // Classification toggles
-  for (const classif of (["gc", "sprint", "kom"] as ClassifId[])) {
-    const label = classif === "gc" ? "GC" : classif === "sprint" ? "Sprint" : "KOM";
-    const btn = document.createElement("button");
-    btn.className = "classif-toggle-btn active";
-    btn.textContent = label;
-    btn.addEventListener("click", () => {
-      if (activeClassifs.has(classif)) {
-        if (activeClassifs.size === 1) return;
-        activeClassifs.delete(classif);
-        btn.classList.replace("active", "inactive");
-      } else {
-        activeClassifs.add(classif);
-        btn.classList.replace("inactive", "active");
-      }
-      redrawChart();
-    });
-    toggleGroup.appendChild(btn);
-  }
-  ridersChartEl.appendChild(toggleGroup);
-
-  // ── Chart container ──────────────────────────────────────────────────────────
-  const chartContainer = document.createElement("div");
-  chartContainer.className = "rider-career-chart";
-  ridersChartEl.appendChild(chartContainer);
-
-  function redrawChart() {
-    chartContainer.innerHTML = "";
-
-    type CrossPt = {
-      year: number; race: RaceId;
-      finalRank: number; sprintRank: number; komRank: number; team: string | null;
-    };
-
-    const allPoints: CrossPt[] = [];
-    for (const race of activeRaces) {
-      for (const [yr, data] of byRace.get(race)!.years) {
-        allPoints.push({ year: yr, race, ...data });
-      }
-    }
-    if (allPoints.length === 0) return;
-
-    const allYears = allPoints.map((p) => p.year);
-    const minYear = Math.min(...allYears);
-    const maxYear = Math.max(...allYears);
-
-    // Defer one tick so the flex container has a chance to lay out
-    setTimeout(() => {
-      const rect = chartContainer.getBoundingClientRect();
-      const W = Math.max(rect.width || 800, 500);
-      const H = Math.max(rect.height || 380, 280);
-      const margin = { top: 50, right: 40, bottom: 44, left: 60 };
-      const iW = W - margin.left - margin.right;
-      const iH = H - margin.top - margin.bottom;
-
-      // Max rank across all active classifications
-      const rankValues: number[] = [];
-      for (const p of allPoints) {
-        if (activeClassifs.has("gc")     && p.finalRank  < 9999) rankValues.push(p.finalRank);
-        if (activeClassifs.has("sprint") && p.sprintRank < 9999) rankValues.push(p.sprintRank);
-        if (activeClassifs.has("kom")    && p.komRank    < 9999) rankValues.push(p.komRank);
-      }
-      const maxRank = Math.max(d3.max(rankValues) ?? 10, 10);
-
-      // GC DNF zone (only when GC is active)
-      const gcDnfPts = activeClassifs.has("gc")
-        ? allPoints.filter((p) => p.finalRank >= 9999)
-        : [];
-      const DNF_H = gcDnfPts.length > 0 ? 36 : 0;
-      const mainH = iH - DNF_H - (DNF_H > 0 ? 8 : 0);
-
-      const xPad = Math.max((maxYear - minYear) * 0.06, 1.5);
-      const xScale2 = d3.scaleLinear()
-        .domain([minYear - xPad, maxYear + xPad])
-        .range([0, iW]);
-      const yScale2 = d3.scaleLinear()
-        .domain([1, maxRank])
-        .range([0, mainH]);
-
-      // Per-year x offset so dots from different races sharing a year sit
-      // side-by-side (touching) rather than on top of each other.
-      const uniqueYears = [...new Set(allPoints.map((p) => p.year))].sort((a, b) => a - b);
-      const racesPerYear = new Map<number, RaceId[]>();
-      for (const year of uniqueYears) {
-        racesPerYear.set(year, [...activeRaces].filter((r) => allPoints.some((p) => p.race === r && p.year === year)));
-      }
-      const DOT_R = 5;
-      function xPos(race: RaceId, year: number): number {
-        const at = racesPerYear.get(year) ?? [];
-        if (at.length <= 1) return xScale2(year);
-        const idx = at.indexOf(race);
-        return xScale2(year) + (idx - (at.length - 1) / 2) * (DOT_R * 2 + 1);
-      }
-
-      const svg = d3.select(chartContainer).append("svg")
-        .attr("width", W).attr("height", H)
-        .attr("viewBox", `0 0 ${W} ${H}`);
-      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-      // Y grid + axis
-      const yTickVals = maxRank <= 10
-        ? d3.range(1, maxRank + 1)
-        : d3.range(0, maxRank + 1, maxRank > 50 ? 20 : 10).filter((v) => v > 0);
-      g.append("g").attr("class", "grid grid-y")
-        .call(d3.axisLeft(yScale2).tickValues(yTickVals).tickSize(-iW).tickFormat(() => ""));
-      g.append("g").attr("class", "axis y-axis")
-        .call(d3.axisLeft(yScale2).tickValues(yTickVals).tickFormat((d) => `#${d}`));
-
-      // X axis — tick only years present in active data
-      const xAxis = d3.axisBottom(xScale2)
-        .ticks(Math.min(uniqueYears.length, 12))
-        .tickFormat((d) => String(d));
-      if (uniqueYears.length <= 20) xAxis.tickValues(uniqueYears);
-      g.append("g").attr("class", "axis x-axis")
-        .attr("transform", `translate(0,${iH - 4})`)
-        .call(xAxis)
-        .call((ax) => ax.select(".domain").remove())
-        .call((ax) => ax.selectAll(".tick line").remove());
-
-      // Axis labels
-      g.append("text").attr("class", "axis-label")
-        .attr("transform", `translate(${-margin.left + 14},${mainH / 2}) rotate(-90)`)
-        .attr("text-anchor", "middle")
-        .text("Rank");
-      g.append("text").attr("class", "axis-label")
-        .attr("x", iW / 2).attr("y", iH + margin.bottom - 8)
-        .attr("text-anchor", "middle")
-        .text("Year");
-
-      // Legend: 1–3 rows depending on active classifications.
-      // Legend: columns per active race, rows per active classification.
-      // Text is left-aligned so "T/S/K" first letters line up vertically.
-      // Layout: [line 12px] [gap 4px] [text left-aligned] — per column.
-      // Columns are right-to-left with a 12px gap between them.
-      const activeList = [...activeRaces];
-      const CHAR_W = 7, LINE_W = 12, LINE_GAP = 4, COL_GAP = 12;
-      const raceLabel = (r: RaceId) => r === "tour" ? "Tour" : r === "giro" ? "Giro" : "Vuelta";
-      const colMaxW = (r: RaceId): number => {
-        const labels = [raceLabel(r)];
-        if (activeClassifs.has("sprint")) labels.push("Sprint");
-        if (activeClassifs.has("kom"))    labels.push("KOM");
-        return Math.max(...labels.map(l => l.length * CHAR_W));
-      };
-
-      // Line-start x per race, computed right-to-left
-      const lineX = new Map<RaceId, number>();
-      let rx = iW;
-      for (let i = activeList.length - 1; i >= 0; i--) {
-        const race = activeList[i];
-        const colW = LINE_W + LINE_GAP + colMaxW(race);
-        rx -= colW;
-        lineX.set(race, rx);
-        if (i > 0) rx -= COL_GAP;
-      }
-      const textX = (r: RaceId) => lineX.get(r)! + LINE_W + LINE_GAP;
-
-      // Y positions, bottom-up
-      let nextLegendY = -9;
-      const komY    = activeClassifs.has("kom")    ? nextLegendY : null;
-      if (komY    !== null) nextLegendY -= 13;
-      const sprintY = activeClassifs.has("sprint") ? nextLegendY : null;
-      if (sprintY !== null) nextLegendY -= 13;
-      const raceY   = nextLegendY;
-
-      // Row 1: race name, solid line
-      for (const race of activeList) {
-        const lx = lineX.get(race)!;
-        g.append("line")
-          .attr("x1", lx).attr("x2", lx + LINE_W)
-          .attr("y1", raceY).attr("y2", raceY)
-          .attr("stroke", RACES[race].chart.gc).attr("stroke-width", 2);
-        g.append("text")
-          .attr("x", textX(race)).attr("y", raceY)
-          .attr("text-anchor", "start").attr("dominant-baseline", "middle")
-          .attr("font-size", "11px").attr("fill", RACES[race].chart.gc)
-          .text(raceLabel(race));
-      }
-
-      // Row 2: Sprint, dashed
-      if (sprintY !== null) {
-        for (const race of activeList) {
-          const lx = lineX.get(race)!;
-          g.append("line")
-            .attr("x1", lx).attr("x2", lx + LINE_W)
-            .attr("y1", sprintY).attr("y2", sprintY)
-            .attr("stroke", RACES[race].chart.sprint).attr("stroke-width", 1.5)
-            .attr("stroke-dasharray", "4,3");
-          g.append("text")
-            .attr("x", textX(race)).attr("y", sprintY)
-            .attr("text-anchor", "start").attr("dominant-baseline", "middle")
-            .attr("font-size", "10px").attr("fill", RACES[race].chart.sprint)
-            .text("Sprint");
-        }
-      }
-
-      // Row 3: KOM, dotted
-      if (komY !== null) {
-        for (const race of activeList) {
-          const lx = lineX.get(race)!;
-          g.append("line")
-            .attr("x1", lx).attr("x2", lx + LINE_W)
-            .attr("y1", komY).attr("y2", komY)
-            .attr("stroke", RACES[race].chart.kom).attr("stroke-width", 1.5)
-            .attr("stroke-dasharray", "2,3");
-          g.append("text")
-            .attr("x", textX(race)).attr("y", komY)
-            .attr("text-anchor", "start").attr("dominant-baseline", "middle")
-            .attr("font-size", "10px").attr("fill", RACES[race].chart.kom)
-            .text("KOM");
-        }
-      }
-
-      // DNF zone divider
-      if (gcDnfPts.length > 0) {
-        g.append("line")
-          .attr("x1", 0).attr("x2", iW)
-          .attr("y1", mainH + 4).attr("y2", mainH + 4)
-          .attr("stroke", "#4a5160").attr("stroke-dasharray", "3,3").attr("stroke-opacity", 0.6);
-        g.append("text")
-          .attr("x", -6).attr("y", mainH + DNF_H / 2 + 4)
-          .attr("text-anchor", "end").attr("dominant-baseline", "middle")
-          .attr("font-size", "10px").attr("fill", "#aaa").attr("fill-opacity", 0.7)
-          .text("DNF/DNS");
-      }
-
-      // Helper: draw a classification line split on >5yr gaps, with optional dash
-      function drawLine(
-        data: CrossPt[],
-        xFn: (d: CrossPt) => number,
-        yFn: (d: CrossPt) => number,
-        color: string,
-        dashArray = "",
-      ) {
-        if (data.length < 2) return;
-        const lineGen = d3.line<CrossPt>().x(xFn).y(yFn).curve(d3.curveMonotoneX);
-        const segs: CrossPt[][] = [];
-        let seg: CrossPt[] = [data[0]];
-        for (let i = 1; i < data.length; i++) {
-          if (data[i].year - data[i - 1].year <= 5) seg.push(data[i]);
-          else { segs.push(seg); seg = [data[i]]; }
-        }
-        segs.push(seg);
-        for (const s of segs) {
-          if (s.length > 1) {
-            const p = g.append("path").datum(s)
-              .attr("fill", "none").attr("stroke", color)
-              .attr("stroke-width", 1.5).attr("stroke-opacity", 0.5)
-              .attr("d", lineGen);
-            if (dashArray) p.attr("stroke-dasharray", dashArray);
-          }
-        }
-      }
-
-      // Shared dot-click handler: switch race + year + metric then load stage chart
-      function doNavigate(d: CrossPt, metric: "gc" | "points" | "kom") {
-        setRace(d.race);
-        currentYear = String(d.year);
-        yearSelectEl.value = currentYear;
-        currentMetric = metric;
-        metricSelectEl.value = metric;
-        loadDataset(currentYear).then(() => {
-          selected = new Set([riderId]);
-          buildLegend();
-          switchView("stage");
-        }).catch(showLoadError);
-      }
-
-      // Draw lines + dots per active race × classification
-      for (const race of activeRaces) {
-        const racePts = allPoints.filter((p) => p.race === race).sort((a, b) => a.year - b.year);
-        const { gc: gcColor, sprint: sprintColor, kom: komColor } = RACES[race].chart;
-        const xFn = (d: CrossPt) => xPos(d.race, d.year);
-
-        const showTip = (event: MouseEvent, d: CrossPt) => {
-          const gcPart     = d.finalRank  < 9999 ? `<div>GC #${d.finalRank}</div>` : "<div>GC DNF/DNS</div>";
-          const sprintPart = d.sprintRank < 9999 ? `<div style="color:${sprintColor}">Sprint #${d.sprintRank}</div>` : "";
-          const komPart    = d.komRank    < 9999 ? `<div style="color:${komColor}">KOM #${d.komRank}</div>` : "";
-          tooltipEl.innerHTML = `
-            <div class="t-name">${d.year} ${RACES[d.race].name}</div>
-            <div class="t-team">${d.team ?? "—"}</div>
-            ${gcPart}${sprintPart}${komPart}
-            <div style="color:var(--text-dim);font-size:11px">Click to view stage chart</div>
-          `;
-          positionTooltip(event);
-        };
-
-        if (activeClassifs.has("gc")) {
-          const gcFinish = racePts.filter((p) => p.finalRank < 9999);
-          drawLine(gcFinish, xFn, (d) => yScale2(d.finalRank), gcColor);
-          g.selectAll<SVGCircleElement, CrossPt>(`.career-gc-${race}`)
-            .data(gcFinish).join("circle")
-            .attr("class", `career-gc-${race}`)
-            .attr("cx", xFn).attr("cy", (d) => yScale2(d.finalRank))
-            .attr("r", DOT_R).attr("fill", gcColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
-            .style("cursor", "pointer")
-            .on("mousemove", showTip).on("mouseleave", () => hideTooltip())
-            .on("click", (_e, d) => doNavigate(d, "gc"));
-
-          const dnfRace = racePts.filter((p) => p.finalRank >= 9999);
-          if (dnfRace.length > 0 && gcDnfPts.length > 0) {
-            g.selectAll<SVGCircleElement, CrossPt>(`.career-dnf-${race}`)
-              .data(dnfRace).join("circle")
-              .attr("class", `career-dnf-${race}`)
-              .attr("cx", xFn).attr("cy", mainH + DNF_H / 2 + 4)
-              .attr("r", 6).attr("fill", "transparent").attr("stroke", BADGE[race].bg).attr("stroke-width", 1.5)
-              .style("cursor", "pointer")
-              .on("mousemove", showTip).on("mouseleave", () => hideTooltip())
-              .on("click", (_e, d) => doNavigate(d, "gc"));
-          }
-        }
-
-        if (activeClassifs.has("sprint")) {
-          const sprintData = racePts.filter((p) => p.sprintRank < 9999);
-          drawLine(sprintData, xFn, (d) => yScale2(d.sprintRank), sprintColor, "4,3");
-          g.selectAll<SVGCircleElement, CrossPt>(`.career-sprint-${race}`)
-            .data(sprintData).join("circle")
-            .attr("class", `career-sprint-${race}`)
-            .attr("cx", xFn).attr("cy", (d) => yScale2(d.sprintRank))
-            .attr("r", 4).attr("fill", sprintColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
-            .style("cursor", "pointer")
-            .on("mousemove", showTip).on("mouseleave", () => hideTooltip())
-            .on("click", (_e, d) => doNavigate(d, "points"));
-        }
-
-        if (activeClassifs.has("kom")) {
-          const komData = racePts.filter((p) => p.komRank < 9999);
-          drawLine(komData, xFn, (d) => yScale2(d.komRank), komColor, "2,3");
-          g.selectAll<SVGCircleElement, CrossPt>(`.career-kom-${race}`)
-            .data(komData).join("circle")
-            .attr("class", `career-kom-${race}`)
-            .attr("cx", xFn).attr("cy", (d) => yScale2(d.komRank))
-            .attr("r", 4).attr("fill", komColor).attr("stroke", "var(--bg)").attr("stroke-width", 1.5)
-            .style("cursor", "pointer")
-            .on("mousemove", showTip).on("mouseleave", () => hideTooltip())
-            .on("click", (_e, d) => doNavigate(d, "kom"));
-        }
-      }
-    }, 0);
-  }
-
-  redrawChart();
 }
 
 init();
