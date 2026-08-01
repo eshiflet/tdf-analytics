@@ -101,7 +101,7 @@ flowchart TD
 
 - **Exporters** (`export_gc.py`, `export_riders_index.py`, `export_race_summary.py`,
   `export_all_races_summary.py`) — read `cycling.db` (+ a few JSON supplements like
-  `sprint_points.json`, `*_gc_winner_times.json`) and write the compact per-race JSON files
+  `{race}_sprint_points.json`, `{race}_gc_winner_times.json`) and write the compact per-race JSON files
   the frontend actually bundles. All are `--race`-parameterized except
   `export_all_races_summary.py`, which is TDF-only (predates the other races). Only
   `export_gc.py` takes `--year YYYY` to scope a run to one edition — it must be passed as

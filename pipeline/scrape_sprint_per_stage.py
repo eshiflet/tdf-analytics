@@ -7,7 +7,7 @@ For each stage, fetches:
   procyclingstats.com/race/tour-de-france/YEAR/stage-N-points
 
 This gives CUMULATIVE sprint points after each stage. We compute the
-per-stage INCREMENT and store it in sprint_points.json (replacing old bad data).
+per-stage INCREMENT and store it in tour_sprint_points.json (replacing old bad data).
 
 Usage:
   python3 scrape_sprint_per_stage.py              # default target years (2000–2010)
@@ -25,7 +25,7 @@ import urllib.request
 import urllib.error
 
 HERE        = os.path.dirname(os.path.abspath(__file__))
-SPRINT_PATH = os.path.join(HERE, "sprint_points.json")
+SPRINT_PATH = os.path.join(HERE, "tour_sprint_points.json")
 DB_PATH     = os.path.join(HERE, "cycling.db")
 
 TARGET_YEARS = [1997, 1999] + list(range(2000, 2011)) + [2012, 2013, 2019]

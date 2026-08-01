@@ -2,7 +2,7 @@
 """
 Scrape the GC winner's total race time from Wikipedia for each Tour de France.
 
-Stores results in gc_winner_times.json as {year: seconds}.
+Stores results in tour_gc_winner_times.json as {year: seconds}.
 
 Usage:
   python3 scrape_gc_winner_times.py          # all years with a race
@@ -18,7 +18,7 @@ import urllib.request
 import urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT_PATH = os.path.join(HERE, "gc_winner_times.json")
+OUT_PATH = os.path.join(HERE, "tour_gc_winner_times.json")
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; tdf-analytics/1.0)"}
 DELAY = 1.5

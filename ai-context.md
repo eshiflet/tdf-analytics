@@ -67,7 +67,7 @@ A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen olde
 
 All four merges were verified byte-identical to the scripts they replaced before deletion: the ingest merge via an in-process run against scratch DB copies (2,120 Giro stages + 1,644 Vuelta stages + 8,973 rider names matched exactly; the real `cycling.db` was never opened, only redirected copies), and the two export merges via a real run + `git diff` showing zero changes to the committed `riders_index.json`/`all_races_summary.json` output files.
 
-**Planned direction:** one-day classics (e.g. Paris–Roubaix) will be added as races with a single stage. The DB schema already supports this (`races.race_type`); the remaining work is (a) capability flags in the `RACES` registry so stage-chart/sprint/KOM views disable for one-day races, (b) ~~consolidating the per-race ingest/export scripts~~ — done 2026-07-18, see above — and (c) moving TDF's unprefixed supplemental files (`sprint_points.json` etc., and `export_all_races_summary.py`'s output) into a per-race layout — deferred until after the 2026 Tour ends.
+**Planned direction:** one-day classics (e.g. Paris–Roubaix) will be added as races with a single stage. The DB schema already supports this (`races.race_type`); the remaining work is (a) capability flags in the `RACES` registry so stage-chart/sprint/KOM views disable for one-day races — the only item still open. (b) ~~consolidating the per-race ingest/export scripts~~ — done 2026-07-18, see above. (c) ~~moving TDF's unprefixed supplemental files into a per-race layout~~ — done 2026-07-31 (after the 2026 Tour ended, as planned): the frontend side (`export_all_races_summary.py`'s output) already wrote to `cycling-app/src/data/tour/`, matching Giro/Vuelta; the actual gap was in `pipeline/`, where TDF's per-stage supplement files predated the `{race}_` prefix convention. `sprint_points.json` → `tour_sprint_points.json`, `kom_points.json` → `tour_kom_points.json`, `kom_points_reconciled.json` → `tour_kom_points_reconciled.json`, `gc_winner_times.json` → `tour_gc_winner_times.json`, `all_races_summary_overrides.json` → `tour_all_races_summary_overrides.json`. `export_gc.py` also collapsed its two separate code paths (hardcoded TDF constants vs. a `race_subdir`-parameterized override for Giro/Vuelta) into one `resolve_supplement_paths()` lookup used by all three races. TDF-only files with no Giro/Vuelta sibling (`wiki_race_distances.json`, `gc_all_times.json`, `kom_totals.json`, `kom_reconcile_report.json`, `profile_icons.json`) were left unprefixed on purpose — there's no naming collision to resolve.
 
 ---
 
@@ -146,8 +146,8 @@ tdf-analytics/
     │   ├── YEAR/stage_N.json         # Historical years organized by subdirectory (e.g. giro_scrapes/1980/stage_1.json)
     │   ├── stage_N.json              # 2026 files at flat level (legacy layout — 2026 was scraped before year dirs existed)
     │   └── save_server.py            # Local HTTP server (localhost:8765) for saving stage JSON via POST
-    ├── giro_sprint_points.json       # Giro sprint points per rider per stage (same format as sprint_points.json)
-    ├── giro_kom_points.json          # Giro KOM points per rider per stage (same format as kom_points.json)
+    ├── giro_sprint_points.json       # Giro sprint points per rider per stage (same format as tour_sprint_points.json)
+    ├── giro_kom_points.json          # Giro KOM points per rider per stage (same format as tour_kom_points.json)
     ├── giro_races_summary_overrides.json # Per-year field overrides for export_race_summary.py --race giro
     │                                 #   Contains 88 entries with correct gcWinnerTimeSeconds/slowestFinisherTimeSeconds
     │                                 #   sourced from PCS GC standings pages (DB summed stage times were unreliable)
@@ -196,17 +196,17 @@ tdf-analytics/
                                       #   sourced from PCS GC standings pages (DB summed stage times were unreliable)
     │
     │   # TDF supplemental data files (all in git)
-    ├── sprint_points.json            # Green jersey points per rider per stage (1953–2025)
-    ├── kom_points.json               # KOM points per rider per stage (raw PCS scrape)
-    ├── kom_points_reconciled.json    # KOM points after Wikipedia patching (authoritative)
+    ├── tour_sprint_points.json       # Green jersey points per rider per stage (1953–2025)
+    ├── tour_kom_points.json          # KOM points per rider per stage (raw PCS scrape)
+    ├── tour_kom_points_reconciled.json # KOM points after Wikipedia patching (authoritative)
     ├── kom_totals.json               # Final KOM totals from Wikipedia + bikeraceinfo
     ├── kom_reconcile_report.json     # Year-by-year reconciliation results
     ├── profile_icons.json            # Raw PCS profile-icon code per stage (p1–p5 — see warning below)
     ├── bri_stages.json               # Per-stage results from bikeraceinfo (1960–2005)
-    ├── gc_winner_times.json          # Official GC winner total time per year from Wikipedia
+    ├── tour_gc_winner_times.json     # Official GC winner total time per year from Wikipedia
     ├── gc_all_times.json             # Official GC times for top ~10 riders per year from Wikipedia
     ├── wiki_race_distances.json      # Official total race distance per year from Wikipedia infobox
-    ├── all_races_summary_overrides.json # Per-year field overrides for export_all_races_summary.py
+    ├── tour_all_races_summary_overrides.json # Per-year field overrides for export_all_races_summary.py
     │                                   #   (e.g. full-planned-route elevation for an in-progress year)
     │
     │   # Scraping scripts
@@ -251,11 +251,11 @@ PCS website  →  tdf_YEAR_full.json  (scraped via a real browser — see note b
                                       │
               ┌───────────────────────┴──────────────────────────────┐
               │  supplemental JSON files:                             │
-              │  sprint_points.json       (green jersey pts)          │
-              │  kom_points_reconciled.json (KOM pts)                 │
+              │  tour_sprint_points.json  (green jersey pts)          │
+              │  tour_kom_points_reconciled.json (KOM pts)            │
               │  profile_icons.json       (raw PCS icon codes)        │
               │  gc_all_times.json        (official rider times)      │
-              │  gc_winner_times.json     (official winner times)     │
+              │  tour_gc_winner_times.json (official winner times)    │
               └───────────────────────┬──────────────────────────────┘
                                       ↓
                        export_gc.py + export_all_races_summary.py
@@ -351,15 +351,15 @@ All three pipelines feed into the same `cycling.db` (the `races` table distingui
 
 This matters when scraping a TTT stage whose PCS page doesn't populate `won_how` with descriptive text (seen on 2026 stage 1) — you must **manually set that stage's `info["Won how"]`** in the raw `tdf_YEAR_full.json` to a string containing "team time trial" (or "time trial" for a lone ITT) before running `add_pre1960.py`, or it silently misclassifies as Flat/Hilly/Mountain from the icon alone.
 
-**`sprint_points.json`** — Green jersey points per stage per rider.
+**`tour_sprint_points.json`** — Green jersey points per stage per rider.
 ```json
 { "2025": [ {}, {"rider/jonathan-milan": 12, ...}, ... ] }
 ```
 Array index = stage position in DB ordering (matches `stages` table order). Each dict maps `rider/rider-slug` → points earned that stage from intermediate sprints + stage finish only (KOM sprint points excluded). Data starts at 1953. **Golf scoring 1953–1958**: lower cumulative points = better rank (Schär system).
 
-**`kom_points_reconciled.json`** — KOM points, same structure as sprint_points. For 1933–1938, Wikipedia top-10 data was merged via `patch_kom_wikipedia.py` because PCS only had top 3–5. This is the authoritative source; `kom_points.json` is the raw PCS scrape.
+**`tour_kom_points_reconciled.json`** — KOM points, same structure as sprint_points. For 1933–1938, Wikipedia top-10 data was merged via `patch_kom_wikipedia.py` because PCS only had top 3–5. This is the authoritative source; `tour_kom_points.json` is the raw PCS scrape.
 
-**`gc_winner_times.json`** — `{"1903": 340380, "1904": 345955, ...}` — official total race time in seconds for the GC winner, scraped from Wikipedia's General Classification table. 103 of 112 years. Missing: 1905–1912 (points-system era, no times) and 1904 (non-standard table). 2000–2005 uses Armstrong's time (DSQ in 2012 but fastest in the race).
+**`tour_gc_winner_times.json`** — `{"1903": 340380, "1904": 345955, ...}` — official total race time in seconds for the GC winner, scraped from Wikipedia's General Classification table. 103 of 112 years. Missing: 1905–1912 (points-system era, no times) and 1904 (non-standard table). 2000–2005 uses Armstrong's time (DSQ in 2012 but fastest in the race).
 
 **`gc_all_times.json`** — `{"1903": {"rider/garin-maurice": 340394, ...}, ...}` — official total times for all riders listed in Wikipedia's GC table (typically top 10 per year). Used to set `totalTimeSeconds` in the export. 1,144 rider-times across 104 years.
 
@@ -375,7 +375,7 @@ Array index = stage position in DB ordering (matches `stages` table order). Each
 ```
 All 124 years 1903–2026 are present (non-race years: WWI 1915–1918, WWII 1940–1946 = null values).  
 `slowestFinisherTimeSeconds` = `gcWinnerTimeSeconds + MAX(gc_gap_seconds)` among FINISHED riders at last stage.  
-Generated by `export_all_races_summary.py`, which merges in `all_races_summary_overrides.json` (`{"2026": {"totalElevationM": 53707}}`-shaped — any field there overwrites the DB-computed default for that year) after computing the defaults — currently only used to pin 2026's elevation to the full planned-route total instead of just the stages inserted so far.
+Generated by `export_all_races_summary.py`, which merges in `tour_all_races_summary_overrides.json` (`{"2026": {"totalElevationM": 53707}}`-shaped — any field there overwrites the DB-computed default for that year) after computing the defaults — currently only used to pin 2026's elevation to the full planned-route total instead of just the stages inserted so far.
 
 **`gc_by_stage_YEAR.json`** — Per-year data bundled by Vite.
 ```json
@@ -415,7 +415,7 @@ This is the most important script. It reads cycling.db + all supplemental JSON f
 
 **`totalTimeSeconds` priority** (per rider):
 1. `gc_all_times.json` — Wikipedia official time (top ~10 per year)
-2. `gc_winner_times.json + gc_gap_seconds` — winner time + rider's gap at last stage
+2. `tour_gc_winner_times.json + gc_gap_seconds` — winner time + rider's gap at last stage
 3. Sum of `finish_time_seconds` across stages — legacy fallback (often incomplete)
 
 **Sprint rank computation**: Pre-computed per-stage before the rider loop using running cumulative totals. `GOLF_SPRINT_YEARS = set(range(1953, 1959))` controls ascending vs descending sort. Stored as `sprintRank` in each `byStage` entry.
@@ -525,15 +525,15 @@ git push
    ```
    This only works if `2026` is **not already** in `race_editions` — see "Adding stages to an in-progress year" below for what to do once it is.
 
-3. **Add sprint points** for the year to `sprint_points.json`. Key = year string, value = array of dicts (one per stage, same order as DB stages) mapping `rider/slug` → points earned that stage from sprints + stage finish (exclude KOM sprint points). See "Scraping a live/in-progress Tour" for how to extract these from PCS's `-points` page.
+3. **Add sprint points** for the year to `tour_sprint_points.json`. Key = year string, value = array of dicts (one per stage, same order as DB stages) mapping `rider/slug` → points earned that stage from sprints + stage finish (exclude KOM sprint points). See "Scraping a live/in-progress Tour" for how to extract these from PCS's `-points` page.
 
 4. **Add profile icons** for the year to `profile_icons.json` — an array of **raw PCS icon codes** (`p1`–`p5`), one per stage, in DB stage order. For a TTT/ITT stage, also make sure that stage's `info["Won how"]` in `tdf_2026_full.json` contains "team time trial"/"time trial" text (see the `profile_icons.json` warning above) — the icon code alone won't classify it correctly.
 
-5. **Add KOM points** for the year to `kom_points_reconciled.json`. Same structure as sprint_points.json — see "Scraping a live/in-progress Tour" for extraction.
+5. **Add KOM points** for the year to `tour_kom_points_reconciled.json`. Same structure as tour_sprint_points.json — see "Scraping a live/in-progress Tour" for extraction.
 
 6. **Scrape Wikipedia GC times** (only meaningful once the race has an official classification — skip for an in-progress year):
    ```bash
-   python3 scrape_gc_all_times.py 2026    # appends to gc_all_times.json + gc_winner_times.json
+   python3 scrape_gc_all_times.py 2026    # appends to gc_all_times.json + tour_gc_winner_times.json
    ```
 
 7. **Add the race distance** to `wiki_race_distances.json`. For a completed year this comes from the Wikipedia infobox; for the current year while it's in progress, use the PCS route page's official total instead (`https://www.procyclingstats.com/race/tour-de-france/2026/route` → "21 Stages » ... (3321.2km)" at the top of the page):
@@ -545,7 +545,7 @@ git push
    with open('wiki_race_distances.json', 'w') as f: json.dump(d, f, ensure_ascii=False)
    "
    ```
-   If the same PCS route page also gives a full-route vertical-meters total and the year is still in progress, add it to `all_races_summary_overrides.json` too (see below) so elevation doesn't undercount to just the stages raced so far.
+   If the same PCS route page also gives a full-route vertical-meters total and the year is still in progress, add it to `tour_all_races_summary_overrides.json` too (see below) so elevation doesn't undercount to just the stages raced so far.
 
 8. **Re-export:**
    ```bash
@@ -581,7 +581,7 @@ git push
    optional, and it will refuse to add a new stage while an older stage still has an
    unresolved swap. Fix the flagged scrape file(s) (swap `name`/`slug`/`nat` back using
    `race_common.swap_identity()`) and re-run. Only after that passes does it update
-   `tdf_2026_full.json`, `sprint_points.json`, `kom_points_reconciled.json`,
+   `tdf_2026_full.json`, `tour_sprint_points.json`, `tour_kom_points_reconciled.json`,
    `profile_icons.json`, delete/re-insert the year in `cycling.db`, run all three exports,
    and validate.
 
@@ -902,9 +902,9 @@ python3 export_gc.py --race giro --year 2026
 
 **TTT stage** (e.g. 2026 stage 1) — PCS renders it as ~20+ small per-team tables (unhelpful), **plus one large table with PCS's own pre-computed individual ranks/gaps** — found by checking every `document.querySelectorAll('table')` for one with header `Rnk | BIB | H2H | Specialty | Age | Rider | Team | UCI | (blank) | Time | Time won/lost` (no `GC` column, since it's stage 1). This table exists on both `.../stage-N` and `.../stage-N-gc` — the two are identical, so either page confirms the other. No team-grouped offset arithmetic is needed; just extract this table like a normal stage (rank 1's `Time` cell is absolute, everyone else's is their gap) and leave `gc_pos`/`gc_lag` blank (the stage-1 carry-forward fallback in `add_pre1960.py` fills them in).
 
-**Points classification** (`.../stage-N-points`) — look for `<h4>` headings whose text starts with `"Sprint |"` or equals exactly `"Points at finish"`; the table immediately following each such heading has a `Pnt` column and a `Rider` column with the same anchor structure as above. Sum `Pnt` per rider **across all matching headings on the page** (a rider can score at both an intermediate sprint and the finish) — this sum is that stage's entry in `sprint_points.json`. Ignore any `<h4>KOM Sprint...</h4>` headings on this page — those belong to the KOM classification, not points.
+**Points classification** (`.../stage-N-points`) — look for `<h4>` headings whose text starts with `"Sprint |"` or equals exactly `"Points at finish"`; the table immediately following each such heading has a `Pnt` column and a `Rider` column with the same anchor structure as above. Sum `Pnt` per rider **across all matching headings on the page** (a rider can score at both an intermediate sprint and the finish) — this sum is that stage's entry in `tour_sprint_points.json`. Ignore any `<h4>KOM Sprint...</h4>` headings on this page — those belong to the KOM classification, not points.
 
-**KOM classification** (`.../stage-N-kom`) — same page layout, but now sum the `Pnt` column under every `<h4>KOM Sprint...</h4>` or `<h4>GPM Sprint...</h4>` heading (there's one per categorized climb on the stage) — this sum is that stage's entry in `kom_points_reconciled.json`. A flat/TTT stage with no climbs has no such headings at all → empty `{}` for that stage index in both files.
+**KOM classification** (`.../stage-N-kom`) — same page layout, but now sum the `Pnt` column under every `<h4>KOM Sprint...</h4>` or `<h4>GPM Sprint...</h4>` heading (there's one per categorized climb on the stage) — this sum is that stage's entry in `tour_kom_points_reconciled.json`. A flat/TTT stage with no climbs has no such headings at all → empty `{}` for that stage index in both files.
 
 ### Lessons learned from Giro 2026 scraping
 
@@ -1046,13 +1046,13 @@ KOM competition started 1933. The polka-dot jersey wasn't introduced until 1975.
 After the race, the top 4 finishers (Garin, Pothier, Cornet-original, Chevalier) were disqualified. Henri Cornet (5th on road) became the official winner. The DB stores DQ'd riders with `gc_rank = NULL` at the last stage (not 999) so the y-axis isn't distorted. Their `finalRank` becomes 9999 in the export, placing them at the bottom of the legend.
 
 ### Points-system years (1905–1912)
-These Tours were decided by points (fewer = better), not elapsed time. There are no official total elapsed times for these years. `gc_winner_times.json` and `gc_all_times.json` have no entries for 1905–1912. The GC Winner Time and Average Speed panels in All Races Overview show gaps for these years. Wikipedia stage pages only list top-10 per stage, so stage-time summation gives inconsistent results (not used).
+These Tours were decided by points (fewer = better), not elapsed time. There are no official total elapsed times for these years. `tour_gc_winner_times.json` and `gc_all_times.json` have no entries for 1905–1912. The GC Winner Time and Average Speed panels in All Races Overview show gaps for these years. Wikipedia stage pages only list top-10 per stage, so stage-time summation gives inconsistent results (not used).
 
 ### Stage numbering and labels
 `stage_number` in the DB matches PCS ordering. Stage 0 = Prologue. Split stages (e.g. 1a/1b) each have their own `stage_number`. Stage labels (`stage_label` in JSON) are computed in `export_gc.py` by grouping stages sharing the same `stage_date`: single stages get sequential numbers, paired stages get "Na"/"Nb" suffixes, prologue gets "P".
 
 ### Sprint/KOM point arrays alignment
-`sprint_points.json`, `kom_points_reconciled.json`, and `profile_icons.json` all use the same array indexing: index 0 = first stage in DB ordering for that year. This matches the order returned by `SELECT ... FROM stages WHERE edition_id=? ORDER BY stage_number`. The `stage_num_to_idx` dict in `export_gc.py` maps `stage_number → array_index` to handle the alignment.
+`tour_sprint_points.json`, `tour_kom_points_reconciled.json`, and `profile_icons.json` all use the same array indexing: index 0 = first stage in DB ordering for that year. This matches the order returned by `SELECT ... FROM stages WHERE edition_id=? ORDER BY stage_number`. The `stage_num_to_idx` dict in `export_gc.py` maps `stage_number → array_index` to handle the alignment.
 
 ### DNF riders in classifications
 A rider who DNFs before the final stage has their last `byStage` entry used for `finalRank`. Their cumulative points are topped up via a catch-up loop after the main `byStage` loop (some sources store final totals in stage slots after the rider's last actual stage). `sprintRank`/`komRank` at their last entry is also backfilled from the final-stage pre-computed rank tables.
@@ -1060,7 +1060,7 @@ A rider who DNFs before the final stage has their last `byStage` entry used for 
 ### totalTimeSeconds resolution
 Three-tier priority in `export_gc.py` (TDF):
 1. Wikipedia official time from `gc_all_times.json` (top ~10 riders per year, all years back to 1903)
-2. `gc_winner_times.json[year] + gc_gap_seconds` at last stage — covers all riders in modern years with PCS gap data
+2. `tour_gc_winner_times.json[year] + gc_gap_seconds` at last stage — covers all riders in modern years with PCS gap data
 3. Sum of `finish_time_seconds` per stage — last resort, often incomplete for pre-1960 non-top-10 riders
 
 For Giro and Vuelta, tier 1 (`gc_all_times.json`) is not used. Instead:
@@ -1074,8 +1074,8 @@ For Giro and Vuelta, tier 1 (`gc_all_times.json`) is not used. Instead:
 Computed client-side: `(vertical_meters² / (distance_km × 1000)) × route_type_multiplier`. Multipliers: P=0.3, TT=0.5, TTT=0.6, F=1.0, H=1.3, M=1.8.
 
 ### PCS data notes
-- **Sprint points vs. PCS points**: The DB has a `pcs_points` column = PCS prestige ranking system, completely unrelated to the green jersey. Green jersey points come exclusively from `sprint_points.json`.
-- **1988 Prelude**: PCS lists 23 entries for 1988 — index 0 is an unofficial "Prélude" stage. The scraper drops index 0 for that year; `profile_icons.json` and `sprint_points.json` do the same.
+- **Sprint points vs. PCS points**: The DB has a `pcs_points` column = PCS prestige ranking system, completely unrelated to the green jersey. Green jersey points come exclusively from `tour_sprint_points.json`.
+- **1988 Prelude**: PCS lists 23 entries for 1988 — index 0 is an unofficial "Prélude" stage. The scraper drops index 0 for that year; `profile_icons.json` and `tour_sprint_points.json` do the same.
 - **`finish_time_seconds`**: Per-stage time for that individual stage, not cumulative. Often null for non-winning riders in pre-1960 years.
 
 ---

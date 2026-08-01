@@ -5,7 +5,7 @@ Scrape final KOM classification totals from PCS for pre-1960 years.
 Source: procyclingstats.com/race/tour-de-france/YEAR/kom  (KOM tab, pnt2 column)
 
 Does two things:
-  1. Writes the final totals into the LAST stage entry of kom_points.json
+  1. Writes the final totals into the LAST stage entry of tour_kom_points.json
      so the bump chart shows the correct KOM ranking at the end of the race.
   2. Injects KOM classification rows into tdf_YEAR_full.json so that
      add_pre1960.py will insert them into classification_standings.
@@ -24,7 +24,7 @@ import urllib.request
 import urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KOM_PTS_PATH = os.path.join(HERE, "kom_points.json")
+KOM_PTS_PATH = os.path.join(HERE, "tour_kom_points.json")
 
 TARGET_YEARS = [1939] + list(range(1947, 1960))
 
@@ -169,7 +169,7 @@ def main():
 
         print(f"{len(riders)} riders  (leader: {riders[0]['rider_name']} {riders[0]['pnt2']}pts)")
 
-        # ── 1. Put totals into last stage of kom_points.json ──────────────────
+        # ── 1. Put totals into last stage of tour_kom_points.json ──────────────────
         yr_str = str(year)
         stages_list = kom_pts.get(yr_str, [])
         if not stages_list:
@@ -215,7 +215,7 @@ def main():
                 json.dump(bundle, f, ensure_ascii=False)
             print(f"  Updated tdf_{year}_full.json classifications.kom")
 
-    # Save kom_points.json
+    # Save tour_kom_points.json
     kom_pts = dict(sorted(kom_pts.items(), key=lambda x: int(x[0])))
     with open(KOM_PTS_PATH, "w", encoding="utf-8") as f:
         json.dump(kom_pts, f, ensure_ascii=False)

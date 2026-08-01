@@ -14,7 +14,7 @@ applicable):
                       SUM(stages.distance_km) if no Wikipedia figure exists.
   totalElevationM  — SUM(stages.vertical_meters); null if no stage in that
                       edition has a recorded value.
-  gcWinnerTimeSeconds      — gc_winner_times.json[year]; null if absent
+  gcWinnerTimeSeconds      — tour_gc_winner_times.json[year]; null if absent
                               (points-system years 1905-1912, or a Tour
                               still in progress with no official winner yet).
   slowestFinisherTimeSeconds — gcWinnerTimeSeconds + MAX(gc_gap_seconds)
@@ -24,7 +24,7 @@ applicable):
 For an in-progress year (only some stages inserted so far, e.g. 2026),
 SUM(vertical_meters) only covers the stages raced to date, unlike
 totalDistanceKm which already has an authoritative full-route figure from
-Wikipedia. all_races_summary_overrides.json lets a field be pinned to the
+Wikipedia. tour_all_races_summary_overrides.json lets a field be pinned to the
 full planned-route value (e.g. the PCS route page's total) until the real
 per-stage data catches up — applied after the DB-computed default, so it's
 safe to leave in place across repeated re-exports as more stages are added.
@@ -40,8 +40,8 @@ import sqlite3
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 WIKI_DISTANCES_PATH = os.path.join(HERE, "wiki_race_distances.json")
-GC_WINNER_TIMES_PATH = os.path.join(HERE, "gc_winner_times.json")
-OVERRIDES_PATH = os.path.join(HERE, "all_races_summary_overrides.json")
+GC_WINNER_TIMES_PATH = os.path.join(HERE, "tour_gc_winner_times.json")
+OVERRIDES_PATH = os.path.join(HERE, "tour_all_races_summary_overrides.json")
 OUT_PATH = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour", "all_races_summary.json")
 
 FIRST_YEAR = 1903

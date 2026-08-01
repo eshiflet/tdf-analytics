@@ -5,7 +5,7 @@ Reconcile KOM points from multiple sources into a single authoritative dataset.
 Sources (in priority order for final totals):
   1. Wikipedia  — final totals, top ~10 riders
   2. bikeraceinfo — final totals, top ~6 riders
-  3. PCS (kom_points.json) — per-stage per-climb points (incomplete for many years)
+  3. PCS (tour_kom_points.json) — per-stage per-climb points (incomplete for many years)
 
 Strategy per year:
   - Compute each rider's PCS cumulative total
@@ -16,7 +16,7 @@ Strategy per year:
   - Broken:  distribute reference total across mountain/hilly stages,
              weighted by each stage's vertical_meters (elevation gain)
 
-Output: kom_points_reconciled.json  (same structure as kom_points.json)
+Output: tour_kom_points_reconciled.json  (same structure as tour_kom_points.json)
         kom_reconcile_report.json   (year-by-year decisions and coverage stats)
 
 Usage:
@@ -34,9 +34,9 @@ import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH        = os.path.join(HERE, "cycling.db")
-PCS_PATH       = os.path.join(HERE, "kom_points.json")
+PCS_PATH       = os.path.join(HERE, "tour_kom_points.json")
 TOTALS_PATH    = os.path.join(HERE, "kom_totals.json")
-OUT_PATH       = os.path.join(HERE, "kom_points_reconciled.json")
+OUT_PATH       = os.path.join(HERE, "tour_kom_points_reconciled.json")
 REPORT_PATH    = os.path.join(HERE, "kom_reconcile_report.json")
 
 GOOD_THRESHOLD    = 0.80   # PCS total ≥ 80% of reference → keep as-is

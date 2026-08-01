@@ -5,7 +5,7 @@ where per-stage data isn't available (1953–1963).
 
 Source: procyclingstats.com/race/tour-de-france/YEAR/points  (POINTS tab, pnt2 col)
 
-Writes final totals into the LAST stage slot of sprint_points.json.
+Writes final totals into the LAST stage slot of tour_sprint_points.json.
 
 Actual pnt2 values from PCS are stored as-is for all years.
 
@@ -26,7 +26,7 @@ import urllib.request
 import urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SPRINT_PATH = os.path.join(HERE, "sprint_points.json")
+SPRINT_PATH = os.path.join(HERE, "tour_sprint_points.json")
 
 # Years where lower pnt2 = better (golf scoring)
 GOLF_YEARS = set(range(1953, 1959))

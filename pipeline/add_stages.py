@@ -122,8 +122,8 @@ def main():
         save_json(tdf_path, tdf)
     print(f"  tdf_{year}_full.json: {total_stages} stages total")
 
-    # ── 2. Update sprint_points.json ──
-    sp_path = os.path.join(HERE, "sprint_points.json")
+    # ── 2. Update tour_sprint_points.json ──
+    sp_path = os.path.join(HERE, "tour_sprint_points.json")
     sp = load_json(sp_path)
     sp_list = sp.get(year_str, [])
     # Extend list to cover all stages
@@ -137,10 +137,10 @@ def main():
     sp[year_str] = sp_list
     if not dry_run:
         save_json(sp_path, sp)
-    print(f"  sprint_points.json: {len(sp_list)} entries for {year}")
+    print(f"  tour_sprint_points.json: {len(sp_list)} entries for {year}")
 
-    # ── 3. Update kom_points_reconciled.json ──
-    kp_path = os.path.join(HERE, "kom_points_reconciled.json")
+    # ── 3. Update tour_kom_points_reconciled.json ──
+    kp_path = os.path.join(HERE, "tour_kom_points_reconciled.json")
     kp = load_json(kp_path)
     kp_list = kp.get(year_str, [])
     while len(kp_list) < total_stages:
@@ -151,7 +151,7 @@ def main():
     kp[year_str] = kp_list
     if not dry_run:
         save_json(kp_path, kp)
-    print(f"  kom_points_reconciled.json: {len(kp_list)} entries for {year}")
+    print(f"  tour_kom_points_reconciled.json: {len(kp_list)} entries for {year}")
 
     # ── 4. Update profile_icons.json ──
     pi_path = os.path.join(HERE, "profile_icons.json")

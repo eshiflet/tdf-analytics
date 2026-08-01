@@ -2,7 +2,7 @@
 """
 Build giro_sprint_points.json and giro_kom_points.json from scraped stage files.
 
-These files have the same structure as sprint_points.json / kom_points.json:
+These files have the same structure as tour_sprint_points.json / tour_kom_points.json:
   { "2026": [ {rider_slug: points, ...}, ... ] }
 where the outer array is indexed by stage (0-based).
 

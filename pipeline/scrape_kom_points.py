@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 Scrape per-stage KOM points from procyclingstats.com for all TdF editions.
-Produces kom_points.json with the same structure as sprint_points.json:
+Produces tour_kom_points.json with the same structure as tour_sprint_points.json:
   { "YEAR": [ {rider_slug: points, ...}, ... ], ... }
 Array index = DB stage ordering (stage_number order).
 
 Usage: python3 scrape_kom_points.py [--year YEAR] [--resume]
   --year YEAR   Only scrape a single year
-  --resume      Skip years already present in kom_points.json
+  --resume      Skip years already present in tour_kom_points.json
 """
 import json
 import os
@@ -20,7 +20,7 @@ import urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
-OUT_PATH = os.path.join(HERE, "kom_points.json")
+OUT_PATH = os.path.join(HERE, "tour_kom_points.json")
 
 HEADERS = {
     "User-Agent": (

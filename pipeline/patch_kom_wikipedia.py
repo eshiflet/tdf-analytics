@@ -3,7 +3,7 @@
 Patch KOM final standings from Wikipedia for years where PCS only has top 3.
 
 Fetches the "Mountains classification" table (top 10) from Wikipedia and
-merges into the last stage slot of kom_points_reconciled.json, only adding
+merges into the last stage slot of tour_kom_points_reconciled.json, only adding
 riders not already present.
 
 Usage:
@@ -22,7 +22,7 @@ import urllib.error
 import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KOM_PATH = os.path.join(HERE, "kom_points_reconciled.json")
+KOM_PATH = os.path.join(HERE, "tour_kom_points_reconciled.json")
 DB_PATH = os.path.join(HERE, "cycling.db")
 
 TARGET_YEARS = list(range(1933, 1939))

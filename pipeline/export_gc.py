@@ -26,18 +26,41 @@ DB_PATH = os.path.join(HERE, "cycling.db")
 # Sprint scoring changed from golf (low=best) to modern (high=best) in 1959
 GOLF_SPRINT_YEARS = set(range(1953, 1959))
 
-# Default paths (TDF) — overridden per-race in __main__
-SPRINT_POINTS_PATH = os.path.join(HERE, "sprint_points.json")
-_KOM_RECONCILED = os.path.join(HERE, "kom_points_reconciled.json")
-_KOM_RAW        = os.path.join(HERE, "kom_points.json")
-KOM_POINTS_PATH = _KOM_RECONCILED if os.path.exists(_KOM_RECONCILED) else _KOM_RAW
-GC_ALL_TIMES_PATH   = os.path.join(HERE, "gc_all_times.json")
-GC_WINNER_TIMES_PATH = os.path.join(HERE, "gc_winner_times.json")
+# Placeholder paths — always resolved per-race (including TDF) in __main__
+# before any of these are read; see resolve_supplement_paths().
+SPRINT_POINTS_PATH = "__nonexistent__"
+KOM_POINTS_PATH = "__nonexistent__"
+GC_ALL_TIMES_PATH = "__nonexistent__"
+GC_WINNER_TIMES_PATH = "__nonexistent__"
 
 _sprint_points_cache = None
 _kom_points_cache = None
 _gc_all_times_cache = None
 _gc_winner_times_cache = None
+
+def resolve_supplement_paths(race_subdir):
+    """Compute the sprint/KOM/GC-time supplement paths for one race.
+
+    All three races follow the same `{race_subdir}_*.json` naming
+    convention. TDF (race_subdir == "tour") has two extras with no
+    Giro/Vuelta equivalent: a reconciled-vs-raw KOM fallback, and
+    `gc_all_times.json` (Wikipedia per-rider times), which only exists
+    for TDF and is left unprefixed since it has no per-race sibling.
+    """
+    sprint_path = os.path.join(HERE, f"{race_subdir}_sprint_points.json")
+
+    if race_subdir == "tour":
+        reconciled = os.path.join(HERE, "tour_kom_points_reconciled.json")
+        raw = os.path.join(HERE, "tour_kom_points.json")
+        kom_path = reconciled if os.path.exists(reconciled) else raw
+        gc_all_times_path = os.path.join(HERE, "gc_all_times.json")
+    else:
+        kom_path = os.path.join(HERE, f"{race_subdir}_kom_points.json")
+        gc_all_times_path = "__nonexistent__"
+
+    gc_winner_path = os.path.join(HERE, f"{race_subdir}_gc_winner_times.json")
+
+    return sprint_path, kom_path, gc_all_times_path, gc_winner_path
 
 def load_gc_all_times():
     global _gc_all_times_cache
@@ -400,30 +423,22 @@ if __name__ == "__main__":
         else:
             sys.exit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
 
-    # Override sprint/KOM paths for non-TDF races (TDF uses the module-level defaults)
-    if race_subdir and race_subdir != "tour":
-        sp = os.path.join(HERE, f"{race_subdir}_sprint_points.json")
-        if os.path.exists(sp):
-            SPRINT_POINTS_PATH = sp
-        else:
-            SPRINT_POINTS_PATH = "__nonexistent__"
-        kp = os.path.join(HERE, f"{race_subdir}_kom_points.json")
-        if os.path.exists(kp):
-            KOM_POINTS_PATH = kp
-        else:
-            KOM_POINTS_PATH = "__nonexistent__"
-        # Wikipedia per-rider times exist only for the TDF, but per-race PCS
-        # winner times ({race}_gc_winner_times.json, from check_*_gc_times.py)
-        # give correct totals as winner_time + last-stage gap. Without them,
-        # totalTimeSeconds falls back to summing per-stage times, which is
-        # wildly wrong for historical years with sparse stage times.
-        GC_ALL_TIMES_PATH = "__nonexistent__"
-        wt = os.path.join(HERE, f"{race_subdir}_gc_winner_times.json")
-        GC_WINNER_TIMES_PATH = wt if os.path.exists(wt) else "__nonexistent__"
-        _sprint_points_cache = None
-        _kom_points_cache = None
-        _gc_all_times_cache = None
-        _gc_winner_times_cache = None
+    # Resolve sprint/KOM/GC-time supplement paths for the chosen race — same
+    # lookup for TDF as for Giro/Vuelta (see resolve_supplement_paths). Per-race
+    # PCS winner times ({race}_gc_winner_times.json, from check_*_gc_times.py)
+    # give correct totals as winner_time + last-stage gap; without them,
+    # totalTimeSeconds falls back to summing per-stage times, which is wildly
+    # wrong for historical years with sparse stage times.
+    (
+        SPRINT_POINTS_PATH,
+        KOM_POINTS_PATH,
+        GC_ALL_TIMES_PATH,
+        GC_WINNER_TIMES_PATH,
+    ) = resolve_supplement_paths(race_subdir)
+    _sprint_points_cache = None
+    _kom_points_cache = None
+    _gc_all_times_cache = None
+    _gc_winner_times_cache = None
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
