@@ -277,8 +277,19 @@ def parse_rows(table_html: str) -> list[list]:
             # Time column — last known column or explicit
             time_idx = ci.get("Time", len(tds) - 1)
             time_td = tds[time_idx] if time_idx < len(tds) else ""
-            font_m = re.search(r"<font[^>]*>([^<]*)</font>", time_td)
-            time_txt = dedup_time(font_m.group(1).strip() if font_m else td_text(time_td))
+            # PCS renders a rider tied with the row above as a ditto mark
+            # (",," in the visible <font> text) but embeds the real,
+            # unambiguous value right next to it in a hidden
+            # <span class="hide">...</span> — read that authoritative value
+            # when present instead of reverse-engineering the ditto text.
+            # Falls back to the old font-text heuristic when no hidden span
+            # exists (older/atypical page layouts).
+            hide_m = re.search(r'<span class="hide">([^<]*)</span>', time_td)
+            if hide_m and hide_m.group(1).strip():
+                time_txt = hide_m.group(1).strip()
+            else:
+                font_m = re.search(r"<font[^>]*>([^<]*)</font>", time_td)
+                time_txt = dedup_time(font_m.group(1).strip() if font_m else td_text(time_td))
 
             abs_time_txt = ""
             gap_txt = ""
@@ -289,8 +300,6 @@ def parse_rows(table_html: str) -> list[list]:
                 gap_txt = time_txt
             elif time_txt in ("s.t.", "s.t", "0:00", ""):
                 gap_txt = "+0:00"
-            elif time_txt == ",," or time_txt == "":
-                gap_txt = ""
             elif re.match(r"^\d+:\d{2}(:\d{2})?$", time_txt):
                 gap_txt = time_txt
             else:

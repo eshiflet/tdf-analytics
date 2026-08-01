@@ -58,6 +58,18 @@ const EXTRACT_ALL = `
       return s.substring(0, s.length/2);
     return s;
   }
+  // PCS renders a rider tied with the row above as a ditto mark (",," in
+  // the visible text) but embeds the real, unambiguous value right next to
+  // it in a hidden <span class="hide">...</span> — read that authoritative
+  // value directly when present instead of relying on textContent
+  // concatenation + dedupe() to reverse-engineer it (works today because the
+  // hidden value sits immediately after the ditto with nothing separating
+  // them, but that's incidental, not guaranteed).
+  function readCellText(td) {
+    const hide = td.querySelector('span.hide');
+    if (hide && hide.textContent.trim()) return hide.textContent.trim();
+    return dedupe(td.textContent.trim());
+  }
 
   // ---- 1. Parse main results table ----
   const bodyText = document.body.innerText;
@@ -108,7 +120,7 @@ const EXTRACT_ALL = `
     let gcPos = '', gcLag = '';
     if (hasGC) {
       gcPos = tds[1].textContent.trim();
-      gcLag = dedupe(tds[2].textContent.trim());
+      gcLag = readCellText(tds[2]);
       colOffset = 0;
     } else {
       colOffset = -2;
@@ -134,7 +146,7 @@ const EXTRACT_ALL = `
     const pnt = tds.length > (11 + colOffset) ? tds[10 + colOffset].textContent.trim() : '';
 
     const timeTd = tds[tds.length - 1];
-    const timeRaw = dedupe(timeTd.textContent.trim());
+    const timeRaw = readCellText(timeTd);
 
     const absTime = rnk === '1' ? timeRaw : '';
     const gapTime = rnk === '1' ? '' : timeRaw;
@@ -238,6 +250,18 @@ const EXTRACT_RESULTS = `
       return s.substring(0, s.length/2);
     return s;
   }
+  // PCS renders a rider tied with the row above as a ditto mark (",," in
+  // the visible text) but embeds the real, unambiguous value right next to
+  // it in a hidden <span class="hide">...</span> — read that authoritative
+  // value directly when present instead of relying on textContent
+  // concatenation + dedupe() to reverse-engineer it (works today because the
+  // hidden value sits immediately after the ditto with nothing separating
+  // them, but that's incidental, not guaranteed).
+  function readCellText(td) {
+    const hide = td.querySelector('span.hide');
+    if (hide && hide.textContent.trim()) return hide.textContent.trim();
+    return dedupe(td.textContent.trim());
+  }
 
   // Stage info from page text
   const bodyText = document.body.innerText;
@@ -292,7 +316,7 @@ const EXTRACT_RESULTS = `
     let gcPos = '', gcLag = '';
     if (hasGC) {
       gcPos = tds[1].textContent.trim();
-      gcLag = dedupe(tds[2].textContent.trim());
+      gcLag = readCellText(tds[2]);
       colOffset = 0;
     } else {
       colOffset = -2; // no GC/Timelag columns
@@ -319,7 +343,7 @@ const EXTRACT_RESULTS = `
     const pnt = tds.length > (11 + colOffset) ? tds[10 + colOffset].textContent.trim() : '';
 
     const timeTd = tds[tds.length - 1];
-    const timeRaw = dedupe(timeTd.textContent.trim());
+    const timeRaw = readCellText(timeTd);
 
     const absTime = rnk === '1' ? timeRaw : '';
     const gapTime = rnk === '1' ? '' : timeRaw;
