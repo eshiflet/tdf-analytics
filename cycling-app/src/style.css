@@ -514,6 +514,13 @@ svg text {
   stroke-width: 3.2;
 }
 
+/* "Still racing, no time recorded" connector — dashed instead of a silent
+   gap in the line, so a rider who finished without a recorded time doesn't
+   visually look like they vanished from the race. */
+.rider-line.rider-line-bridge {
+  stroke-dasharray: 3 3;
+}
+
 .rider-dot {
   transition: opacity 0.15s;
 }

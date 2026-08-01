@@ -69,27 +69,59 @@ function activeRankMap(stageNum: number): Map<string, number> | undefined {
   return state.pointsRankAtStage.get(stageNum);
 }
 
+type DisplayPoint = { stage: number; rank: number | null; status: string };
+
 /** Build the display-value series for a rider to feed into d3 line/dot/label
  *  rendering. The "rank" field doubles as the plotted y-value: it's an actual
  *  rank in every mode except GC Time, where it holds gcGapSeconds instead —
- *  0 for the stage leader, increasing for riders further behind. */
-function getDisplayPoints(rider: RiderSeries): Array<{ stage: number; rank: number | null }> {
+ *  0 for the stage leader, increasing for riders further behind. `status` is
+ *  carried along so drawChart() can tell "still racing, no time recorded"
+ *  (status FINISHED, rank null) apart from a real exit (DNF/DNS/etc). */
+function getDisplayPoints(rider: RiderSeries): DisplayPoint[] {
   if (state.currentMetric === "gc") {
     if (state.gcDisplayMode === "time") {
-      return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcGapSeconds }));
+      return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcGapSeconds, status: p.status }));
     }
-    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcRank }));
+    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.gcRank, status: p.status }));
   }
   if (state.currentMetric === "points" && state.sprintDisplayMode === "points") {
-    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativePoints }));
+    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativePoints, status: p.status }));
   }
   if (state.currentMetric === "kom" && state.komDisplayMode === "points") {
-    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativeKomPoints }));
+    return rider.byStage.map((p) => ({ stage: p.stage, rank: p.cumulativeKomPoints, status: p.status }));
   }
   return rider.byStage.map((p) => ({
     stage: p.stage,
     rank: activeRankMap(p.stage)?.get(rider.id) ?? null,
+    status: p.status,
   }));
+}
+
+/** Finds runs of "still racing, no time recorded" stages (status FINISHED,
+ *  rank null) bounded on both sides by a known rank, and returns one
+ *  [from, to] pair per run to draw as a dashed connector — visual continuity
+ *  instead of a silent break in the line. A run adjoining a real exit
+ *  (DNF/DNS/DSQ/OTL/...) is never bridged; neither is a null run open at
+ *  either end of the data (we genuinely don't know what came before/after). */
+function buildGapBridges(points: DisplayPoint[]): Array<[DisplayPoint, DisplayPoint]> {
+  const bridges: Array<[DisplayPoint, DisplayPoint]> = [];
+  let i = 0;
+  while (i < points.length) {
+    if (points[i].rank !== null) { i++; continue; }
+    const from = points[i - 1];
+    let j = i;
+    let allFinished = true;
+    while (j < points.length && points[j].rank === null) {
+      if (points[j].status !== "FINISHED") allFinished = false;
+      j++;
+    }
+    const to = points[j];
+    if (from && from.rank !== null && to && to.rank !== null && allFinished) {
+      bridges.push([from, to]);
+    }
+    i = j;
+  }
+  return bridges;
 }
 
 /** Returns the "effective final rank" for a rider under the current metric. */
@@ -126,17 +158,20 @@ export function drawChart() {
 
   // Compute each rider's display series once per draw; the line generator,
   // hit paths, end dots, and end labels all read from these maps.
-  const displayPointsById = new Map<string, Array<{ stage: number; rank: number | null }>>();
-  const lastDefinedById = new Map<string, { stage: number; rank: number | null } | null>();
+  const displayPointsById = new Map<string, DisplayPoint[]>();
+  const lastDefinedById = new Map<string, DisplayPoint | null>();
+  // "Still racing, no time recorded" connectors — GC-only, see buildGapBridges.
+  const bridgesById = new Map<string, Array<[DisplayPoint, DisplayPoint]>>();
   let maxRank = 1;
   for (const r of state.dataset.riders) {
     const dp = getDisplayPoints(r);
     displayPointsById.set(r.id, dp);
-    let last: { stage: number; rank: number | null } | null = null;
+    let last: DisplayPoint | null = null;
     for (let i = dp.length - 1; i >= 0; i--) {
       if (dp[i].rank !== null) { last = dp[i]; break; }
     }
     lastDefinedById.set(r.id, last);
+    if (state.currentMetric === "gc") bridgesById.set(r.id, buildGapBridges(dp));
     for (const p of dp) {
       if (p.rank !== null && p.rank > maxRank) maxRank = p.rank;
     }
@@ -254,7 +289,7 @@ export function drawChart() {
 
 
   const lineGen = d3
-    .line<{ stage: number; rank: number | null }>()
+    .line<DisplayPoint>()
     .defined((d) => d.rank !== null)
     .x((d) => state.xScale(d.stage))
     .y((d) => state.yScale(d.rank as number))
@@ -271,6 +306,25 @@ export function drawChart() {
     .attr("class", "rider-line")
     .attr("data-id", (r) => r.id)
     .attr("d", (r) => lineGen(displayPointsById.get(r.id)!))
+    .attr("stroke", "var(--line-dim)");
+
+  // "Still racing, no time recorded" dashed connectors (GC only). Flatten
+  // riderId -> bridges into one row per segment for the d3 join; shares the
+  // rider-line class so updateLineClasses()'s sweep already restyles these
+  // for free on selection/highlight changes, just dashed via CSS.
+  type BridgeRow = { riderId: string; from: DisplayPoint; to: DisplayPoint };
+  const bridgeRows: BridgeRow[] = [];
+  for (const [riderId, bridges] of bridgesById) {
+    for (const [from, to] of bridges) bridgeRows.push({ riderId, from, to });
+  }
+
+  lineLayer
+    .selectAll<SVGPathElement, BridgeRow>("path.rider-line-bridge")
+    .data(bridgeRows, (b) => `${b.riderId}:${b.from.stage}`)
+    .join("path")
+    .attr("class", "rider-line rider-line-bridge")
+    .attr("data-id", (b) => b.riderId)
+    .attr("d", (b) => lineGen([b.from, b.to]))
     .attr("stroke", "var(--line-dim)");
 
   // invisible wide hit-path per rider, for easier hover targeting
@@ -294,6 +348,43 @@ export function drawChart() {
     .on("click", (_event, r) => {
       if (state.selected.has(r.id)) state.selected.delete(r.id);
       else state.selected.add(r.id);
+      refreshLegendState();
+      updateLineClasses();
+    });
+
+  // Matching invisible hit-paths for the dashed bridge segments, so they're
+  // hoverable/clickable too — but with a tooltip explaining the gap instead
+  // of showTooltip()'s (misleading, here) rank lookup.
+  hitLayer
+    .selectAll<SVGPathElement, BridgeRow>("path.bridge-hit")
+    .data(bridgeRows, (b) => `${b.riderId}:${b.from.stage}`)
+    .join("path")
+    .attr("class", "bridge-hit")
+    .attr("fill", "none")
+    .attr("stroke", "transparent")
+    .attr("stroke-width", 10)
+    .attr("d", (b) => lineGen([b.from, b.to]))
+    .style("cursor", "pointer")
+    .on("mouseenter", (_event, b) => setHighlight(b.riderId))
+    .on("mousemove", (event, b) => {
+      const rider = state.dataset.riders.find((r) => r.id === b.riderId);
+      if (!rider) return;
+      const gapStages = [];
+      for (let s = b.from.stage + 1; s < b.to.stage; s++) gapStages.push(stageLabel(s));
+      tooltipEl.innerHTML = `
+        <div class="t-name">${displayName(rider)}</div>
+        <div class="t-team">${rider.team ?? ""}</div>
+        <div>Stage${gapStages.length > 1 ? "s" : ""} ${gapStages.join(", ")}: no time recorded — still in the race</div>
+      `;
+      positionTooltip(event);
+    })
+    .on("mouseleave", () => {
+      setHighlight(null);
+      hideTooltip();
+    })
+    .on("click", (_event, b) => {
+      if (state.selected.has(b.riderId)) state.selected.delete(b.riderId);
+      else state.selected.add(b.riderId);
       refreshLegendState();
       updateLineClasses();
     });
@@ -432,8 +523,10 @@ export function updateLineClasses() {
 // Restyle just one rider's three chart elements (line, end dot, end label).
 function restyleRider(id: string) {
   const esc = cssEscape(id);
-  const line = chartEl.querySelector<SVGPathElement>(`.lines .rider-line[data-id="${esc}"]`);
-  if (line) styleRiderLine(line);
+  // A rider can have multiple line segments now (the solid line plus zero or
+  // more dashed "no time recorded" bridges) — restyle all of them, not just
+  // the first match.
+  chartEl.querySelectorAll<SVGPathElement>(`.lines .rider-line[data-id="${esc}"]`).forEach(styleRiderLine);
   const dot = chartEl.querySelector<SVGCircleElement>(`.dots .rider-dot[data-id="${esc}"]`);
   if (dot) styleRiderMarker(dot);
   const label = chartEl.querySelector<SVGTextElement>(`.labels .rider-end-label[data-id="${esc}"]`);
