@@ -9,6 +9,19 @@ Usage:
   python3 scrape_vuelta.py 2025              # single year
   python3 scrape_vuelta.py 2020-2025         # year range
   python3 scrape_vuelta.py 2025 --resume     # skip years already scraped
+
+Cloudflare (2026-08): PCS now challenges plain HTTP requests even for
+historical years, not just the live race. Solve the challenge once in a real
+browser, then set CF_CLEARANCE to that session's `cf_clearance` cookie value
+(DevTools → Network → any procyclingstats.com request → Request Headers →
+Cookie) so this script's requests ride on that browser's clearance:
+
+  CF_CLEARANCE=xxxxx python3 scrape_vuelta.py 2020-2025
+
+The cookie expires after a while (commonly 30min-2h) — once it does, every
+request starts 403ing again and the script exits with a clear message
+instead of silently retrying forever. Get a fresh cookie and re-run
+(add --resume once a year has fully completed to skip it next time).
 """
 
 import json
@@ -23,12 +36,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCRAPES_DIR = os.path.join(HERE, "vuelta_scrapes")
 
 BASE = "https://www.procyclingstats.com"
+CF_CLEARANCE = os.environ.get("CF_CLEARANCE", "")
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/120.0.0.0 Safari/537.36",
+    "User-Agent": os.environ.get(
+        "CF_USER_AGENT",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36",
+    ),
     "Accept-Language": "en-US,en;q=0.9",
 }
+if CF_CLEARANCE:
+    HEADERS["Cookie"] = f"cf_clearance={CF_CLEARANCE}"
 DELAY = float(os.environ.get("SCRAPE_DELAY", "2.0"))
 MAX_WAIT = 12.0
 
@@ -52,6 +71,17 @@ def fetch(url: str, retries: int = 2, soft_fail_429: bool = False,
         except urllib.error.HTTPError as e:
             if e.code in (404, 410, 500):
                 return None
+            if e.code == 403:
+                body = e.read().decode("utf-8", errors="replace")
+                if "Just a moment" in body or "cf-mitigated" in str(e.headers):
+                    print(
+                        f"\n  CLOUDFLARE BLOCKED (403) on {url}\n"
+                        f"  CF_CLEARANCE is missing or has expired — retrying won't help.\n"
+                        f"  Get a fresh cookie (see the module docstring) and re-run; "
+                        f"pass --resume to skip years already fully scraped.\n"
+                    )
+                    sys.exit(1)
+                # A real (non-Cloudflare) 403 — fall through to generic retry below.
             if e.code == 429:
                 if soft_fail_429:
                     return None
