@@ -108,6 +108,27 @@ function riderSortKey(rider: RiderSeries): [number, number, string] {
   return [1, 0, displayName(rider)];
 }
 
+/** Compute team groupings from the sorted rider list.
+ *  Returns an array parallel to `riders` where each entry is:
+ *  - rowspan > 0: emit a team cell spanning this many rows
+ *  - rowspan === 0: skip (the cell above already spans this row)
+ *  Only consecutive runs of the same non-null team are merged. */
+function buildTeamRowspans(riders: RiderSeries[]): number[] {
+  const rowspans = new Array<number>(riders.length).fill(1);
+  let i = 0;
+  while (i < riders.length) {
+    const team = riders[i].team;
+    if (team === null) { i++; continue; }
+    let j = i + 1;
+    while (j < riders.length && riders[j].team === team) j++;
+    const span = j - i;
+    rowspans[i] = span;
+    for (let k = i + 1; k < j; k++) rowspans[k] = 0;
+    i = j;
+  }
+  return rowspans;
+}
+
 export function drawStageTable() {
   if (!state.dataset) return;
   stageTableEl.innerHTML = "";
@@ -136,29 +157,43 @@ export function drawStageTable() {
   });
   const colorScales = stages.map((_, si) => colorScaleForColumn(grid.map((row) => row[si])));
 
+  const hasTeams = riders.some((r) => r.team !== null);
+  const teamRowspans = hasTeams ? buildTeamRowspans(riders) : [];
+
   const wrap = document.createElement("div");
   wrap.className = "stage-table-wrap";
 
   const table = document.createElement("table");
-  table.className = "stage-table";
+  table.className = hasTeams ? "stage-table has-teams" : "stage-table";
 
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
   const bibTh = document.createElement("th");
   bibTh.className = "col-bib";
   bibTh.textContent = "Bib";
+  headRow.appendChild(bibTh);
+
+  if (hasTeams) {
+    const teamTh = document.createElement("th");
+    teamTh.className = "col-team";
+    headRow.appendChild(teamTh);
+  }
+
   const riderTh = document.createElement("th");
   riderTh.className = "col-rider";
   riderTh.textContent = "Rider";
-  headRow.appendChild(bibTh);
   headRow.appendChild(riderTh);
+
+  const stageThs: HTMLTableCellElement[] = [];
   for (const stage of stages) {
     const th = document.createElement("th");
+    th.className = "col-stage";
     th.textContent = stage.stage_label;
     if (stage.start_location || stage.finish_location) {
       th.title = `${stage.start_location ?? "?"} → ${stage.finish_location ?? "?"}`;
     }
     headRow.appendChild(th);
+    stageThs.push(th);
   }
   thead.appendChild(headRow);
   table.appendChild(thead);
@@ -171,6 +206,23 @@ export function drawStageTable() {
     bibTd.className = "col-bib";
     bibTd.textContent = rider.bibNumber != null ? String(rider.bibNumber) : "—";
     row.appendChild(bibTd);
+
+    if (hasTeams) {
+      const rowspan = teamRowspans[ri];
+      if (rowspan > 0) {
+        const teamTd = document.createElement("td");
+        teamTd.className = "col-team";
+        if (rowspan > 1) teamTd.rowSpan = rowspan;
+        if (rider.team) {
+          const inner = document.createElement("span");
+          inner.className = "col-team-inner";
+          inner.textContent = rider.team;
+          teamTd.appendChild(inner);
+        }
+        row.appendChild(teamTd);
+      }
+      // rowspan === 0: no cell emitted; the spanning cell above covers this row
+    }
 
     const riderTd = document.createElement("td");
     riderTd.className = "col-rider";
@@ -204,4 +256,11 @@ export function drawStageTable() {
 
   wrap.appendChild(table);
   stageTableEl.appendChild(wrap);
+
+  // Auto table-layout sizes each stage column to its own content, so an
+  // early stage with only short values (e.g. "leader") ends up visibly
+  // narrower than later stages with wider gaps. Pin every stage column to
+  // the widest one so the grid reads evenly.
+  const widest = Math.max(...stageThs.map((th) => th.getBoundingClientRect().width));
+  for (const th of stageThs) th.style.width = `${widest}px`;
 }

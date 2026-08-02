@@ -668,6 +668,32 @@ svg text {
   text-align: right;
 }
 
+.stage-table .col-team {
+  position: sticky;
+  left: 52px;
+  background: var(--panel);
+  z-index: 1;
+  width: 22px;
+  min-width: 22px;
+  max-width: 22px;
+  padding: 4px 0;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.stage-table .col-team-inner {
+  display: block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 160px;
+  cursor: default;
+}
+
 .stage-table .col-rider {
   position: sticky;
   left: 52px;
@@ -676,8 +702,14 @@ svg text {
   z-index: 1;
 }
 
+/* Shift rider column right when the team column is present */
+.stage-table.has-teams .col-rider {
+  left: 74px;
+}
+
 .stage-table thead .col-bib,
-.stage-table thead .col-rider {
+.stage-table thead .col-rider,
+.stage-table thead .col-team {
   z-index: 3;
 }
 
