@@ -11,7 +11,8 @@ import { RACE_IDS, RACES, isRaceId, URLS_BY_RACE, getYearsForRace } from "./race
 import { state } from "./state";
 import {
   raceSelectEl, chartEl, overviewChartEl, legendEl, sidebarEl, searchEl,
-  yearSelectEl, metricSelectEl, gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn,
+  yearSelectEl, metricSelectEl, stageViewSelectEl, stageTableEl,
+  gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn,
   viewStageBtn, viewOverviewBtn, viewAllRacesBtn, allRacesChartEl, viewRidersBtn,
   ridersChartEl, allRacesUnitToggleBtn, overviewSummaryEl, subtitleStage, subtitleOverview,
   teamFilterBtn, teamFilterPanel, nationFilterBtn, nationFilterPanel,
@@ -26,6 +27,7 @@ import {
   computePointsRankings, buildStageFilters, closeFilterPanels, clearStageTeamNationFilters,
   applyStageTeamNationFilter, cssEscape,
 } from "./views/stageChart";
+import { drawStageTable } from "./views/stageTable";
 import { drawOverview } from "./views/overview";
 import { drawAllRacesOverview } from "./views/allRaces";
 import { drawRidersPage } from "./views/riders";
@@ -88,6 +90,29 @@ function buildRaceSelect() {
   });
 }
 
+/** Renders whichever "by Stage" sub-view is active (graph or table) and
+ *  shows/hides the chart/sidebar/table containers to match. The single call
+ *  site for anything that used to just call drawChart() directly. */
+function renderStage() {
+  const isTable = state.stageViewMode === "table";
+  chartEl.classList.toggle("hidden", isTable);
+  sidebarEl.classList.toggle("hidden", isTable);
+  stageTableEl.classList.toggle("visible", isTable);
+  if (isTable) drawStageTable();
+  else drawChart();
+}
+
+function buildStageViewSelect() {
+  stageViewSelectEl.value = state.stageViewMode;
+  stageViewSelectEl.addEventListener("change", () => {
+    state.stageViewMode = stageViewSelectEl.value as "graph" | "table";
+    updateGcTimeToggle();
+    updateSprintModeToggle();
+    updateKomModeToggle();
+    if (state.currentView === "stage") renderStage();
+  });
+}
+
 function buildMetricSelect() {
   metricSelectEl.value = state.currentMetric;
   updateGcTimeToggle();
@@ -109,14 +134,18 @@ function buildMetricSelect() {
     document.querySelector<HTMLButtonElement>('.button-row button[data-preset="20"]')?.classList.add("active");
     applyStageTeamNationFilter();
     buildLegend();
-    drawChart();
+    renderStage();
   });
 }
 
 /** Shows/hides the GC Time toggle (only relevant in GC Position "by Stage"
- *  view) and reflects whether it's currently engaged. */
+ *  view) and reflects whether it's currently engaged. Also used by the Table
+ *  sub-view to switch cell values — same button, repositioned via the
+ *  "table-mode" class since the graph's rotated left-edge placement doesn't
+ *  make sense next to a table. */
 function updateGcTimeToggle() {
   gcTimeToggleBtn.hidden = !(state.currentView === "stage" && state.currentMetric === "gc");
+  gcTimeToggleBtn.classList.toggle("table-mode", state.stageViewMode === "table");
   gcTimeToggleBtn.textContent = state.gcDisplayMode === "time"
     ? "GC Time → GC Position"
     : "GC Position → GC Time";
@@ -124,6 +153,7 @@ function updateGcTimeToggle() {
 
 function updateSprintModeToggle() {
   sprintModeToggleBtn.hidden = !(state.currentView === "stage" && state.currentMetric === "points");
+  sprintModeToggleBtn.classList.toggle("table-mode", state.stageViewMode === "table");
   sprintModeToggleBtn.textContent = state.sprintDisplayMode === "points"
     ? "Points → Rank"
     : "Rank → Points";
@@ -131,6 +161,7 @@ function updateSprintModeToggle() {
 
 function updateKomModeToggle() {
   komModeToggleBtn.hidden = !(state.currentView === "stage" && state.currentMetric === "kom");
+  komModeToggleBtn.classList.toggle("table-mode", state.stageViewMode === "table");
   komModeToggleBtn.textContent = state.komDisplayMode === "points"
     ? "Points → Rank"
     : "Rank → Points";
@@ -171,7 +202,7 @@ export async function loadDataset(year: string) {
   buildStageFilters();
   closeFilterPanels();
   buildLegend();
-  if (state.currentView === "stage") drawChart();
+  if (state.currentView === "stage") renderStage();
   else if (state.currentView === "overview") drawOverview();
   else if (state.currentView === "allraces") drawAllRacesOverview();
 }
@@ -190,11 +221,12 @@ export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   subtitleOverview.hidden = view !== "overview";
   chartEl.classList.toggle("hidden", view !== "stage");
   sidebarEl.classList.toggle("hidden", view !== "stage");
+  stageTableEl.classList.toggle("visible", view === "stage" && state.stageViewMode === "table");
   overviewChartEl.classList.toggle("visible", view === "overview");
   overviewSummaryEl.hidden = view !== "overview";
   allRacesChartEl.classList.toggle("visible", view === "allraces");
   ridersChartEl.classList.toggle("visible", view === "riders");
-  if (view === "stage") drawChart();
+  if (view === "stage") renderStage();
   else if (view === "overview") drawOverview();
   else if (view === "allraces") drawAllRacesOverview();
   else drawRidersPage().catch(showLoadError);
@@ -328,21 +360,21 @@ function wireControls() {
     state.gcDisplayMode = state.gcDisplayMode === "time" ? "position" : "time";
     updateGcTimeToggle();
     updateHash();
-    drawChart();
+    renderStage();
   });
 
   sprintModeToggleBtn.addEventListener("click", () => {
     state.sprintDisplayMode = state.sprintDisplayMode === "points" ? "rank" : "points";
     updateSprintModeToggle();
     updateHash();
-    drawChart();
+    renderStage();
   });
 
   komModeToggleBtn.addEventListener("click", () => {
     state.komDisplayMode = state.komDisplayMode === "points" ? "rank" : "points";
     updateKomModeToggle();
     updateHash();
-    drawChart();
+    renderStage();
   });
 
   allRacesUnitToggleBtn.addEventListener("click", () => {
@@ -352,17 +384,33 @@ function wireControls() {
   });
 }
 
+/** The static per-race landing pages (tour/, giro/, vuelta/, generated by
+ *  generate-race-pages.mjs) have no hash of their own — they're just the SPA
+ *  shell served at a distinct, crawlable path. Seed the hash from that path
+ *  so e.g. landing on /giro/ opens the Giro, not the hash-routing default
+ *  (Tour). No-op for the root shell and for any deep link that already
+ *  carries its own hash. */
+function seedHashFromPath() {
+  if (window.location.hash) return;
+  const match = window.location.pathname.match(/\/(tour|giro|vuelta)\/?$/);
+  if (match && isRaceId(match[1])) {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search + `#${match[1]}`);
+  }
+}
+
 function init() {
   try {
+    seedHashFromPath();
     buildRaceSelect();
     buildYearSelect();
     buildMetricSelect();
+    buildStageViewSelect();
     wireControls();
     // Single resize handler for the lifetime of the page — redraws whichever
     // view is active. (Previously re-registered on every drawChart() call,
     // leaking a listener per year/metric switch.)
     window.addEventListener("resize", debounce(() => {
-      if (state.currentView === "stage") drawChart();
+      if (state.currentView === "stage" && state.stageViewMode === "graph") drawChart();
       else if (state.currentView === "overview") drawOverview();
       else if (state.currentView === "allraces") drawAllRacesOverview();
     }, 200));

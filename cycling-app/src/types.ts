@@ -29,6 +29,7 @@ export interface RiderSeries {
   team: string | null;
   finalRank: number;
   totalTimeSeconds: number | null;
+  bibNumber: number | null;
   byStage: RiderStagePoint[];
 }
 

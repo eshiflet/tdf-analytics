@@ -223,6 +223,22 @@ def export_year(year, out_path, race_id):
     )
     all_riders = {r["rider_id"]: dict(r) for r in cur.fetchall()}
 
+    # Bib number is stable per rider within an edition (verified: no rider has
+    # more than one distinct bib_number across an edition's stage_results), so
+    # any single non-null row is representative — used to order the by-Stage
+    # Table view the way the race numbers riders start-list style.
+    cur.execute(
+        """
+        SELECT sr.rider_id, sr.bib_number AS bibNumber
+        FROM stage_results sr
+        JOIN stages st ON st.stage_id = sr.stage_id
+        WHERE st.edition_id = ? AND sr.bib_number IS NOT NULL
+        GROUP BY sr.rider_id
+        """,
+        (edition_id,),
+    )
+    bib_by_rider = {r["rider_id"]: r["bibNumber"] for r in cur.fetchall()}
+
     # Official total race times from Wikipedia scrape (top ~10 riders per year)
     official_times = load_gc_all_times().get(str(year), {})
     # Winner's official total time — used to compute absolute times for riders
@@ -356,6 +372,7 @@ def export_year(year, out_path, race_id):
             "team": team,
             "finalRank": final_rank,
             "totalTimeSeconds": resolve_total_time(rider_id),
+            "bibNumber": bib_by_rider.get(rider_id),
             "byStage": by_stage,
         })
         riders_out.append(entry)

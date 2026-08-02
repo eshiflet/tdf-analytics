@@ -140,6 +140,18 @@ body {
   display: none;
 }
 
+/* GC/Sprint/KOM display-mode toggle, repositioned for the by-Stage Table
+   view: the graph's rotated left-edge placement (see .y-axis-toggle above)
+   doesn't make sense next to a table, so it moves to the same top-right
+   corner spot the all-races unit toggle uses. */
+.y-axis-toggle.table-mode {
+  position: absolute;
+  left: auto;
+  top: 8px;
+  right: 8px;
+  transform: none;
+}
+
 .metric-inline {
   background: transparent;
   border: none;
@@ -206,6 +218,22 @@ body {
 #subtitle-stage,
 #subtitle-overview {
   white-space: nowrap;
+}
+
+.site-footer {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  font-size: 12px;
+}
+
+.site-footer a {
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
 }
 
 .layout {
@@ -595,6 +623,87 @@ svg text {
 #overview-chart.visible,
 #all-races-chart.visible {
   display: block;
+}
+
+/* ── By Stage Table view ─────────────────────────────────────────────────── */
+
+#stage-table {
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
+#stage-table.visible {
+  display: block;
+}
+
+.stage-table-wrap {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+}
+
+.stage-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.stage-table th,
+.stage-table td {
+  padding: 5px 10px;
+  text-align: center;
+  border-right: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--panel-border);
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  color: var(--text-dim);
+  font-weight: 500;
+  z-index: 2;
+  cursor: help;
+}
+
+.stage-table .col-bib {
+  position: sticky;
+  left: 0;
+  background: var(--panel);
+  color: var(--text-dim);
+  z-index: 1;
+  text-align: right;
+}
+
+.stage-table .col-rider {
+  position: sticky;
+  left: 52px;
+  background: var(--panel);
+  text-align: left;
+  z-index: 1;
+}
+
+.stage-table thead .col-bib,
+.stage-table thead .col-rider {
+  z-index: 3;
+}
+
+.stage-table-name {
+  cursor: pointer;
+}
+
+.stage-table-name:hover {
+  text-decoration: underline;
+}
+
+.stage-table-status {
+  color: var(--text-dim);
+  font-size: 11px;
 }
 
 /* ── Riders page ─────────────────────────────────────────────────────────── */

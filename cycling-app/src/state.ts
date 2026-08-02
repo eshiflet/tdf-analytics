@@ -14,6 +14,9 @@ export const state = {
   YEARS: getYearsForRace("tour"),
   currentYear: "",
   currentMetric: "gc" as "gc" | "points" | "kom",
+  // "by Stage" sub-view: the bump-chart line graph, or a spreadsheet-style
+  // table of every rider (ordered by bib number) x every stage.
+  stageViewMode: "graph" as "graph" | "table",
   currentPreset: "20",
   sprintDisplayMode: "rank" as "rank" | "points",
   komDisplayMode: "rank" as "rank" | "points",
