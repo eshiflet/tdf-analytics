@@ -6,7 +6,7 @@ import type { RiderSeries, RiderStagePoint } from "../types";
 import { state } from "../state";
 import { stageTableEl } from "../dom";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
-import { fmtGap } from "../formatters";
+import { fmtGapHM } from "../formatters";
 
 type Cell = {
   text: string;
@@ -28,7 +28,7 @@ function cellFor(sp: RiderStagePoint | undefined): Cell {
   if (state.currentMetric === "gc") {
     if (state.gcDisplayMode === "time") {
       const v = sp.gcGapSeconds;
-      return { text: fmtGap(v), goodness: v == null ? null : -v, colorable: v != null };
+      return { text: fmtGapHM(v), goodness: v == null ? null : -v, colorable: v != null };
     }
     const v = sp.gcRank;
     return { text: v == null ? "—" : String(v), goodness: v == null ? null : -v, colorable: v != null };

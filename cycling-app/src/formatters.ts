@@ -32,6 +32,17 @@ export function fmtGap(seconds: number | null): string {
   return "+" + parts.map((p, i) => (i === 0 ? String(p) : String(p).padStart(2, "0"))).join(":");
 }
 
+/** Gap formatted as H:MM (seconds dropped), for the By Stage Table, where
+ *  column width is tight. Hours are never padded, so a sub-hour gap reads as
+ *  "0:25" rather than "25". */
+export function fmtGapHM(seconds: number | null): string {
+  if (seconds === null || seconds === undefined) return "—";
+  if (seconds === 0) return "leader";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `+${h}:${String(m).padStart(2, "0")}`;
+}
+
 /** Zero-padded HH:MM:SS, for the GC Time y-axis. */
 export function fmtHms(totalSeconds: number): string {
   const s = Math.max(0, Math.round(totalSeconds));
