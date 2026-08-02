@@ -18,15 +18,10 @@ type Cell = {
   colorable: boolean;
 };
 
-/** Finds a rider's byStage entry for a given stage number, or undefined if
+/** Builds one cell from a rider's entry for a stage. `sp` is undefined when
  *  the rider has no data there (race not run yet, or they'd already exited
  *  the race by an earlier stage). */
-function pointAt(rider: RiderSeries, stageNumber: number): RiderStagePoint | undefined {
-  return rider.byStage.find((p) => p.stage === stageNumber);
-}
-
-function cellFor(rider: RiderSeries, stageNumber: number): Cell {
-  const sp = pointAt(rider, stageNumber);
+function cellFor(sp: RiderStagePoint | undefined): Cell {
   if (!sp) return { text: "", goodness: null, colorable: false };
   if (sp.status !== "FINISHED") return { text: sp.status, goodness: null, colorable: false };
 
@@ -118,31 +113,28 @@ export function drawStageTable() {
   stageTableEl.innerHTML = "";
 
   const stages = state.dataset.stages;
+  // Sort keys computed once per rider rather than rebuilt twice on every
+  // comparison.
+  const sortKeys = new Map(state.dataset.riders.map((r) => [r.id, riderSortKey(r)] as const));
   const riders = [...state.dataset.riders].sort((a, b) => {
-    const ka = riderSortKey(a);
-    const kb = riderSortKey(b);
+    const ka = sortKeys.get(a.id)!;
+    const kb = sortKeys.get(b.id)!;
     if (ka[0] !== kb[0]) return ka[0] - kb[0];
     if (ka[1] !== kb[1]) return ka[1] - kb[1];
     return ka[2].localeCompare(kb[2]);
   });
 
-  // Precompute every cell up front so we can build per-column color scales
-  // before rendering rows.
-  const cellsByStage = new Map<number, Cell[]>();
-  const cellByRiderStage = new Map<string, Cell>();
-  for (const stage of stages) {
-    const cells: Cell[] = [];
-    for (const rider of riders) {
-      const cell = cellFor(rider, stage.stage_number);
-      cells.push(cell);
-      cellByRiderStage.set(`${rider.id}:${stage.stage_number}`, cell);
-    }
-    cellsByStage.set(stage.stage_number, cells);
-  }
-  const colorScaleByStage = new Map<number, (goodness: number) => string>();
-  for (const stage of stages) {
-    colorScaleByStage.set(stage.stage_number, colorScaleForColumn(cellsByStage.get(stage.stage_number)!));
-  }
+  // Every cell, indexed [riderIndex][stageIndex], precomputed so the
+  // per-column color scales can be built before any row is rendered. Each
+  // rider's byStage array is walked once into a stage-number lookup, rather
+  // than a .find() scan per (rider, stage) pair — the same O(riders x
+  // stages^2) trap the bump chart's rank maps already avoid.
+  const grid: Cell[][] = riders.map((rider) => {
+    const byStage = new Map<number, RiderStagePoint>();
+    for (const sp of rider.byStage) byStage.set(sp.stage, sp);
+    return stages.map((s) => cellFor(byStage.get(s.stage_number)));
+  });
+  const colorScales = stages.map((_, si) => colorScaleForColumn(grid.map((row) => row[si])));
 
   const wrap = document.createElement("div");
   wrap.className = "stage-table-wrap";
@@ -172,7 +164,7 @@ export function drawStageTable() {
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
-  for (const rider of riders) {
+  riders.forEach((rider, ri) => {
     const row = document.createElement("tr");
 
     const bibTd = document.createElement("td");
@@ -195,20 +187,19 @@ export function drawStageTable() {
     if (flag) riderTd.appendChild(flag);
     row.appendChild(riderTd);
 
-    for (const stage of stages) {
+    grid[ri].forEach((cell, si) => {
       const td = document.createElement("td");
-      const cell = cellByRiderStage.get(`${rider.id}:${stage.stage_number}`)!;
       td.textContent = cell.text;
       if (cell.colorable && cell.goodness != null) {
-        td.style.background = colorScaleByStage.get(stage.stage_number)!(cell.goodness);
+        td.style.background = colorScales[si](cell.goodness);
       } else if (cell.text && cell.text !== "—") {
         td.classList.add("stage-table-status");
       }
       row.appendChild(td);
-    }
+    });
 
     tbody.appendChild(row);
-  }
+  });
   table.appendChild(tbody);
 
   wrap.appendChild(table);
