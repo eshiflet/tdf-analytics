@@ -97,12 +97,22 @@ function getDisplayPoints(rider: RiderSeries): DisplayPoint[] {
   }));
 }
 
+// Only bridge short gaps (this many stages of missing data or fewer). A
+// single "DF" day is exactly what this is for — connecting the rider across
+// a real, multi-week data hole (some pre-1990s Giro/Vuelta years have GC for
+// only a handful of stages, e.g. stage 7 and the final stage, and nothing
+// between) is worse than a break: a long straight dashed line fabricates the
+// impression of a known, gradual trend instead of "we have no idea what
+// happened here." Past this threshold, leave the line broken like before.
+const MAX_BRIDGE_GAP_STAGES = 2;
+
 /** Finds runs of "still racing, no time recorded" stages (status FINISHED,
  *  rank null) bounded on both sides by a known rank, and returns one
- *  [from, to] pair per run to draw as a dashed connector — visual continuity
- *  instead of a silent break in the line. A run adjoining a real exit
- *  (DNF/DNS/DSQ/OTL/...) is never bridged; neither is a null run open at
- *  either end of the data (we genuinely don't know what came before/after). */
+ *  [from, to] pair per short run to draw as a dashed connector — visual
+ *  continuity instead of a silent break in the line. A run adjoining a real
+ *  exit (DNF/DNS/DSQ/OTL/...) is never bridged; neither is a null run open at
+ *  either end of the data, nor one longer than MAX_BRIDGE_GAP_STAGES (see
+ *  above — a long gap should stay a visible break, not a fabricated line). */
 function buildGapBridges(points: DisplayPoint[]): Array<[DisplayPoint, DisplayPoint]> {
   const bridges: Array<[DisplayPoint, DisplayPoint]> = [];
   let i = 0;
@@ -116,7 +126,10 @@ function buildGapBridges(points: DisplayPoint[]): Array<[DisplayPoint, DisplayPo
       j++;
     }
     const to = points[j];
-    if (from && from.rank !== null && to && to.rank !== null && allFinished) {
+    if (
+      from && from.rank !== null && to && to.rank !== null && allFinished &&
+      to.stage - from.stage <= MAX_BRIDGE_GAP_STAGES + 1
+    ) {
       bridges.push([from, to]);
     }
     i = j;

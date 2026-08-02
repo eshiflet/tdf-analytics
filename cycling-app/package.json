@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "predev": "npm run generate:pages",
+    "generate:pages": "node generate-race-pages.mjs",
+    "prebuild": "npm run generate:pages",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

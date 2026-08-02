@@ -5,6 +5,11 @@ cycling-app/node_modules/
 cycling-app/build/
 cycling-app/dist/
 
+# Generated per-race SEO landing pages (regenerate with: npm run generate:pages)
+cycling-app/tour/
+cycling-app/giro/
+cycling-app/vuelta/
+
 # Vite dev-server temp files
 cycling-app/vite.config.ts.timestamp-*.mjs
 cycling-app/tsconfig.tsbuildinfo
