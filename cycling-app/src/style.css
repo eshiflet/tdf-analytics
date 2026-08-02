@@ -208,18 +208,6 @@ body {
   outline: 1px solid var(--accent);
 }
 
-.subtitle {
-  margin: 0;
-  color: var(--text-dim);
-  font-size: 13px;
-  max-width: 760px;
-  line-height: 1.5;
-}
-
-#subtitle-overview {
-  white-space: nowrap;
-}
-
 .site-footer {
   display: flex;
   gap: 16px;
