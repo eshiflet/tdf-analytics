@@ -109,8 +109,9 @@ function buildStageViewSelect() {
     updateGcTimeToggle();
     updateSprintModeToggle();
     updateKomModeToggle();
-    updateHash();
-    if (state.currentView === "stage") renderStage();
+    // Always navigate to stage view — this is the entry point from overview/allraces
+    // too, so selecting either option always takes you there.
+    switchView("stage");
   });
 }
 
@@ -210,6 +211,10 @@ export async function loadDataset(year: string) {
 
 export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   state.currentView = view;
+  // Keep the select in sync: on stage, show the active mode; elsewhere, reset
+  // to the hidden placeholder so any re-selection always fires 'change' and
+  // navigates back to the stage view (even if the mode hasn't changed).
+  stageViewSelectEl.value = view === "stage" ? state.stageViewMode : "";
   updateGcTimeToggle();
   updateSprintModeToggle();
   updateKomModeToggle();

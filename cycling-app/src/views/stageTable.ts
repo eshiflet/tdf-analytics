@@ -4,9 +4,10 @@
 // graph view uses (state.gcDisplayMode / sprintDisplayMode / komDisplayMode).
 import type { RiderSeries, RiderStagePoint } from "../types";
 import { state } from "../state";
-import { stageTableEl } from "../dom";
+import { stageTableEl, chartAreaEl, gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn } from "../dom";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
 import { fmtGapHM } from "../formatters";
+import { showStageTooltip, hideTooltip } from "../tooltip";
 
 type Cell = {
   text: string;
@@ -131,6 +132,11 @@ function buildTeamRowspans(riders: RiderSeries[]): number[] {
 
 export function drawStageTable() {
   if (!state.dataset) return;
+  // Rescue toggle buttons from the previous wrap (if they were moved there)
+  // before innerHTML = "" would destroy them.
+  for (const btn of [gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn]) {
+    chartAreaEl.appendChild(btn);
+  }
   stageTableEl.innerHTML = "";
 
   const stages = state.dataset.stages;
@@ -168,16 +174,19 @@ export function drawStageTable() {
 
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  const bibTh = document.createElement("th");
-  bibTh.className = "col-bib";
-  bibTh.textContent = "Bib";
-  headRow.appendChild(bibTh);
 
   if (hasTeams) {
     const teamTh = document.createElement("th");
     teamTh.className = "col-team";
+    teamTh.textContent = "T";
+    teamTh.title = "Teams";
     headRow.appendChild(teamTh);
   }
+
+  const bibTh = document.createElement("th");
+  bibTh.className = "col-bib";
+  bibTh.textContent = "Bib";
+  headRow.appendChild(bibTh);
 
   const riderTh = document.createElement("th");
   riderTh.className = "col-rider";
@@ -189,9 +198,8 @@ export function drawStageTable() {
     const th = document.createElement("th");
     th.className = "col-stage";
     th.textContent = stage.stage_label;
-    if (stage.start_location || stage.finish_location) {
-      th.title = `${stage.start_location ?? "?"} → ${stage.finish_location ?? "?"}`;
-    }
+    th.addEventListener("mouseenter", (e) => showStageTooltip(e, stage));
+    th.addEventListener("mouseleave", hideTooltip);
     headRow.appendChild(th);
     stageThs.push(th);
   }
@@ -201,11 +209,6 @@ export function drawStageTable() {
   const tbody = document.createElement("tbody");
   riders.forEach((rider, ri) => {
     const row = document.createElement("tr");
-
-    const bibTd = document.createElement("td");
-    bibTd.className = "col-bib";
-    bibTd.textContent = rider.bibNumber != null ? String(rider.bibNumber) : "—";
-    row.appendChild(bibTd);
 
     if (hasTeams) {
       const rowspan = teamRowspans[ri];
@@ -223,6 +226,11 @@ export function drawStageTable() {
       }
       // rowspan === 0: no cell emitted; the spanning cell above covers this row
     }
+
+    const bibTd = document.createElement("td");
+    bibTd.className = "col-bib";
+    bibTd.textContent = rider.bibNumber != null ? String(rider.bibNumber) : "—";
+    row.appendChild(bibTd);
 
     const riderTd = document.createElement("td");
     riderTd.className = "col-rider";
@@ -255,6 +263,11 @@ export function drawStageTable() {
   table.appendChild(tbody);
 
   wrap.appendChild(table);
+  // Move toggle buttons into the wrap so they anchor to its top-right corner
+  // (positioned via .y-axis-toggle.table-mode CSS relative to the wrap).
+  for (const btn of [gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn]) {
+    wrap.appendChild(btn);
+  }
   stageTableEl.appendChild(wrap);
 
   // Auto table-layout sizes each stage column to its own content, so an
