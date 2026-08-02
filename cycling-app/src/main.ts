@@ -14,7 +14,7 @@ import {
   yearSelectEl, metricSelectEl, stageViewSelectEl, stageTableEl,
   gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn,
   viewStageBtn, viewOverviewBtn, viewAllRacesBtn, allRacesChartEl, viewRidersBtn,
-  ridersChartEl, allRacesUnitToggleBtn, overviewSummaryEl, subtitleStage, subtitleOverview,
+  ridersChartEl, allRacesUnitToggleBtn, overviewSummaryEl, subtitleOverview,
   teamFilterBtn, teamFilterPanel, nationFilterBtn, nationFilterPanel,
 } from "./dom";
 import { getDataset } from "./dataLoading";
@@ -218,7 +218,6 @@ export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   viewOverviewBtn.classList.toggle("active", view === "overview");
   viewAllRacesBtn.classList.toggle("active", view === "allraces");
   viewRidersBtn.classList.toggle("active", view === "riders");
-  if (subtitleStage) subtitleStage.hidden = view !== "stage";
   subtitleOverview.hidden = view !== "overview";
   chartEl.classList.toggle("hidden", view !== "stage");
   sidebarEl.classList.toggle("hidden", view !== "stage");

@@ -25,7 +25,6 @@ export const viewRidersBtn = document.getElementById("view-riders") as HTMLButto
 export const ridersChartEl = document.getElementById("riders-chart") as HTMLDivElement;
 export const allRacesUnitToggleBtn = document.getElementById("all-races-unit-toggle") as HTMLButtonElement;
 export const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
-export const subtitleStage = document.getElementById("subtitle-stage") as HTMLElement | null;
 export const subtitleOverview = document.getElementById("subtitle-overview") as HTMLElement;
 export const teamFilterBtn = document.getElementById("team-filter-btn") as HTMLButtonElement;
 export const teamFilterPanel = document.getElementById("team-filter-panel") as HTMLDivElement;

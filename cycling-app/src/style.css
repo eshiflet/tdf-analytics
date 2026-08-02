@@ -142,14 +142,13 @@ body {
 
 /* GC/Sprint/KOM display-mode toggle, repositioned for the by-Stage Table
    view: the graph's rotated left-edge placement (see .y-axis-toggle above)
-   doesn't make sense next to a table, so it moves to the top-right corner.
-   The right offset clears the table's vertical scrollbar; #stage-table's
-   padding-top reserves the strip this sits in so it never covers the sticky
-   header row. */
+   doesn't make sense next to a table, so it sits inline with the table's
+   sticky header row instead of on a reserved strip above it. The right
+   offset clears the table's vertical scrollbar. */
 .y-axis-toggle.table-mode {
   position: absolute;
   left: auto;
-  top: 6px;
+  top: 16px;
   right: 44px;
   transform: none;
 }
@@ -217,7 +216,6 @@ body {
   line-height: 1.5;
 }
 
-#subtitle-stage,
 #subtitle-overview {
   white-space: nowrap;
 }
@@ -633,9 +631,6 @@ svg text {
   width: 100%;
   height: 100%;
   display: none;
-  /* Reserves the strip the display-mode toggle sits in, so the button clears
-     the table's sticky header instead of covering it. */
-  padding-top: 30px;
 }
 
 #stage-table.visible {
