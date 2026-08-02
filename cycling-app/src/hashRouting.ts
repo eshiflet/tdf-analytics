@@ -1,5 +1,5 @@
 // ─── Hash routing ────────────────────────────────────────────────────────────
-// Formats: #<year>/stage/<metric> (metric: gc | gc-time | points | kom)
+// Formats: #<year>/stage/<metric>[/table] (metric: gc | gc-time | points | kom)
 //          · #<year>/overview · #allraces · #riders · #riders/<rider-slug>
 // State changes push a hash entry (so back/forward walk through app states);
 // hashchange applies the hash back onto app state. The compare-with-
@@ -25,7 +25,10 @@ export function computeHash(): string {
     : state.currentMetric === "points" && state.sprintDisplayMode === "points" ? "sprint-points"
     : state.currentMetric === "kom" && state.komDisplayMode === "points" ? "kom-points"
     : state.currentMetric;
-  return `#${race}${state.currentYear}/stage/${metricSeg}`;
+  // Trailing "/table" only when the table sub-view is active, so every
+  // pre-existing #<year>/stage/<metric> link still means the graph.
+  const subViewSeg = state.stageViewMode === "table" ? "/table" : "";
+  return `#${race}${state.currentYear}/stage/${metricSeg}${subViewSeg}`;
 }
 
 export function updateHash() {

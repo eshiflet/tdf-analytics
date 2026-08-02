@@ -109,6 +109,7 @@ function buildStageViewSelect() {
     updateGcTimeToggle();
     updateSprintModeToggle();
     updateKomModeToggle();
+    updateHash();
     if (state.currentView === "stage") renderStage();
   });
 }
@@ -263,7 +264,7 @@ async function applyHash(): Promise<boolean> {
       return true;
     }
 
-    const [year, view, metric] = parts;
+    const [year, view, metric, subView] = parts;
     if (!URLS_BY_RACE[state.currentRace][year]) return false;
     state.currentYear = year;
     yearSelectEl.value = year;
@@ -273,7 +274,9 @@ async function applyHash(): Promise<boolean> {
       state.gcDisplayMode = metric === "gc-time" ? "time" : "position";
       state.sprintDisplayMode = metric === "sprint-points" ? "points" : "rank";
       state.komDisplayMode = metric === "kom-points" ? "points" : "rank";
+      state.stageViewMode = subView === "table" ? "table" : "graph";
       metricSelectEl.value = state.currentMetric;
+      stageViewSelectEl.value = state.stageViewMode;
     }
     await loadDataset(year);
     switchView(view === "overview" ? "overview" : "stage");

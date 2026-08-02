@@ -57,6 +57,39 @@ function cellFor(rider: RiderSeries, stageNumber: number): Cell {
   return { text: v == null ? "—" : String(v), goodness: v == null ? null : -v, colorable: v != null };
 }
 
+// Gradient stops as [hue, saturation%, lightness%], worst to best. Spelled
+// out as stops rather than a plain 0→120 hue sweep so the ramp reads as four
+// distinct bands — red, orange, yellow, green — and so the green end can sit
+// brighter and more saturated than the red end, which is what makes the
+// leaders pop out of a field of ~180 riders.
+const GRADIENT_STOPS: Array<[number, number, number]> = [
+  [0, 62, 20],   // red — worst
+  [22, 60, 24],  // orange
+  [48, 55, 26],  // yellow
+  [88, 50, 26],  // yellow-green
+  [132, 55, 30], // green — best
+];
+
+// A raw percentile spreads evenly across the field, which on a 180-rider
+// column leaves everyone from 1st to ~30th in near-identical green. Raising
+// it to this power stretches the best end across far more of the ramp (top
+// ~10 green, ~20th yellow-green, ~40-50th yellow, midfield orange). The cost
+// is resolution at the bottom, where the difference between 120th and 140th
+// isn't worth distinguishing anyway.
+const TOP_EMPHASIS = 2;
+
+/** Maps a 0..1 percentile (1 = best) onto GRADIENT_STOPS, after the
+ *  TOP_EMPHASIS curve. */
+function rampColor(t: number): string {
+  const scaled = Math.pow(t, TOP_EMPHASIS) * (GRADIENT_STOPS.length - 1);
+  const i = Math.min(Math.floor(scaled), GRADIENT_STOPS.length - 2);
+  const f = scaled - i;
+  const [h0, s0, l0] = GRADIENT_STOPS[i];
+  const [h1, s1, l1] = GRADIENT_STOPS[i + 1];
+  const lerp = (a: number, b: number) => Math.round((a + (b - a) * f) * 10) / 10;
+  return `hsl(${lerp(h0, h1)}, ${lerp(s0, s1)}%, ${lerp(l0, l1)}%)`;
+}
+
 /** Light background tint for a cell: red (worst in this stage column) through
  *  green (best), based on where its "goodness" value falls among every
  *  colorable cell in the same column — a percentile rank rather than a raw
@@ -65,13 +98,11 @@ function cellFor(rider: RiderSeries, stageNumber: number): Cell {
 function colorScaleForColumn(cells: Cell[]): (goodness: number) => string {
   const sorted = [...new Set(cells.filter((c) => c.colorable && c.goodness != null).map((c) => c.goodness as number))]
     .sort((a, b) => a - b);
+  const rankOf = new Map(sorted.map((g, i) => [g, i]));
   const n = sorted.length;
   return (goodness: number) => {
-    if (n <= 1) return "hsl(70, 45%, 24%)";
-    const idx = sorted.indexOf(goodness);
-    const t = idx / (n - 1);
-    const hue = 120 * t; // 0 = red, 120 = green
-    return `hsl(${hue}, 55%, 24%)`;
+    if (n <= 1) return rampColor(1);
+    return rampColor((rankOf.get(goodness) ?? 0) / (n - 1));
   };
 }
 
