@@ -14,7 +14,7 @@ import {
   yearSelectEl, metricSelectEl, stageViewSelectEl, stageTableEl,
   gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn,
   viewStageBtn, viewOverviewBtn, viewAllRacesBtn, allRacesChartEl, viewRidersBtn,
-  ridersChartEl, allRacesUnitToggleBtn, overviewSummaryEl,
+  ridersChartEl, allRacesUnitToggleBtn, overviewUnitToggleBtn, overviewSummaryEl,
   teamFilterBtn, teamFilterPanel, nationFilterBtn, nationFilterPanel,
 } from "./dom";
 import { getDataset } from "./dataLoading";
@@ -172,6 +172,8 @@ function updateKomModeToggle() {
 function updateUnitToggle() {
   allRacesUnitToggleBtn.hidden = state.currentView !== "allraces";
   allRacesUnitToggleBtn.textContent = state.allRacesUnit === "metric" ? "km → mi" : "mi → km";
+  overviewUnitToggleBtn.hidden = state.currentView !== "overview";
+  overviewUnitToggleBtn.textContent = state.overviewUnit === "metric" ? "km → mi" : "mi → km";
 }
 
 export async function loadDataset(year: string) {
@@ -387,6 +389,12 @@ function wireControls() {
     state.allRacesUnit = state.allRacesUnit === "metric" ? "imperial" : "metric";
     updateUnitToggle();
     drawAllRacesOverview();
+  });
+
+  overviewUnitToggleBtn.addEventListener("click", () => {
+    state.overviewUnit = state.overviewUnit === "metric" ? "imperial" : "metric";
+    updateUnitToggle();
+    drawOverview();
   });
 }
 

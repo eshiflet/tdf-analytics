@@ -24,6 +24,7 @@ export const allRacesChartEl = document.getElementById("all-races-chart") as HTM
 export const viewRidersBtn = document.getElementById("view-riders") as HTMLButtonElement;
 export const ridersChartEl = document.getElementById("riders-chart") as HTMLDivElement;
 export const allRacesUnitToggleBtn = document.getElementById("all-races-unit-toggle") as HTMLButtonElement;
+export const overviewUnitToggleBtn = document.getElementById("overview-unit-toggle") as HTMLButtonElement;
 export const overviewSummaryEl = document.getElementById("overview-summary") as HTMLElement;
 export const teamFilterBtn = document.getElementById("team-filter-btn") as HTMLButtonElement;
 export const teamFilterPanel = document.getElementById("team-filter-panel") as HTMLDivElement;

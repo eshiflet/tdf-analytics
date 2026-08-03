@@ -7,19 +7,29 @@ import { overviewChartEl, overviewSummaryEl, tooltipEl } from "../dom";
 import { positionTooltip, hideTooltip } from "../tooltip";
 import { ROUTE_COLOR, ROUTE_LABEL, difficultyScore } from "../formatters";
 
+const KM_TO_MI = 0.621371;
+const M_TO_FT = 3.28084;
+
 export function drawOverview() {
   if (!state.dataset) return; // initial fetch in flight; loadDataset() redraws
   overviewChartEl.innerHTML = "";
   const stages = state.dataset.stages;
   if (!stages.length) return;
 
+  const imperial = state.overviewUnit === "imperial";
   // Totals summary in the topbar
-  const totalDist = stages.reduce((s, st) => s + (st.distance_km ?? 0), 0);
-  const totalElev = stages.reduce((s, st) => s + (st.vertical_meters ?? 0), 0);
+  const totalDistKm = stages.reduce((s, st) => s + (st.distance_km ?? 0), 0);
+  const totalElevM = stages.reduce((s, st) => s + (st.vertical_meters ?? 0), 0);
+  const distDisplay = imperial
+    ? `${Math.round(totalDistKm * KM_TO_MI).toLocaleString()} mi`
+    : `${Math.round(totalDistKm).toLocaleString()} km`;
+  const elevDisplay = imperial
+    ? `${Math.round(totalElevM * M_TO_FT).toLocaleString()} ft`
+    : `${totalElevM.toLocaleString()} m`;
   overviewSummaryEl.innerHTML = `
-    <span class="overview-summary-item"><span class="overview-summary-label">Total Distance</span> <span class="overview-summary-value">${Math.round(totalDist).toLocaleString()} km</span></span>
+    <span class="overview-summary-item"><span class="overview-summary-label">Total Distance</span> <span class="overview-summary-value">${distDisplay}</span></span>
     <span class="overview-summary-sep">·</span>
-    <span class="overview-summary-item"><span class="overview-summary-label">Total Elevation</span> <span class="overview-summary-value">${totalElev.toLocaleString()} m</span></span>
+    <span class="overview-summary-item"><span class="overview-summary-label">Total Elevation</span> <span class="overview-summary-value">${elevDisplay}</span></span>
   `;
 
   const containerRect = overviewChartEl.getBoundingClientRect();
@@ -35,9 +45,9 @@ export function drawOverview() {
   const hasElevationData = stages.some((s) => (s.vertical_meters ?? 0) > 0);
 
   const panels = [
-    { key: "distance",   label: "Distance (km)",      value: (s: StageInfo) => s.distance_km ?? 0,     noData: false },
-    { key: "elevation",  label: "Elevation Gain (m)",  value: (s: StageInfo) => s.vertical_meters ?? 0, noData: !hasElevationData },
-    { key: "difficulty", label: difficultyLabel,       value: difficultyScore,                           noData: !hasElevationData },
+    { key: "distance",   label: imperial ? "Distance (mi)" : "Distance (km)",           value: (s: StageInfo) => (s.distance_km ?? 0) * (imperial ? KM_TO_MI : 1),     noData: false },
+    { key: "elevation",  label: imperial ? "Elevation Gain (ft)" : "Elevation Gain (m)", value: (s: StageInfo) => (s.vertical_meters ?? 0) * (imperial ? M_TO_FT : 1),   noData: !hasElevationData },
+    { key: "difficulty", label: difficultyLabel,                                          value: difficultyScore,                                                           noData: !hasElevationData },
   ];
 
   const panelHeight = Math.floor((totalHeight - margin.top - margin.bottom - (panels.length - 1) * 12) / panels.length);
@@ -109,12 +119,22 @@ export function drawOverview() {
         .attr("fill", (s) => ROUTE_COLOR[s.route_type ?? "F"] ?? ROUTE_COLOR.F)
         .on("mousemove", (event: MouseEvent, s: StageInfo) => {
           const diff = difficultyScore(s);
+          const distStr = s.distance_km != null
+            ? imperial
+              ? `${(s.distance_km * KM_TO_MI).toFixed(1)} mi`
+              : `${Math.round(s.distance_km)} km`
+            : "—";
+          const elevStr = s.vertical_meters != null
+            ? imperial
+              ? `${Math.round(s.vertical_meters * M_TO_FT).toLocaleString()} ft`
+              : `${s.vertical_meters.toLocaleString()} m`
+            : "—";
           tooltipEl.innerHTML = `
             <div class="t-name">Stage ${s.stage_label}</div>
             <div class="t-team">${s.start_location ?? "—"} → ${s.finish_location ?? "—"}</div>
             <div>${ROUTE_LABEL[s.route_type ?? "F"] ?? s.route_type}</div>
-            <div>Distance: ${s.distance_km != null ? Math.round(s.distance_km) + " km" : "—"}</div>
-            <div>Elevation: ${s.vertical_meters != null ? s.vertical_meters.toLocaleString() + " m" : "—"}</div>
+            <div>Distance: ${distStr}</div>
+            <div>Elevation: ${elevStr}</div>
             <div>Difficulty: ${diff.toFixed(1)}</div>
           `;
           positionTooltip(event);

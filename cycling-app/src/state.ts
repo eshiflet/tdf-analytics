@@ -47,6 +47,7 @@ export const state = {
 
   currentView: "stage" as "stage" | "overview" | "allraces" | "riders",
   allRacesUnit: "metric" as "metric" | "imperial",
+  overviewUnit: "metric" as "metric" | "imperial",
 
   // Suppresses hash writes while a hash is being applied, so the intermediate
   // draw calls inside applyHash() don't push partial states onto the history.

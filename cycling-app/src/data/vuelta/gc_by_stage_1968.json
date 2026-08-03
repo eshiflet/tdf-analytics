@@ -1,1 +1,3226 @@
-{"stages":[{"stage_number":1,"stage_label":"1a","start_location":"Zaragoza","finish_location":"Zaragoza","distance_km":121.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":2,"stage_label":"1b","start_location":"Zaragoza","finish_location":"Zaragoza","distance_km":4.0,"vertical_meters":null,"route_type":"TT","profile_score":null},{"stage_number":3,"stage_label":"2","start_location":"Zaragoza","finish_location":"Lérida","distance_km":195.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":4,"stage_label":"3a","start_location":"Lérida","finish_location":"Barcelona","distance_km":165.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":5,"stage_label":"3b","start_location":"Barcelona","finish_location":"Barcelona","distance_km":38.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":6,"stage_label":"4","start_location":"Barcelona","finish_location":"Salou","distance_km":108.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":7,"stage_label":"5","start_location":"Salou","finish_location":"Vinaroz","distance_km":106.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":8,"stage_label":"6","start_location":"Vinaroz","finish_location":"Valencia","distance_km":148.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":9,"stage_label":"7","start_location":"Valencia","finish_location":"Benidorm","distance_km":144.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":10,"stage_label":"8","start_location":"Benidorm","finish_location":"Almansa","distance_km":167.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":11,"stage_label":"9","start_location":"Almansa","finish_location":"Alcázar de San Juan","distance_km":230.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":12,"stage_label":"10","start_location":"Alcázar de San Juan","finish_location":"Madrid","distance_km":173.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":13,"stage_label":"11","start_location":"Madrid","finish_location":"Palencia","distance_km":242.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":14,"stage_label":"12","start_location":"Villalón de Campos","finish_location":"Gijón","distance_km":236.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":15,"stage_label":"13","start_location":"Gijón","finish_location":"Santander","distance_km":203.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":16,"stage_label":"14","start_location":"Santander","finish_location":"Vitoria","distance_km":244.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":17,"stage_label":"16a","start_location":"San Sebastián","finish_location":"Tolosa","distance_km":67.0,"vertical_meters":null,"route_type":"TT","profile_score":null},{"stage_number":18,"stage_label":"15","start_location":"Pamplona","finish_location":"San Sebastián","distance_km":204.0,"vertical_meters":null,"route_type":"F","profile_score":null},{"stage_number":19,"stage_label":"16b","start_location":"San Sebastián","finish_location":"Tolosa","distance_km":67.0,"vertical_meters":null,"route_type":"TT","profile_score":null},{"stage_number":20,"stage_label":"17","start_location":"Tolosa","finish_location":"Bilbao","distance_km":206.0,"vertical_meters":null,"route_type":"F","profile_score":null}],"riders":[{"id":"rider/felice-gimondi","name":"Gimondi Felice","firstName":"Felice","lastName":"Gimondi","nationality":"Italy","team":"Salvarani","finalRank":1,"totalTimeSeconds":85650,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":2,"gcRank":null,"gcGapSeconds":4,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":14,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":16,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":17,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":19,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":64},{"id":"rider/ventura-diaz","name":"Díaz Ventura","firstName":"Ventura","lastName":"Díaz","nationality":"Spain","team":"Ferrys","finalRank":15,"totalTimeSeconds":52232,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":15,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":20,"gcRank":15,"gcGapSeconds":904,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":12},{"id":"rider/jose-manuel-lopez-rodriguez","name":"López Rodríguez José Manuel","firstName":"José Manuel López","lastName":"Rodríguez","nationality":"Spain","team":"Fagor","finalRank":16,"totalTimeSeconds":94898,"byStage":[{"stage":1,"gcRank":10,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":12,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":13,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":14,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":20,"gcRank":16,"gcGapSeconds":1036,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":35},{"id":"rider/sebastian-elorza","name":"Elorza Sebastián","firstName":"Sebastián","lastName":"Elorza","nationality":"Spain","team":"Kas - Kaskol","finalRank":25,"totalTimeSeconds":32371,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":20,"gcRank":25,"gcGapSeconds":1852,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":56},{"id":"rider/manuel-martin","name":"Martín Manuel","firstName":"Manuel","lastName":"Martín","nationality":"Spain","team":"Karpy","finalRank":40,"totalTimeSeconds":107230,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":10,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":18,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":20,"gcRank":40,"gcGapSeconds":3566,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":72},{"id":"rider/juan-jose-sagarduy","name":"Sagarduy Juan José","firstName":"Juan José","lastName":"Sagarduy","nationality":"Spain","team":"Karpy","finalRank":41,"totalTimeSeconds":32371,"byStage":[{"stage":1,"gcRank":13,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":20,"gcRank":41,"gcGapSeconds":3699,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":75},{"id":"rider/jan-janssen","name":"Janssen Jan","firstName":"Jan","lastName":"Janssen","nationality":"Netherlands","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":115733,"byStage":[{"stage":1,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":2,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":4,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":10,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":12,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":13,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":14,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":1},{"id":"rider/rudi-altig","name":"Altig Rudi","firstName":"Rudi","lastName":"Altig","nationality":"Germany","team":"Salvarani","finalRank":9999,"totalTimeSeconds":98060,"byStage":[{"stage":1,"gcRank":2,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":2,"gcRank":null,"gcGapSeconds":1,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":4,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":5,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":7,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":11,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":12,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":17,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":19,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":61},{"id":"rider/domingo-perurena","name":"Perurena Domingo","firstName":"Domingo","lastName":"Perurena","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":60682,"byStage":[{"stage":1,"gcRank":3,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":12,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":18,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":36},{"id":"rider/raymond-steegmans","name":"Steegmans Raymond","firstName":"Raymond","lastName":"Steegmans","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":14149,"byStage":[{"stage":1,"gcRank":4,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":5,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":24},{"id":"rider/dino-zandegu","name":"Zandegù Dino","firstName":"Dino","lastName":"Zandegù","nationality":"Italy","team":"Salvarani","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":5,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":70},{"id":"rider/ramon-saez","name":"Saéz Ramón","firstName":"Ramón","lastName":"Saéz","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":77122,"byStage":[{"stage":1,"gcRank":6,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":7,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":8,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":13,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":14},{"id":"rider/eric-de-vlaeminck","name":"De Vlaeminck Eric","firstName":"Eric","lastName":"De Vlaeminck","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":24341,"byStage":[{"stage":1,"gcRank":7,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":2,"gcRank":null,"gcGapSeconds":9,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":8,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":21},{"id":"rider/michel-grain","name":"Grain Michel","firstName":"Michel","lastName":"Grain","nationality":"France","team":"Bic","finalRank":9999,"totalTimeSeconds":27741,"byStage":[{"stage":1,"gcRank":8,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":3,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":46},{"id":"rider/michael-wright","name":"Wright Michael","firstName":"Michael","lastName":"Wright","nationality":"Great Britain","team":"Bic","finalRank":9999,"totalTimeSeconds":84016,"byStage":[{"stage":1,"gcRank":9,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":3,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":6,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":11,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":50},{"id":"rider/gilbert-verlinde","name":"Verlinde Gilbert","firstName":"Gilbert","lastName":"Verlinde","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":24031,"byStage":[{"stage":1,"gcRank":11,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":8,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":30},{"id":"rider/bruno-sivilotti","name":"Sivilotti Bruno","firstName":"Bruno","lastName":"Sivilotti","nationality":"Argentina","team":"Karpy","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":12,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":77},{"id":"rider/edouard-delberghe","name":"Delberghe Edouard","firstName":"Edouard","lastName":"Delberghe","nationality":"France","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":25166,"byStage":[{"stage":1,"gcRank":14,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":4,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":5},{"id":"rider/andre-planckaert","name":"Planckaert André","firstName":"André","lastName":"Planckaert","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":42293,"byStage":[{"stage":1,"gcRank":15,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":6,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":13,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":22},{"id":"rider/jean-graczyk","name":"Graczyk Jean","firstName":"Jean","lastName":"Graczyk","nationality":"France","team":"Bic","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":16,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":49},{"id":"rider/paul-lemeteyer","name":"Leméteyer Paul","firstName":"Paul","lastName":"Leméteyer","nationality":"France","team":"Bic","finalRank":9999,"totalTimeSeconds":53851,"byStage":[{"stage":1,"gcRank":17,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":3,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":4,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":5,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":7,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":47},{"id":"rider/victor-van-schil","name":"Van Schil Victor","firstName":"Victor","lastName":"Van Schil","nationality":"Belgium","team":"Faema","finalRank":9999,"totalTimeSeconds":65102,"byStage":[{"stage":1,"gcRank":18,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":12,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":15,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":82},{"id":"rider/mario-minieri","name":"Minieri Mario","firstName":"Mario","lastName":"Minieri","nationality":"Italy","team":"Salvarani","finalRank":9999,"totalTimeSeconds":28762,"byStage":[{"stage":1,"gcRank":19,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":6,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":7,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":66},{"id":"rider/cees-haast","name":"Haast Cees","firstName":"Cees","lastName":"Haast","nationality":"Netherlands","team":"Bic","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":20,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":43},{"id":"rider/willy-monty","name":"Monty Willy","firstName":"Willy","lastName":"Monty","nationality":"Belgium","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":21,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":3},{"id":"rider/bernard-van-de-kerckhove","name":"Van de Kerckhove Bernard","firstName":"Bernard","lastName":"Van de Kerckhove","nationality":"Belgium","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":20087,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":6,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":2},{"id":"rider/rene-chtiej","name":"Chtiej René","firstName":"René","lastName":"Chtiej","nationality":"France","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":10},{"id":"rider/jean-claude-lefebvre","name":"Lefebvre Jean-Claude","firstName":"Jean-Claude","lastName":"Lefebvre","nationality":"France","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":8},{"id":"rider/johnny-schleck","name":"Schleck Johny","firstName":"Johny","lastName":"Schleck","nationality":"Luxembourg","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":7},{"id":"rider/jean-pierre-ducasse","name":"Ducasse Jean-Pierre","firstName":"Jean-Pierre","lastName":"Ducasse","nationality":"France","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":4},{"id":"rider/jean-vidament","name":"Vidament Jean","firstName":"Jean","lastName":"Vidament","nationality":"France","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":27602,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":10,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":9},{"id":"rider/fernand-etter","name":"Etter Fernand","firstName":"Fernand","lastName":"Etter","nationality":"France","team":"Pelforth - Sauvage - Lejeune","finalRank":9999,"totalTimeSeconds":44219,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":9,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":15,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":6},{"id":"rider/pietro-guerra","name":"Guerra Pietro","firstName":"Pietro","lastName":"Guerra","nationality":"Italy","team":"Salvarani","finalRank":9999,"totalTimeSeconds":37122,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":8,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":65},{"id":"rider/tommaso-de-pra","name":"De Pra Tommaso","firstName":"Tommaso","lastName":"De Pra","nationality":"Italy","team":"Salvarani","finalRank":9999,"totalTimeSeconds":39392,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":4,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":62},{"id":"rider/wilfried-peffgen","name":"Peffgen Wilfried","firstName":"Wilfried","lastName":"Peffgen","nationality":"Germany","team":"Salvarani","finalRank":9999,"totalTimeSeconds":78351,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":9,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":15,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":18,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":68},{"id":"rider/giancarlo-ferretti","name":"Ferretti Giancarlo","firstName":"Giancarlo","lastName":"Ferretti","nationality":"Italy","team":"Salvarani","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":63},{"id":"rider/roberto-poggiali","name":"Poggiali Roberto","firstName":"Roberto","lastName":"Poggiali","nationality":"Italy","team":"Salvarani","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":69},{"id":"rider/pietro-partesotti","name":"Partesotti Pietro","firstName":"Pietro","lastName":"Partesotti","nationality":"Italy","team":"Salvarani","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":67},{"id":"rider/gregorio-san-miguel","name":"San Miguel Gregorio","firstName":"Gregorio San","lastName":"Miguel","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":54},{"id":"rider/carlos-echevarria","name":"Echeverría Carlos","firstName":"Carlos","lastName":"Echeverría","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":51},{"id":"rider/jose-luis-errandonea","name":"Errandonea José Luis","firstName":"José Luis","lastName":"Errandonea","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":59},{"id":"rider/jose-manuel-lasa","name":"Lasa José Manuel","firstName":"José Manuel","lastName":"Lasa","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":34595,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":16,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":57},{"id":"rider/andres-gandarias","name":"Gandarias Andrés","firstName":"Andrés","lastName":"Gandarias","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":31530,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":18,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":60},{"id":"rider/vicente-lopez-carril","name":"López Vicente","firstName":"Vicente","lastName":"López","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":43635,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":6,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":16,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":55},{"id":"rider/jose-perez-frances","name":"Pérez Francés José","firstName":"José Pérez","lastName":"Francés","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":96052,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":11,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":14,"gcRank":1,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":17,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":19,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":52},{"id":"rider/aurelio-gonzalez","name":"González Aurelio","firstName":"Aurelio","lastName":"González","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":58},{"id":"rider/antonio-gomez-del-moral","name":"Gómez Antonio","firstName":"Antonio","lastName":"Gómez","nationality":"Spain","team":"Kas - Kaskol","finalRank":9999,"totalTimeSeconds":33146,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":13,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":53},{"id":"rider/jean-milesi","name":"Milesi Jean","firstName":"Jean","lastName":"Milesi","nationality":"France","team":"Bic","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":48},{"id":"rider/siegfried-adler","name":"Adler Siegfried","firstName":"Siegfried","lastName":"Adler","nationality":"Germany","team":"Bic","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":44},{"id":"rider/arie-den-hartog","name":"den Hartog Arie","firstName":"Arie","lastName":"den Hartog","nationality":"Netherlands","team":"Bic","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":42},{"id":"rider/lucien-aimar","name":"Aimar Lucien","firstName":"Lucien","lastName":"Aimar","nationality":"France","team":"Bic","finalRank":9999,"totalTimeSeconds":14150,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":5,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":41},{"id":"rider/anatole-novak","name":"Novak Anatole","firstName":"Anatole","lastName":"Novak","nationality":"France","team":"Bic","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":45},{"id":"rider/jesus-aranzabal","name":"Aranzabal Jesús","firstName":"Jesús","lastName":"Aranzabal","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":30733,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":15,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":39},{"id":"rider/luis-pedro-santamarina","name":"Santamarina Luis Pedro","firstName":"Luis Pedro","lastName":"Santamarina","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":52120,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":18,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":34},{"id":"rider/luis-otano","name":"Otaño Luis","firstName":"Luis","lastName":"Otaño","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":40},{"id":"rider/francisco-gabica","name":"Gabica Francisco","firstName":"Francisco","lastName":"Gabica","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":32},{"id":"rider/luis-ocana","name":"Ocaña Luis","firstName":"Luis","lastName":"Ocaña","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":27596,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":10,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":38},{"id":"rider/eusebio-velez","name":"Vélez Eusebio","firstName":"Eusebio","lastName":"Vélez","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":24008,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":17,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":19,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":33},{"id":"rider/jose-antonio-momene","name":"Momeñe José Antonio","firstName":"José Antonio","lastName":"Momeñe","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":27635,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":5,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":9,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":37},{"id":"rider/jose-maria-errandonea","name":"Errandonea José María","firstName":"José María","lastName":"Errandonea","nationality":"Spain","team":"Fagor","finalRank":9999,"totalTimeSeconds":53594,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":2,"gcRank":null,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":11,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":31},{"id":"rider/eduardo-castello","name":"Castello Eduardo","firstName":"Eduardo","lastName":"Castello","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":58036,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":16,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":11},{"id":"rider/juan-daniel-perera-ruiz","name":"Perera Juan Daniel","firstName":"Juan Daniel","lastName":"Perera","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":13},{"id":"rider/esteban-martin","name":"Martín Esteban","firstName":"Esteban","lastName":"Martín","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":18},{"id":"rider/gabino-erenozaga-lejarreta","name":"Ereñozaga Gabino","firstName":"Gabino","lastName":"Ereñozaga","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":17},{"id":"rider/salvador-canet","name":"Canet Salvador","firstName":"Salvador","lastName":"Canet","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":24426,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":9,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":19},{"id":"rider/angel-ibanez","name":"Ibáñez Ángel","firstName":"Ángel","lastName":"Ibáñez","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":16},{"id":"rider/jose-antonio-ponton","name":"Pontón José Antonio","firstName":"José Antonio","lastName":"Pontón","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":15},{"id":"rider/sebastian-fernandez-duenas","name":"Fernández Sebastián","firstName":"Sebastián","lastName":"Fernández","nationality":"Spain","team":"Ferrys","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":20},{"id":"rider/fernando-manzaneque","name":"Manzaneque Fernando","firstName":"Fernando","lastName":"Manzaneque","nationality":"Spain","team":"Karpy","finalRank":9999,"totalTimeSeconds":34488,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":16,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":71},{"id":"rider/jesus-isasi","name":"Isasi Jesús","firstName":"Jesús","lastName":"Isasi","nationality":"Spain","team":"Karpy","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":80},{"id":"rider/andres-incera","name":"Incera Andrés","firstName":"Andrés","lastName":"Incera","nationality":"Spain","team":"Karpy","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":78},{"id":"rider/jose-ramon-goyeneche","name":"Goyeneche José Ramón","firstName":"José Ramón","lastName":"Goyeneche","nationality":"Spain","team":"Karpy","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":76},{"id":"rider/domingo-jose-fernandez","name":"Fernández Domingo José","firstName":"Domingo José","lastName":"Fernández","nationality":"Spain","team":"Karpy","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":79},{"id":"rider/juan-uribezubia","name":"Uribezubia Juan María","firstName":"Juan María","lastName":"Uribezubia","nationality":"Spain","team":"Karpy","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":74},{"id":"rider/manuel-mesa","name":"Mesa José Manuel","firstName":"José Manuel","lastName":"Mesa","nationality":"Spain","team":"Karpy","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":73},{"id":"rider/vittorio-adorni","name":"Adorni Vittorio","firstName":"Vittorio","lastName":"Adorni","nationality":"Italy","team":"Faema","finalRank":9999,"totalTimeSeconds":45124,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":11,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":17,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":19,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":87},{"id":"rider/antonio-bailetti","name":"Bailetti Antonio","firstName":"Antonio","lastName":"Bailetti","nationality":"Italy","team":"Faema","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":81},{"id":"rider/pietro-scandelli","name":"Scandelli Pietro","firstName":"Pietro","lastName":"Scandelli","nationality":"Italy","team":"Faema","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":90},{"id":"rider/lino-farisato","name":"Farisato Lino","firstName":"Lino","lastName":"Farisato","nationality":"Italy","team":"Faema","finalRank":9999,"totalTimeSeconds":24426,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":9,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":89},{"id":"rider/giacomino-denti","name":"Denti Giacomino","firstName":"Giacomino","lastName":"Denti","nationality":"Italy","team":"Faema","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":85},{"id":"rider/luciano-soave","name":"Soave Luciano","firstName":"Luciano","lastName":"Soave","nationality":"Italy","team":"Faema","finalRank":9999,"totalTimeSeconds":44411,"byStage":[{"stage":1,"gcRank":22,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":3,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":10,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":86},{"id":"rider/martin-van-den-bossche","name":"Van den Bossche Martin","firstName":"Martin","lastName":"Van den Bossche","nationality":"Belgium","team":"Faema","finalRank":9999,"totalTimeSeconds":40832,"byStage":[{"stage":1,"gcRank":32,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":3,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":8,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":84},{"id":"rider/edward-weckx","name":"Weckx Edward","firstName":"Edward","lastName":"Weckx","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":36,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":28},{"id":"rider/willy-vekemans","name":"Vekemans Willy","firstName":"Willy","lastName":"Vekemans","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":54,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":25},{"id":"rider/julien-delocht","name":"Delocht Julien","firstName":"Julien","lastName":"Delocht","nationality":"Belgium","team":"Faema","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":56,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":88},{"id":"rider/edouard-ernst","name":"Ernst Edouard","firstName":"Edouard","lastName":"Ernst","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":69,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":27},{"id":"rider/paul-konings2","name":"Konings Paul","firstName":"Paul","lastName":"Konings","nationality":"Netherlands","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":10940,"byStage":[{"stage":1,"gcRank":80,"gcGapSeconds":0,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":23},{"id":"rider/jos-spruyt","name":"Spruyt Jos","firstName":"Jos","lastName":"Spruyt","nationality":"Belgium","team":"Faema","finalRank":9999,"totalTimeSeconds":36501,"byStage":[{"stage":1,"gcRank":85,"gcGapSeconds":17,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":14,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":83},{"id":"rider/etienne-sonck","name":"Sonck Étienne","firstName":"Étienne","lastName":"Sonck","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":19637,"byStage":[{"stage":1,"gcRank":86,"gcGapSeconds":22,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0},{"stage":7,"gcRank":null,"gcGapSeconds":null,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":26},{"id":"rider/jan-cools","name":"Cools Jan","firstName":"Jan","lastName":"Cools","nationality":"Belgium","team":"Goldor - Gerka - Main d'Or","finalRank":9999,"totalTimeSeconds":11011,"byStage":[{"stage":1,"gcRank":87,"gcGapSeconds":71,"status":"FINISHED","sprintRank":null,"komRank":null,"cumulativePoints":0,"cumulativeKomPoints":0}],"bibNumber":29}]}
+{
+  "stages": [
+    {
+      "stage_number": 1,
+      "stage_label": "1a",
+      "start_location": "Zaragoza",
+      "finish_location": "Zaragoza",
+      "distance_km": 121.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 2,
+      "stage_label": "1b",
+      "start_location": "Zaragoza",
+      "finish_location": "Zaragoza",
+      "distance_km": 4.0,
+      "vertical_meters": null,
+      "route_type": "TT",
+      "profile_score": null
+    },
+    {
+      "stage_number": 3,
+      "stage_label": "2",
+      "start_location": "Zaragoza",
+      "finish_location": "Lérida",
+      "distance_km": 195.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 4,
+      "stage_label": "3a",
+      "start_location": "Lérida",
+      "finish_location": "Barcelona",
+      "distance_km": 165.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 5,
+      "stage_label": "3b",
+      "start_location": "Barcelona",
+      "finish_location": "Barcelona",
+      "distance_km": 38.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 6,
+      "stage_label": "4",
+      "start_location": "Barcelona",
+      "finish_location": "Salou",
+      "distance_km": 108.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 7,
+      "stage_label": "5",
+      "start_location": "Salou",
+      "finish_location": "Vinaroz",
+      "distance_km": 106.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 8,
+      "stage_label": "6",
+      "start_location": "Vinaroz",
+      "finish_location": "Valencia",
+      "distance_km": 148.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 9,
+      "stage_label": "7",
+      "start_location": "Valencia",
+      "finish_location": "Benidorm",
+      "distance_km": 144.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 10,
+      "stage_label": "8",
+      "start_location": "Benidorm",
+      "finish_location": "Almansa",
+      "distance_km": 167.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 11,
+      "stage_label": "9",
+      "start_location": "Almansa",
+      "finish_location": "Alcázar de San Juan",
+      "distance_km": 230.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 12,
+      "stage_label": "10",
+      "start_location": "Alcázar de San Juan",
+      "finish_location": "Madrid",
+      "distance_km": 173.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 13,
+      "stage_label": "11",
+      "start_location": "Madrid",
+      "finish_location": "Palencia",
+      "distance_km": 242.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 14,
+      "stage_label": "12",
+      "start_location": "Villalón de Campos",
+      "finish_location": "Gijón",
+      "distance_km": 236.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 15,
+      "stage_label": "13",
+      "start_location": "Gijón",
+      "finish_location": "Santander",
+      "distance_km": 203.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 16,
+      "stage_label": "14",
+      "start_location": "Santander",
+      "finish_location": "Vitoria",
+      "distance_km": 244.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 17,
+      "stage_label": "16a",
+      "start_location": "San Sebastián",
+      "finish_location": "Tolosa",
+      "distance_km": 67.0,
+      "vertical_meters": null,
+      "route_type": "TT",
+      "profile_score": null
+    },
+    {
+      "stage_number": 18,
+      "stage_label": "15",
+      "start_location": "Pamplona",
+      "finish_location": "San Sebastián",
+      "distance_km": 204.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    },
+    {
+      "stage_number": 19,
+      "stage_label": "16b",
+      "start_location": "San Sebastián",
+      "finish_location": "Tolosa",
+      "distance_km": 67.0,
+      "vertical_meters": null,
+      "route_type": "TT",
+      "profile_score": null
+    },
+    {
+      "stage_number": 20,
+      "stage_label": "17",
+      "start_location": "Tolosa",
+      "finish_location": "Bilbao",
+      "distance_km": 206.0,
+      "vertical_meters": null,
+      "route_type": "F",
+      "profile_score": null
+    }
+  ],
+  "riders": [
+    {
+      "id": "rider/felice-gimondi",
+      "name": "Gimondi Felice",
+      "firstName": "Felice",
+      "lastName": "Gimondi",
+      "nationality": "Italy",
+      "team": "Salvarani",
+      "finalRank": 1,
+      "totalTimeSeconds": 282540,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 2,
+          "gcRank": null,
+          "gcGapSeconds": 4,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 14,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 16,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 17,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 19,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 64
+    },
+    {
+      "id": "rider/ventura-diaz",
+      "name": "Díaz Ventura",
+      "firstName": "Ventura",
+      "lastName": "Díaz",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 15,
+      "totalTimeSeconds": 283444,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 15,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 20,
+          "gcRank": 15,
+          "gcGapSeconds": 904,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 12
+    },
+    {
+      "id": "rider/jose-manuel-lopez-rodriguez",
+      "name": "López Rodríguez José Manuel",
+      "firstName": "José Manuel López",
+      "lastName": "Rodríguez",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 16,
+      "totalTimeSeconds": 283576,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 10,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 12,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 13,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 14,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 20,
+          "gcRank": 16,
+          "gcGapSeconds": 1036,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 35
+    },
+    {
+      "id": "rider/sebastian-elorza",
+      "name": "Elorza Sebastián",
+      "firstName": "Sebastián",
+      "lastName": "Elorza",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 25,
+      "totalTimeSeconds": 284392,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 20,
+          "gcRank": 25,
+          "gcGapSeconds": 1852,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 56
+    },
+    {
+      "id": "rider/manuel-martin",
+      "name": "Martín Manuel",
+      "firstName": "Manuel",
+      "lastName": "Martín",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 40,
+      "totalTimeSeconds": 286106,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 10,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 18,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 20,
+          "gcRank": 40,
+          "gcGapSeconds": 3566,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 72
+    },
+    {
+      "id": "rider/juan-jose-sagarduy",
+      "name": "Sagarduy Juan José",
+      "firstName": "Juan José",
+      "lastName": "Sagarduy",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 41,
+      "totalTimeSeconds": 286239,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 13,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 20,
+          "gcRank": 41,
+          "gcGapSeconds": 3699,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 75
+    },
+    {
+      "id": "rider/jan-janssen",
+      "name": "Janssen Jan",
+      "firstName": "Jan",
+      "lastName": "Janssen",
+      "nationality": "Netherlands",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 6,
+      "totalTimeSeconds": 282883,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 2,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 4,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 10,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 12,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 13,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 14,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 1
+    },
+    {
+      "id": "rider/rudi-altig",
+      "name": "Altig Rudi",
+      "firstName": "Rudi",
+      "lastName": "Altig",
+      "nationality": "Germany",
+      "team": "Salvarani",
+      "finalRank": 18,
+      "totalTimeSeconds": 283663,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 2,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 2,
+          "gcRank": null,
+          "gcGapSeconds": 1,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 4,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 5,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 7,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 11,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 12,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 17,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 19,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 61
+    },
+    {
+      "id": "rider/domingo-perurena",
+      "name": "Perurena Domingo",
+      "firstName": "Domingo",
+      "lastName": "Perurena",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 24,
+      "totalTimeSeconds": 284211,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 3,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 12,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 18,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 36
+    },
+    {
+      "id": "rider/raymond-steegmans",
+      "name": "Steegmans Raymond",
+      "firstName": "Raymond",
+      "lastName": "Steegmans",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 14149,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 4,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 5,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 24
+    },
+    {
+      "id": "rider/dino-zandegu",
+      "name": "Zandegù Dino",
+      "firstName": "Dino",
+      "lastName": "Zandegù",
+      "nationality": "Italy",
+      "team": "Salvarani",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 5,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 70
+    },
+    {
+      "id": "rider/ramon-saez",
+      "name": "Saéz Ramón",
+      "firstName": "Ramón",
+      "lastName": "Saéz",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 32,
+      "totalTimeSeconds": 284841,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 6,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 7,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 8,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 13,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 14
+    },
+    {
+      "id": "rider/eric-de-vlaeminck",
+      "name": "De Vlaeminck Eric",
+      "firstName": "Eric",
+      "lastName": "De Vlaeminck",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 24341,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 7,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 2,
+          "gcRank": null,
+          "gcGapSeconds": 9,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 8,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 21
+    },
+    {
+      "id": "rider/michel-grain",
+      "name": "Grain Michel",
+      "firstName": "Michel",
+      "lastName": "Grain",
+      "nationality": "France",
+      "team": "Bic",
+      "finalRank": 37,
+      "totalTimeSeconds": 285415,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 8,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 3,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 46
+    },
+    {
+      "id": "rider/michael-wright",
+      "name": "Wright Michael",
+      "firstName": "Michael",
+      "lastName": "Wright",
+      "nationality": "Great Britain",
+      "team": "Bic",
+      "finalRank": 14,
+      "totalTimeSeconds": 283437,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 9,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 3,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 6,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 11,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 50
+    },
+    {
+      "id": "rider/gilbert-verlinde",
+      "name": "Verlinde Gilbert",
+      "firstName": "Gilbert",
+      "lastName": "Verlinde",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 24031,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 11,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 8,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 30
+    },
+    {
+      "id": "rider/bruno-sivilotti",
+      "name": "Sivilotti Bruno",
+      "firstName": "Bruno",
+      "lastName": "Sivilotti",
+      "nationality": "Argentina",
+      "team": "Karpy",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 12,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 77
+    },
+    {
+      "id": "rider/edouard-delberghe",
+      "name": "Delberghe Edouard",
+      "firstName": "Edouard",
+      "lastName": "Delberghe",
+      "nationality": "France",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 47,
+      "totalTimeSeconds": 286990,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 14,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 4,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 5
+    },
+    {
+      "id": "rider/andre-planckaert",
+      "name": "Planckaert André",
+      "firstName": "André",
+      "lastName": "Planckaert",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 42293,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 15,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 6,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 13,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 22
+    },
+    {
+      "id": "rider/jean-graczyk",
+      "name": "Graczyk Jean",
+      "firstName": "Jean",
+      "lastName": "Graczyk",
+      "nationality": "France",
+      "team": "Bic",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 16,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 49
+    },
+    {
+      "id": "rider/paul-lemeteyer",
+      "name": "Leméteyer Paul",
+      "firstName": "Paul",
+      "lastName": "Leméteyer",
+      "nationality": "France",
+      "team": "Bic",
+      "finalRank": 43,
+      "totalTimeSeconds": 286618,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 17,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 3,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 4,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 5,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 7,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 47
+    },
+    {
+      "id": "rider/victor-van-schil",
+      "name": "Van Schil Victor",
+      "firstName": "Victor",
+      "lastName": "Van Schil",
+      "nationality": "Belgium",
+      "team": "Faema",
+      "finalRank": 23,
+      "totalTimeSeconds": 284030,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 18,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 12,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 15,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 82
+    },
+    {
+      "id": "rider/mario-minieri",
+      "name": "Minieri Mario",
+      "firstName": "Mario",
+      "lastName": "Minieri",
+      "nationality": "Italy",
+      "team": "Salvarani",
+      "finalRank": 50,
+      "totalTimeSeconds": 288240,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 19,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 6,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 7,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 66
+    },
+    {
+      "id": "rider/cees-haast",
+      "name": "Haast Cees",
+      "firstName": "Cees",
+      "lastName": "Haast",
+      "nationality": "Netherlands",
+      "team": "Bic",
+      "finalRank": 20,
+      "totalTimeSeconds": 283749,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 20,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 43
+    },
+    {
+      "id": "rider/willy-monty",
+      "name": "Monty Willy",
+      "firstName": "Willy",
+      "lastName": "Monty",
+      "nationality": "Belgium",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 44,
+      "totalTimeSeconds": 286649,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 21,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 3
+    },
+    {
+      "id": "rider/bernard-van-de-kerckhove",
+      "name": "Van de Kerckhove Bernard",
+      "firstName": "Bernard",
+      "lastName": "Van de Kerckhove",
+      "nationality": "Belgium",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 9999,
+      "totalTimeSeconds": 20087,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 6,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 2
+    },
+    {
+      "id": "rider/rene-chtiej",
+      "name": "Chtiej René",
+      "firstName": "René",
+      "lastName": "Chtiej",
+      "nationality": "France",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 10
+    },
+    {
+      "id": "rider/jean-claude-lefebvre",
+      "name": "Lefebvre Jean-Claude",
+      "firstName": "Jean-Claude",
+      "lastName": "Lefebvre",
+      "nationality": "France",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 8
+    },
+    {
+      "id": "rider/johnny-schleck",
+      "name": "Schleck Johny",
+      "firstName": "Johny",
+      "lastName": "Schleck",
+      "nationality": "Luxembourg",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 26,
+      "totalTimeSeconds": 284447,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 7
+    },
+    {
+      "id": "rider/jean-pierre-ducasse",
+      "name": "Ducasse Jean-Pierre",
+      "firstName": "Jean-Pierre",
+      "lastName": "Ducasse",
+      "nationality": "France",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 12,
+      "totalTimeSeconds": 283302,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 4
+    },
+    {
+      "id": "rider/jean-vidament",
+      "name": "Vidament Jean",
+      "firstName": "Jean",
+      "lastName": "Vidament",
+      "nationality": "France",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 9999,
+      "totalTimeSeconds": 27602,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 10,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 9
+    },
+    {
+      "id": "rider/fernand-etter",
+      "name": "Etter Fernand",
+      "firstName": "Fernand",
+      "lastName": "Etter",
+      "nationality": "France",
+      "team": "Pelforth - Sauvage - Lejeune",
+      "finalRank": 42,
+      "totalTimeSeconds": 286425,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 9,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 15,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 6
+    },
+    {
+      "id": "rider/pietro-guerra",
+      "name": "Guerra Pietro",
+      "firstName": "Pietro",
+      "lastName": "Guerra",
+      "nationality": "Italy",
+      "team": "Salvarani",
+      "finalRank": 46,
+      "totalTimeSeconds": 286880,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 8,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 65
+    },
+    {
+      "id": "rider/tommaso-de-pra",
+      "name": "De Pra Tommaso",
+      "firstName": "Tommaso",
+      "lastName": "De Pra",
+      "nationality": "Italy",
+      "team": "Salvarani",
+      "finalRank": 9999,
+      "totalTimeSeconds": 39392,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 4,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 62
+    },
+    {
+      "id": "rider/wilfried-peffgen",
+      "name": "Peffgen Wilfried",
+      "firstName": "Wilfried",
+      "lastName": "Peffgen",
+      "nationality": "Germany",
+      "team": "Salvarani",
+      "finalRank": 22,
+      "totalTimeSeconds": 284021,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 9,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 15,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 18,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 68
+    },
+    {
+      "id": "rider/giancarlo-ferretti",
+      "name": "Ferretti Giancarlo",
+      "firstName": "Giancarlo",
+      "lastName": "Ferretti",
+      "nationality": "Italy",
+      "team": "Salvarani",
+      "finalRank": 30,
+      "totalTimeSeconds": 284736,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 63
+    },
+    {
+      "id": "rider/roberto-poggiali",
+      "name": "Poggiali Roberto",
+      "firstName": "Roberto",
+      "lastName": "Poggiali",
+      "nationality": "Italy",
+      "team": "Salvarani",
+      "finalRank": 35,
+      "totalTimeSeconds": 285241,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 69
+    },
+    {
+      "id": "rider/pietro-partesotti",
+      "name": "Partesotti Pietro",
+      "firstName": "Pietro",
+      "lastName": "Partesotti",
+      "nationality": "Italy",
+      "team": "Salvarani",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 67
+    },
+    {
+      "id": "rider/gregorio-san-miguel",
+      "name": "San Miguel Gregorio",
+      "firstName": "Gregorio San",
+      "lastName": "Miguel",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 36,
+      "totalTimeSeconds": 285351,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 54
+    },
+    {
+      "id": "rider/carlos-echevarria",
+      "name": "Echeverría Carlos",
+      "firstName": "Carlos",
+      "lastName": "Echeverría",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 8,
+      "totalTimeSeconds": 282900,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 51
+    },
+    {
+      "id": "rider/jose-luis-errandonea",
+      "name": "Errandonea José Luis",
+      "firstName": "José Luis",
+      "lastName": "Errandonea",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 59
+    },
+    {
+      "id": "rider/jose-manuel-lasa",
+      "name": "Lasa José Manuel",
+      "firstName": "José Manuel",
+      "lastName": "Lasa",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 27,
+      "totalTimeSeconds": 284485,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 16,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 57
+    },
+    {
+      "id": "rider/andres-gandarias",
+      "name": "Gandarias Andrés",
+      "firstName": "Andrés",
+      "lastName": "Gandarias",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 19,
+      "totalTimeSeconds": 283734,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 18,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 60
+    },
+    {
+      "id": "rider/vicente-lopez-carril",
+      "name": "López Vicente",
+      "firstName": "Vicente",
+      "lastName": "López",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 34,
+      "totalTimeSeconds": 284968,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 6,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 16,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 55
+    },
+    {
+      "id": "rider/jose-perez-frances",
+      "name": "Pérez Francés José",
+      "firstName": "José Pérez",
+      "lastName": "Francés",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 2,
+      "totalTimeSeconds": 282675,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 11,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 14,
+          "gcRank": 1,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 17,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 19,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 52
+    },
+    {
+      "id": "rider/aurelio-gonzalez",
+      "name": "González Aurelio",
+      "firstName": "Aurelio",
+      "lastName": "González",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 58
+    },
+    {
+      "id": "rider/antonio-gomez-del-moral",
+      "name": "Gómez Antonio",
+      "firstName": "Antonio",
+      "lastName": "Gómez",
+      "nationality": "Spain",
+      "team": "Kas - Kaskol",
+      "finalRank": 7,
+      "totalTimeSeconds": 282895,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 13,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 53
+    },
+    {
+      "id": "rider/jean-milesi",
+      "name": "Milesi Jean",
+      "firstName": "Jean",
+      "lastName": "Milesi",
+      "nationality": "France",
+      "team": "Bic",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 48
+    },
+    {
+      "id": "rider/siegfried-adler",
+      "name": "Adler Siegfried",
+      "firstName": "Siegfried",
+      "lastName": "Adler",
+      "nationality": "Germany",
+      "team": "Bic",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 44
+    },
+    {
+      "id": "rider/arie-den-hartog",
+      "name": "den Hartog Arie",
+      "firstName": "Arie",
+      "lastName": "den Hartog",
+      "nationality": "Netherlands",
+      "team": "Bic",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 42
+    },
+    {
+      "id": "rider/lucien-aimar",
+      "name": "Aimar Lucien",
+      "firstName": "Lucien",
+      "lastName": "Aimar",
+      "nationality": "France",
+      "team": "Bic",
+      "finalRank": 9,
+      "totalTimeSeconds": 282942,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 5,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 41
+    },
+    {
+      "id": "rider/anatole-novak",
+      "name": "Novak Anatole",
+      "firstName": "Anatole",
+      "lastName": "Novak",
+      "nationality": "France",
+      "team": "Bic",
+      "finalRank": 49,
+      "totalTimeSeconds": 287947,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 45
+    },
+    {
+      "id": "rider/jesus-aranzabal",
+      "name": "Aranzabal Jesús",
+      "firstName": "Jesús",
+      "lastName": "Aranzabal",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 33,
+      "totalTimeSeconds": 284897,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 15,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 39
+    },
+    {
+      "id": "rider/luis-pedro-santamarina",
+      "name": "Santamarina Luis Pedro",
+      "firstName": "Luis Pedro",
+      "lastName": "Santamarina",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 28,
+      "totalTimeSeconds": 284575,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 18,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 34
+    },
+    {
+      "id": "rider/luis-otano",
+      "name": "Otaño Luis",
+      "firstName": "Luis",
+      "lastName": "Otaño",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 11,
+      "totalTimeSeconds": 283179,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 40
+    },
+    {
+      "id": "rider/francisco-gabica",
+      "name": "Gabica Francisco",
+      "firstName": "Francisco",
+      "lastName": "Gabica",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 13,
+      "totalTimeSeconds": 283343,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 32
+    },
+    {
+      "id": "rider/luis-ocana",
+      "name": "Ocaña Luis",
+      "firstName": "Luis",
+      "lastName": "Ocaña",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 9999,
+      "totalTimeSeconds": 27596,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 10,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 38
+    },
+    {
+      "id": "rider/eusebio-velez",
+      "name": "Vélez Eusebio",
+      "firstName": "Eusebio",
+      "lastName": "Vélez",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 3,
+      "totalTimeSeconds": 282848,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 17,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 19,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 33
+    },
+    {
+      "id": "rider/jose-antonio-momene",
+      "name": "Momeñe José Antonio",
+      "firstName": "José Antonio",
+      "lastName": "Momeñe",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 17,
+      "totalTimeSeconds": 283583,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 5,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 9,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 37
+    },
+    {
+      "id": "rider/jose-maria-errandonea",
+      "name": "Errandonea José María",
+      "firstName": "José María",
+      "lastName": "Errandonea",
+      "nationality": "Spain",
+      "team": "Fagor",
+      "finalRank": 4,
+      "totalTimeSeconds": 282859,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 2,
+          "gcRank": null,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 11,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 31
+    },
+    {
+      "id": "rider/eduardo-castello",
+      "name": "Castello Eduardo",
+      "firstName": "Eduardo",
+      "lastName": "Castello",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 9999,
+      "totalTimeSeconds": 58036,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 16,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 11
+    },
+    {
+      "id": "rider/juan-daniel-perera-ruiz",
+      "name": "Perera Juan Daniel",
+      "firstName": "Juan Daniel",
+      "lastName": "Perera",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 13
+    },
+    {
+      "id": "rider/esteban-martin",
+      "name": "Martín Esteban",
+      "firstName": "Esteban",
+      "lastName": "Martín",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 18
+    },
+    {
+      "id": "rider/gabino-erenozaga-lejarreta",
+      "name": "Ereñozaga Gabino",
+      "firstName": "Gabino",
+      "lastName": "Ereñozaga",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 17
+    },
+    {
+      "id": "rider/salvador-canet",
+      "name": "Canet Salvador",
+      "firstName": "Salvador",
+      "lastName": "Canet",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 31,
+      "totalTimeSeconds": 284742,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 9,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 19
+    },
+    {
+      "id": "rider/angel-ibanez",
+      "name": "Ibáñez Ángel",
+      "firstName": "Ángel",
+      "lastName": "Ibáñez",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 16
+    },
+    {
+      "id": "rider/jose-antonio-ponton",
+      "name": "Pontón José Antonio",
+      "firstName": "José Antonio",
+      "lastName": "Pontón",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 15
+    },
+    {
+      "id": "rider/sebastian-fernandez-duenas",
+      "name": "Fernández Sebastián",
+      "firstName": "Sebastián",
+      "lastName": "Fernández",
+      "nationality": "Spain",
+      "team": "Ferrys",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 20
+    },
+    {
+      "id": "rider/fernando-manzaneque",
+      "name": "Manzaneque Fernando",
+      "firstName": "Fernando",
+      "lastName": "Manzaneque",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 21,
+      "totalTimeSeconds": 283854,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 16,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 71
+    },
+    {
+      "id": "rider/jesus-isasi",
+      "name": "Isasi Jesús",
+      "firstName": "Jesús",
+      "lastName": "Isasi",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 80
+    },
+    {
+      "id": "rider/andres-incera",
+      "name": "Incera Andrés",
+      "firstName": "Andrés",
+      "lastName": "Incera",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 78
+    },
+    {
+      "id": "rider/jose-ramon-goyeneche",
+      "name": "Goyeneche José Ramón",
+      "firstName": "José Ramón",
+      "lastName": "Goyeneche",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 48,
+      "totalTimeSeconds": 287275,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 76
+    },
+    {
+      "id": "rider/domingo-jose-fernandez",
+      "name": "Fernández Domingo José",
+      "firstName": "Domingo José",
+      "lastName": "Fernández",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 51,
+      "totalTimeSeconds": 288909,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 79
+    },
+    {
+      "id": "rider/juan-uribezubia",
+      "name": "Uribezubia Juan María",
+      "firstName": "Juan María",
+      "lastName": "Uribezubia",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 29,
+      "totalTimeSeconds": 284695,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 74
+    },
+    {
+      "id": "rider/manuel-mesa",
+      "name": "Mesa José Manuel",
+      "firstName": "José Manuel",
+      "lastName": "Mesa",
+      "nationality": "Spain",
+      "team": "Karpy",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 73
+    },
+    {
+      "id": "rider/vittorio-adorni",
+      "name": "Adorni Vittorio",
+      "firstName": "Vittorio",
+      "lastName": "Adorni",
+      "nationality": "Italy",
+      "team": "Faema",
+      "finalRank": 5,
+      "totalTimeSeconds": 282866,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 11,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 17,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 19,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 87
+    },
+    {
+      "id": "rider/antonio-bailetti",
+      "name": "Bailetti Antonio",
+      "firstName": "Antonio",
+      "lastName": "Bailetti",
+      "nationality": "Italy",
+      "team": "Faema",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 81
+    },
+    {
+      "id": "rider/pietro-scandelli",
+      "name": "Scandelli Pietro",
+      "firstName": "Pietro",
+      "lastName": "Scandelli",
+      "nationality": "Italy",
+      "team": "Faema",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 90
+    },
+    {
+      "id": "rider/lino-farisato",
+      "name": "Farisato Lino",
+      "firstName": "Lino",
+      "lastName": "Farisato",
+      "nationality": "Italy",
+      "team": "Faema",
+      "finalRank": 45,
+      "totalTimeSeconds": 286795,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 9,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 89
+    },
+    {
+      "id": "rider/giacomino-denti",
+      "name": "Denti Giacomino",
+      "firstName": "Giacomino",
+      "lastName": "Denti",
+      "nationality": "Italy",
+      "team": "Faema",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 85
+    },
+    {
+      "id": "rider/luciano-soave",
+      "name": "Soave Luciano",
+      "firstName": "Luciano",
+      "lastName": "Soave",
+      "nationality": "Italy",
+      "team": "Faema",
+      "finalRank": 39,
+      "totalTimeSeconds": 285875,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 22,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 3,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 10,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 86
+    },
+    {
+      "id": "rider/martin-van-den-bossche",
+      "name": "Van den Bossche Martin",
+      "firstName": "Martin",
+      "lastName": "Van den Bossche",
+      "nationality": "Belgium",
+      "team": "Faema",
+      "finalRank": 38,
+      "totalTimeSeconds": 285727,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 32,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 3,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 8,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 84
+    },
+    {
+      "id": "rider/edward-weckx",
+      "name": "Weckx Edward",
+      "firstName": "Edward",
+      "lastName": "Weckx",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 36,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 28
+    },
+    {
+      "id": "rider/willy-vekemans",
+      "name": "Vekemans Willy",
+      "firstName": "Willy",
+      "lastName": "Vekemans",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 54,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 25
+    },
+    {
+      "id": "rider/julien-delocht",
+      "name": "Delocht Julien",
+      "firstName": "Julien",
+      "lastName": "Delocht",
+      "nationality": "Belgium",
+      "team": "Faema",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 56,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 88
+    },
+    {
+      "id": "rider/edouard-ernst",
+      "name": "Ernst Edouard",
+      "firstName": "Edouard",
+      "lastName": "Ernst",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 69,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 27
+    },
+    {
+      "id": "rider/paul-konings2",
+      "name": "Konings Paul",
+      "firstName": "Paul",
+      "lastName": "Konings",
+      "nationality": "Netherlands",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 10940,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 80,
+          "gcGapSeconds": 0,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 23
+    },
+    {
+      "id": "rider/jos-spruyt",
+      "name": "Spruyt Jos",
+      "firstName": "Jos",
+      "lastName": "Spruyt",
+      "nationality": "Belgium",
+      "team": "Faema",
+      "finalRank": 10,
+      "totalTimeSeconds": 283010,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 85,
+          "gcGapSeconds": 17,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 14,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 83
+    },
+    {
+      "id": "rider/etienne-sonck",
+      "name": "Sonck Étienne",
+      "firstName": "Étienne",
+      "lastName": "Sonck",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 19637,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 86,
+          "gcGapSeconds": 22,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        },
+        {
+          "stage": 7,
+          "gcRank": null,
+          "gcGapSeconds": null,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 26
+    },
+    {
+      "id": "rider/jan-cools",
+      "name": "Cools Jan",
+      "firstName": "Jan",
+      "lastName": "Cools",
+      "nationality": "Belgium",
+      "team": "Goldor - Gerka - Main d'Or",
+      "finalRank": 9999,
+      "totalTimeSeconds": 11011,
+      "byStage": [
+        {
+          "stage": 1,
+          "gcRank": 87,
+          "gcGapSeconds": 71,
+          "status": "FINISHED",
+          "sprintRank": null,
+          "komRank": null,
+          "cumulativePoints": 0,
+          "cumulativeKomPoints": 0
+        }
+      ],
+      "bibNumber": 29
+    }
+  ]
+}
