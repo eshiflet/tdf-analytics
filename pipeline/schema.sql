@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS stages (
     race_ranking          INTEGER,
     startlist_quality_score INTEGER,
     timelimit_text        TEXT,
+    cancelled             INTEGER NOT NULL DEFAULT 0,  -- 1 if the stage was cancelled before it was raced
     UNIQUE(edition_id, stage_number)
 );
 

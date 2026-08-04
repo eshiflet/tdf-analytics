@@ -729,6 +729,12 @@ svg text {
   font-size: 11px;
 }
 
+.stage-table thead .col-stage-cancelled {
+  color: var(--text-dim);
+  text-decoration: line-through;
+  cursor: default;
+}
+
 /* ── Riders page ─────────────────────────────────────────────────────────── */
 
 #riders-chart {

@@ -7,6 +7,7 @@ export interface StageInfo {
   vertical_meters: number | null;
   route_type: string | null; // 'F' | 'H' | 'M' | 'TT' | 'TTT'
   profile_score: number | null; // PCS's own grade-aware climbing-difficulty score
+  cancelled?: boolean;
 }
 
 export interface RiderStagePoint {

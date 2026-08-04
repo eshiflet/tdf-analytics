@@ -29,7 +29,7 @@ function cellFor(sp: RiderStagePoint | undefined): Cell {
   if (state.currentMetric === "gc") {
     if (state.gcDisplayMode === "time") {
       const v = sp.gcGapSeconds;
-      return { text: fmtGapHM(v), goodness: v == null ? null : -v, colorable: v != null };
+      return { text: fmtGapHM(v, sp.gcRank), goodness: v == null ? null : -v, colorable: v != null };
     }
     const v = sp.gcRank;
     return { text: v == null ? "—" : String(v), goodness: v == null ? null : -v, colorable: v != null };
@@ -196,8 +196,9 @@ export function drawStageTable() {
   const stageThs: HTMLTableCellElement[] = [];
   for (const stage of stages) {
     const th = document.createElement("th");
-    th.className = "col-stage";
+    th.className = stage.cancelled ? "col-stage col-stage-cancelled" : "col-stage";
     th.textContent = stage.stage_label;
+    th.title = stage.cancelled ? "Stage cancelled" : "";
     th.addEventListener("mouseenter", (e) => showStageTooltip(e, stage));
     th.addEventListener("mouseleave", hideTooltip);
     headRow.appendChild(th);

@@ -455,7 +455,7 @@ export function drawChart() {
         const winnerTime = fmtTotalTime(gcWinner?.totalTimeSeconds ?? null);
         const timeStr = gap === 0 || gcRank === 1
           ? winnerTime
-          : fmtGap(gap);
+          : fmtGap(gap, gcRank);
         tooltipEl.innerHTML = `
           <div class="t-name">${displayName(r)}</div>
           <div class="t-team">${r.team ?? ""}</div>
@@ -579,7 +579,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
       <div class="t-name">${displayName(rider)}</div>
       <div class="t-team">${rider.team ?? ""}</div>
       <div>Stage ${stageLabel(point.stage)} &middot; GC #${point.gcRank ?? "—"}</div>
-      <div>Gap: ${fmtGap(point.gcGapSeconds)}</div>
+      <div>Gap: ${fmtGap(point.gcGapSeconds, point.gcRank)}</div>
       ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
     `;
   } else {

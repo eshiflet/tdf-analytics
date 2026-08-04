@@ -432,6 +432,41 @@ def main():
         print("ERROR: ingest failed")
         return 1
 
+    # -----------------------------------------------------------------------
+    # Step 7: Insert the cancelled Stage 15 (Vitoria→Pamplona, 1968-05-09).
+    #
+    # PCS has this stage (their "Stage 15") but it was never scraped because
+    # it produced no results. Re-ingest creates stages 1–19 from the 19 scrape
+    # files; we shift stages 17–19 up by one and insert the cancelled stage at
+    # position 17 so the race's own stage numbering (1a, 1b, 2, 3a, 3b, 4–18)
+    # is preserved correctly in the DB and in exported JSON labels.
+    # -----------------------------------------------------------------------
+    print("\n  Inserting cancelled stage 15 (Vitoria→Pamplona)...")
+    import sqlite3 as _sqlite3
+    db_path = os.path.join(HERE, "cycling.db")
+    conn2 = _sqlite3.connect(db_path)
+    conn2.row_factory = _sqlite3.Row
+    cur2 = conn2.cursor()
+    eid = cur2.execute(
+        "SELECT edition_id FROM race_editions re"
+        " JOIN races r ON r.race_id = re.race_id"
+        " WHERE r.name LIKE '%Vuelta%' AND re.year = 1968"
+    ).fetchone()["edition_id"]
+    # Shift in descending order to avoid UNIQUE constraint conflicts
+    cur2.execute("UPDATE stages SET stage_number=20 WHERE edition_id=? AND stage_number=19", (eid,))
+    cur2.execute("UPDATE stages SET stage_number=19 WHERE edition_id=? AND stage_number=18", (eid,))
+    cur2.execute("UPDATE stages SET stage_number=18 WHERE edition_id=? AND stage_number=17", (eid,))
+    cur2.execute(
+        """INSERT INTO stages
+           (edition_id, stage_number, stage_date, start_location, finish_location,
+            distance_km, stage_type, route_type, cancelled)
+           VALUES (?, 17, '1968-05-09', 'Vitoria', 'Pamplona', 0, 'road', 'F', 1)""",
+        (eid,),
+    )
+    conn2.commit()
+    conn2.close()
+    print("  Inserted cancelled stage at position 17 (stages 17–19 shifted to 18–20)")
+
     print("\n=== Done ===")
     return 0
 

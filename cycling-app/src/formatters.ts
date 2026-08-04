@@ -22,9 +22,9 @@ export function stageLabel(stageNum: number): string {
   return state.dataset?.stages.find((s) => s.stage_number === stageNum)?.stage_label ?? String(stageNum);
 }
 
-export function fmtGap(seconds: number | null): string {
+export function fmtGap(seconds: number | null, gcRank?: number | null): string {
   if (seconds === null || seconds === undefined) return "—";
-  if (seconds === 0) return "leader";
+  if (seconds === 0 && gcRank === 1) return "leader";
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
@@ -35,9 +35,9 @@ export function fmtGap(seconds: number | null): string {
 /** Gap formatted as H:MM (seconds dropped), for the By Stage Table, where
  *  column width is tight. Hours are never padded, so a sub-hour gap reads as
  *  "0:25" rather than "25". */
-export function fmtGapHM(seconds: number | null): string {
+export function fmtGapHM(seconds: number | null, gcRank?: number | null): string {
   if (seconds === null || seconds === undefined) return "—";
-  if (seconds === 0) return "leader";
+  if (seconds === 0 && gcRank === 1) return "leader";
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return `+${h}:${String(m).padStart(2, "0")}`;
