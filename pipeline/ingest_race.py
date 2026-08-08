@@ -116,14 +116,15 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     preserved_by_number = {}
     if existing:
         for r in cur.execute(
-            "SELECT stage_number, source_slug, vertical_meters, profile_score, distance_km "
-            "FROM stages WHERE edition_id=?",
+            "SELECT stage_number, source_slug, vertical_meters, profile_score, distance_km, "
+            "cancelled FROM stages WHERE edition_id=?",
             (existing[0],),
         ):
             if (r["vertical_meters"] is None and r["profile_score"] is None
-                    and not r["distance_km"]):
+                    and not r["distance_km"] and not r["cancelled"]):
                 continue
-            vals = (r["vertical_meters"], r["profile_score"], r["distance_km"])
+            vals = (r["vertical_meters"], r["profile_score"], r["distance_km"],
+                    r["cancelled"])
             # Populate BOTH indexes, always. The incoming stage file may or may
             # not carry a slug independently of whether the existing row has
             # one, so keying only on whichever the old row had would miss
@@ -185,21 +186,27 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         route_type = detect_route_type(profile_icon, won_how)
 
         if slug and slug in preserved_by_slug:
-            preserved_vm, preserved_ps, preserved_d = preserved_by_slug[slug]
+            preserved_vm, preserved_ps, preserved_d, preserved_c = preserved_by_slug[slug]
         else:
-            preserved_vm, preserved_ps, preserved_d = preserved_by_number.get(n, (None, None, None))
+            preserved_vm, preserved_ps, preserved_d, preserved_c = preserved_by_number.get(
+                n, (None, None, None, 0))
+
+        is_cancelled = bool(stage_data.get("cancelled") or preserved_c)
 
         # Trust the freshly scraped distance whenever it's a real figure; fall
-        # back to the stored one only when PCS gave us nothing usable.
-        if not distance_km and preserved_d:
+        # back to the stored one only when PCS gave us nothing usable. Never for
+        # a cancelled stage: 0 km is its true distance, and the stored value is
+        # liable to belong to whatever stage previously occupied this number.
+        if not distance_km and preserved_d and not is_cancelled:
             print(f"    stage {n}: scrape has no distance, keeping stored {preserved_d} km")
             distance_km = preserved_d
         cur.execute(
             """INSERT INTO stages
                (edition_id, stage_number, stage_label, stage_date,
                 start_location, finish_location, distance_km, stage_type,
-                vertical_meters, profile_score, route_type, won_how, source_slug)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                vertical_meters, profile_score, route_type, won_how, source_slug,
+                cancelled)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 edition_id, n, f"Stage {n}", date_iso,
                 info.get("Start"), info.get("Finish"), distance_km,
@@ -211,6 +218,9 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                 # worse than a missing one because callers will trust it.
                 # backfill_source_slugs.py fills these in date-aware.
                 slug,
+                # A cancelled stage has no results, so nothing in the scrape rows
+                # can imply it — the flag lives only in the file or the DB.
+                1 if is_cancelled else 0,
             ),
         )
         stage_id = cur.lastrowid
