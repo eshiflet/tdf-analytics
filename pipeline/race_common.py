@@ -211,3 +211,72 @@ def resolve_race_arg(argv: list[str]) -> tuple[str, str]:
     if race_arg not in EXPORT_RACE_INFO:
         raise SystemExit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
     return EXPORT_RACE_INFO[race_arg]
+
+
+# ── PCS slug ↔ DB stage-number mapping ──────────────────────────────────────
+# PCS identifies a stage by a URL slug ("stage-3", or "stage-3a"/"stage-3b"
+# for a split day where two stages were raced on the same date). The DB needs
+# a single contiguous INTEGER stage_number (UNIQUE per edition), so a split
+# day consumes two numbers: stage-3a -> 3, stage-3b -> 4, stage-4 -> 5.
+#
+# Deriving the DB number from the slug's digits alone is WRONG for any edition
+# with a split (both halves parse to the same number and collide — the second
+# silently overwrote the first for 68 Vuelta and 111 TDF split-days). Deriving
+# it from list position alone is also wrong: discover_stages() drops any stage
+# whose probe fails, and positional numbering would then shift every later
+# stage down one, silently mislabeling them.
+#
+# assign_stage_numbers() does both safely: it numbers by position (so splits
+# work) but first verifies the slug sequence is complete and well-ordered, so
+# a dropped stage is a loud abort instead of a silent shift.
+
+_SLUG_RE = re.compile(r"^stage-(\d+)([a-d]?)$")
+
+
+def assign_stage_numbers(slugs: list[str]) -> tuple[list[tuple[int, str]], str | None]:
+    """Map an ordered list of PCS slugs to sequential DB stage numbers.
+
+    Returns (pairs, error). On success pairs is [(db_stage_number, slug), ...]
+    and error is None. On any gap/ordering problem pairs is [] and error is a
+    human-readable reason — callers must abort rather than write partial data,
+    since every downstream join keys off stage_number.
+    """
+    parsed = []
+    has_prologue = False
+    for i, slug in enumerate(slugs):
+        # A prologue is slugged 'prologue' (not 'stage-0') and must come first.
+        # It takes DB stage_number 0 without consuming a numbered slot.
+        if slug == "prologue":
+            if i != 0:
+                return [], "'prologue' appears after another stage"
+            has_prologue = True
+            continue
+        m = _SLUG_RE.match(slug)
+        if not m:
+            return [], f"unparseable stage slug {slug!r}"
+        parsed.append((int(m.group(1)), m.group(2), slug))
+
+    expected = 1          # next whole PCS stage number we require
+    prev_letter = ""
+    prev_num = None
+    for num, letter, slug in parsed:
+        if letter in ("", "a"):
+            if num != expected:
+                return [], (
+                    f"stage sequence gap: expected stage-{expected}, found {slug!r}. "
+                    "A stage is missing from discovery — re-run rather than "
+                    "renumbering, or every later stage will be mislabeled."
+                )
+            expected = num + 1
+        else:
+            # 'b'/'c'/'d' must continue the sub-stage sequence of the same number
+            if prev_num != num or prev_letter not in ("a", "b", "c"):
+                return [], f"orphaned sub-stage {slug!r} (no preceding stage-{num}a)"
+            if ord(letter) != ord(prev_letter) + 1:
+                return [], f"sub-stage out of order: {slug!r} follows stage-{num}{prev_letter}"
+        prev_num, prev_letter = num, letter
+
+    numbered = [(i + 1, slug) for i, (_, _, slug) in enumerate(parsed)]
+    if has_prologue:
+        numbered.insert(0, (0, "prologue"))
+    return numbered, None

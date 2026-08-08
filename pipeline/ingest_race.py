@@ -24,6 +24,7 @@ import sqlite3
 import sys
 from glob import glob
 
+from backfill_source_slugs import backfill_edition_slugs
 from race_common import (
     RACES,
     DB_PATH,
@@ -98,14 +99,39 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
 
     # Preserve per-stage fields that come from scrape_{giro,vuelta}_stage_info.py,
     # not the stage scrape files — otherwise a re-ingest silently wipes them.
-    preserved_stage_info = {}
+    #
+    # Keyed by source_slug wherever the existing row has one, falling back to
+    # stage_number only for rows predating that column. Keying on stage_number
+    # alone is actively dangerous: the whole reason you re-ingest an edition is
+    # usually that its numbering was wrong, and number-keyed preservation then
+    # re-attaches each elevation to whichever *different* stage now holds that
+    # number — silently re-corrupting the data during the repair. (This is what
+    # happened while fixing the 2010 Vuelta's two missing stages.)
+    # distance_km rides along: PCS reports "0 km" for some historical stages and
+    # patch_missing_distances.py backfills the real figure from Wikipedia. That
+    # patched value lives only in the DB, so a re-ingest that trusts the scrape
+    # file's 0 silently destroys it (caught re-ingesting 2010 Vuelta stage 21,
+    # 85.0 km -> 0.0). Only ever used when the incoming value is 0/absent.
+    preserved_by_slug = {}
+    preserved_by_number = {}
     if existing:
         for r in cur.execute(
-            "SELECT stage_number, vertical_meters, profile_score FROM stages WHERE edition_id=?",
+            "SELECT stage_number, source_slug, vertical_meters, profile_score, distance_km "
+            "FROM stages WHERE edition_id=?",
             (existing[0],),
         ):
-            if r["vertical_meters"] is not None or r["profile_score"] is not None:
-                preserved_stage_info[r["stage_number"]] = (r["vertical_meters"], r["profile_score"])
+            if (r["vertical_meters"] is None and r["profile_score"] is None
+                    and not r["distance_km"]):
+                continue
+            vals = (r["vertical_meters"], r["profile_score"], r["distance_km"])
+            # Populate BOTH indexes, always. The incoming stage file may or may
+            # not carry a slug independently of whether the existing row has
+            # one, so keying only on whichever the old row had would miss
+            # every stage when the two disagree (that wipes the whole
+            # edition's elevation on re-ingest).
+            preserved_by_number[r["stage_number"]] = vals
+            if r["source_slug"]:
+                preserved_by_slug[r["source_slug"]] = vals
 
     if DRY_RUN:
         action = "replace existing" if existing else "insert"
@@ -136,6 +162,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             stage_data = json.load(f)
 
         n = stage_data["n"]
+        slug = stage_data.get("slug")  # absent in files scraped before slugs were recorded
         info = stage_data.get("info", {})
         rows = stage_data.get("rows", [])
         profile_icon = stage_data.get("profile_icon", "p1")
@@ -157,18 +184,33 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         won_how = info.get("Won how", "")
         route_type = detect_route_type(profile_icon, won_how)
 
-        preserved_vm, preserved_ps = preserved_stage_info.get(n, (None, None))
+        if slug and slug in preserved_by_slug:
+            preserved_vm, preserved_ps, preserved_d = preserved_by_slug[slug]
+        else:
+            preserved_vm, preserved_ps, preserved_d = preserved_by_number.get(n, (None, None, None))
+
+        # Trust the freshly scraped distance whenever it's a real figure; fall
+        # back to the stored one only when PCS gave us nothing usable.
+        if not distance_km and preserved_d:
+            print(f"    stage {n}: scrape has no distance, keeping stored {preserved_d} km")
+            distance_km = preserved_d
         cur.execute(
             """INSERT INTO stages
                (edition_id, stage_number, stage_label, stage_date,
                 start_location, finish_location, distance_km, stage_type,
-                vertical_meters, profile_score, route_type, won_how)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                vertical_meters, profile_score, route_type, won_how, source_slug)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 edition_id, n, f"Stage {n}", date_iso,
                 info.get("Start"), info.get("Finish"), distance_km,
                 "itt" if route_type in ("TT", "TTT") else "road",
                 preserved_vm, preserved_ps, route_type, won_how,
+                # NULL, not a reconstructed f"stage-{n}", when the scrape file
+                # predates slug recording: on a split edition that guess is
+                # wrong for every stage after the split, and a wrong slug is
+                # worse than a missing one because callers will trust it.
+                # backfill_source_slugs.py fills these in date-aware.
+                slug,
             ),
         )
         stage_id = cur.lastrowid
@@ -303,6 +345,14 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                     pass  # rider not in riders table; skip
 
         print(f"  Stage {n}: {len(rows)} rows inserted")
+
+    # Stage files scraped before slugs were recorded leave source_slug NULL.
+    # Derive them from the same-date split detection the standalone backfill
+    # uses, so a re-ingest of an old year doesn't quietly undo the backfill and
+    # leave scrape_*_stage_info.py with nothing to key off.
+    filled = backfill_edition_slugs(cur, edition_id)
+    if filled:
+        print(f"  derived source_slug for {filled} stage(s) from stage dates")
 
     conn.commit()
     return total_results

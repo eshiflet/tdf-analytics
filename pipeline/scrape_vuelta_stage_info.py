@@ -122,7 +122,8 @@ def main():
 
         edition_id = edition["edition_id"]
         stages = cur.execute(
-            "SELECT stage_id, stage_number, stage_label FROM stages WHERE edition_id=? ORDER BY stage_number",
+            "SELECT stage_id, stage_number, stage_label, source_slug FROM stages "
+            "WHERE edition_id=? ORDER BY stage_number",
             (edition_id,),
         ).fetchall()
 
@@ -134,11 +135,17 @@ def main():
             stage_num = stage["stage_number"]
             label = stage["stage_label"] or str(stage_num)
 
-            slugs = []
-            if re.match(r"^\d+[ab]$", label):
-                slugs.append(f"stage-{label}")
-            else:
-                slugs.append(f"stage-{stage_num}")
+            # Fetch by the recorded PCS slug, never by stage_number. On any
+            # edition with a split day the DB number runs ahead of the PCS
+            # number from the split onward, so "stage-{stage_num}" pulls the
+            # NEIGHBOURING stage's page — writing each stage's elevation onto
+            # the wrong stage and 404ing on the tail. That silently corrupted
+            # Vuelta 1989-1992 (and is why their last stages had no elevation).
+            slug = stage["source_slug"]
+            if not slug:
+                print(f"  Stage {label}: no source_slug — run backfill_source_slugs.py; skipping")
+                continue
+            slugs = [slug]
 
             info = None
             for slug in slugs:

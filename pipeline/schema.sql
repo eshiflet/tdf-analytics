@@ -69,6 +69,14 @@ CREATE TABLE IF NOT EXISTS stages (
     startlist_quality_score INTEGER,
     timelimit_text        TEXT,
     cancelled             INTEGER NOT NULL DEFAULT 0,  -- 1 if the stage was cancelled before it was raced
+    -- PCS URL slug this stage's data came from, e.g. 'stage-3', 'stage-3a'.
+    -- stage_number is a contiguous DB-side integer, so on any edition with a
+    -- split day the two diverge (stage-3a -> 3, stage-3b -> 4, stage-4 -> 5)
+    -- and stay diverged for the rest of the race. Anything that re-fetches a
+    -- stage from PCS must key off source_slug, never off stage_number:
+    -- reconstructing 'stage-{stage_number}' silently pulls the neighbouring
+    -- stage's page for every stage after a split.
+    source_slug           TEXT,
     UNIQUE(edition_id, stage_number)
 );
 

@@ -32,6 +32,8 @@ import time
 import urllib.request
 import urllib.error
 
+from race_common import assign_stage_numbers
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRAPES_DIR = os.path.join(HERE, "vuelta_scrapes")
 
@@ -413,6 +415,10 @@ def scrape_stage(year: int, slug: str, stage_num: int) -> dict | None:
 
     return {
         "n": stage_num,
+        # The PCS slug this row set actually came from. "n" is a DB-side
+        # sequential number that diverges from the slug on any split day, so
+        # only the slug can be trusted to re-fetch the same page later.
+        "slug": slug,
         "info": info,
         "profile_icon": icon,
         "rows": rows,
@@ -432,20 +438,20 @@ def scrape_year(year: int, out_dir: str) -> bool:
     print(f"  Found {len(slugs)} stages")
     os.makedirs(out_dir, exist_ok=True)
 
+    # Map slugs -> DB stage numbers up front. assign_stage_numbers() refuses
+    # to number an incomplete sequence, so a stage dropped by discover_stages()
+    # (transient Cloudflare block, network hiccup) aborts the year instead of
+    # silently shifting every later stage down one. It also gives split days
+    # ("stage-3a"/"stage-3b") distinct numbers — deriving the number from the
+    # slug's digits alone made both halves collide on one file, silently
+    # discarding the first.
+    numbered, err = assign_stage_numbers(slugs)
+    if err:
+        print(f"  ABORT {year}: {err}")
+        return False
+
     saved_nums = []
-    for slug in slugs:
-        # Stage number comes from the slug itself, NOT from position in the
-        # discovered list. discover_stages() silently drops any stage whose
-        # probe fails (transient Cloudflare block, network hiccup, etc.) —
-        # numbering by position would then quietly shift every later stage
-        # down by one, mislabeling it as the wrong stage entirely. A gap in
-        # the numbering is a much safer failure mode: it's visible (missing
-        # file) and re-scrapable, instead of silently wrong data.
-        m = re.match(r"^stage-(\d+)[a-d]?$", slug)
-        if not m:
-            print(f"  WARN: could not parse stage number from slug '{slug}', skipping")
-            continue
-        stage_num = int(m.group(1))
+    for stage_num, slug in numbered:
         out_path = os.path.join(out_dir, f"stage_{stage_num}.json")
 
         print(f"  {slug} → stage_{stage_num}.json ... ", end="", flush=True)
