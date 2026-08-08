@@ -103,6 +103,54 @@ def load_kom_points():
     return _kom_points_cache
 
 
+def compute_stage_labels(stages):
+    """Display labels for a race's stages, in stage_number order.
+
+    A racing day gets a number; two stages sharing a day are that day's "a" and
+    "b" (Vuelta 1989's 3a/3b); a prologue is "P" and consumes no day number.
+    Labels therefore diverge from stage_number after any split — which is why
+    1989's DB stage 22 shows as "21".
+
+    Ordering is by position in `stages` (the caller selects ORDER BY
+    stage_number), NOT by date. Grouping by date and iterating over the sorted
+    keys — the previous implementation — mislabels any stage whose date is
+    missing: the "__nodate_N" placeholder sorts after every real date, so the
+    stage collects the highest day number regardless of where it actually sits.
+    That put TDF 1998's dateless stage 17 (the abandoned Festina-affair stage)
+    at label "21" and pushed stages 18-21 down to 17-20, so the app displayed
+    the last five stages of that Tour in the wrong order. With every date
+    missing it degrades further, ordering labels lexicographically
+    (__nodate_10 before __nodate_2).
+
+    Only CONSECUTIVE stages sharing a date are treated as a split day; a
+    repeated date elsewhere in the edition is a data error, not a split, and
+    grouping it would silently relabel unrelated stages.
+    """
+    labels = [""] * len(stages)
+    day = 0
+    i = 0
+    while i < len(stages):
+        if stages[i]["stage_number"] == 0:
+            labels[i] = "P"
+            i += 1
+            continue
+        date = stages[i].get("stage_date")
+        j = i + 1
+        if date:
+            while (j < len(stages)
+                   and stages[j].get("stage_date") == date
+                   and stages[j]["stage_number"] != 0):
+                j += 1
+        day += 1
+        if j - i == 1:
+            labels[i] = str(day)
+        else:
+            for k in range(i, j):
+                labels[k] = f"{day}{'abcde'[k - i]}"
+        i = j
+    return labels
+
+
 def export_year(year, out_path, race_id):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -131,26 +179,7 @@ def export_year(year, out_path, race_id):
     # Build stage_number → index lookup for sprint_points array alignment
     stage_num_to_idx = {s["stage_number"]: i for i, s in enumerate(stages)}
 
-    # Compute display labels: same-date stages get "Na"/"Nb"; stage_number 0 = "P"; others "N"
-    from collections import defaultdict
-    date_groups = defaultdict(list)
-    for i, s in enumerate(stages):
-        date_groups[s.get("stage_date") or f"__nodate_{i}"].append(i)
-    stage_labels = [""] * len(stages)
-    day_counter = 0
-    for date in sorted(date_groups.keys()):
-        indices = date_groups[date]
-        if len(indices) == 1:
-            i = indices[0]
-            if stages[i]["stage_number"] == 0:
-                stage_labels[i] = "P"
-            else:
-                day_counter += 1
-                stage_labels[i] = str(day_counter)
-        else:
-            day_counter += 1
-            for j, i in enumerate(indices):
-                stage_labels[i] = f"{day_counter}{'abcde'[j]}"
+    stage_labels = compute_stage_labels(stages)
 
     # Load real sprint/KOM points for this year (array indexed by stage position)
     sprint_pts_by_year = load_sprint_points().get(str(year), [])
