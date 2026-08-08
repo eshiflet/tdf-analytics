@@ -496,6 +496,16 @@ def main():
         # Ingesting is destructive (the edition is deleted and rebuilt), so a
         # swap has to be caught before the write, not after.
         findings = check_swaps(race, year, stage_files)
+
+        # Duplicate bibs are an upstream PCS defect we cannot fix and that
+        # doesn't misattribute anyone's result — warn, but never block, or the
+        # affected years could never be re-ingested again.
+        dups = [f for f in findings if f.get("type") == "duplicate_bib"]
+        findings = [f for f in findings if f.get("type") != "duplicate_bib"]
+        for f in dups:
+            print(f"  NOTE: bib {f['bib']} is shared by {', '.join(f['riders'])} "
+                  "(PCS-side duplicate; results unaffected)")
+
         if findings and not SKIP_SWAP_GATE:
             print(f"\nERROR: {len(findings)} bib-identity anomaly(ies) in {race} {year} "
                   "— refusing to ingest:")

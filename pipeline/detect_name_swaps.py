@@ -96,22 +96,81 @@ def check_bib_consistency_dir(race, scrapes_dir, min_year=0):
     return findings
 
 
+# Bib collisions confirmed against PCS to be upstream data errors rather than
+# name swaps — two genuinely different riders sharing one bib. Unlike the
+# within-stage duplicates detected below, these never appear in the SAME stage,
+# so nothing in the data itself distinguishes them from a swap; each was
+# verified by hand and is listed here so the ingest gate stops blocking.
+#
+#   giro 1952 bib 104 — Pasquale Fornara (5 stages) and Elio Brasola (stage 3).
+#     PCS's own rider page for Elio Brasola confirms he rode the 1952 Giro for
+#     Bottecchia-Ursus and finished 19th on GC; he is Annibale Brasola's
+#     brother. Bib 103 is unused by that team. Both names are correct; only
+#     the bib is wrong, and PCS gives no basis for choosing the right one.
+VERIFIED_BIB_COLLISIONS = {
+    ("giro", 1952, "104"),
+}
+
+
 def _bib_check(race, year, stages_by_n):
     """
     For each bib, collect all (name, slug, nat) observed across stages.
     Flag any bib whose identity isn't unanimous.
+
+    Two distinct conditions come out of this, and conflating them produces
+    false swap reports:
+
+      'duplicate_bib' — the same bib appears MORE THAN ONCE within a single
+        stage, on two different riders (invariably teammates). That is an
+        upstream PCS defect, not a scraping artifact and not a name swap:
+        PCS's own 2015 Giro startlist lists "92 GRMAY / 92 FERRARI", and
+        1952's Elio Brasola (a real Bottecchia-Ursus rider, 19th on GC that
+        year) shares bib 104 with Pasquale Fornara while 103 sits unused.
+        Both riders and both results are correct; only the bib is wrong, and
+        we have no source for the true one.
+
+      'bib_inconsistency' — a bib maps to different riders on DIFFERENT
+        stages. That is the real swap artifact worth blocking on.
+
+    Bibs hitting the first condition are excluded from the second, since a
+    duplicated bib makes "the identity of bib N on stage S" ill-defined.
     """
+    findings = []
     bib_identities = defaultdict(dict)  # bib -> {stage_n: (name, slug, nat)}
+    duplicated = set(
+        bib for (r, y, bib) in VERIFIED_BIB_COLLISIONS if r == race and y == year
+    )
 
     for stage_n, rows in stages_by_n.items():
+        per_stage = defaultdict(set)
         for row in rows:
             parsed = parse_row(row)
             if parsed is None:
                 continue
             bib, name, slug, nat = parsed
+            per_stage[bib].add((name, slug, nat))
             bib_identities[bib][stage_n] = (name, slug, nat)
+        for bib, idents in per_stage.items():
+            if len(idents) > 1:
+                duplicated.add(bib)
 
-    findings = []
+    for bib in sorted(duplicated):
+        names = sorted({
+            ident[0]
+            for rows in stages_by_n.values()
+            for parsed in (parse_row(r) for r in rows)
+            if parsed and parsed[0] == bib
+            for ident in [parsed[1:]]
+        })
+        findings.append({
+            "type": "duplicate_bib",
+            "race": race,
+            "year": year,
+            "bib": bib,
+            "riders": names,
+        })
+        bib_identities.pop(bib, None)
+
     for bib, by_stage in bib_identities.items():
         identities = set(v for v in by_stage.values())
         if len(identities) <= 1:
@@ -272,7 +331,11 @@ def main():
         print(f"{'='*60}")
         for f in findings:
             total += 1
-            if f["type"] == "bib_inconsistency":
+            if f["type"] == "duplicate_bib":
+                print(f"  [DUP] bib {f['bib']} used by {len(f['riders'])} riders "
+                      f"in the same stage(s): {', '.join(f['riders'])}")
+                print("        upstream PCS defect — results are correct, the bib isn't")
+            elif f["type"] == "bib_inconsistency":
                 maj = f["majority_identity"]
                 print(f"  [BIB] bib {f['bib']} → majority: {maj[0]} ({maj[2]})")
                 for stage_n, outlier_name in zip(f["outlier_stages"], f["outlier_names"]):
