@@ -30,6 +30,18 @@ jobs:
         run: npm ci
         working-directory: cycling-app
 
+      # Pipeline unit tests. These are pure-stdlib and need no database — the
+      # ingest tests build a scratch DB from schema.sql, which also keeps that
+      # file from drifting out of sync with what ingest_race.py writes (it had:
+      # route_type was missing until 2026-08-08, so a DB rebuilt from schema.sql
+      # could not be written to at all).
+      #
+      # Note there is no validate_db.py step: cycling.db is gitignored and not
+      # regenerable in CI, so the database itself can only be validated locally.
+      - name: Run pipeline tests
+        run: python3 -m unittest discover -p 'test_*.py' -v
+        working-directory: pipeline
+
       - name: Validate exported data
         run: python3 validate_exports.py
         working-directory: pipeline

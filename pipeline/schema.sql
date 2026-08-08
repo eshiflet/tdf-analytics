@@ -68,6 +68,14 @@ CREATE TABLE IF NOT EXISTS stages (
     race_ranking          INTEGER,
     startlist_quality_score INTEGER,
     timelimit_text        TEXT,
+    -- Terrain classification used by the app: 'F' flat | 'H' hilly | 'M'
+    -- mountain | 'TT' individual time trial | 'TTT' team time trial. Derived by
+    -- race_common.detect_route_type() from the scraped profile icon, overridden
+    -- by "Won how" for time trials. (Added by ALTER TABLE and missing from this
+    -- file until 2026-08-08, so a DB rebuilt from schema.sql could not be
+    -- written to by ingest_race.py — test_ingest.py now builds from this file
+    -- and runs a real ingest, so the two can't drift apart again.)
+    route_type            TEXT,
     cancelled             INTEGER NOT NULL DEFAULT 0,  -- 1 if the stage was cancelled before it was raced
     -- PCS URL slug this stage's data came from, e.g. 'stage-3', 'stage-3a'.
     -- stage_number is a contiguous DB-side integer, so on any edition with a
