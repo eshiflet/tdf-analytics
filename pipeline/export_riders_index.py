@@ -58,11 +58,11 @@ from race_common import DB_PATH, resolve_race_arg
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-def load_youth_winners():
+def load_youth_winners(db_path=None):
     """Maps rider_id -> sorted list of years with a rank=1 finish in the
     youth (white jersey) classification, per cycling.db's
     classification_standings table. TDF only."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(db_path or DB_PATH)
     cur = conn.cursor()
     cur.execute(
         "SELECT cs.rider_id, re.year FROM classification_standings cs "
@@ -76,25 +76,20 @@ def load_youth_winners():
     return {rider_id: sorted(years) for rider_id, years in winners.items()}
 
 
-def main():
-    _, subdir = resolve_race_arg(sys.argv)
-    data_dir = os.path.join(HERE, "..", "cycling-app", "src", "data", subdir)
-    out_path = os.path.join(data_dir, "riders_index.json")
+def build_index(datasets, youth_winners=None):
+    """Collapse per-year gc_by_stage datasets into the compact rider index.
 
-    youth_winners = load_youth_winners() if subdir == "tour" else {}
+    `datasets` is an iterable of (year_str, parsed_gc_by_stage_dict). Pure —
+    no file or database access — so the shape of the output can be asserted
+    directly. main() does the globbing, reading and writing.
 
-    riders = {}
-    team_names = set()
-    files = sorted(glob.glob(os.path.join(data_dir, "gc_by_stage_*.json")))
-    if not files:
-        print(f"No {subdir} gc_by_stage_*.json files found")
-        return
+    Two passes are required, not one: teamIdx points into a string table that
+    can only be built once every team across every year is known.
+    """
+    youth_winners = youth_winners or {}
+    riders, team_names, raw_years = {}, set(), []
 
-    raw_years = []  # (entry, year, rider_record) triples for the second pass
-    for path in files:
-        year = os.path.basename(path).removeprefix("gc_by_stage_").removesuffix(".json")
-        with open(path, encoding="utf-8") as f:
-            ds = json.load(f)
+    for year, ds in datasets:
         for r in ds["riders"]:
             slug = r["id"].removeprefix("rider/")
             entry = riders.setdefault(slug, {"n": r["name"], "c": r.get("nationality"), "y": {}})
@@ -116,6 +111,8 @@ def main():
         last_stage = r["byStage"][-1] if r.get("byStage") else None
         sprint_rank = (last_stage.get("sprintRank") or 9999) if last_stage else 9999
         kom_rank = (last_stage.get("komRank") or 9999) if last_stage else 9999
+        # Most rider-years have neither ranking; the short 2-element form keeps
+        # sentinels out of ~65% of entries.
         if sprint_rank == 9999 and kom_rank == 9999:
             entry["y"][year] = [r["finalRank"], ti]
         else:
@@ -126,13 +123,35 @@ def main():
                 0 if kom_rank == 9999 else kom_rank,
             ]
 
-    index = {"teams": teams, "riders": riders}
+    return {"teams": teams, "riders": riders}
+
+
+def main(argv=None):
+    argv = list(sys.argv if argv is None else argv)
+    _, subdir = resolve_race_arg(argv)
+    data_dir = os.path.join(HERE, "..", "cycling-app", "src", "data", subdir)
+    out_path = os.path.join(data_dir, "riders_index.json")
+
+    youth_winners = load_youth_winners() if subdir == "tour" else {}
+
+    files = sorted(glob.glob(os.path.join(data_dir, "gc_by_stage_*.json")))
+    if not files:
+        print(f"No {subdir} gc_by_stage_*.json files found")
+        return
+
+    datasets = []
+    for path in files:
+        year = os.path.basename(path).removeprefix("gc_by_stage_").removesuffix(".json")
+        with open(path, encoding="utf-8") as f:
+            datasets.append((year, json.load(f)))
+
+    index = build_index(datasets, youth_winners)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(index, f, separators=(",", ":"), ensure_ascii=False)
 
     size_kb = os.path.getsize(out_path) / 1024
     print(
-        f"Wrote {len(riders):,} riders / {len(teams)} teams across "
+        f"Wrote {len(index['riders']):,} riders / {len(index['teams'])} teams across "
         f"{len(files)} years -> {out_path} ({size_kb:.0f} KB)"
     )
 

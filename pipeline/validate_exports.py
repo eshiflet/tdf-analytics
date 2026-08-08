@@ -152,6 +152,44 @@ def check_kom_reference(year: int, ds: dict, ref: list, strategy: str) -> list[s
     return warnings
 
 
+def check_riders_index(data_dir, subdir):
+    """riders_index.json must agree with the gc_by_stage files it was built from.
+
+    It is a derived cross-year rollup, and nothing forced it to be regenerated
+    when a per-year file changed — export_riders_index.py also defaults to the
+    TDF, so a run without --race silently leaves giro/vuelta behind. The Giro
+    index drifted to 912 inconsistent rider-years that way, and the app served
+    them: wrong final ranks and wrong teams, with no error anywhere.
+    """
+    path = os.path.join(data_dir, "riders_index.json")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        idx = json.load(f)
+    teams = idx.get("teams", [])
+    riders = idx.get("riders", {})
+
+    stale = []
+    for fname in sorted(os.listdir(data_dir)):
+        if not (fname.startswith("gc_by_stage_") and fname.endswith(".json")):
+            continue
+        year = fname.replace("gc_by_stage_", "").replace(".json", "")
+        with open(os.path.join(data_dir, fname), encoding="utf-8") as f:
+            ds = json.load(f)
+        for r in ds.get("riders", []):
+            slug = r["id"].removeprefix("rider/")
+            entry = riders.get(slug, {}).get("y", {}).get(year)
+            if entry is None:
+                stale.append(f"{year}: {slug} missing from riders_index")
+            elif entry[0] != r["finalRank"]:
+                stale.append(f"{year}: {slug} finalRank {entry[0]} != {r['finalRank']}")
+            else:
+                name = teams[entry[1]] if 0 <= entry[1] < len(teams) else None
+                if name != r.get("team"):
+                    stale.append(f"{year}: {slug} team {name!r} != {r.get('team')!r}")
+    return stale
+
+
 def main():
     single_year = None
     if "--year" in sys.argv:
@@ -199,6 +237,25 @@ def main():
                 print(f"warn  {race_label} {year}: {w}")
             total_errors += len(errors)
             total_warnings += len(warnings)
+
+    # riders_index is derived from the per-year files; nothing regenerates it
+    # automatically, so check it still matches rather than trusting it.
+    if not single_year:
+        for race_label, subdir, _ in RACE_DIRS:
+            data_dir = os.path.join(DATA_ROOT, subdir)
+            if not os.path.isdir(data_dir):
+                continue
+            stale = check_riders_index(data_dir, subdir)
+            if stale:
+                print(f"ERROR {race_label}: riders_index.json is stale — "
+                      f"{len(stale)} inconsistent rider-year(s). "
+                      f"Run: python3 export_riders_index.py --race "
+                      f"{'tdf' if subdir == 'tour' else subdir}")
+                for line in stale[:5]:
+                    print(f"        {line}")
+                if len(stale) > 5:
+                    print(f"        ... and {len(stale) - 5} more")
+                total_errors += 1
 
     print(f"\n{checked} files checked: {total_errors} errors, {total_warnings} warnings")
     sys.exit(1 if total_errors else 0)

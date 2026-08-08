@@ -26,17 +26,61 @@ DB_PATH = os.path.join(HERE, "cycling.db")
 # Sprint scoring changed from golf (low=best) to modern (high=best) in 1959
 GOLF_SPRINT_YEARS = set(range(1953, 1959))
 
-# Placeholder paths — always resolved per-race (including TDF) in __main__
-# before any of these are read; see resolve_supplement_paths().
-SPRINT_POINTS_PATH = "__nonexistent__"
-KOM_POINTS_PATH = "__nonexistent__"
-GC_ALL_TIMES_PATH = "__nonexistent__"
-GC_WINNER_TIMES_PATH = "__nonexistent__"
+class Supplements:
+    """The optional per-race JSON files export_year reads alongside the DB.
 
-_sprint_points_cache = None
-_kom_points_cache = None
-_gc_all_times_cache = None
-_gc_winner_times_cache = None
+    Replaces four module-level path globals and four module-level caches that
+    __main__ rebound before each run. Those made export_year impossible to
+    exercise without monkeypatching module state, and made the load order
+    load-bearing: reading a supplement before __main__ had rebound its path
+    silently returned {} from the placeholder, and a stale cache silently
+    carried one race's data into another's export.
+
+    Missing files are normal — a race simply may not have that supplement —
+    so an absent path yields {} rather than raising. Each file is read at most
+    once per instance.
+    """
+
+    def __init__(self, sprint_path=None, kom_path=None,
+                 gc_all_times_path=None, gc_winner_path=None):
+        self._paths = {
+            "sprint_points": sprint_path,
+            "kom_points": kom_path,
+            "gc_all_times": gc_all_times_path,
+            "gc_winner_times": gc_winner_path,
+        }
+        self._cache = {}
+
+    @classmethod
+    def for_race(cls, race_subdir):
+        return cls(*resolve_supplement_paths(race_subdir))
+
+    def _load(self, key):
+        if key not in self._cache:
+            path = self._paths.get(key)
+            if path and os.path.exists(path):
+                with open(path, encoding="utf-8") as f:
+                    self._cache[key] = json.load(f)
+            else:
+                self._cache[key] = {}
+        return self._cache[key]
+
+    @property
+    def sprint_points(self):
+        return self._load("sprint_points")
+
+    @property
+    def kom_points(self):
+        return self._load("kom_points")
+
+    @property
+    def gc_all_times(self):
+        return self._load("gc_all_times")
+
+    @property
+    def gc_winner_times(self):
+        return self._load("gc_winner_times")
+
 
 def resolve_supplement_paths(race_subdir):
     """Compute the sprint/KOM/GC-time supplement paths for one race.
@@ -61,47 +105,6 @@ def resolve_supplement_paths(race_subdir):
     gc_winner_path = os.path.join(HERE, f"{race_subdir}_gc_winner_times.json")
 
     return sprint_path, kom_path, gc_all_times_path, gc_winner_path
-
-def load_gc_all_times():
-    global _gc_all_times_cache
-    if _gc_all_times_cache is None:
-        if os.path.exists(GC_ALL_TIMES_PATH):
-            with open(GC_ALL_TIMES_PATH, encoding="utf-8") as f:
-                _gc_all_times_cache = json.load(f)
-        else:
-            _gc_all_times_cache = {}
-    return _gc_all_times_cache
-
-def load_gc_winner_times():
-    global _gc_winner_times_cache
-    if _gc_winner_times_cache is None:
-        if os.path.exists(GC_WINNER_TIMES_PATH):
-            with open(GC_WINNER_TIMES_PATH, encoding="utf-8") as f:
-                _gc_winner_times_cache = json.load(f)
-        else:
-            _gc_winner_times_cache = {}
-    return _gc_winner_times_cache
-
-def load_sprint_points():
-    global _sprint_points_cache
-    if _sprint_points_cache is None:
-        if os.path.exists(SPRINT_POINTS_PATH):
-            with open(SPRINT_POINTS_PATH, encoding="utf-8") as f:
-                _sprint_points_cache = json.load(f)
-        else:
-            _sprint_points_cache = {}
-    return _sprint_points_cache
-
-def load_kom_points():
-    global _kom_points_cache
-    if _kom_points_cache is None:
-        if os.path.exists(KOM_POINTS_PATH):
-            with open(KOM_POINTS_PATH, encoding="utf-8") as f:
-                _kom_points_cache = json.load(f)
-        else:
-            _kom_points_cache = {}
-    return _kom_points_cache
-
 
 def compute_stage_labels(stages):
     """Display labels for a race's stages, in stage_number order.
@@ -151,8 +154,16 @@ def compute_stage_labels(stages):
     return labels
 
 
-def export_year(year, out_path, race_id):
-    conn = sqlite3.connect(DB_PATH)
+def export_year(year, out_path, race_id, db_path=None, supplements=None):
+    """Write one edition's gc_by_stage JSON.
+
+    db_path/supplements default to the module DB and an EMPTY Supplements —
+    the empty default is safe (every supplement is optional and absent ones
+    yield {}), but a real run must pass Supplements.for_race(subdir) or the
+    sprint/KOM/GC-time columns come out blank.
+    """
+    conn = sqlite3.connect(db_path or DB_PATH)
+    supp = supplements if supplements is not None else Supplements()
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
@@ -182,8 +193,8 @@ def export_year(year, out_path, race_id):
     stage_labels = compute_stage_labels(stages)
 
     # Load real sprint/KOM points for this year (array indexed by stage position)
-    sprint_pts_by_year = load_sprint_points().get(str(year), [])
-    kom_pts_by_year = load_kom_points().get(str(year), [])
+    sprint_pts_by_year = supp.sprint_points.get(str(year), [])
+    kom_pts_by_year = supp.kom_points.get(str(year), [])
 
     # Pre-compute cumulative sprint & KOM standings and ranks at each stage.
     # This lets us rank all riders relative to each other per stage.
@@ -269,10 +280,10 @@ def export_year(year, out_path, race_id):
     bib_by_rider = {r["rider_id"]: r["bibNumber"] for r in cur.fetchall()}
 
     # Official total race times from Wikipedia scrape (top ~10 riders per year)
-    official_times = load_gc_all_times().get(str(year), {})
+    official_times = supp.gc_all_times.get(str(year), {})
     # Winner's official total time — used to compute absolute times for riders
     # who have gc_gap_seconds but are not in official_times (e.g. non-top-10)
-    winner_time = load_gc_winner_times().get(str(year))
+    winner_time = supp.gc_winner_times.get(str(year))
 
     # gc_gap_seconds at the last stage for each rider (fallback for riders not
     # in official_times but where we have the gap to the winner)
@@ -433,59 +444,52 @@ def export_year(year, out_path, race_id):
     conn.close()
 
 
-if __name__ == "__main__":
+def main(argv=None):
+    """Parse args, resolve per-race paths, export the requested year(s).
+
+    Everything below used to live in the __main__ block, which meant nothing
+    here could be called from a test or another script.
+    """
+    argv = list(sys.argv if argv is None else argv)
+
     # Reject stray/unrecognized arguments instead of silently ignoring them
     # (a bare positional year like "2020" used to be dropped, falling back
     # to a full all-years export — see module docstring).
-    _consumed = {0}
-    for _flag in ("--race", "--year"):
-        if _flag in sys.argv:
-            _i = sys.argv.index(_flag)
-            _consumed.add(_i)
-            if _i + 1 >= len(sys.argv):
-                sys.exit(f"error: {_flag} requires a value")
-            _consumed.add(_i + 1)
-    _stray = [a for i, a in enumerate(sys.argv) if i not in _consumed]
-    if _stray:
+    consumed = {0}
+    for flag in ("--race", "--year"):
+        if flag in argv:
+            i = argv.index(flag)
+            consumed.add(i)
+            if i + 1 >= len(argv):
+                sys.exit(f"error: {flag} requires a value")
+            consumed.add(i + 1)
+    stray = [a for i, a in enumerate(argv) if i not in consumed]
+    if stray:
         sys.exit(
-            f"error: unrecognized argument(s) {_stray} — "
-            f"did you mean '--year {_stray[0]}'? "
+            f"error: unrecognized argument(s) {stray} — "
+            f"did you mean '--year {stray[0]}'? "
             f"Usage: python3 export_gc.py [--race {{tdf,giro,vuelta}}] [--year YYYY]"
         )
 
-    # Determine which race to export
-    race_name = "Tour de France"
-    race_subdir = "tour"
-    if "--race" in sys.argv:
-        race_arg = sys.argv[sys.argv.index("--race") + 1]
-        if race_arg == "giro":
-            race_name = "Giro d'Italia"
-            race_subdir = "giro"
-        elif race_arg == "vuelta":
-            race_name = "Vuelta a España"
-            race_subdir = "vuelta"
-        elif race_arg == "tdf":
-            race_name = "Tour de France"
-            race_subdir = "tour"
-        else:
+    race_name, race_subdir = "Tour de France", "tour"
+    if "--race" in argv:
+        race_arg = argv[argv.index("--race") + 1]
+        lookup = {
+            "giro": ("Giro d'Italia", "giro"),
+            "vuelta": ("Vuelta a España", "vuelta"),
+            "tdf": ("Tour de France", "tour"),
+        }
+        if race_arg not in lookup:
             sys.exit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
+        race_name, race_subdir = lookup[race_arg]
 
-    # Resolve sprint/KOM/GC-time supplement paths for the chosen race — same
-    # lookup for TDF as for Giro/Vuelta (see resolve_supplement_paths). Per-race
-    # PCS winner times ({race}_gc_winner_times.json, from check_*_gc_times.py)
-    # give correct totals as winner_time + last-stage gap; without them,
-    # totalTimeSeconds falls back to summing per-stage times, which is wildly
-    # wrong for historical years with sparse stage times.
-    (
-        SPRINT_POINTS_PATH,
-        KOM_POINTS_PATH,
-        GC_ALL_TIMES_PATH,
-        GC_WINNER_TIMES_PATH,
-    ) = resolve_supplement_paths(race_subdir)
-    _sprint_points_cache = None
-    _kom_points_cache = None
-    _gc_all_times_cache = None
-    _gc_winner_times_cache = None
+    # Per-race sprint/KOM/GC-time supplements — same lookup for TDF as for
+    # Giro/Vuelta (see resolve_supplement_paths). Per-race PCS winner times
+    # ({race}_gc_winner_times.json, from check_*_gc_times.py) give correct
+    # totals as winner_time + last-stage gap; without them totalTimeSeconds
+    # falls back to summing per-stage times, which is wildly wrong for
+    # historical years with sparse stage times.
+    supplements = Supplements.for_race(race_subdir)
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -493,14 +497,13 @@ if __name__ == "__main__":
     if not race_row:
         sys.exit(f"error: race '{race_name}' not found in database")
     race_id = race_row["race_id"]
-
     years = [r[0] for r in conn.execute(
         "SELECT year FROM race_editions WHERE race_id = ? ORDER BY year", (race_id,)
     )]
     conn.close()
 
-    if "--year" in sys.argv:
-        wanted = int(sys.argv[sys.argv.index("--year") + 1])
+    if "--year" in argv:
+        wanted = int(argv[argv.index("--year") + 1])
         if wanted not in years:
             sys.exit(f"error: no edition for year {wanted} in the database")
         years = [wanted]
@@ -508,4 +511,9 @@ if __name__ == "__main__":
     out_dir = os.path.join(HERE, "..", "cycling-app", "src", "data", race_subdir)
     os.makedirs(out_dir, exist_ok=True)
     for year in years:
-        export_year(year, os.path.join(out_dir, f"gc_by_stage_{year}.json"), race_id=race_id)
+        export_year(year, os.path.join(out_dir, f"gc_by_stage_{year}.json"),
+                    race_id=race_id, supplements=supplements)
+
+
+if __name__ == "__main__":
+    main()

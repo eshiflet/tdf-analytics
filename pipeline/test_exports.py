@@ -16,10 +16,11 @@ Two things are covered:
     what the overview screen shows, and its Wikipedia reconciliation is the
     check that would have caught the 2010 Vuelta's two missing stages.
 
-export_gc and export_riders_index are not covered here: both are large,
-read many optional supplement files, and write via module-level paths that
-would need extensive monkeypatching to isolate. compute_stage_labels was
-extracted from export_gc precisely so the part that had a bug is testable.
+  * export_gc.Supplements and export_gc.main — the supplement loading and
+    argument handling, both of which were module-level state until they were
+    refactored to be injectable.
+
+  * export_riders_index.build_index — the compact cross-year index, now pure.
 """
 
 import json
@@ -33,7 +34,9 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import export_all_races_summary as EARS
-from export_gc import compute_stage_labels
+import export_gc
+import export_riders_index as ERI
+from export_gc import Supplements, compute_stage_labels
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -200,3 +203,154 @@ class TestAllRacesSummary(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestSupplements(unittest.TestCase):
+    """export_gc.Supplements — replaced four path globals and four caches."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _write(self, name, obj):
+        p = os.path.join(self.tmp, name)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(obj, f)
+        return p
+
+    def test_absent_paths_yield_empty_dicts(self):
+        """Every supplement is optional; a race may simply not have one."""
+        s = Supplements()
+        self.assertEqual(s.sprint_points, {})
+        self.assertEqual(s.kom_points, {})
+        self.assertEqual(s.gc_all_times, {})
+        self.assertEqual(s.gc_winner_times, {})
+
+    def test_nonexistent_file_is_not_an_error(self):
+        s = Supplements(sprint_path=os.path.join(self.tmp, "nope.json"))
+        self.assertEqual(s.sprint_points, {})
+
+    def test_reads_each_file(self):
+        s = Supplements(
+            sprint_path=self._write("sp.json", {"2020": [1, 2]}),
+            kom_path=self._write("kom.json", {"2020": [3]}),
+            gc_winner_path=self._write("win.json", {"2020": 100}),
+        )
+        self.assertEqual(s.sprint_points["2020"], [1, 2])
+        self.assertEqual(s.kom_points["2020"], [3])
+        self.assertEqual(s.gc_winner_times["2020"], 100)
+
+    def test_file_is_read_once_and_cached(self):
+        p = self._write("sp.json", {"2020": [1]})
+        s = Supplements(sprint_path=p)
+        self.assertEqual(s.sprint_points["2020"], [1])
+        os.remove(p)
+        self.assertEqual(s.sprint_points["2020"], [1], "must be cached, not re-read")
+
+    def test_instances_do_not_share_state(self):
+        """The old module-level caches let one race's supplements leak into
+        another's export unless __main__ remembered to reset all four."""
+        a = Supplements(sprint_path=self._write("a.json", {"1999": ["A"]}))
+        b = Supplements(sprint_path=self._write("b.json", {"1999": ["B"]}))
+        self.assertEqual(a.sprint_points["1999"], ["A"])
+        self.assertEqual(b.sprint_points["1999"], ["B"])
+
+    def test_for_race_resolves_per_race_names(self):
+        for subdir in ("tour", "giro", "vuelta"):
+            s = Supplements.for_race(subdir)
+            self.assertIn(f"{subdir}_sprint_points.json", s._paths["sprint_points"])
+        # gc_all_times.json is TDF-only and unprefixed
+        self.assertTrue(Supplements.for_race("tour")._paths["gc_all_times"].endswith(
+            "gc_all_times.json"))
+        self.assertEqual(Supplements.for_race("giro")._paths["gc_all_times"], "__nonexistent__")
+
+
+class TestExportGcArgs(unittest.TestCase):
+    """export_gc.main argument handling — was unreachable inside __main__."""
+
+    def test_bare_positional_year_is_rejected(self):
+        """A bare '2020' used to be silently dropped, quietly turning a
+        single-year export into a full rebuild of every year."""
+        with self.assertRaises(SystemExit) as cm:
+            export_gc.main(["export_gc.py", "--race", "vuelta", "2020"])
+        self.assertIn("unrecognized", str(cm.exception))
+
+    def test_unknown_race_is_rejected(self):
+        with self.assertRaises(SystemExit) as cm:
+            export_gc.main(["export_gc.py", "--race", "bogus"])
+        self.assertIn("unknown race", str(cm.exception))
+
+    def test_flag_without_value_is_rejected(self):
+        with self.assertRaises(SystemExit) as cm:
+            export_gc.main(["export_gc.py", "--year"])
+        self.assertIn("requires a value", str(cm.exception))
+
+
+class TestRidersIndex(unittest.TestCase):
+    """export_riders_index.build_index — now pure, no file or DB access."""
+
+    @staticmethod
+    def rider(rid, name, team=None, final=1, by_stage=None, **kw):
+        r = {"id": rid, "name": name, "finalRank": final,
+             "byStage": by_stage if by_stage is not None else [{"stage": 1}]}
+        if team:
+            r["team"] = team
+        r.update(kw)
+        return r
+
+    def test_team_string_table_is_sorted_and_indexed(self):
+        ds = [("2020", {"riders": [self.rider("rider/a", "A", team="Zeta"),
+                                   self.rider("rider/b", "B", team="Alpha")]})]
+        idx = ERI.build_index(ds)
+        self.assertEqual(idx["teams"], ["Alpha", "Zeta"])
+        self.assertEqual(idx["riders"]["a"]["y"]["2020"][1], 1)   # Zeta
+        self.assertEqual(idx["riders"]["b"]["y"]["2020"][1], 0)   # Alpha
+
+    def test_missing_team_is_minus_one(self):
+        idx = ERI.build_index([("2020", {"riders": [self.rider("rider/a", "A")]})])
+        self.assertEqual(idx["riders"]["a"]["y"]["2020"], [1, -1])
+
+    def test_short_form_when_no_sprint_or_kom_rank(self):
+        idx = ERI.build_index([("2020", {"riders": [self.rider("rider/a", "A")]})])
+        self.assertEqual(len(idx["riders"]["a"]["y"]["2020"]), 2)
+
+    def test_long_form_when_a_ranking_exists(self):
+        r = self.rider("rider/a", "A", by_stage=[{"stage": 1, "sprintRank": 4}])
+        idx = ERI.build_index([("2020", {"riders": [r]})])
+        self.assertEqual(idx["riders"]["a"]["y"]["2020"], [1, -1, 4, 0])
+
+    def test_only_the_last_stage_supplies_the_rankings(self):
+        r = self.rider("rider/a", "A", by_stage=[{"stage": 1, "sprintRank": 9},
+                                                 {"stage": 2, "komRank": 3}])
+        idx = ERI.build_index([("2020", {"riders": [r]})])
+        self.assertEqual(idx["riders"]["a"]["y"]["2020"], [1, -1, 0, 3])
+
+    def test_rider_spans_multiple_years(self):
+        ds = [("2019", {"riders": [self.rider("rider/a", "A", final=5)]}),
+              ("2020", {"riders": [self.rider("rider/a", "A", final=2)]})]
+        idx = ERI.build_index(ds)
+        self.assertEqual(sorted(idx["riders"]["a"]["y"]), ["2019", "2020"])
+        self.assertEqual(idx["riders"]["a"]["y"]["2020"][0], 2)
+
+    def test_youth_winner_years_attached(self):
+        ds = [("2020", {"riders": [self.rider("rider/a", "A")]})]
+        idx = ERI.build_index(ds, {"rider/a": [1984, 1989]})
+        self.assertEqual(idx["riders"]["a"]["yw"], [1984, 1989])
+        idx2 = ERI.build_index(ds)
+        self.assertNotIn("yw", idx2["riders"]["a"], "omitted when never won")
+
+    def test_first_and_last_name_recorded_once(self):
+        ds = [("2019", {"riders": [self.rider("rider/a", "A", firstName="Ada", lastName="Zed")]}),
+              ("2020", {"riders": [self.rider("rider/a", "A", firstName="CHANGED")]})]
+        idx = ERI.build_index(ds)
+        self.assertEqual(idx["riders"]["a"]["fn"], "Ada")
+        self.assertEqual(idx["riders"]["a"]["ln"], "Zed")
+
+    def test_rider_prefix_stripped(self):
+        idx = ERI.build_index([("2020", {"riders": [self.rider("rider/eddy-merckx", "M")]})])
+        self.assertIn("eddy-merckx", idx["riders"])
+
+    def test_empty_input(self):
+        self.assertEqual(ERI.build_index([]), {"teams": [], "riders": {}})
