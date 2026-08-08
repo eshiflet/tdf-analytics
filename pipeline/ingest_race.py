@@ -179,6 +179,13 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     if existing:
         eid = existing[0]
         cur.execute("DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
+        # Provenance is keyed by stage_id, and re-inserting an edition mints new
+        # ones — without this the old rows are orphaned and accumulate as dead
+        # weight that inflates every coverage count. There is no FK cascade
+        # because entity_id is polymorphic across tables.
+        cur.execute(
+            "DELETE FROM data_provenance WHERE entity='stages' AND entity_id IN "
+            "(SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
         cur.execute("DELETE FROM stages WHERE edition_id=?", (eid,))
         cur.execute("DELETE FROM race_editions WHERE edition_id=?", (eid,))
 

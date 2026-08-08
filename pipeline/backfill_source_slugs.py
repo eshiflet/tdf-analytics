@@ -3,20 +3,25 @@
 Backfill stages.source_slug for editions ingested before the column existed.
 
 source_slug is the PCS URL slug a stage's data came from ('stage-3',
-'stage-3a'). It can't be reconstructed as f"stage-{stage_number}": on a split
-day PCS races two stages under one number ('stage-3a'/'stage-3b') while the DB
-spends two contiguous integers on them, so from the first split onward the DB
-number runs *ahead* of the PCS number for the rest of that edition.
+'stage-3a', 'prologue').
 
-Split days are recoverable from the data itself — two stages sharing a
-stage_date is exactly what a split day is. This walks each edition in stage
-order, tracks the running offset, and emits:
+Editions with no repeated stage_date get the trivial stage-{n} mapping, which
+is unambiguous and is all this script now does.
 
-    DB 1,2 (distinct dates)        -> stage-1, stage-2
-    DB 3,4 (same date)             -> stage-3a, stage-3b
-    DB 5   (next date)             -> stage-4        <- offset now 1
+DO NOT use this to derive slugs for an edition WITH a split day. It used to,
+assuming PCS always letters the two halves ('stage-3a'/'stage-3b') so the DB
+number runs one ahead from the split on. PCS is inconsistent per edition:
 
-Editions with no repeated date get the trivial stage-{n} mapping.
+    Vuelta 1989  stage-3a + stage-3b            -> lettered, offset applies
+    TDF 1974     stage-8a, no stage-8           -> lettered
+    TDF 1986     stage-1 + stage-2, no stage-1a -> sequential, NO offset
+    TDF 1970/91  sequential
+    Giro 1953    sequential
+
+Guessing produced wrong slugs for every stage after a split in the sequential
+editions (632 TDF stages). resolve_source_slugs.py probes PCS for the real
+convention per edition and verifies each slug by matching departure/arrival,
+so split editions are left to it.
 
 Only fills rows where source_slug IS NULL; never overwrites a slug recorded at
 scrape time. Skips (and reports) any edition with missing dates, since the
@@ -63,21 +68,16 @@ def slugs_for_edition(stages: list[sqlite3.Row]) -> tuple[dict[int, str], int]:
             continue
 
         if prev_date is not None and date == prev_date:
-            # Continuation of a split day: same PCS number, next letter.
+            # A split day. Whether PCS letters it ('stage-3a'/'stage-3b', so the
+            # DB number runs ahead from here) or just numbers it sequentially
+            # varies per edition and cannot be inferred from the data — see the
+            # module docstring. Refuse to guess; resolve_source_slugs.py probes.
             splits += 1
-            offset += 1
-            letter_pos += 1
-            pcs_num = n - offset
-            mapping[n] = f"stage-{pcs_num}{'abcd'[letter_pos]}"
-            # Retroactively letter the day's first stage, which we emitted bare.
-            first_n = n - letter_pos
-            mapping[first_n] = f"stage-{pcs_num}a"
-        else:
-            letter_pos = 0
-            mapping[n] = f"stage-{n - offset}"
-
+        mapping[n] = f"stage-{n}"
         prev_date = date
 
+    if splits:
+        return {}, splits            # caller must skip: undecidable without probing
     return mapping, splits
 
 
@@ -97,7 +97,9 @@ def backfill_edition_slugs(cur, edition_id: int) -> int:
     if not stages or any(not s["stage_date"] for s in stages):
         return 0
 
-    mapping, _ = slugs_for_edition(stages)
+    mapping, splits = slugs_for_edition(stages)
+    if splits:
+        return 0                     # undecidable here; resolve_source_slugs.py owns it
     filled = 0
     for s in stages:
         if s["source_slug"]:
@@ -165,6 +167,9 @@ def main():
             mapping, splits = slugs_for_edition(stages)
             if splits:
                 split_editions.append((race, e["year"], splits))
+                print(f"  SKIP {race} {e['year']}: {splits} split day(s) — slug "
+                      "convention must be probed; run resolve_source_slugs.py")
+                continue
 
             for s in stages:
                 if s["source_slug"]:
