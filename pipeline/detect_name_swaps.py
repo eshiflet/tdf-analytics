@@ -13,10 +13,10 @@ Two complementary checks:
      flagged. Catches swaps where raw scrape files no longer exist (TDF 2020-2025).
 
 Usage:
-  python3 detect_name_swaps.py            # all races, 2020+
+  python3 detect_name_swaps.py            # all races, all years
   python3 detect_name_swaps.py --year 2026
   python3 detect_name_swaps.py --race giro
-  python3 detect_name_swaps.py --all-years  # include pre-2020 (slow for GC check)
+  python3 detect_name_swaps.py --recent-only  # 2020+ only (much faster)
 """
 
 import argparse
@@ -70,7 +70,7 @@ def check_bib_consistency_tdf2026():
     return findings
 
 
-def check_bib_consistency_dir(race, scrapes_dir, min_year=2020):
+def check_bib_consistency_dir(race, scrapes_dir, min_year=0):
     """Check a scrapes directory laid out as YEAR/stage_N.json."""
     findings = []
     year_dirs = sorted(
@@ -226,10 +226,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--year", type=int, default=None)
     parser.add_argument("--race", choices=["tour", "giro", "vuelta"], default=None)
-    parser.add_argument("--all-years", action="store_true")
+    parser.add_argument("--recent-only", action="store_true",
+                        help="only 2020+; the default now covers every year, since "
+                             "the historical reconstructions are where swaps hide")
     args = parser.parse_args()
 
-    min_year = 1900 if args.all_years else 2020
+    min_year = 2020 if args.recent_only else 0
     specific_year = args.year
 
     races_to_check = [args.race] if args.race else ["tour", "giro", "vuelta"]

@@ -22,6 +22,8 @@ import time
 import urllib.error
 import urllib.request
 
+from race_common import SOURCE_PCS, record_provenance_bulk
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 BASE = "https://www.procyclingstats.com"
@@ -171,6 +173,15 @@ def main():
                 cur.execute(
                     "UPDATE stages SET vertical_meters=?, profile_score=? WHERE stage_id=?",
                     (vert, score, stage_id),
+                )
+                # Record where these two numbers came from, down to the exact
+                # page. Without this the DB can't distinguish a PCS-scraped
+                # elevation from a Wikipedia backfill or a hand-entered value,
+                # which is what makes the TDF split years unsafe to re-scrape.
+                record_provenance_bulk(
+                    cur, "stages", stage_id,
+                    ["vertical_meters", "profile_score"],
+                    SOURCE_PCS, source_ref=url,
                 )
                 year_updated += 1
             time.sleep(DELAY * 0.5)

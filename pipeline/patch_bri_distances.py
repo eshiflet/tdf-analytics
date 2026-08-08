@@ -21,6 +21,8 @@ import os
 import sqlite3
 import sys
 
+from race_common import SOURCE_BIKERACEINFO, record_provenance
+
 HERE    = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 BRI_PATH = os.path.join(HERE, "bri_stages.json")
@@ -168,6 +170,8 @@ def main():
         cur = conn.cursor()
         for stage_id, km, reason in patches:
             cur.execute("UPDATE stages SET distance_km=? WHERE stage_id=?", (km, stage_id))
+            record_provenance(cur, "stages", stage_id, "distance_km",
+                              SOURCE_BIKERACEINFO, source_ref="bri_stages.json")
         conn.commit()
         print(f"\nApplied {len(patches)} patches to {DB_PATH}")
     elif not APPLY:

@@ -13,6 +13,8 @@ import urllib.request
 import urllib.error
 from collections import defaultdict
 
+from race_common import SOURCE_PCS, record_provenance
+
 HERE = __import__("os").path.dirname(__import__("os").path.abspath(__file__))
 DB_PATH = __import__("os").path.join(HERE, "cycling.db")
 
@@ -158,6 +160,12 @@ def main():
                 "UPDATE stages SET distance_km=? WHERE stage_id=?",
                 (dist, stage_id),
             )
+            # Also PCS, but a different part of the page than the scrapers
+            # use: the header "(102.5km)" rather than the "Distance:" info row,
+            # which is blank/0 for these stages. Worth distinguishing, since
+            # re-running a stage scrape would put the 0 back.
+            record_provenance(conn, "stages", stage_id, "distance_km",
+                              SOURCE_PCS, source_ref=f"{url} (header)")
             conn.commit()
         patched += 1
 

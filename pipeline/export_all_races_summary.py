@@ -12,6 +12,11 @@ Field priority (must match export_gc.py's totalTimeSeconds logic where
 applicable):
   totalDistanceKm  — wiki_race_distances.json[year], falls back to
                       SUM(stages.distance_km) if no Wikipedia figure exists.
+                      When both exist they are RECONCILED, not silently
+                      preferred: a disagreement above DISTANCE_TOLERANCE_PCT is
+                      reported (and fails under --strict), because the app
+                      shows Wikipedia's number and would otherwise display a
+                      correct total for an edition missing whole stages.
   totalElevationM  — SUM(stages.vertical_meters); null if no stage in that
                       edition has a recorded value.
   gcWinnerTimeSeconds      — tour_gc_winner_times.json[year]; null if absent
@@ -31,11 +36,13 @@ safe to leave in place across repeated re-exports as more stages are added.
 
 Usage:
   python3 export_all_races_summary.py
+  python3 export_all_races_summary.py --strict   # exit 1 on distance divergence
 """
 
 import json
 import os
 import sqlite3
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -44,7 +51,15 @@ GC_WINNER_TIMES_PATH = os.path.join(HERE, "tour_gc_winner_times.json")
 OVERRIDES_PATH = os.path.join(HERE, "tour_all_races_summary_overrides.json")
 OUT_PATH = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour", "all_races_summary.json")
 
+STRICT = "--strict" in sys.argv
+
 FIRST_YEAR = 1903
+
+# How far the DB's summed stage distances may drift from Wikipedia's published
+# route total before it's treated as a defect rather than rounding/route noise.
+# Historical sources genuinely disagree by a percent or two on neutralized
+# sections; a whole missing stage shows up far above this.
+DISTANCE_TOLERANCE_PCT = 3.0
 
 
 def main():
@@ -77,6 +92,7 @@ def main():
     }
 
     out = []
+    divergences: list[dict] = []
     for year in range(FIRST_YEAR, last_year + 1):
         edition_id = editions.get(year)
         if edition_id is None:
@@ -91,11 +107,30 @@ def main():
 
         yr_str = str(year)
 
-        total_distance = wiki_distances.get(yr_str)
-        if total_distance is None:
-            total_distance = cur.execute(
-                "SELECT SUM(distance_km) FROM stages WHERE edition_id=?", (edition_id,)
-            ).fetchone()[0]
+        # Wikipedia's published route total is an INDEPENDENT source, so it is
+        # also a check on the DB — not merely a preferred value. Silently
+        # substituting it (the old behaviour) meant an edition missing whole
+        # stages still displayed the right total, hiding the defect: the 2010
+        # Vuelta sat two stages short and the only reason anyone noticed was a
+        # human spotting it in the UI. Compute both, display Wikipedia's,
+        # and report any material disagreement.
+        db_distance = cur.execute(
+            "SELECT SUM(distance_km) FROM stages WHERE edition_id=?", (edition_id,)
+        ).fetchone()[0]
+        wiki_distance = wiki_distances.get(yr_str)
+
+        total_distance = wiki_distance if wiki_distance is not None else db_distance
+        if wiki_distance and db_distance:
+            pct = (db_distance - wiki_distance) / wiki_distance * 100
+            if abs(pct) > DISTANCE_TOLERANCE_PCT:
+                n_stages = cur.execute(
+                    "SELECT COUNT(*) FROM stages WHERE edition_id=?", (edition_id,)
+                ).fetchone()[0]
+                divergences.append({
+                    "year": year, "wiki_km": wiki_distance,
+                    "db_km": round(db_distance, 1), "pct": round(pct, 1),
+                    "stages": n_stages,
+                })
 
         total_elevation = cur.execute(
             "SELECT SUM(vertical_meters) FROM stages WHERE edition_id=?", (edition_id,)
@@ -133,6 +168,22 @@ def main():
         json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
 
     print(f"Wrote {len(out)} years ({FIRST_YEAR}-{last_year}) -> {OUT_PATH}")
+
+    if divergences:
+        print(f"\nWARNING: {len(divergences)} edition(s) where the DB's summed stage "
+              f"distances disagree with Wikipedia by >{DISTANCE_TOLERANCE_PCT}%.")
+        print("The app displays Wikipedia's figure, so these do NOT surface in the UI —")
+        print("a large negative gap usually means stages are missing from the DB.")
+        print(f"  {'year':<6}{'wiki km':>9}{'db km':>10}{'diff':>8}{'stages':>8}")
+        for d in divergences:
+            print(f"  {d['year']:<6}{d['wiki_km']:>9}{d['db_km']:>10}"
+                  f"{d['pct']:>7}%{d['stages']:>8}")
+        if STRICT:
+            print("\n--strict: failing on distance divergence.")
+            sys.exit(1)
+    else:
+        print(f"Distance reconciliation: all editions within "
+              f"{DISTANCE_TOLERANCE_PCT}% of Wikipedia.")
 
 
 if __name__ == "__main__":

@@ -23,6 +23,7 @@ Three independent groups live here:
 
 import os
 import re
+import sys
 from dataclasses import dataclass
 
 
@@ -280,3 +281,67 @@ def assign_stage_numbers(slugs: list[str]) -> tuple[list[tuple[int, str]], str |
     if has_prologue:
         numbered.insert(0, (0, "prologue"))
     return numbered, None
+
+
+# ── Data provenance ─────────────────────────────────────────────────────────
+# Every write of a stored value should say where the value came from. See the
+# data_provenance table in schema.sql for the granularity rule (per-field on
+# stages; one 'results' row per stage covering all its stage_results).
+#
+# Why this exists: several corruption bugs were slow to diagnose because the DB
+# could not say where a number originated — Vuelta 1990's vertical_meters was
+# correct while its profile_score was shifted by one, and TDF split years have
+# PCS elevation partly overwritten by later Wikipedia backfills, which is why
+# those still can't be safely bulk re-scraped.
+#
+# Honesty rule: never guess a source. If it isn't known, record SOURCE_UNKNOWN
+# (or leave no row) rather than assuming — a confidently wrong provenance is
+# worse than an admitted gap, because it invites exactly the bulk re-scrape
+# that would destroy good patched values.
+
+SOURCE_PCS = "pcs"              # scraped from procyclingstats.com
+SOURCE_WIKIPEDIA = "wikipedia"  # from a Wikipedia route/results table
+SOURCE_BIKERACEINFO = "bikeraceinfo"  # from bikeraceinfo.com (patch_bri_distances.py)
+SOURCE_MANUAL = "manual"        # hand-entered or hand-corrected
+SOURCE_DERIVED = "derived"      # computed from other DB values, not fetched
+SOURCE_UNKNOWN = "unknown"      # predates provenance tracking; origin unproven
+
+VALID_SOURCES = frozenset({
+    SOURCE_PCS, SOURCE_WIKIPEDIA, SOURCE_BIKERACEINFO, SOURCE_MANUAL,
+    SOURCE_DERIVED, SOURCE_UNKNOWN,
+})
+
+
+def record_provenance(cur, entity, entity_id, field, source,
+                      source_ref=None, script=None):
+    """Record where one stored value came from. Upserts; last writer wins.
+
+    `cur` is a live sqlite3 cursor — provenance is written in the same
+    transaction as the value it describes, so the two can't drift apart.
+    """
+    if source not in VALID_SOURCES:
+        raise ValueError(
+            f"unknown provenance source {source!r}; expected one of "
+            f"{sorted(VALID_SOURCES)}"
+        )
+    from datetime import datetime, timezone
+    if script is None:
+        script = os.path.basename(sys.argv[0]) or None
+    cur.execute(
+        """INSERT INTO data_provenance
+             (entity, entity_id, field, source, source_ref, script, recorded_at)
+           VALUES (?,?,?,?,?,?,?)
+           ON CONFLICT(entity, entity_id, field) DO UPDATE SET
+             source=excluded.source, source_ref=excluded.source_ref,
+             script=excluded.script, recorded_at=excluded.recorded_at""",
+        (entity, entity_id, field, source, source_ref, script,
+         datetime.now(timezone.utc).isoformat(timespec="seconds")),
+    )
+
+
+def record_provenance_bulk(cur, entity, entity_id, fields, source,
+                           source_ref=None, script=None):
+    """record_provenance() for several fields of one row sharing a source."""
+    for field in fields:
+        record_provenance(cur, entity, entity_id, field, source,
+                          source_ref=source_ref, script=script)

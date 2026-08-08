@@ -27,6 +27,10 @@ from glob import glob
 from backfill_source_slugs import backfill_edition_slugs
 from race_common import (
     RACES,
+    STAGE_ROW_LEN,
+    SOURCE_PCS,
+    record_provenance,
+    record_provenance_bulk,
     DB_PATH,
     StageRow,
     detect_route_type,
@@ -40,6 +44,10 @@ from race_common import (
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DRY_RUN = "--dry-run" in sys.argv
+# Escape hatch for the swap gate below. Deliberately verbose to type:
+# a flagged swap is nearly always real (the first run of this check
+# surfaced 7 genuine swap pairs), so bypassing should be a decision.
+SKIP_SWAP_GATE = "--skip-swap-gate" in sys.argv
 
 
 def _stage_num(path: str) -> int:
@@ -88,6 +96,32 @@ def discover_years(scrapes_dir: str, flat_fallback: bool) -> list[int]:
     return sorted(years)
 
 
+def check_swaps(race: str, year: int, stage_files: list[str]) -> list[dict]:
+    """Bib-identity consistency across the stage files about to be ingested.
+
+    Within a race-year a bib must map to the same rider on every stage; a bib
+    that shows a different name/slug/nat on even one stage is a PCS table
+    artifact that silently attributes one rider's ride to another. This gate
+    was previously wired only into add_stages.py for TDF 2026, leaving the
+    Giro/Vuelta path — every year of it — completely unchecked.
+
+    Note the gate's known limit: it catches a bib whose identity is
+    inconsistent ACROSS stages. A bib appearing once with the wrong rider
+    attached on a single stage is invisible to it.
+    """
+    from detect_name_swaps import _bib_check
+
+    stages_by_n = {}
+    for sf in stage_files:
+        try:
+            with open(sf, encoding="utf-8") as f:
+                data = json.load(f)
+            stages_by_n[data.get("n", _stage_num(sf))] = data.get("rows", [])
+        except Exception:
+            continue
+    return _bib_check(race, year, stages_by_n)
+
+
 def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int, stage_files: list[str]) -> int:
     """Ingest one year's stage files. Returns total results inserted."""
     cur = conn.cursor()
@@ -107,11 +141,14 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     # re-attaches each elevation to whichever *different* stage now holds that
     # number — silently re-corrupting the data during the repair. (This is what
     # happened while fixing the 2010 Vuelta's two missing stages.)
-    # distance_km rides along: PCS reports "0 km" for some historical stages and
-    # patch_missing_distances.py backfills the real figure from Wikipedia. That
-    # patched value lives only in the DB, so a re-ingest that trusts the scrape
-    # file's 0 silently destroys it (caught re-ingesting 2010 Vuelta stage 21,
-    # 85.0 km -> 0.0). Only ever used when the incoming value is 0/absent.
+    # distance_km rides along: PCS's "Distance:" info row reads "0 km" for some
+    # historical stages, and patch_missing_distances.py backfills the real
+    # figure from the same page's header ("(85km)"); patch_bri_distances.py
+    # fills others from bikeraceinfo.com. Either way the value lives only in
+    # the DB, so a re-ingest that trusts the scrape file's 0 silently destroys
+    # it (caught re-ingesting 2010 Vuelta stage 21, 85.0 km -> 0.0). Only ever
+    # used when the incoming value is 0/absent. data_provenance records which
+    # source each surviving figure came from.
     preserved_by_slug = {}
     preserved_by_number = {}
     if existing:
@@ -157,6 +194,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
 
     gc_standings = load_gc_standings(scrapes_dir, year)
     total_results = 0
+    malformed: list[tuple] = []   # (stage_n, field_count, first_fields)
 
     for sf in stage_files:
         with open(sf, encoding="utf-8") as f:
@@ -197,6 +235,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # back to the stored one only when PCS gave us nothing usable. Never for
         # a cancelled stage: 0 km is its true distance, and the stored value is
         # liable to belong to whatever stage previously occupied this number.
+        distance_from_scrape = bool(distance_km)
         if not distance_km and preserved_d and not is_cancelled:
             print(f"    stage {n}: scrape has no distance, keeping stored {preserved_d} km")
             distance_km = preserved_d
@@ -225,10 +264,32 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         )
         stage_id = cur.lastrowid
 
+        # Provenance. Route fields come from this stage file's PCS scrape; the
+        # scrape file path plus the slug pins down exactly which page. Elevation
+        # is deliberately NOT claimed here — it was carried over from whatever
+        # previously populated it, whose own provenance row already stands.
+        ref = f"{os.path.relpath(sf, HERE)} ({slug})" if slug else os.path.relpath(sf, HERE)
+        scraped_fields = ["route_type", "source_slug"]
+        if distance_from_scrape:
+            scraped_fields.append("distance_km")
+        record_provenance_bulk(cur, "stages", stage_id, scraped_fields,
+                               SOURCE_PCS, source_ref=ref)
+        # One entry for the whole result set — see the granularity rule in
+        # schema.sql. All of a stage's rows come from one page, so per-row
+        # provenance would be millions of copies of a single fact.
+        record_provenance(cur, "stages", stage_id, "results",
+                          SOURCE_PCS, source_ref=ref)
+
         winner_seconds = None
 
         for row in rows:
-            if len(row) < 15:
+            if len(row) != STAGE_ROW_LEN:
+                # Never silently drop a row. A malformed row is a scrape bug,
+                # and swallowing it loses a real rider's result with no trace —
+                # Marco Haller's 2026 stage 2 result went missing this way and
+                # stayed missing until a schema tightening happened to surface
+                # it. Record it and report loudly at the end of the run.
+                malformed.append((n, len(row), row[:6]))
                 continue
             sr = StageRow.from_list(row)
             rnk, gc_pos, gc_lag = sr.rnk, sr.gc_pos, sr.gc_lag
@@ -360,6 +421,15 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     # Derive them from the same-date split detection the standalone backfill
     # uses, so a re-ingest of an old year doesn't quietly undo the backfill and
     # leave scrape_*_stage_info.py with nothing to key off.
+    if malformed:
+        print(f"\n  WARNING: {len(malformed)} malformed row(s) skipped in {year} — "
+              f"expected {STAGE_ROW_LEN} fields:")
+        for stage_n, count, head in malformed[:10]:
+            print(f"    stage {stage_n}: {count} fields, starts {head}")
+        if len(malformed) > 10:
+            print(f"    ... and {len(malformed) - 10} more")
+        print("    These are dropped results. Re-scrape the stage(s) to recover them.")
+
     filled = backfill_edition_slugs(cur, edition_id)
     if filled:
         print(f"  derived source_slug for {filled} stage(s) from stage dates")
@@ -373,7 +443,8 @@ def main():
 
     if "--race" not in args:
         sys.exit(
-            "usage: python3 ingest_race.py --race {giro,vuelta} [YEARS...] [--dry-run|--all]"
+            "usage: python3 ingest_race.py --race {giro,vuelta} [YEARS...] "
+            "[--dry-run|--all] [--skip-swap-gate]"
         )
     race = args[args.index("--race") + 1]
     if race not in RACES:
@@ -420,6 +491,24 @@ def main():
             print(f"{year}: no stage files found, skipping")
             continue
         print(f"\n{year}: {len(stage_files)} stage file(s)")
+
+        # ── Gate: refuse to ingest a year with unresolved bib-identity swaps ──
+        # Ingesting is destructive (the edition is deleted and rebuilt), so a
+        # swap has to be caught before the write, not after.
+        findings = check_swaps(race, year, stage_files)
+        if findings and not SKIP_SWAP_GATE:
+            print(f"\nERROR: {len(findings)} bib-identity anomaly(ies) in {race} {year} "
+                  "— refusing to ingest:")
+            for f in findings:
+                maj = f["majority_identity"]
+                print(f"  bib {f['bib']} -> majority: {maj[0]} ({maj[2]})")
+                for stage_n, outlier in zip(f["outlier_stages"], f["outlier_names"]):
+                    print(f"        stage {stage_n}: shows '{outlier}' instead")
+            print(f"\nRun `python3 detect_name_swaps.py --race {race} --year {year}` for "
+                  "detail, fix the scrape file(s), then re-run.")
+            print("If these are genuinely correct, re-run with --skip-swap-gate.")
+            sys.exit(1)
+
         total = ingest_year(conn, race_id, info.name, scrapes_dir, year, stage_files)
         grand_total += total
         if not DRY_RUN:

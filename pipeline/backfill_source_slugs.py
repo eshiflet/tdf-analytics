@@ -33,6 +33,8 @@ import os
 import sqlite3
 import sys
 
+from race_common import SOURCE_DERIVED, record_provenance
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 
@@ -104,6 +106,17 @@ def backfill_edition_slugs(cur, edition_id: int) -> int:
             "UPDATE stages SET source_slug=? WHERE edition_id=? AND stage_number=?",
             (mapping[s["stage_number"]], edition_id, s["stage_number"]),
         )
+        # 'derived', not 'pcs': this slug was inferred from stage dates, not
+        # read off a page. It's well-tested but it IS an inference, and an
+        # audit should be able to tell the two apart.
+        row = cur.execute(
+            "SELECT stage_id FROM stages WHERE edition_id=? AND stage_number=?",
+            (edition_id, s["stage_number"]),
+        ).fetchone()
+        if row:
+            record_provenance(cur, "stages", row[0], "source_slug",
+                              SOURCE_DERIVED,
+                              source_ref="inferred from stage_date split detection")
         filled += 1
     return filled
 

@@ -130,3 +130,33 @@ CREATE INDEX IF NOT EXISTS idx_results_stage ON stage_results(stage_id);
 CREATE INDEX IF NOT EXISTS idx_results_rider ON stage_results(rider_id);
 CREATE INDEX IF NOT EXISTS idx_results_team  ON stage_results(team_id);
 CREATE INDEX IF NOT EXISTS idx_stages_edition ON stages(edition_id);
+
+-- ── Data provenance ─────────────────────────────────────────────────────────
+-- Which source each stored value came from. Added 2026-08-08 after a series of
+-- corruption bugs that were slow to diagnose precisely because the DB couldn't
+-- say where a number originated: Vuelta 1990's vertical_meters turned out to be
+-- correct while its profile_score was shifted by one, and several TDF editions
+-- have PCS-scraped elevation partly overwritten by later Wikipedia backfills,
+-- which is why those years still can't be safely re-scraped in bulk.
+--
+-- GRANULARITY RULE — record provenance at the level where the source actually
+-- varies, not per column everywhere:
+--   * stages: one row per field that has more than one possible source
+--     ('vertical_meters', 'profile_score', 'distance_km', 'route_type',
+--     'source_slug').
+--   * stage_results: one row per STAGE with field='results'. All ~666k result
+--     rows for a stage come from a single scrape of a single page, so per-row
+--     provenance would be millions of rows carrying one fact.
+CREATE TABLE IF NOT EXISTS data_provenance (
+    entity      TEXT NOT NULL,     -- table name, e.g. 'stages'
+    entity_id   INTEGER NOT NULL,  -- primary key in that table, e.g. stage_id
+    field       TEXT NOT NULL,     -- column name, or 'results' for a stage's result set
+    source      TEXT NOT NULL,     -- 'pcs' | 'wikipedia' | 'manual' | 'derived' | 'unknown'
+    source_ref  TEXT,              -- URL, PCS slug, scrape file path, or note
+    script      TEXT,              -- script that wrote the value
+    recorded_at TEXT NOT NULL,     -- ISO-8601 UTC
+    PRIMARY KEY (entity, entity_id, field)
+);
+
+CREATE INDEX IF NOT EXISTS idx_provenance_source ON data_provenance(source);
+CREATE INDEX IF NOT EXISTS idx_provenance_entity ON data_provenance(entity, entity_id);
