@@ -158,10 +158,11 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             (existing[0],),
         ):
             if (r["vertical_meters"] is None and r["profile_score"] is None
-                    and not r["distance_km"] and not r["cancelled"]):
+                    and not r["distance_km"] and not r["cancelled"]
+                    and not r["source_slug"]):
                 continue
             vals = (r["vertical_meters"], r["profile_score"], r["distance_km"],
-                    r["cancelled"])
+                    r["cancelled"], r["source_slug"])
             # Populate BOTH indexes, always. The incoming stage file may or may
             # not carry a slug independently of whether the existing row has
             # one, so keying only on whichever the old row had would miss
@@ -237,10 +238,21 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             route_type = detect_route_type(profile_icon, won_how)
 
         if slug and slug in preserved_by_slug:
-            preserved_vm, preserved_ps, preserved_d, preserved_c = preserved_by_slug[slug]
+            preserved_vm, preserved_ps, preserved_d, preserved_c, preserved_slug = \
+                preserved_by_slug[slug]
         else:
-            preserved_vm, preserved_ps, preserved_d, preserved_c = preserved_by_number.get(
-                n, (None, None, None, 0))
+            preserved_vm, preserved_ps, preserved_d, preserved_c, preserved_slug = \
+                preserved_by_number.get(n, (None, None, None, 0, None))
+
+        # source_slug is DB-only for any edition whose stage files predate slug
+        # recording, and on a SPLIT edition it cannot be re-derived —
+        # backfill_edition_slugs rightly refuses to guess there, because PCS
+        # letters split days in some editions and numbers them sequentially in
+        # others. So a re-ingest that does not carry it over silently discards
+        # probe-verified slugs and nothing puts them back. (Caught re-ingesting
+        # the TTT stages: 9 split Vuelta editions lost every slug.)
+        if not slug:
+            slug = preserved_slug
 
         is_cancelled = bool(stage_data.get("cancelled") or preserved_c)
 

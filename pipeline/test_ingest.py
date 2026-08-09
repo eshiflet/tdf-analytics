@@ -224,6 +224,33 @@ class TestSlugAndProvenance(IngestHarness):
         self.assertIsNone(self.stages()[2]["source_slug"],
                           "must not guess a slug on a split edition")
 
+    def test_source_slug_survives_reingest_of_a_split_edition(self):
+        """On a split edition the slug CANNOT be re-derived — backfill rightly
+        refuses to guess, because PCS letters split days in some editions and
+        numbers them sequentially in others. So a probe-verified slug lives
+        only in the DB, and a re-ingest that doesn't carry it over destroys it
+        with nothing to put it back. Nine split Vuelta editions lost every slug
+        that way during the TTT recovery."""
+        self.write_stage(1, date="1990-05-01")
+        self.write_stage(2, date="1990-05-02")
+        self.write_stage(3, date="1990-05-02")          # split day
+        self.ingest()
+        for n, slug in ((1, "stage-1"), (2, "stage-2a"), (3, "stage-2b")):
+            self.conn.execute("UPDATE stages SET source_slug=? WHERE stage_number=?", (slug, n))
+        self.conn.commit()
+
+        self.ingest()                                    # files still carry no slug
+        got = {n: r["source_slug"] for n, r in self.stages().items()}
+        self.assertEqual(got, {1: "stage-1", 2: "stage-2a", 3: "stage-2b"})
+
+    def test_a_slug_in_the_file_still_wins(self):
+        self.write_stage(1, slug="stage-1")
+        self.ingest()
+        self.conn.execute("UPDATE stages SET source_slug='stale'")
+        self.conn.commit()
+        self.ingest()
+        self.assertEqual(self.stages()[1]["source_slug"], "stage-1")
+
     def test_provenance_recorded_and_not_orphaned_by_reingest(self):
         self.write_stage(1, slug="stage-1")
         self.ingest()
