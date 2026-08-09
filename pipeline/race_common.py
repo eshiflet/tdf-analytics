@@ -177,6 +177,79 @@ def detect_route_type(icon: str, won_how: str) -> str:
     return ICON_TO_ROUTE.get(icon or "p1", "F")
 
 
+_TITLE_LINE_RE = re.compile(r'title-line2[^>]*>(.*?)</div>', re.S)
+_TITLE_TAG_RE = re.compile(r"<title>(.*?)</title>", re.S)
+_TITLE_KM_RE = re.compile(r"\(([\d.,]+)\s*km\)")
+_TITLE_TT_RE = re.compile(r"\((ITT|TTT)\)")
+
+
+def parse_stage_title(html: str) -> dict:
+    """Read PCS's stage headline, which carries facts the info panel omits.
+
+        <div class="title-line2 ...">
+          <font class="blue">Stage 23 (ITT) (Final)</font> » <font class="red">Versailles › Paris</font>
+          <font class="red">(54km)</font>
+        </div>
+
+    Two things live here and nowhere else on the page:
+
+    * The DISTANCE, even when the info panel prints "Distance: 0 km". PCS does
+      that for a long tail of older stages — the 1969 and 1970 Tour finales
+      both read 0 km in the panel while the headline says 37km and 54km.
+    * An explicit **(ITT)** or **(TTT)** marker. "Won how" is empty on old
+      stages, so detect_route_type falls back to flat and decisive time trials
+      end up stored as road stages.
+
+    Returns {'label', 'distance_km', 'tt_kind'}; any key may be None. The
+    marker also appears in <title> ("Tour de France 1970 Stage 23 (ITT)
+    results"), so both are checked.
+
+    The distance is NOT infallible — PCS's 1986 Tour stage-23 headline repeats
+    stage 16's 246.5 km instead of the finale's 255 km. Treat it as a source to
+    reconcile, not a value to trust blindly; see backfill_stage_titles.py for
+    the duplicate guard.
+    """
+    m = _TITLE_LINE_RE.search(html or "")
+    line = ""
+    if m:
+        line = " ".join(re.sub(r"<[^>]+>", " ", m.group(1))
+                        .replace("&nbsp;", " ").split())
+    tag = _TITLE_TAG_RE.search(html or "")
+    km = _TITLE_KM_RE.search(line)
+    tt = _TITLE_TT_RE.search(f"{tag.group(1) if tag else ''} {line}")
+    distance = None
+    if km:
+        try:
+            distance = float(km.group(1).replace(",", ""))
+        except ValueError:
+            distance = None
+    return {
+        "label": line.split("&raquo;")[0].split("»")[0].strip() or None,
+        "distance_km": distance if distance else None,
+        "tt_kind": tt.group(1) if tt else None,
+    }
+
+
+def apply_stage_title(info: dict, html: str) -> dict:
+    """Fill an info dict's gaps from the stage headline. Mutates and returns it.
+
+    Only fills what the info panel failed to give: a distance it reported as
+    0 km or omitted, and a TT marker when "Won how" is empty. A real scraped
+    value always wins — the headline is the fallback, not the override.
+    """
+    title = parse_stage_title(html)
+    have_km = 0.0
+    m = re.match(r"([\d.]+)", str(info.get("Distance") or ""))
+    if m:
+        have_km = float(m.group(1))
+    if title["distance_km"] and not have_km:
+        info["Distance"] = f"{title['distance_km']} km"
+        info["DistanceSource"] = "pcs-title"
+    if title["tt_kind"] and not (info.get("Won how") or "").strip(" -"):
+        info["TitleTT"] = title["tt_kind"]
+    return info
+
+
 def parse_year_args(args: list[str]) -> list[int]:
     years = []
     for a in args:

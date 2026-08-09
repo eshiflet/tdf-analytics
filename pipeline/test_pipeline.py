@@ -168,6 +168,91 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(parse_year_args(["--race", "giro"]), [])
 
 
+class TestStageTitle(unittest.TestCase):
+    """race_common.parse_stage_title / apply_stage_title.
+
+    PCS's info panel reports "Distance: 0 km" for a long tail of older stages
+    and leaves "Won how" empty, so the headline is the only place the distance
+    and the (ITT)/(TTT) marker appear. Missing it left 44 time trials stored as
+    flat road stages and 9 stages with no distance at all.
+    """
+
+    TT = ('<title>Tour de France 1970 Stage 23 (ITT) results</title>'
+          '<div class="title-line2 hideIfMobile"><font class="blue">Stage 23 (ITT) '
+          '(Final)</font> &nbsp; &raquo; &nbsp; <font class="red">Versailles '
+          '&nbsp;&rsaquo;&nbsp; Paris</font> &nbsp; <font class="red">(54km)</font></div>')
+    ROAD = ('<title>Tour de France 1968 Stage 22a results</title>'
+            '<div class="title-line2 hideIfMobile"><font class="blue">Stage 22a</font>'
+            ' &nbsp; &raquo; &nbsp; <font class="red">Auxerre &nbsp;&rsaquo;&nbsp; '
+            'Melun</font> &nbsp; <font class="red">(136km)</font></div>')
+
+    def test_reads_distance_and_tt_marker(self):
+        t = rc.parse_stage_title(self.TT)
+        self.assertEqual(t["distance_km"], 54.0)
+        self.assertEqual(t["tt_kind"], "ITT")
+
+    def test_road_stage_has_no_marker(self):
+        t = rc.parse_stage_title(self.ROAD)
+        self.assertEqual(t["distance_km"], 136.0)
+        self.assertIsNone(t["tt_kind"],
+                          "a road stage must not be read as a time trial")
+
+    def test_decimal_distance(self):
+        html = self.TT.replace("(54km)", "(29.3km)")
+        self.assertEqual(rc.parse_stage_title(html)["distance_km"], 29.3)
+
+    def test_marker_must_be_bracketed_and_in_the_headline(self):
+        """Two ways to get this wrong, both of which mislabel a road stage.
+
+        A real PCS road page mentions its siblings — the 1968 stage-22a page
+        links "Stage 22b (ITT)" in its stage picker — so the search has to be
+        scoped to the headline, not the document. And it has to require the
+        brackets: 'ITT' as a bare substring appears in ordinary words and in
+        markup attributes."""
+        with_sibling = self.ROAD + '<div class="pick">Stage 22b (ITT)</div>'
+        self.assertIsNone(rc.parse_stage_title(with_sibling)["tt_kind"],
+                          "a sibling stage's marker must not leak in")
+        stray = self.ROAD.replace("Melun</font>", "Melun SPLITTING</font>")
+        self.assertIsNone(rc.parse_stage_title(stray)["tt_kind"],
+                          "an unbracketed substring is not a marker")
+
+    def test_distance_must_come_from_the_headline(self):
+        """PCS pages carry other stages' distances in navigation and related
+        links; a document-wide '(NNkm)' search can pick up the wrong one."""
+        decoy = '<p>previous stage (246.5km)</p>'
+        self.assertEqual(rc.parse_stage_title(decoy + self.TT)["distance_km"], 54.0)
+
+    def test_missing_title_is_not_an_error(self):
+        t = rc.parse_stage_title("<html><body>nothing here</body></html>")
+        self.assertIsNone(t["distance_km"])
+        self.assertIsNone(t["tt_kind"])
+
+    def test_fills_a_zero_distance(self):
+        info = {"Distance": "0 km"}
+        rc.apply_stage_title(info, self.TT)
+        self.assertEqual(info["Distance"], "54.0 km")
+        self.assertEqual(info["DistanceSource"], "pcs-title")
+
+    def test_a_real_scraped_distance_wins(self):
+        """The headline is the fallback, never the override — PCS's 1986 Tour
+        stage-23 headline repeats stage 16's distance."""
+        info = {"Distance": "136 km"}
+        rc.apply_stage_title(info, self.TT)
+        self.assertEqual(info["Distance"], "136 km")
+        self.assertNotIn("DistanceSource", info)
+
+    def test_won_how_evidence_beats_the_marker(self):
+        info = {"Distance": "54 km", "Won how": "Sprint of small group"}
+        rc.apply_stage_title(info, self.TT)
+        self.assertNotIn("TitleTT", info,
+                         "must not retype a stage whose result already says how it was won")
+
+    def test_marker_surfaces_when_won_how_is_a_dash(self):
+        info = {"Distance": "54 km", "Won how": "-"}
+        rc.apply_stage_title(info, self.TT)
+        self.assertEqual(info["TitleTT"], "ITT")
+
+
 class TestSlugsForEdition(unittest.TestCase):
     """backfill_source_slugs.slugs_for_edition — date-based derivation."""
 

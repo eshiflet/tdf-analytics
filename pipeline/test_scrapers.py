@@ -77,11 +77,23 @@ class TestParseInfo(unittest.TestCase):
         self.assertEqual(info["Finish"], "Pla de Beret")
         self.assertEqual(info["Vertical meters"], "3015")
 
-    def test_distance_info_row_can_read_zero(self):
+    def test_zero_distance_info_row_is_healed_from_the_headline(self):
         """PCS's 'Distance:' row says 0 km for this stage even though it was
-        raced — the case patch_missing_distances exists for."""
+        raced. parse_info now falls back to the headline, which carries the
+        real 17.4 km — before that, such stages landed in the DB with no
+        distance and dragged their edition's total down by a whole stage."""
+        html = require("giro_2022_stage_21")
+        self.assertRegex(html, r"Distance:.{0,200}?0\s*km",
+                         "fixture must still be one where the info row reads 0 km")
+        info = SV.parse_info(html)
+        self.assertEqual(info["Distance"], "17.4 km")
+        self.assertEqual(info["DistanceSource"], "pcs-title")
+
+    def test_headline_marks_the_stage_a_time_trial(self):
+        """"Won how" is empty here, so the (ITT) marker is the only evidence
+        that this is a time trial rather than a flat road stage."""
         info = SV.parse_info(require("giro_2022_stage_21"))
-        self.assertEqual(info["Distance"], "0 km")
+        self.assertEqual(info.get("TitleTT"), "ITT")
 
 
 class TestProfileIcon(unittest.TestCase):
@@ -128,8 +140,10 @@ class TestResultsTable(unittest.TestCase):
         self.assertEqual(SV.parse_rows(SV.find_results_table(html) or ""), [])
 
     def test_sparse_historical_page(self):
-        """PCS publishes a single result for this 1989 split-day time trial.
-        One row is the honest answer; the DB agrees."""
+        """The ordinary row parser finds exactly ONE row on this page — and
+        that is the bug, not the truth. It is a team time trial: the results
+        are grouped by team, and the single stray row makes the stage look
+        populated. TestTeamTimeTrial covers what parse_ttt_rows recovers."""
         rows = SV.parse_rows(SV.find_results_table(require("vuelta_1989_stage_3a")))
         self.assertEqual(len(rows), 1)
         self.assertEqual(StageRow.from_list(rows[0]).slug, "rider/roland-leclerc")
@@ -265,12 +279,20 @@ class TestElevationExtraction(unittest.TestCase):
 class TestHeaderDistance(unittest.TestCase):
     """patch_missing_distances.parse_distance — the page header."""
 
-    def test_header_disagrees_with_the_zero_info_row(self):
-        """The whole reason the patcher exists: the info row reads 0 km, the
-        header carries the real 17.4 km."""
+    def test_header_carries_a_distance_the_info_row_reports_as_zero(self):
+        """The whole reason the patcher exists: PCS's info row reads 0 km while
+        the headline carries the real 17.4 km."""
         html = require("giro_2022_stage_21")
-        self.assertEqual(SV.parse_info(html)["Distance"], "0 km")
+        self.assertRegex(html, r"Distance:.{0,200}?0\s*km")
         self.assertEqual(PMD.parse_distance(html), 17.4)
+
+    def test_distance_is_read_from_the_headline_not_anywhere_on_the_page(self):
+        """A bare '(NNkm)' search matches whatever parenthesised distance comes
+        first in the markup, which need not be this stage's. Scoping to the
+        headline block is what makes the value trustworthy."""
+        html = require("giro_2022_stage_21")
+        decoy = '<p>see also the previous stage (246.5km)</p>'
+        self.assertEqual(PMD.parse_distance(decoy + html), 17.4)
 
     def test_header_matches_the_info_row_when_both_are_present(self):
         html = require("tdf_1986_stage_8")

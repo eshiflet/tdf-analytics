@@ -33,7 +33,7 @@ import time
 import urllib.error
 import urllib.request
 
-from race_common import DB_PATH, SOURCE_PCS, record_provenance
+from race_common import DB_PATH, SOURCE_PCS, parse_stage_title, record_provenance
 
 BASE = "https://www.procyclingstats.com"
 RACES = {
@@ -66,9 +66,13 @@ def fetch(url):
 
 
 def parse_distance(html):
-    """Distance from the page header, e.g. '(102.5km)'."""
-    m = re.search(r"\((\d+(?:\.\d+)?)\s*km\)", html, re.IGNORECASE)
-    return float(m.group(1)) if m else None
+    """Distance from the page header, e.g. '(102.5km)'.
+
+    Scoped to the headline block rather than matched anywhere in the document.
+    A bare '(NNkm)' search reads whatever parenthesised distance appears first
+    in the markup, which need not belong to this stage at all.
+    """
+    return parse_stage_title(html)["distance_km"]
 
 
 def main():
@@ -90,7 +94,7 @@ def main():
     for race in races:
         race_name, race_path = RACES[race]
         rows = cur.execute("""
-            SELECT s.stage_id, s.stage_number, s.source_slug, re.year,
+            SELECT s.stage_id, s.edition_id, s.stage_number, s.source_slug, re.year,
                    s.start_location, s.finish_location,
                    (SELECT MAX(stage_number) FROM stages WHERE edition_id=s.edition_id) last
             FROM stages s
@@ -115,6 +119,21 @@ def main():
             if dist is None:
                 print(f"  {s['year']} n{s['stage_number']} {s['source_slug']}: "
                       f"no distance on page{tail}")
+                failed += 1
+                continue
+            # The header is not infallible. PCS's 1986 Tour stage-23 headline
+            # reports 246.5 km, which is stage 16's figure, not the 255 km
+            # finale — the same copy-from-a-neighbour shape that has cost this
+            # pipeline data before. A value already held by another stage in
+            # the edition is refused rather than written.
+            twin = cur.execute(
+                "SELECT stage_number FROM stages WHERE edition_id=? AND stage_id<>? "
+                "AND ABS(distance_km - ?) < 0.05",
+                (s["edition_id"], s["stage_id"], dist)).fetchone()
+            if twin:
+                print(f"  {s['year']} n{s['stage_number']} {s['source_slug']}: "
+                      f"header says {dist} km but stage {twin[0]} already holds "
+                      f"that exact distance — refused{tail}")
                 failed += 1
                 continue
             print(f"  {s['year']} n{s['stage_number']} {s['source_slug']}: "

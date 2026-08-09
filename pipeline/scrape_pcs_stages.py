@@ -20,7 +20,7 @@ import time
 import urllib.request
 import urllib.error
 
-from race_common import parse_ttt_rows
+from race_common import apply_stage_title, parse_ttt_rows
 
 HERE    = os.path.dirname(os.path.abspath(__file__))
 ICONS_PATH = os.path.join(HERE, "profile_icons.json")
@@ -141,6 +141,8 @@ def parse_info(html: str) -> dict:
     info["Avg. temperature"]   = extract("Avg. temperature:")
     info["ProfileScore"]       = extract("ProfileScore:")
     info["Race ranking"]       = extract("Race ranking:")
+
+    apply_stage_title(info, html)
 
     # Remove None values
     return {k: v for k, v in info.items() if v is not None}

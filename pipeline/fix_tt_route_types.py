@@ -13,11 +13,14 @@ Vuelta's run of San Sebastian and Madrid closers.
 Nothing is guessed. Each candidate is fetched from PCS by its source_slug and
 reclassified only on positive evidence:
 
-  * PCS renders a **Startorder** tab on time trials and only on time trials.
+  * PCS's headline states the type outright on many pages: "Stage 23 (ITT)
+    (Final) > Versailles > Paris (54km)".
+  * Failing that, PCS renders a **Startorder** tab on time trials and only on
+    time trials.
     Verified against controls — 1968 stage-22a (road) and 1998 stage-21 (road)
-    have none, while 1968 22b, Giro 2009 st21 and Vuelta 2014 st21 all do. The
-    profile icon does NOT discriminate: PCS serves p0 for the 1998 road finale
-    too.
+    have neither marker, while 1968 22b, Giro 2009 st21 and Vuelta 2014 st21
+    have both. The profile icon does NOT discriminate: PCS serves p0 for the
+    1998 road finale too.
   * A `ttt-results` list means the field rode it as teams, so it is a TTT
     rather than an ITT.
 
@@ -40,7 +43,7 @@ import sys
 import time
 import urllib.request
 
-from race_common import DB_PATH, SOURCE_PCS, record_provenance
+from race_common import DB_PATH, SOURCE_PCS, parse_stage_title, record_provenance
 
 BASE = "https://www.procyclingstats.com"
 RACE_PATHS = {
@@ -69,10 +72,16 @@ def classify(race_path, year, slug):
         return None, f"fetch failed ({exc})"
     if re.search(r'class="[^"]*ttt-results', html):
         return "TTT", url
+    # PCS's own headline marker, where it exists, is the plainest evidence
+    # there is: "Stage 23 (ITT) (Final) » Versailles › Paris (54km)".
+    kind = parse_stage_title(html)["tt_kind"]
+    if kind:
+        return ("TTT" if kind == "TTT" else "TT"), f"{url} (headline marked ({kind}))"
     text = " ".join(re.sub(r"<[^>]+>", " ", html).split())
     if "Startorder" in text:
         return "TT", url
-    return None, "no Startorder tab — PCS does not present this as a time trial"
+    return None, ("no (ITT)/(TTT) headline marker and no Startorder tab — "
+                  "PCS does not present this as a time trial")
 
 
 def main():
@@ -130,8 +139,7 @@ def main():
                         (verdict, stage_type, r["stage_id"]))
             for field in ("route_type", "stage_type"):
                 record_provenance(cur, "stages", r["stage_id"], field, SOURCE_PCS,
-                                  source_ref=f"{note} (Startorder tab present; "
-                                             "PCS leaves 'Won how' empty)")
+                                  source_ref=f"{note} — PCS leaves 'Won how' empty")
 
     if args.apply:
         conn.commit()

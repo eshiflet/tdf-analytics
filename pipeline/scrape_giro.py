@@ -32,7 +32,11 @@ import time
 import urllib.request
 import urllib.error
 
-from race_common import assign_stage_numbers, parse_ttt_rows
+from race_common import (
+    apply_stage_title,
+    assign_stage_numbers,
+    parse_ttt_rows,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRAPES_DIR = os.path.join(HERE, "giro_scrapes")
@@ -211,6 +215,8 @@ def parse_info(html: str) -> dict:
                     continue
         except Exception:
             pass
+
+    apply_stage_title(info, html)
 
     return info
 

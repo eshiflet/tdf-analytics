@@ -232,8 +232,16 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # The scraper's is_ttt comes from the page structure and beats the
         # "Won how" heuristic, which reads plain "Time trial" for some team
         # trials and so classified them TT (Vuelta 1989 stage 3a).
-        if stage_data.get("is_ttt"):
+        #
+        # TitleTT is PCS's own "(ITT)"/"(TTT)" marker from the stage headline,
+        # which is the only evidence available when "Won how" is empty — the
+        # gap that left 44 time trials stored as flat road stages, including
+        # the 1968 Tour's Melun > Paris finale.
+        title_tt = info.get("TitleTT")
+        if stage_data.get("is_ttt") or title_tt == "TTT":
             route_type = "TTT"
+        elif title_tt == "ITT":
+            route_type = "TT"
         else:
             route_type = detect_route_type(profile_icon, won_how)
 
