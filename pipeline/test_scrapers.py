@@ -318,6 +318,23 @@ class TestCancellationDetection(unittest.TestCase):
                      "giro_2022_stage_21", "vuelta_1989_stage_3a"):
             self.assertFalse(ICS.parse_meta(require(name))["cancelled"], name)
 
+    def test_cancellation_phrasing_need_not_contain_the_word_stage(self):
+        """PCS writes the note however it likes. The 1982 Tour's team time
+        trial reads "Team Time Trial was cancelled due to a protest of local
+        farmers" — no "stage" anywhere — so a pattern anchored on that word
+        left the stage in the DB as raced, at 0 km with 160 GC-only results."""
+        for note in ("Team Time Trial was cancelled due to a protest of local farmers.",
+                     "Individual time trial was cancelled.",
+                     "The stage was cancelled due to snow.",
+                     "Stage cancelled"):
+            self.assertTrue(ICS.CANCEL_RE.search(note), note)
+
+    def test_ordinary_prose_is_not_read_as_a_cancellation(self):
+        for note in ("Sprint of large group", "Won how: Time trial",
+                     "The stage was shortened due to snow",
+                     "riders protested the transfer"):
+            self.assertIsNone(ICS.CANCEL_RE.search(note), note)
+
 
 class TestRouteParsing(unittest.TestCase):
     """resolve_source_slugs.page_route — how every corrected slug was verified."""

@@ -46,8 +46,17 @@ RACE_PATH = {
     "Giro d'Italia": "giro-d-italia",
     "Vuelta a España": "vuelta-a-espana",
 }
-CANCEL_RE = re.compile(r"(race/stage is cancelled|stage was cancelled|stage is cancelled"
-                       r"|stage cancelled)", re.I)
+# PCS does not use a fixed phrase. Every variant below is one it actually
+# prints. Requiring the literal word "stage" missed the 1982 Tour's cancelled
+# team time trial, whose note reads "Team Time Trial was cancelled due to a
+# protest of local farmers" — so that stage sat in the DB as raced, with 0 km
+# and 160 results that are GC standings carrying no stage rank or finish time.
+CANCEL_RE = re.compile(
+    r"(race/stage is cancelled"
+    r"|stage (?:was|is) cancelled"
+    r"|stage cancelled"
+    r"|(?:individual |team )?time trial was cancelled"
+    r"|was cancelled due to)", re.I)
 
 
 def page_text(html):
