@@ -114,12 +114,18 @@ def check_editions(c, races):
             if dupes:
                 err(f"{tag}: source_slug reused within the edition: {sorted(dupes)}")
 
+            # Duplicate detection keys on the PCS slug as well as date and
+            # route. A split day can legitimately run two stages over the same
+            # circuit on the same date at the same distance — Giro 1972's 12a
+            # and 12b are both 20 km Forte dei Marmi > Forte dei Marmi, won by
+            # Merckx and Swerts respectively. Distinct slugs mean distinct PCS
+            # pages, so they are two stages, not one duplicated.
             seen = {}
             for s in stages:
-                key = (s[1], s[3], s[4], s[5])
+                key = (s[1], s[3], s[4], s[5], s[2])
                 if s[1] and key in seen:
                     err(f"{tag}: stages {seen[key]} and {s[0]} are identical "
-                        f"({s[3]} -> {s[4]} on {s[1]})")
+                        f"({s[3]} -> {s[4]} on {s[1]}, same slug {s[2]})")
                 seen[key] = s[0]
 
             for s in stages:

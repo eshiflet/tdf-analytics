@@ -150,9 +150,29 @@ def main():
                 print(f"  {race} {e['year']}: could not read PCS stage list")
                 continue
 
-            db_routes = {norm(f"{r['a']} - {r['b']}") for r in db}
-            missing = [(slug, route) for slug, route in listed
-                       if norm(route) not in db_routes]
+            # Count-based, not membership-based. When PCS lists a route TWICE
+            # (a split day whose halves share a town, e.g. Giro 1994's Bologna
+            # > Bologna 1a and 1b) and the DB holds it once, set membership
+            # says "present" and the absent half is invisible. Compare how many
+            # times each route appears on each side and report the surplus.
+            db_route_counts = Counter(norm(f"{r['a']} - {r['b']}") for r in db)
+            pcs_route_counts = Counter(norm(route) for _, route in listed)
+            seen_route = Counter()
+            missing = []
+            for slug, route in listed:
+                key = norm(route)
+                seen_route[key] += 1
+                if seen_route[key] > db_route_counts.get(key, 0):
+                    missing.append((slug, route))
+            # Absorb spelling differences: a DB stage whose route matched
+            # nothing pairs with an unmatched PCS entry rather than counting as
+            # absent ("Martos - Sierra Nevada" vs PCS's "... (Alto Hoya de la
+            # Mora)"). Only a genuine PCS surplus survives.
+            matched_db = sum(min(v, db_route_counts.get(k, 0))
+                             for k, v in pcs_route_counts.items())
+            unmatched_db = len(db) - matched_db
+            if unmatched_db > 0 and missing:
+                missing = missing[unmatched_db:]
 
             # Route is NOT a unique key. Circuit stages and same-town split
             # halves repeat a departure/arrival pair within one edition —
@@ -163,8 +183,6 @@ def main():
             # appearing exactly once on each side — may be repaired; the rest
             # are reported for a human, because nothing in the route tells you
             # which of the two stages is which.
-            pcs_route_counts = Counter(norm(route) for _, route in listed)
-            db_route_counts = Counter(norm(f"{r['a']} - {r['b']}") for r in db)
             by_route = {norm(f"{r['a']} - {r['b']}"): r for r in db
                         if db_route_counts[norm(f"{r['a']} - {r['b']}")] == 1}
             wrong, ambiguous = [], []
