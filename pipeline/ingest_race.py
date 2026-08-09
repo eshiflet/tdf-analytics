@@ -228,7 +228,13 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                 distance_km = float(m.group(1))
 
         won_how = info.get("Won how", "")
-        route_type = detect_route_type(profile_icon, won_how)
+        # The scraper's is_ttt comes from the page structure and beats the
+        # "Won how" heuristic, which reads plain "Time trial" for some team
+        # trials and so classified them TT (Vuelta 1989 stage 3a).
+        if stage_data.get("is_ttt"):
+            route_type = "TTT"
+        else:
+            route_type = detect_route_type(profile_icon, won_how)
 
         if slug and slug in preserved_by_slug:
             preserved_vm, preserved_ps, preserved_d, preserved_c = preserved_by_slug[slug]

@@ -142,6 +142,82 @@ class TestResultsTable(unittest.TestCase):
         self.assertEqual(len(bibs), len(set(bibs)))
 
 
+class TestTeamTimeTrial(unittest.TestCase):
+    """parse_ttt_rows — results grouped by team, not one row per rider.
+
+    A TTT page carries no per-rider time: each rider takes the team's time and
+    the team's placing. find_results_table/parse_rows find essentially nothing
+    in this shape, and the single stray row they DO return looks like a valid
+    result, so the stage lands in the DB looking populated. 47 stages and
+    roughly 3,568 results were lost that way.
+    """
+
+    def test_historical_ttt_full_field(self):
+        rows = SV.parse_ttt_rows(require("vuelta_1989_stage_3a"))
+        self.assertEqual(len(rows), 188)
+        self.assertEqual(len({StageRow.from_list(r).team for r in rows}), 21)
+
+    def test_modern_ttt_full_field(self):
+        rows = SV.parse_ttt_rows(require("vuelta_2015_stage_1_ttt"))
+        self.assertEqual(len(rows), 198)
+        self.assertEqual(len({StageRow.from_list(r).team for r in rows}), 22)
+
+    def test_ordinary_parser_finds_almost_nothing_here(self):
+        """The regression that hid this: one stray row, not zero, so nothing
+        downstream looked wrong."""
+        html = require("vuelta_1989_stage_3a")
+        self.assertEqual(len(SV.parse_rows(SV.find_results_table(html) or "")), 1)
+        self.assertEqual(len(SV.parse_ttt_rows(html)), 188)
+
+    def test_winning_team_matches_the_published_result(self):
+        """Vuelta 1989 stage 3a: Caja Rural 42:49, Reynolds-Banesto +0:02."""
+        rows = [StageRow.from_list(r) for r in SV.parse_ttt_rows(require("vuelta_1989_stage_3a"))]
+        win = [r for r in rows if r.rnk == "1"]
+        self.assertEqual({r.team for r in win}, {"Caja Rural"})
+        self.assertEqual({r.abs_time for r in win}, {"42:49"})
+        self.assertEqual({r.gap for r in win}, {"0:00"})
+        self.assertIn("rider/marino-lejarreta", {r.slug for r in win})
+
+    def test_every_rider_takes_the_team_time_and_placing(self):
+        rows = [StageRow.from_list(r) for r in SV.parse_ttt_rows(require("vuelta_1989_stage_3a"))]
+        banesto = [r for r in rows if r.team == "Reynolds - Banesto"]
+        self.assertEqual(len(banesto), 9)
+        self.assertEqual({r.rnk for r in banesto}, {"2"})
+        self.assertEqual({r.abs_time for r in banesto}, {"42:51"})
+        self.assertEqual({r.gap for r in banesto}, {"0:02"})
+        self.assertIn("rider/pedro-delgado", {r.slug for r in banesto})
+        self.assertIn("rider/miguel-indurain", {r.slug for r in banesto})
+
+    def test_rows_match_the_stage_row_schema(self):
+        for name in ("vuelta_1989_stage_3a", "vuelta_2015_stage_1_ttt"):
+            for row in SV.parse_ttt_rows(require(name)):
+                self.assertEqual(len(row), STAGE_ROW_LEN, name)
+                StageRow.from_list(row)
+
+    def test_returns_nothing_for_a_non_ttt_page(self):
+        for name in ("vuelta_2021_stage_1", "tdf_1986_stage_8", "giro_2022_stage_21"):
+            self.assertEqual(SV.parse_ttt_rows(require(name)), [], name)
+
+    def test_scrape_stage_flags_a_ttt(self):
+        """route_type must come from the page, not from 'Won how' — which reads
+        a plain 'Time trial' here and had this stage classified TT."""
+        orig, SV.DELAY = SV.fetch, 0
+        SV.fetch = lambda url, **kw: (None if url.endswith(("-points", "-kom"))
+                                      else load("vuelta_1989_stage_3a"))
+        try:
+            buf, sys.stdout = sys.stdout, io.StringIO()
+            try:
+                rec = SV.scrape_stage(1989, "stage-3a", 3)
+            finally:
+                sys.stdout = buf
+        finally:
+            SV.fetch = orig
+        self.assertTrue(rec["is_ttt"])
+        self.assertEqual(len(rec["rows"]), 188)
+        self.assertEqual(SV.parse_info(require("vuelta_1989_stage_3a"))["Won how"],
+                         "Time trial")   # why the heuristic alone is not enough
+
+
 class TestPointsPage(unittest.TestCase):
     def test_sprint_points(self):
         pts = SV.parse_points_page(require("vuelta_2021_stage_1_points"), "sprint")

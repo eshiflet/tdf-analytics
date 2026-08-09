@@ -32,7 +32,7 @@ import time
 import urllib.request
 import urllib.error
 
-from race_common import assign_stage_numbers
+from race_common import assign_stage_numbers, parse_ttt_rows
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRAPES_DIR = os.path.join(HERE, "vuelta_scrapes")
@@ -392,15 +392,22 @@ def scrape_stage(year: int, slug: str, stage_num: int) -> dict | None:
     if not html:
         return None
 
-    table_html = find_results_table(html)
-    if not table_html:
-        print("NO TABLE", end=" ")
-        return None
-
-    rows = parse_rows(table_html)
-    if not rows:
-        print("NO ROWS", end=" ")
-        return None
+    # A TTT is grouped by team and needs its own parser; check for it first,
+    # because find_results_table picks up an unrelated table on those pages and
+    # parse_rows then returns a single stray row that looks like a valid result.
+    rows = parse_ttt_rows(html)
+    is_ttt = bool(rows)
+    if rows:
+        print("TTT ", end="")
+    else:
+        table_html = find_results_table(html)
+        if not table_html:
+            print("NO TABLE", end=" ")
+            return None
+        rows = parse_rows(table_html)
+        if not rows:
+            print("NO ROWS", end=" ")
+            return None
 
     info = parse_info(html)
     icon = parse_profile_icon(html)
@@ -419,6 +426,11 @@ def scrape_stage(year: int, slug: str, stage_num: int) -> dict | None:
         # sequential number that diverges from the slug on any split day, so
         # only the slug can be trusted to re-fetch the same page later.
         "slug": slug,
+        # Whether PCS served this as a TEAM time trial. "Won how" says only
+        # "Time trial" for some TTTs (Vuelta 1989 stage 3a among them), so
+        # detect_route_type cannot tell them apart — but the page structure
+        # can, and this records what the page actually was.
+        "is_ttt": is_ttt,
         "info": info,
         "profile_icon": icon,
         "rows": rows,

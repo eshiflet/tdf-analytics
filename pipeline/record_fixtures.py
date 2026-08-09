@@ -73,6 +73,14 @@ FIXTURES = {
         "edition's split day sequentially, so DB stage 8 is stage-8 here, not "
         "stage-7. Departure/Arrival parsing is what verified that.",
     ),
+    "vuelta_2015_stage_1_ttt": (
+        "/race/vuelta-a-espana/2015/stage-1",
+        "Modern TEAM time trial. Results are grouped by team in a "
+        "<ul class='list ttt-results'> — team rank/name/time in the <li>, that "
+        "team's riders in a nested <table> with empty per-rider time cells. The "
+        "ordinary row parser finds almost nothing here, which is how 47 stages "
+        "ended up holding a handful of results instead of a full field.",
+    ),
     "tdf_1986_prologue": (
         "/race/tour-de-france/1986/prologue",
         "Prologue: slug is 'prologue', never 'stage-0'.",

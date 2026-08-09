@@ -345,3 +345,74 @@ def record_provenance_bulk(cur, entity, entity_id, fields, source,
     for field in fields:
         record_provenance(cur, entity, entity_id, field, source,
                           source_ref=source_ref, script=script)
+
+
+# ── Team time trial results ─────────────────────────────────────────────────
+# Lives here rather than in one scraper because all three races run TTTs and
+# all three scrapers were missing it. See parse_ttt_rows.
+
+_TTT_LIST_RE = re.compile(r'<ul class="list ttt-results">(.*?)</ul>', re.S)
+_TTT_TEAM_RE = re.compile(r'href="(team/[^"]+)"[^>]*>(.*?)</a>', re.S)
+_TTT_RANK_RE = re.compile(r'<div class="w10 fs14">\s*(\d+)\s*</div>')
+_TTT_TIME_RE = re.compile(r'<div[^>]*\btime\b[^>]*>\s*([\d:]+)\s*</div>')
+_TTT_GAP_RE = re.compile(r'</div>\s*<div class="w25 fs14">\s*([+\d:]+)\s*</div>')
+_TTT_RIDER_RE = re.compile(
+    r'<span class="flag (\w+)"></span>\s*<a[^>]*href="(rider/[^"]+)"[^>]*>(.*?)</a>', re.S)
+
+
+def _strip_tags(html: str) -> str:
+    t = re.sub(r"<[^>]+>", "", html)
+    t = t.replace("&amp;", "&").replace("&#160;", " ").replace("&nbsp;", " ")
+    return " ".join(t.split())
+
+
+def parse_ttt_rows(html: str) -> list[list]:
+    """Rows for a TEAM time trial, whose results are grouped by team.
+
+    A TTT page is shaped completely differently from an ordinary stage. Instead
+    of one <tr> per rider, PCS emits
+
+        <ul class="list ttt-results">
+          <li> <div>rank</div> <a href="team/...">Team</a>
+               <div class="time">42:49</div> <div>+0:00</div>
+               <table> <tr><a href="rider/...">Name</a></tr> ... </table>
+          </li>
+
+    with the per-rider time cells EMPTY: every rider takes the team's time and
+    the team's placing, which is how a TTT works.
+
+    The ordinary find_results_table/parse_rows pair finds essentially nothing
+    here — and, worse, returns ONE stray row rather than none, so the stage
+    lands in the DB looking populated. 47 stages across all three races held a
+    handful of results instead of a full field that way (~3,568 results),
+    including Vuelta 2015's opening TTT, which stored 1 result for a 175-rider
+    field, and Vuelta 1989 stage 3a.
+
+    Returns rows in the canonical StageRow order so nothing downstream needs a
+    special case. bib/age/GC are blank — the TTT view does not carry them.
+    """
+    m = _TTT_LIST_RE.search(html)
+    if not m:
+        return []
+
+    rows = []
+    for li in re.findall(r"<li>(.*?)</li>", m.group(1), re.S):
+        team_m = _TTT_TEAM_RE.search(li)
+        if not team_m:
+            continue                      # the header <li> carries no team link
+        team_slug, team_name = team_m.group(1), _strip_tags(team_m.group(2))
+
+        rank_m, time_m, gap_m = (_TTT_RANK_RE.search(li), _TTT_TIME_RE.search(li),
+                                 _TTT_GAP_RE.search(li))
+        rank = rank_m.group(1) if rank_m else ""
+        team_time = time_m.group(1) if time_m else ""
+        team_gap = gap_m.group(1) if gap_m else ""
+
+        for nat, slug, name_html in _TTT_RIDER_RE.findall(li):
+            rows.append([
+                rank, "", "", "", "",
+                _strip_tags(name_html), slug, nat,
+                team_name, team_slug,
+                "", "", "", team_time, team_gap,
+            ])
+    return rows

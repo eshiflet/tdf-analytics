@@ -20,6 +20,8 @@ import time
 import urllib.request
 import urllib.error
 
+from race_common import parse_ttt_rows
+
 HERE    = os.path.dirname(os.path.abspath(__file__))
 ICONS_PATH = os.path.join(HERE, "profile_icons.json")
 
@@ -286,13 +288,19 @@ def scrape_stage(year: int, slug: str, stage_n: int) -> dict | None:
         return None
 
     info = parse_info(html)
-    rows = parse_rows(html)
+    # A TEAM time trial groups its results by team; the ordinary row parser
+    # finds almost nothing there and the stage lands looking populated.
+    rows = parse_ttt_rows(html)
+    is_ttt = bool(rows)
+    if not rows:
+        rows = parse_rows(html)
     icon = parse_profile_icon(html)
 
     if not rows:
         print(f"    Warning: no rows parsed for {year}/{slug}")
 
-    return {"n": stage_n, "slug": slug, "info": info, "rows": rows, "icon": icon}
+    return {"n": stage_n, "slug": slug, "info": info, "rows": rows, "icon": icon,
+            "is_ttt": is_ttt}
 
 
 # ── Year scrape ───────────────────────────────────────────────────────────────
