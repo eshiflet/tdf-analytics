@@ -22,16 +22,27 @@ Matching is by route (departure -> arrival), normalised for accents and
 punctuation, because stage NUMBERS are exactly what is unreliable here.
 
 Reads PCS's per-edition "results" page — one request per edition, so a full run
-over ~300 editions takes a while. Read-only; reports, changes nothing.
+over ~300 editions takes a while.
+
+Reporting is the default. --fix-slugs additionally repairs the unresolvable
+slugs, since this is already the authoritative mapping: the anchor states the
+slug and the route together, so a DB row matched by route can only have one
+correct slug. Each change is still verified by fetching the target page and
+comparing its departure/arrival, because writing a slug that does not resolve
+is exactly the failure being repaired.
+
+Missing STAGES are never inserted here — that renumbers an edition and belongs
+in a deliberate repair, not a scan.
 
 Usage:
   python3 audit_stage_counts.py --race giro --year 1937
-  python3 audit_stage_counts.py --race vuelta
-  python3 audit_stage_counts.py                     # everything (slow)
+  python3 audit_stage_counts.py                     # report everything (slow)
+  python3 audit_stage_counts.py --fix-slugs         # repair slugs too
 """
 
 import argparse
 import re
+from collections import Counter
 import sqlite3
 import sys
 import time
@@ -39,7 +50,7 @@ import unicodedata
 import urllib.error
 import urllib.request
 
-from race_common import DB_PATH
+from race_common import DB_PATH, SOURCE_PCS, record_provenance
 
 BASE = "https://www.procyclingstats.com"
 RACES = {
@@ -104,14 +115,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--race", choices=sorted(RACES), default=None)
     ap.add_argument("--year", type=int, default=None)
+    ap.add_argument("--fix-slugs", action="store_true",
+                    help="rewrite unresolvable source_slug values (route-verified)")
     args = ap.parse_args()
 
-    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    conn = sqlite3.connect(DB_PATH if args.fix_slugs
+                           else f"file:{DB_PATH}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
-    c, c2 = conn.cursor(), conn.cursor()
+    c, c2, w = conn.cursor(), conn.cursor(), conn.cursor()
 
     races = [args.race] if args.race else sorted(RACES)
     short = dead_slugs = checked = 0
+    fixed_n = [0]
 
     for race in races:
         race_name, race_path = RACES[race]
@@ -122,8 +137,9 @@ def main():
                            "ORDER BY year", (rid[0],)).fetchall():
             if args.year and e["year"] != args.year:
                 continue
-            db = c2.execute("""SELECT stage_number n, source_slug, start_location a,
-                    finish_location b FROM stages WHERE edition_id=? ORDER BY stage_number""",
+            db = c2.execute("""SELECT stage_id, stage_number n, source_slug,
+                    start_location a, finish_location b
+                    FROM stages WHERE edition_id=? ORDER BY stage_number""",
                             (e["edition_id"],)).fetchall()
             if not db:
                 continue
@@ -137,24 +153,88 @@ def main():
             db_routes = {norm(f"{r['a']} - {r['b']}") for r in db}
             missing = [(slug, route) for slug, route in listed
                        if norm(route) not in db_routes]
-            by_route = {norm(f"{r['a']} - {r['b']}"): r for r in db}
-            wrong = []
-            for slug, route in listed:
-                r = by_route.get(norm(route))
-                if r is not None and r["source_slug"] != slug:
-                    wrong.append((r["n"], r["source_slug"], slug))
 
-            if missing or wrong:
+            # Route is NOT a unique key. Circuit stages and same-town split
+            # halves repeat a departure/arrival pair within one edition —
+            # "Arco - Arco", "Portoferraio - Portoferraio", "Seraing -
+            # Seraing". Matching on a duplicated route picks whichever entry
+            # happens to be last, so two stages trade slugs and each pass
+            # "fixes" the previous one's work. Only unambiguous routes — those
+            # appearing exactly once on each side — may be repaired; the rest
+            # are reported for a human, because nothing in the route tells you
+            # which of the two stages is which.
+            pcs_route_counts = Counter(norm(route) for _, route in listed)
+            db_route_counts = Counter(norm(f"{r['a']} - {r['b']}") for r in db)
+            by_route = {norm(f"{r['a']} - {r['b']}"): r for r in db
+                        if db_route_counts[norm(f"{r['a']} - {r['b']}")] == 1}
+            wrong, ambiguous = [], []
+            for slug, route in listed:
+                key = norm(route)
+                if pcs_route_counts[key] > 1 or db_route_counts.get(key, 0) > 1:
+                    if db_route_counts.get(key):
+                        ambiguous.append((slug, route))
+                    continue
+                r = by_route.get(key)
+                if r is not None and r["source_slug"] != slug:
+                    # Never hand a slug to one row while another still holds
+                    # it — that produces two stages claiming the same PCS page,
+                    # and whichever is re-fetched second overwrites the first.
+                    # It happens when the DB row this slug belongs to has NULL
+                    # locations (so its route can't match) while a DIFFERENT
+                    # stage shares the town: PCS's 'prologue' entry for TDF
+                    # 1996 matched stage 1, because both start and finish in
+                    # 's-Hertogenbosch and the prologue row has no locations.
+                    taken = next((x for x in db
+                                  if x["source_slug"] == slug and x["stage_id"] != r["stage_id"]),
+                                 None)
+                    if taken is not None:
+                        ambiguous.append(
+                            (slug, f"{route} — already held by DB n={taken['n']}"))
+                        continue
+                    wrong.append((r["stage_id"], r["n"], r["source_slug"], slug, route))
+
+            if missing or wrong or ambiguous:
                 print(f"\n  {race} {e['year']}: PCS lists {len(listed)}, DB has {len(db)}")
                 for slug, route in missing:
                     print(f"      MISSING  {slug:<11} {route[:60]}")
-                for dbn, have, want in wrong:
-                    print(f"      SLUG     DB n={dbn:<3} {have} -> {want}")
+                for sid, dbn, have, want, route in wrong:
+                    verdict = ""
+                    if args.fix_slugs:
+                        # Confirm the replacement actually resolves and is the
+                        # right stage before writing it. A slug that 500s is
+                        # the defect; swapping in another bad one is no fix.
+                        page = fetch(f"{BASE}/race/{race_path}/{e['year']}/{want}")
+                        time.sleep(DELAY)
+                        ok = False
+                        if page:
+                            t2 = " ".join(re.sub(r"<[^>]+>", " ", page).split())
+                            m2 = re.search(r"Departure:\s*(.+?)\s+Arrival:\s*(.+?)\s+"
+                                           r"(?:Race ranking|Distance|Date|Won how)", t2)
+                            ok = bool(m2) and norm(f"{m2.group(1)} - {m2.group(2)}") == norm(route)
+                        if ok:
+                            w.execute("UPDATE stages SET source_slug=? WHERE stage_id=?",
+                                      (want, sid))
+                            record_provenance(
+                                w, "stages", sid, "source_slug", SOURCE_PCS,
+                                source_ref=f"{BASE}/race/{race_path}/{e['year']}/{want}"
+                                           " (from the edition stage list; route verified)")
+                            fixed_n[0] += 1
+                            verdict = "  FIXED"
+                        else:
+                            verdict = "  NOT VERIFIED - left alone"
+                    print(f"      SLUG     DB n={dbn:<3} {have} -> {want}{verdict}")
+                for slug, route in ambiguous:
+                    print(f"      AMBIG    {slug:<11} {route[:50]} — route repeats; "
+                          "cannot tell the stages apart, resolve by hand")
                 short += len(missing)
                 dead_slugs += len(wrong)
+                if args.fix_slugs:
+                    conn.commit()
 
     print(f"\n{checked} edition(s) checked: {short} stage(s) absent from the DB, "
           f"{dead_slugs} unresolvable slug(s)")
+    if args.fix_slugs:
+        print(f"{fixed_n[0]} slug(s) repaired and route-verified")
     conn.close()
     sys.exit(1 if short or dead_slugs else 0)
 
