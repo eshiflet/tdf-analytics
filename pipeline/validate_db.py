@@ -96,8 +96,10 @@ def check_editions(c, races):
             tag = f"{race[:6]} {year}"
             stages = c2.execute(
                 "SELECT stage_number, stage_date, source_slug, start_location, "
-                "finish_location, distance_km, cancelled FROM stages "
-                "WHERE edition_id=? ORDER BY stage_number", (eid,)
+                "finish_location, distance_km, cancelled, "
+                "(SELECT source FROM data_provenance WHERE entity='stages' "
+                " AND entity_id=stages.stage_id AND field='distance_km') "
+                "FROM stages WHERE edition_id=? ORDER BY stage_number", (eid,)
             ).fetchall()
             if not stages:
                 continue
@@ -133,6 +135,29 @@ def check_editions(c, races):
                     err(f"{tag} stage {s[0]}: negative distance {s[5]}")
                 if not s[6] and s[5] == 0:
                     warn(f"{tag} stage {s[0]}: zero distance on a non-cancelled stage")
+
+            # A stage whose distance exactly equals the one before it, over a
+            # different route, is the signature of a hole filled by carrying
+            # the neighbouring value forward. PCS publishes "0 km" for a number
+            # of finales, and six Tours ended up with the previous day's figure
+            # on the run into Paris — 1989's 24.5 km LeMond time trial was
+            # stored as a 130 km road stage. See fix_paris_finale_distances.py.
+            #
+            # Equal distances alone are far too common to flag — round numbers
+            # repeat and 38 editions match, nearly all coincidence. Two filters
+            # make it actionable. The value's provenance must be UNKNOWN
+            # (patched by a source nobody recorded), and it must be the FINAL
+            # stage, which is where PCS's missing distances cluster and where a
+            # wrong figure also skews the edition total and the finish-line
+            # view. Every one of the six real cases satisfies both.
+            prev, last = (stages[-2], stages[-1]) if len(stages) > 1 else (None, None)
+            if (prev and prev[5] and last[5] and abs(prev[5] - last[5]) < 0.05
+                    and not prev[6] and not last[6]
+                    and (last[7] or "unknown") == "unknown"
+                    and (prev[3], prev[4]) != (last[3], last[4])):
+                warn(f"{tag} final stage {last[0]}: distance {last[5]} km is identical "
+                     f"to stage {prev[0]}'s over a different route, from an unrecorded "
+                     "source — check it was not copied from the neighbour")
 
 
 def check_split_slug_provenance(c):
