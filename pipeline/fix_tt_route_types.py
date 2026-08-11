@@ -24,7 +24,10 @@ reclassified only on positive evidence:
   * A `ttt-results` list means the field rode it as teams, so it is a TTT
     rather than an ITT.
 
-A stage showing neither marker is left exactly as it is.
+A stage showing neither marker is left exactly as it is. The 34 that PCS cannot
+adjudicate were reviewed by Eric on 2026-08-10 and are none of them time
+trials; they are listed in ADJUDICATED_NOT_TT and skipped, so the scan reports
+them as one line instead of re-fetching 34 pages to reach the same answer.
 
 Candidates are stages already classified 'F' with no "Won how" evidence — i.e.
 stages whose type was defaulted, never determined. --all-stages widens the scan
@@ -59,6 +62,38 @@ DELAY = 1.5
 # the 'F' classification is more likely correct than not, and each case wants a
 # human. The longest closing TT in the candidate set is 55.2 km.
 MAX_KM = 75
+
+# Adjudicated by Eric, 2026-08-10: none of these is a time trial. They match the
+# shape of one — short, often a split-day second half over a circuit, several of
+# them the Barcelona and Montjuïc laps — but PCS carries no (ITT)/(TTT) marker,
+# no Startorder tab and no "Won how" for any of them, so the scan can only ever
+# report them. Listing them individually on every run is noise; they are counted
+# and named in one line instead.
+#
+# This settles the TYPE only. 32 of the 34 have no profile icon on PCS either,
+# so their 'F' is the fallback rather than an observation of flat terrain.
+ADJUDICATED_NOT_TT = {
+    ("giro", 1946, "stage-16a"), ("giro", 1974, "stage-11b"),
+    ("giro", 1977, "stage-2b"),
+    ("tdf", 1936, "stage-19c"), ("tdf", 1937, "stage-12b"),
+    ("tdf", 1937, "stage-13b"), ("tdf", 1937, "stage-17c"),
+    ("tdf", 1938, "stage-4a"), ("tdf", 1938, "stage-6a"),
+    ("tdf", 1938, "stage-10a"), ("tdf", 1938, "stage-10c"),
+    ("tdf", 1938, "stage-20a"), ("tdf", 1939, "stage-10c"),
+    ("vuelta", 1942, "stage-8b"), ("vuelta", 1947, "stage-18"),
+    ("vuelta", 1955, "stage-7"), ("vuelta", 1963, "stage-1a"),
+    ("vuelta", 1964, "stage-1a"), ("vuelta", 1964, "stage-4b"),
+    ("vuelta", 1965, "stage-10b"), ("vuelta", 1966, "stage-10a"),
+    ("vuelta", 1966, "stage-10b"), ("vuelta", 1966, "stage-15b"),
+    ("vuelta", 1967, "stage-10a"), ("vuelta", 1967, "stage-10b"),
+    ("vuelta", 1968, "stage-3b"), ("vuelta", 1970, "stage-8b"),
+    ("vuelta", 1973, "stage-9b"), ("vuelta", 1975, "stage-11b"),
+    ("vuelta", 1977, "stage-11b"), ("vuelta", 1978, "stage-6"),
+    ("vuelta", 1978, "stage-11a"), ("vuelta", 1988, "stage-1"),
+    ("vuelta", 1989, "stage-1"),
+}
+RACE_KEYS = {"Tour de France": "tdf", "Giro d'Italia": "giro",
+             "Vuelta a España": "vuelta"}
 
 
 def classify(race_path, year, slug):
@@ -116,7 +151,16 @@ def main():
            {final_only}
          ORDER BY ra.name, re.year, s.stage_number""", (MAX_KM,)).fetchall()
 
-    print(f"{len(rows)} candidate(s) — stages defaulted to 'F' with no evidence\n")
+    settled = [r for r in rows
+               if (RACE_KEYS[r["race"]], r["year"], r["source_slug"]) in ADJUDICATED_NOT_TT]
+    rows = [r for r in rows if r not in settled]
+
+    print(f"{len(rows)} candidate(s) — stages defaulted to 'F' with no evidence")
+    if settled:
+        print(f"({len(settled)} more already adjudicated as not time trials, "
+              f"{settled[0]['race'][:6]} {settled[0]['year']} .. "
+              f"{settled[-1]['race'][:6]} {settled[-1]['year']} — not re-checked)")
+    print()
     changed = left = failed = 0
     for r in rows:
         verdict, note = classify(RACE_PATHS[r["race"]], r["year"], r["source_slug"])
