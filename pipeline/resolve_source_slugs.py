@@ -25,6 +25,21 @@ recorded as 'pcs' rather than 'derived'.
 Editions with no split day are untouched: stage_number maps to stage-{n} with
 no ambiguity there (prologue is stage_number 0, slug 'prologue').
 
+STATUS, 2026-08-10. A full --apply run over all 107 split editions wrote
+nothing. 104 were already correct. The other three — Giro 1935, Giro 1939, TDF
+1957 — produced 35 proposals, every one of which this script's own route
+verification rejected, and the proposals were genuinely wrong: it wanted Giro
+1935 n6 to be stage-6, but PCS's stage-6 is Portocivitanova > l'Aquila while n6
+is Riccione > Portocivitanova. The stored stage-5b is right. Eric reviewed all
+three editions by hand and confirmed they are correct as stored, so the
+convention probe is what misfires there, not the data. Don't "fix" them.
+
+This script is therefore NOT the way to improve source_slug provenance: it
+records provenance only for slugs it REWRITES and says nothing about the ones
+it leaves alone, which is exactly why correct slugs sat labelled 'derived'. Use
+audit_stage_counts.py --confirm-slugs, which reads PCS's per-edition stage list
+(slug and route in the same anchor) at one request per edition.
+
 Usage:
   python3 resolve_source_slugs.py --race tdf --dry-run
   python3 resolve_source_slugs.py --race tdf --year 1986

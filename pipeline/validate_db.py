@@ -190,9 +190,11 @@ def check_split_slug_provenance(c):
         #
         # The remainder are the cases route matching cannot settle: a route that
         # repeats inside one edition (a prologue and a stage 1a both Nice > Nice)
-        # or one PCS spells differently ("Martos - Sierra Nevada (Alto Hoya de la
-        # Mora)"). Nothing in the route tells the two apart, so they stay derived
-        # rather than being confirmed on a guess.
+        # or one PCS spells differently. Nothing in the route tells the two
+        # apart, so they stay derived rather than confirmed on a guess. A
+        # spelling case CAN be closed by adopting PCS's name where it is the
+        # official one — Vuelta 2022 st15 became "Sierra Nevada (Alto Hoya de la
+        # Mora)" and confirmed immediately.
         warn(f"{len(suspect)} split edition(s) still carry DERIVED source_slug on "
              "stages whose route is not unique within the edition, so PCS's stage "
              "list cannot confirm which is which. Run audit_stage_counts.py "

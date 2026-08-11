@@ -93,9 +93,10 @@ def align(listed, files):
         plan.append((num, slug, route, hit))
 
     # Second pass: PCS and the DB sometimes spell a route differently —
-    # "Martos - Sierra Nevada" against PCS's "Martos - Sierra Nevada (Alto Hoya
-    # de la Mora)". Those are the same stage, and treating one as missing would
-    # insert a duplicate. Any stage files still unmatched are paired, in order,
+    # PCS qualifies some finishes the DB names plainly — Vuelta 2022's "Martos
+    # - Sierra Nevada" against PCS's "... (Alto Hoya de la Mora)", since
+    # corrected in the DB. Those are the same stage, and treating one as missing
+    # would insert a duplicate. Any stage files still unmatched are paired, in order,
     # with the still-unmatched PCS entries; only a PCS surplus beyond that is
     # genuinely absent.
     leftover_files = [k for k in keys if k not in used]

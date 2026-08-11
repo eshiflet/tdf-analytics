@@ -170,8 +170,10 @@ def main():
                     missing.append((slug, route))
             # Absorb spelling differences: a DB stage whose route matched
             # nothing pairs with an unmatched PCS entry rather than counting as
-            # absent ("Martos - Sierra Nevada" vs PCS's "... (Alto Hoya de la
-            # Mora)"). Only a genuine PCS surplus survives.
+            # absent, where PCS qualifies a finish the DB names plainly.
+            # (Vuelta 2022's "Martos - Sierra Nevada" vs PCS's "... (Alto Hoya
+            # de la Mora)" was the example; that one is now spelled PCS's way
+            # in the DB, but others remain.) Only a genuine surplus survives.
             matched_db = sum(min(v, db_route_counts.get(k, 0))
                              for k, v in pcs_route_counts.items())
             unmatched_db = len(db) - matched_db
