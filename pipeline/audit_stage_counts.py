@@ -38,6 +38,7 @@ Usage:
   python3 audit_stage_counts.py --race giro --year 1937
   python3 audit_stage_counts.py                     # report everything (slow)
   python3 audit_stage_counts.py --fix-slugs         # repair slugs too
+  python3 audit_stage_counts.py --confirm-slugs     # upgrade 'derived' provenance
 """
 
 import argparse
@@ -117,15 +118,18 @@ def main():
     ap.add_argument("--year", type=int, default=None)
     ap.add_argument("--fix-slugs", action="store_true",
                     help="rewrite unresolvable source_slug values (route-verified)")
+    ap.add_argument("--confirm-slugs", action="store_true",
+                    help="record provenance for slugs PCS's stage list confirms")
     args = ap.parse_args()
 
-    conn = sqlite3.connect(DB_PATH if args.fix_slugs
+    writing = args.fix_slugs or args.confirm_slugs
+    conn = sqlite3.connect(DB_PATH if writing
                            else f"file:{DB_PATH}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     c, c2, w = conn.cursor(), conn.cursor(), conn.cursor()
 
     races = [args.race] if args.race else sorted(RACES)
-    short = dead_slugs = checked = 0
+    short = dead_slugs = checked = confirmed_n = 0
     fixed_n = [0]
 
     for race in races:
@@ -185,7 +189,7 @@ def main():
             # which of the two stages is which.
             by_route = {norm(f"{r['a']} - {r['b']}"): r for r in db
                         if db_route_counts[norm(f"{r['a']} - {r['b']}")] == 1}
-            wrong, ambiguous = [], []
+            wrong, ambiguous, confirmed = [], [], []
             for slug, route in listed:
                 key = norm(route)
                 if pcs_route_counts[key] > 1 or db_route_counts.get(key, 0) > 1:
@@ -193,6 +197,16 @@ def main():
                         ambiguous.append((slug, route))
                     continue
                 r = by_route.get(key)
+                if r is not None and r["source_slug"] == slug:
+                    # PCS's own stage list pairs this slug with this route, and
+                    # the route is unique on both sides, so the stored slug is
+                    # confirmed rather than merely derived. This is the only
+                    # place that evidence exists per stage at one request per
+                    # EDITION: resolve_source_slugs probes the split-day
+                    # convention and rewrites what disagrees, but it records
+                    # nothing for the slugs it leaves alone, so 59 split
+                    # editions kept a 'derived' label on slugs that are right.
+                    confirmed.append((r["stage_id"], slug, route))
                 if r is not None and r["source_slug"] != slug:
                     # Never hand a slug to one row while another still holds
                     # it — that produces two stages claiming the same PCS page,
@@ -210,6 +224,16 @@ def main():
                             (slug, f"{route} — already held by DB n={taken['n']}"))
                         continue
                     wrong.append((r["stage_id"], r["n"], r["source_slug"], slug, route))
+
+            if args.confirm_slugs and confirmed:
+                for sid, slug, route in confirmed:
+                    record_provenance(
+                        w, "stages", sid, "source_slug", SOURCE_PCS,
+                        source_ref=f"{BASE}/race/{race_path}/{e['year']}/results"
+                                   f" — PCS's stage list pairs {slug} with"
+                                   f" \"{route}\"; route unique on both sides")
+                confirmed_n += len(confirmed)
+                conn.commit()
 
             if missing or wrong or ambiguous:
                 print(f"\n  {race} {e['year']}: PCS lists {len(listed)}, DB has {len(db)}")
@@ -251,6 +275,8 @@ def main():
 
     print(f"\n{checked} edition(s) checked: {short} stage(s) absent from the DB, "
           f"{dead_slugs} unresolvable slug(s)")
+    if args.confirm_slugs:
+        print(f"{confirmed_n} slug(s) confirmed against PCS's stage list")
     if args.fix_slugs:
         print(f"{fixed_n[0]} slug(s) repaired and route-verified")
     conn.close()

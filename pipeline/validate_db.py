@@ -179,10 +179,25 @@ def check_split_slug_provenance(c):
         if derived:
             suspect.append(f"{race[:6]} {year} ({derived})")
     if suspect:
-        warn(f"{len(suspect)} split edition(s) still carry DERIVED source_slug — "
-             "PCS's convention varies per edition, so these are guesses. "
-             f"Run resolve_source_slugs.py. {', '.join(suspect[:8])}"
-             + (" ..." if len(suspect) > 8 else ""))
+        # Do NOT send anyone to resolve_source_slugs.py for these, which is what
+        # this warning used to say. That tool probes the split-day convention and
+        # records provenance only for slugs it REWRITES; run against the 107 split
+        # editions it found 104 already correct, rejected its own proposals for the
+        # other 3 on route verification, and wrote nothing — it cannot clear this.
+        # audit_stage_counts.py --confirm-slugs is what carries the evidence: PCS's
+        # stage list pairs each slug with its route, one request per edition. That
+        # took this from 4,572 stages to 31.
+        #
+        # The remainder are the cases route matching cannot settle: a route that
+        # repeats inside one edition (a prologue and a stage 1a both Nice > Nice)
+        # or one PCS spells differently ("Martos - Sierra Nevada (Alto Hoya de la
+        # Mora)"). Nothing in the route tells the two apart, so they stay derived
+        # rather than being confirmed on a guess.
+        warn(f"{len(suspect)} split edition(s) still carry DERIVED source_slug on "
+             "stages whose route is not unique within the edition, so PCS's stage "
+             "list cannot confirm which is which. Run audit_stage_counts.py "
+             f"--confirm-slugs first; what remains needs a human. "
+             f"{', '.join(suspect[:8])}" + (" ..." if len(suspect) > 8 else ""))
 
 
 def check_results(c):
