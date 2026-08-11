@@ -65,11 +65,26 @@ DELAY = 1.5
 
 
 def norm(s):
+    """Route text reduced to something comparable across two spellings.
+
+    Accents go first, then the saint abbreviations, then everything that is not
+    a letter or digit. The abbreviation step has to happen while word boundaries
+    still exist: stripping punctuation first turns "St Malo" into "stmalo",
+    where "st" is no longer a separate token.
+
+    That step is not cosmetic. The DB writes "St Malo" and "Ste Foy la Grande"
+    where PCS writes "Saint-Malo" and "Sainte-Foy-la-Grande", and every one of
+    those routes failed to match — leaving correct slugs unconfirmable and
+    forcing the leftover-pairing fallback to carry stages it should never have
+    needed to.
+    """
     if not s:
         return ""
     s = unicodedata.normalize("NFKD", s)
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    return re.sub(r"[^a-z0-9]", "", s.lower())
+    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    s = re.sub(r"\bste\b\.?", "sainte", s)
+    s = re.sub(r"\bst\b\.?", "saint", s)
+    return re.sub(r"[^a-z0-9]", "", s)
 
 
 def fetch(url):
@@ -191,11 +206,46 @@ def main():
             # which of the two stages is which.
             by_route = {norm(f"{r['a']} - {r['b']}"): r for r in db
                         if db_route_counts[norm(f"{r['a']} - {r['b']}")] == 1}
-            wrong, ambiguous, confirmed = [], [], []
+            wrong, ambiguous, confirmed, swapped = [], [], [], []
+
+            # Duplicated routes can still be CONFIRMED, just never reassigned.
+            # Both lists are chronological — PCS publishes its stage list in
+            # race order, and stage_number is race order — so when a route
+            # appears the same number of times on each side, the two sequences
+            # can be compared position by position. If the slugs the DB already
+            # holds read the same as PCS's in that order, the existing
+            # assignment is right; nothing is written but the label.
+            #
+            # This is safe precisely because it never reassigns. The
+            # oscillation bug came from PICKING a row for a duplicated route
+            # and rewriting it, which two stages then undid for each other on
+            # alternate passes. Here a disagreement is reported, not acted on —
+            # and it is a real signal: two split halves stored the wrong way
+            # round produce reversed sequences and show up here.
+            pcs_groups, db_groups, order_confirmed = {}, {}, set()
+            for slug, route in listed:
+                pcs_groups.setdefault(norm(route), []).append(slug)
+            for r in db:                       # already ordered by stage_number
+                db_groups.setdefault(norm(f"{r['a']} - {r['b']}"), []).append(r)
+            for key, pslugs in pcs_groups.items():
+                drows = db_groups.get(key, [])
+                if len(pslugs) < 2 or len(drows) != len(pslugs):
+                    continue                   # unique, or a count mismatch
+                have = [r["source_slug"] for r in drows]
+                if have == pslugs:
+                    order_confirmed.add(key)
+                    for r, slug in zip(drows, pslugs):
+                        confirmed.append((r["stage_id"], slug,
+                                          f"{pslugs} in race order"))
+                else:
+                    swapped.append((key, have, pslugs,
+                                    [r["n"] for r in drows]))
+
             for slug, route in listed:
                 key = norm(route)
                 if pcs_route_counts[key] > 1 or db_route_counts.get(key, 0) > 1:
-                    if db_route_counts.get(key):
+                    # Settled above by race order — not something for a human.
+                    if db_route_counts.get(key) and key not in order_confirmed:
                         ambiguous.append((slug, route))
                     continue
                 r = by_route.get(key)
@@ -236,6 +286,14 @@ def main():
                                    f" \"{route}\"; route unique on both sides")
                 confirmed_n += len(confirmed)
                 conn.commit()
+
+            if swapped:
+                print(f"\n  {race} {e['year']}: duplicated route(s) whose order "
+                      "disagrees with PCS — possible swap, NOT rewritten")
+                for key, have, want, nums in swapped:
+                    print(f"      ORDER    DB n={nums} hold {have}, "
+                          f"PCS lists {want} in that order")
+                dead_slugs += len(swapped)
 
             if missing or wrong or ambiguous:
                 print(f"\n  {race} {e['year']}: PCS lists {len(listed)}, DB has {len(db)}")

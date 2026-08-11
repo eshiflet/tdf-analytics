@@ -23,6 +23,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import race_common as rc
+from audit_stage_counts import norm
 from backfill_source_slugs import slugs_for_edition
 from detect_name_swaps import _bib_check
 from race_common import (
@@ -166,6 +167,40 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(parse_year_args(["1990-1992"]), [1990, 1991, 1992])
         self.assertEqual(parse_year_args(["--dry-run", "2020"]), [2020])
         self.assertEqual(parse_year_args(["--race", "giro"]), [])
+
+
+class TestRouteNorm(unittest.TestCase):
+    """audit_stage_counts.norm — route comparison across two spellings.
+
+    Every stage repair in this pipeline is keyed on matching a DB route against
+    PCS's, because stage numbers are the unreliable part. A route that fails to
+    match is not a harmless miss: it leaves a correct slug unconfirmable and
+    pushes the stage into the leftover-pairing fallback.
+    """
+
+    def test_accents_and_punctuation_ignored(self):
+        self.assertEqual(norm("Saint-Pol-de-Léon"), norm("Saint Pol de Leon"))
+        self.assertEqual(norm("Córdoba"), norm("Cordoba"))
+
+    def test_saint_abbreviations_match(self):
+        """The DB writes "St Malo", PCS writes "Saint-Malo". Six TDF stages in
+        1973-1976 stayed unconfirmable on this alone."""
+        self.assertEqual(norm("St Malo - Caen"), norm("Saint-Malo - Caen"))
+        self.assertEqual(norm("Ste Foy la Grande"), norm("Sainte-Foy-la-Grande"))
+        self.assertEqual(norm("St. Etienne"), norm("Saint-Étienne"))
+
+    def test_expansion_happens_before_punctuation_is_stripped(self):
+        """Order matters: strip punctuation first and "St Malo" becomes
+        "stmalo", where "st" is no longer a token to expand."""
+        self.assertTrue(norm("St Malo").startswith("saint"))
+
+    def test_does_not_expand_st_inside_a_word(self):
+        self.assertEqual(norm("Stavelot"), "stavelot")
+        self.assertEqual(norm("Sestriere"), "sestriere")
+
+    def test_distinct_routes_stay_distinct(self):
+        self.assertNotEqual(norm("Pau - Luchon"), norm("Luchon - Pau"))
+        self.assertNotEqual(norm("St Malo - Caen"), norm("St Malo - Rouen"))
 
 
 class TestStageTitle(unittest.TestCase):
