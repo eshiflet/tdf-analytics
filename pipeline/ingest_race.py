@@ -44,6 +44,10 @@ from race_common import (
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DRY_RUN = "--dry-run" in sys.argv
+# Re-ingest rebuilds an edition from its stage FILES, so a stage that lives
+# only in the database is deleted and never comes back. See the orphan guard
+# in ingest_year — three Vuelta stages were lost that way before it existed.
+ALLOW_DROP = "--allow-drop" in sys.argv
 # Escape hatch for the swap gate below. Deliberately verbose to type:
 # a flagged swap is nearly always real (the first run of this check
 # surfaced 7 genuine swap pairs), so bypassing should be a decision.
@@ -179,6 +183,26 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
 
     if existing:
         eid = existing[0]
+
+        # A stage that exists in the DB but has no scrape file is about to be
+        # deleted and never re-inserted. Those are not accidents: Vuelta 1941
+        # st20 and st22 and 1968 st20 were placed here by deliberate repairs
+        # from sources other than a scrape, and re-ingesting those editions
+        # silently destroyed all three. Refuse rather than drop them.
+        incoming = set()
+        for p in stage_files:
+            m = re.search(r"stage_(\d+)\.json$", p)
+            if m:
+                incoming.add(int(m.group(1)))
+        orphans = [r[0] for r in cur.execute(
+            "SELECT stage_number FROM stages WHERE edition_id=? ORDER BY stage_number",
+            (eid,)) if r[0] not in incoming]
+        if orphans and not ALLOW_DROP:
+            print(f"  REFUSED {year}: stage(s) {orphans} are in the database with no "
+                  f"scrape file; re-ingesting would delete them. Re-run with "
+                  f"--allow-drop only if that is what you want.")
+            return 0
+
         cur.execute("DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
         # Provenance is keyed by stage_id, and re-inserting an edition mints new
         # ones — without this the old rows are orphaned and accumulate as dead

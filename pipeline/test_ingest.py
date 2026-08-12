@@ -140,10 +140,16 @@ class TestPreservationAcrossReingest(IngestHarness):
             self.conn.execute("UPDATE stages SET vertical_meters=? WHERE stage_number=?", (vm, n))
         self.conn.commit()
 
-        # stage-2's data now arrives as stage_number 1 (an edition renumbering)
+        # stage-2's data now arrives as stage_number 1 (an edition renumbering).
+        # A renumber legitimately shrinks the file set, so it must opt in to the
+        # orphan guard — that is exactly the "yes, I mean to drop it" case.
         os.remove(os.path.join(self.scrapes, "1990", "stage_2.json"))
         self.write_stage(1, slug="stage-2")
-        self.ingest()
+        ingest_race.ALLOW_DROP = True
+        try:
+            self.ingest()
+        finally:
+            ingest_race.ALLOW_DROP = False
         self.assertEqual(self.stages()[1]["vertical_meters"], 200,
                          "elevation must follow source_slug, not stage_number")
 
@@ -205,6 +211,40 @@ class TestPreservationAcrossReingest(IngestHarness):
         s = self.stages()[1]
         self.assertEqual(s["cancelled"], 1)
         self.assertEqual(s["distance_km"], 0.0)
+
+
+class TestOrphanGuard(IngestHarness):
+    """A stage in the DB with no scrape file must not be silently deleted.
+
+    Re-ingest rebuilds an edition from its FILES, so a stage placed in the
+    database by a deliberate repair from some other source disappears and never
+    returns. Vuelta 1941 st20 and st22 and 1968 st20 were all destroyed that way
+    during the ditto re-scrape, and only a backup got them back.
+    """
+
+    def test_reingest_refuses_to_drop_a_db_only_stage(self):
+        self.write_stage(1)
+        self.write_stage(2, date="1990-05-09")
+        self.ingest()
+        self.assertEqual(sorted(self.stages()), [1, 2])
+
+        os.remove(os.path.join(self.scrapes, "1990", "stage_2.json"))
+        self.ingest()
+        self.assertEqual(sorted(self.stages()), [1, 2],
+                         "stage 2 has no file and must survive the re-ingest")
+        self.assertIn("refused", self.last_output.lower())
+
+    def test_allow_drop_opts_in(self):
+        self.write_stage(1)
+        self.write_stage(2, date="1990-05-09")
+        self.ingest()
+        os.remove(os.path.join(self.scrapes, "1990", "stage_2.json"))
+        ingest_race.ALLOW_DROP = True
+        try:
+            self.ingest()
+        finally:
+            ingest_race.ALLOW_DROP = False
+        self.assertEqual(sorted(self.stages()), [1])
 
 
 class TestFinishTimes(IngestHarness):

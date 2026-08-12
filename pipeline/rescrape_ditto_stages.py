@@ -43,14 +43,16 @@ import re
 import sys
 import time
 
+import sqlite3
+
 import scrape_giro
 import scrape_vuelta
-from race_common import STAGE_ROW_LEN, parse_ttt_rows, row_gap_violations
+from race_common import DB_PATH, STAGE_ROW_LEN, parse_ttt_rows, row_gap_violations
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RACES = {
-    "giro": ("giro-d-italia", "giro_scrapes", scrape_giro),
-    "vuelta": ("vuelta-a-espana", "vuelta_scrapes", scrape_vuelta),
+    "giro": ("giro-d-italia", "giro_scrapes", scrape_giro, "Giro d'Italia"),
+    "vuelta": ("vuelta-a-espana", "vuelta_scrapes", scrape_vuelta, "Vuelta a España"),
 }
 BASE = "https://www.procyclingstats.com"
 DELAY = 1.5
@@ -99,7 +101,20 @@ def main():
     if not args.apply:
         args.dry_run = True
 
-    race_path, scrapes_dir, module = RACES[args.race]
+    race_path, scrapes_dir, module, race_name = RACES[args.race]
+
+    # Slugs come from the DATABASE, never from "stage-{n}". A stage file that
+    # predates slug recording has none, and on a split edition the DB's
+    # contiguous numbering runs ahead of PCS's from the split onward — so the
+    # guess fetches a different stage, or 500s forever. Every source_slug is
+    # now confirmed against PCS's own stage list, so this is the reliable map.
+    # Guessing cost 5 unreachable pages in the first 18 of this run.
+    db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    slugs = {(y, n): sl for y, n, sl in db.execute(
+        """SELECT re.year, s.stage_number, s.source_slug FROM stages s
+             JOIN race_editions re USING(edition_id) JOIN races ra USING(race_id)
+            WHERE ra.name=? AND s.source_slug IS NOT NULL""", (race_name,))}
+    db.close()
     module.DELAY = DELAY
 
     targets = stale_files(scrapes_dir)
@@ -113,7 +128,11 @@ def main():
     years = set()
 
     for year, n, path, data, before in targets:
-        slug = data.get("slug") or f"stage-{n}"
+        slug = slugs.get((year, n)) or data.get("slug")
+        if not slug:
+            failed += 1
+            print(f"  ?   {args.race} {year} st{n:<3} no source_slug — skipped")
+            continue
         rows, is_ttt = fetch_rows(module, race_path, year, slug)
         time.sleep(DELAY)
         tag = f"{args.race} {year} st{n:<3} ({slug})"
