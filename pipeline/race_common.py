@@ -230,6 +230,43 @@ def parse_stage_title(html: str) -> dict:
     }
 
 
+def gap_violations(pairs) -> int:
+    """How many finishers sit at zero gap BEHIND a rider who lost time.
+
+    `pairs` is an iterable of (rank, gap_seconds); rank may be a string or int,
+    gap may be None. Only numeric ranks count — a DNF has no place in the
+    finishing order.
+
+    A finishing order's gaps never decrease: once a rider is 1:02 down, nobody
+    behind him is level with the winner. A gap that drops back to zero is PCS's
+    ditto mark — it prints ",," for "same as the rider above" — read as no gap
+    at all. 1,500 stages carry that damage, on some of them 189 riders of 198.
+
+    Rank 1 is skipped on purpose. PCS renders the winner's time and gap in a
+    single cell, so his gap field repeats his own finishing time; counting it
+    would make `peak` enormous and every later zero look like a violation. That
+    mistake inflated a first count of this from 97 stages to 1,055.
+    """
+    peak = 0
+    bad = 0
+    for rank, gap in pairs:
+        r = str(rank).strip()
+        if not r.isdigit() or r == "1" or gap is None:
+            continue
+        if gap > peak:
+            peak = gap
+        elif peak > 0 and gap == 0:
+            bad += 1
+    return bad
+
+
+def row_gap_violations(rows) -> int:
+    """gap_violations for scrape rows in StageRow order."""
+    return gap_violations(
+        (r[0], parse_time_to_seconds(r[14]))
+        for r in rows if len(r) == STAGE_ROW_LEN)
+
+
 def apply_stage_title(info: dict, html: str) -> dict:
     """Fill an info dict's gaps from the stage headline. Mutates and returns it.
 

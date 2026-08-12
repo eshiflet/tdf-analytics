@@ -413,6 +413,11 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                     and winner_seconds is None):
                 winner_seconds = abs_secs
                 is_winner_row = True
+                # ...and that duplicated value is not a gap either. Storing it
+                # says the winner finished his own time behind himself, and a
+                # re-ingest would put it straight back after the DB was
+                # repaired. He is by definition zero behind the winner.
+                gap_secs = 0
 
             finish_secs = None
             if status == "FINISHED" and winner_seconds is not None:

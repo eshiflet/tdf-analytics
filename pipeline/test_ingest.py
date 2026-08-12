@@ -239,6 +239,18 @@ class TestFinishTimes(IngestHarness):
                          "the winner's own time must not have its own gap added to it")
         self.assertEqual(t["rider/second"], 15328 + 19)
 
+    def test_winner_gap_is_zero_not_his_own_time(self):
+        """The same duplicated cell is not a gap either. Leaving it there says
+        the winner finished 4h15 behind himself, and a re-ingest puts it back
+        after the database has been repaired."""
+        self.write_stage(1, rows=[self.winner_row("4:15:28"),
+                                  self.other_row("2", "Second", "2", "0:19")])
+        self.ingest()
+        gaps = {r["rider_id"]: r["gap_seconds"] for r in self.conn.execute(
+            "SELECT rider_id, gap_seconds FROM stage_results")}
+        self.assertEqual(gaps["rider/winner"], 0)
+        self.assertEqual(gaps["rider/second"], 19)
+
     def test_promoted_co_winner_keeps_a_real_gap(self):
         """After a disqualification PCS lists two rank-1 riders — 2008 TDF st4
         has Schumacher and the promoted Kirchen, 18s back. The second must not

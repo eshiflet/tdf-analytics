@@ -38,6 +38,7 @@ import sys
 import scrape_vuelta as _sv          # generic PCS results-table parsing
 from race_common import (
     COUNTRY_NAMES,
+    gap_violations,
     DB_PATH,
     SOURCE_PCS,
     STAGE_ROW_LEN,
@@ -47,6 +48,7 @@ from race_common import (
     parse_time_to_seconds,
     parse_ttt_rows,
     record_provenance,
+    row_gap_violations,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -143,12 +145,23 @@ def main():
     new_ranked = sum(1 for r in rows if parse_int(StageRow.from_list(r).rnk) is not None)
     print(f"TDF {args.year} stage {args.stage}: DB has {st['res']} result(s) "
           f"({db_ranked} ranked), source has {len(rows)} ({new_ranked} ranked)")
+    # A stale ditto repair adds no rows and no ranks — the gain is entirely in
+    # the gaps, where PCS's ",," ("same as above") was read as no gap at all.
+    # So compare violations too, or the guard rejects the very fix it is for.
+    db_bad = gap_violations(cur.execute(
+        "SELECT stage_rank, gap_seconds FROM stage_results WHERE stage_id=? "
+        "ORDER BY stage_rank", (st["stage_id"],)).fetchall())
+    new_bad = row_gap_violations(rows)
+    print(f"  gap violations: DB {db_bad}, source {new_bad}")
+
     if new_ranked < db_ranked:
         sys.exit("refusing to replace: that would lose ranks")
     if len(rows) < st["res"] and not args.from_pcs:
         sys.exit("refusing to replace: that would lose rows")
-    if len(rows) == st["res"] and new_ranked == db_ranked:
-        sys.exit("nothing to gain: same row count, same number ranked")
+    if new_bad > db_bad:
+        sys.exit("refusing to replace: that would add gap violations")
+    if len(rows) == st["res"] and new_ranked == db_ranked and new_bad == db_bad:
+        sys.exit("nothing to gain: same rows, same ranks, same gaps")
 
     if args.dry_run:
         print("\n[DRY RUN] would replace the stage's results. Sample:")
@@ -206,6 +219,10 @@ def main():
 
         status = sr.rnk if sr.rnk in ("DNF", "DNS", "OTL", "NP", "DSQ", "DEL") else "FINISHED"
         gap_secs = parse_time_to_seconds(sr.gap)
+        if i == winner_index:
+            # PCS repeats the winner's own time in the gap field; storing it
+            # says he finished his own time behind himself.
+            gap_secs = 0
         finish_secs = None
         if status == "FINISHED" and winner_seconds is not None:
             # See ingest_race: only the winner's row carries an absolute time,
