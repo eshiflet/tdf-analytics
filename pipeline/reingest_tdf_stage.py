@@ -19,6 +19,13 @@ holds, something is wrong with the file, not the database.
 Usage:
   python3 reingest_tdf_stage.py --year 1955 --stage 2 --dry-run
   python3 reingest_tdf_stage.py --year 1955 --stage 2 --apply
+  python3 reingest_tdf_stage.py --year 1989 --stage 2 --from-pcs --apply
+
+--from-pcs scrapes the stage page instead of reading the file. tdf_YEAR_full.json
+only exists for 1903-1959 and 2026, so it is the only route for a modern edition:
+TDF 1989 st2 and 2008 st4 both held 196 and 178 rows carrying GC standings alone —
+no finishing position, no finish time — because they were built from the GC page
+and never from the stage result. PCS publishes both in full.
 """
 
 import argparse
@@ -28,6 +35,7 @@ import re
 import sqlite3
 import sys
 
+import scrape_vuelta as _sv          # generic PCS results-table parsing
 from race_common import (
     COUNTRY_NAMES,
     DB_PATH,
@@ -37,28 +45,74 @@ from race_common import (
     parse_bonus_seconds,
     parse_int,
     parse_time_to_seconds,
+    parse_ttt_rows,
     record_provenance,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+def scrape_from_pcs(year, stage_number):
+    """Fetch one TDF stage's results by its stored source_slug.
+
+    Keyed on source_slug, never on a rebuilt "stage-{n}": on a split edition the
+    DB's contiguous numbering diverges from PCS's permanently, so deriving the
+    URL fetches a different stage. A ttt-results list means the field rode it as
+    teams and needs parse_ttt_rows — the ordinary parser finds essentially
+    nothing there and returns a single stray row that looks like a valid result.
+    """
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    row = conn.execute(
+        """SELECT s.source_slug FROM stages s
+             JOIN race_editions re ON s.edition_id=re.edition_id
+             JOIN races r ON re.race_id=r.race_id
+            WHERE r.name='Tour de France' AND re.year=? AND s.stage_number=?""",
+        (year, stage_number)).fetchone()
+    conn.close()
+    if not row or not row[0]:
+        sys.exit(f"error: TDF {year} stage {stage_number} has no source_slug to fetch")
+    slug = row[0]
+    url = f"https://www.procyclingstats.com/race/tour-de-france/{year}/{slug}/result/result"
+    html = _sv.fetch(url)
+    if not html:
+        sys.exit(f"error: could not fetch {url}")
+
+    is_ttt = bool(re.search(r'class="[^"]*ttt-results', html))
+    if is_ttt:
+        rows = parse_ttt_rows(html)
+    else:
+        table = _sv.find_results_table(html)
+        rows = _sv.parse_rows(table) if table else []
+    if not rows:
+        sys.exit(f"error: no results parsed from {url}")
+    return {"n": stage_number, "slug": slug, "rows": rows, "is_ttt": is_ttt,
+            "origin": f"{url} ({'TTT team-grouped' if is_ttt else 'stage result'} table)"}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--year", type=int, required=True)
     ap.add_argument("--stage", type=int, required=True)
+    ap.add_argument("--from-pcs", action="store_true",
+                    help="scrape the stage page instead of reading tdf_YEAR_full.json")
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     if not args.apply:
         args.dry_run = True
 
-    path = os.path.join(HERE, f"tdf_{args.year}_full.json")
-    with open(path, encoding="utf-8") as f:
-        full = json.load(f)
-    stage_data = next((s for s in full["stages"] if s["n"] == args.stage), None)
-    if stage_data is None:
-        sys.exit(f"error: no stage {args.stage} in {os.path.basename(path)}")
+    if args.from_pcs:
+        stage_data = scrape_from_pcs(args.year, args.stage)
+        origin = stage_data["origin"]
+    else:
+        path = os.path.join(HERE, f"tdf_{args.year}_full.json")
+        with open(path, encoding="utf-8") as f:
+            full = json.load(f)
+        stage_data = next((s for s in full["stages"] if s["n"] == args.stage), None)
+        if stage_data is None:
+            sys.exit(f"error: no stage {args.stage} in {os.path.basename(path)}")
+        origin = (f"tdf_{args.year}_full.json "
+                  f"({stage_data.get('slug', '?')}, TTT re-parse)")
 
     rows = [r for r in stage_data.get("rows", []) if len(r) == STAGE_ROW_LEN]
     dropped = len(stage_data.get("rows", [])) - len(rows)
@@ -79,10 +133,22 @@ def main():
     if not st:
         sys.exit(f"error: TDF {args.year} stage {args.stage} not in the database")
 
-    print(f"TDF {args.year} stage {args.stage}: DB has {st['res']} result(s), "
-          f"file has {len(rows)}")
-    if len(rows) <= st["res"]:
-        sys.exit("refusing to replace: the file holds no more rows than the DB")
+    # Row count alone is the wrong test when the stored rows are GC standings
+    # with no finishing position: PCS returns the same 196 riders for TDF 1989
+    # st2, but ranked. Replace when the incoming data has more rows OR ranks
+    # more of them; refuse when it would lose either.
+    db_ranked = cur.execute(
+        "SELECT COUNT(stage_rank) FROM stage_results WHERE stage_id=?",
+        (st["stage_id"],)).fetchone()[0]
+    new_ranked = sum(1 for r in rows if parse_int(StageRow.from_list(r).rnk) is not None)
+    print(f"TDF {args.year} stage {args.stage}: DB has {st['res']} result(s) "
+          f"({db_ranked} ranked), source has {len(rows)} ({new_ranked} ranked)")
+    if new_ranked < db_ranked:
+        sys.exit("refusing to replace: that would lose ranks")
+    if len(rows) < st["res"] and not args.from_pcs:
+        sys.exit("refusing to replace: that would lose rows")
+    if len(rows) == st["res"] and new_ranked == db_ranked:
+        sys.exit("nothing to gain: same row count, same number ranked")
 
     if args.dry_run:
         print("\n[DRY RUN] would replace the stage's results. Sample:")
@@ -93,7 +159,23 @@ def main():
         return
 
     stage_id = st["stage_id"]
-    cur.execute("DELETE FROM stage_results WHERE stage_id=?", (stage_id,))
+    if args.from_pcs:
+        # Replace only what the source covers. The DB's rows here were built
+        # from the GC page, which can list a rider PCS's stage table omits —
+        # John-Lee Augustyn sits in TDF 2008 st4's GC at 69th but is absent
+        # from its result table. Deleting everything would silently drop him,
+        # so rows for riders the scrape does not mention are left alone.
+        incoming = {StageRow.from_list(r).slug for r in rows}
+        preserved = cur.execute(
+            "SELECT COUNT(*) FROM stage_results WHERE stage_id=? AND rider_id NOT IN "
+            "(%s)" % ",".join("?" * len(incoming)),
+            (stage_id, *incoming)).fetchone()[0]
+        if preserved:
+            print(f"  keeping {preserved} DB row(s) for riders absent from PCS's table")
+        cur.executemany("DELETE FROM stage_results WHERE stage_id=? AND rider_id=?",
+                        [(stage_id, slug) for slug in incoming])
+    else:
+        cur.execute("DELETE FROM stage_results WHERE stage_id=?", (stage_id,))
 
     # Same convention as ingest_race: the rank-1 absolute time anchors the
     # stage, and every other finisher is that plus their gap. On a TTT each
@@ -146,8 +228,7 @@ def main():
         cur.execute("UPDATE stages SET route_type='TTT' WHERE stage_id=?", (stage_id,))
 
     record_provenance(cur, "stages", stage_id, "results", SOURCE_PCS,
-                      source_ref=f"tdf_{args.year}_full.json "
-                                 f"({stage_data.get('slug', '?')}, TTT re-parse)")
+                      source_ref=origin)
     conn.commit()
     print(f"  replaced {st['res']} result(s) with {inserted}")
     conn.close()
