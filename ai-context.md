@@ -71,6 +71,94 @@ All four merges were verified byte-identical to the scripts they replaced before
 
 ---
 
+## Data integrity work (August 2026) — read before touching scrape/ingest code
+
+A long correctness pass landed 2026-08-08 → 08-11. It found and fixed defects affecting
+more than half the database. The invariants below are the durable output; violating any
+of them is how the data got broken in the first place.
+
+### The five rules
+
+1. **A stage's identity is `stages.source_slug`, never `stage_number`.** PCS letters a
+   split day `stage-3a`/`stage-3b`; the DB numbers contiguously, so the two diverge
+   permanently after the first split (Tour 1981 `stage_number` 5 **is** PCS `stage-4`).
+   Never rebuild a URL as `stage-{n}`: on a split edition it fetches a different stage, or
+   returns HTTP 500 forever. All 6,224 slugs are now confirmed against PCS's own
+   per-edition stage list, so the DB is the reliable map — read it. This mistake recurred
+   *three separate times* during this pass alone.
+
+2. **PCS prints the time and the gap in ONE cell** — `"4:15:284:15:28"` for the winner,
+   `",,0:18"` for a rider 18s down. So the winner's row parses with `abs_time` and `gap`
+   set to the same value. `finish = winner + gap` therefore doubled the winning time on
+   **3,377 rows / 3,354 stages** (Giro 1914's Gremo at 34h29m for a 17h13m ride). The
+   winner's row takes `winner_seconds` directly and his gap is zeroed; `winner_seconds` is
+   set once and never overwritten, because a promoted co-winner after a DQ is also rank 1
+   with a value in that cell (2008 TDF st4: Kirchen, 18s back).
+
+3. **`",,"` means "same as the rider above".** The parser handles it correctly today, but
+   ~1,300 Vuelta scrape *files* on disk predated that fix and recorded `+0:00` for riders
+   who were minutes down. Re-scraped 2026-08-11. **Careful with the detector:** gaps
+   never decrease in an old result, but they legitimately do in a modern one — a rider
+   caught in a crash inside the last 3 km gets the group's time while still classified
+   behind riders who lost time. So a "gap violation" is only actionable if a *fresh*
+   scrape has fewer of them. Do not add this as a `validate_db` check; it would warn on 70
+   clean Tour stages forever.
+
+4. **Re-ingest rebuilds an edition from its scrape FILES**, so anything living only in the
+   DB dies unless carried across. This has cost elevation, patched distances, the
+   cancelled flag, `source_slug`, and three whole stages (Vuelta 1941 st20/st22, 1968
+   st20 — restored from backup). `ingest_race.py` preserves the first four and now
+   **refuses** to drop a stage the incoming files do not cover, requiring `--allow-drop`.
+   A renumbering repair legitimately shrinks the file set and must opt in.
+
+5. **PCS's stage HEADLINE carries what the info panel omits.** `Stage 23 (ITT) (Final) »
+   Versailles › Paris (54km)` holds the distance when the panel says "Distance: 0 km",
+   and an explicit `(ITT)`/`(TTT)` marker when "Won how" is empty (which is why 44 time
+   trials were stored as flat road stages). `race_common.parse_stage_title` /
+   `apply_stage_title`; all three scrapers call it. Scope both to the headline block — a
+   road stage's page links its siblings ("Stage 22b (ITT)") and carries other stages'
+   distances. **It is not infallible:** the 1986 TDF stage-23 headline repeats stage 16's
+   246.5 km, so `patch_missing_distances.py` refuses a value another stage already holds.
+
+### Provenance
+
+`data_provenance` records where every stored fact came from at (entity, entity_id, field)
+granularity — `pcs`, `wikipedia`, `bikeraceinfo`, `manual`, `derived`, `unknown` — with
+the exact URL in `source_ref`. **Every writer must call `record_provenance()`.** A source
+of `unknown` means "patched by something nobody recorded" and is a real signal: it is how
+six Paris finales carrying the *previous* stage's distance were found. `entity_id` is
+polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows itself.
+
+### Tools added (all with `--dry-run`, all guarded)
+
+| script | what it does |
+|---|---|
+| `validate_db.py` | DB-level integrity; ERROR exits 1, WARN = known upstream limit |
+| `audit_stage_counts.py` | reconciles editions against PCS's stage list by route; `--fix-slugs`, `--confirm-slugs` |
+| `patch_missing_distances.py` | fills 0 km distances from the headline; refuses a neighbour's value |
+| `fix_tt_route_types.py` | reclassifies TTs mis-stored as flat; `ADJUDICATED_NOT_TT` holds 34 Eric ruled on |
+| `reingest_tdf_stage.py --from-pcs` | replaces one TDF stage's results; the only route for 1960+ (no `tdf_YEAR_full.json`) |
+| `derive_ttt_rider_times.py` | team time → each rider, for TTTs where PCS's rider tables are empty |
+| `rescrape_ditto_stages.py` | re-scrapes stale-ditto files; rewrites only on strictly fewer violations |
+| `fix_doubled_winner_times.py` | the 3,377-row winner repair (arithmetic, no re-scrape) |
+| `backfill_stage_metadata.py` | fills NULL route/date from PCS's info panel |
+
+### State as of 2026-08-11
+
+`validate_db` 0 errors / 3 warnings · `validate_exports` 302 files, 0 errors ·
+**142 tests** passing (`python3 -m unittest discover -p 'test_*.py'`, runs in CI).
+Every stage has a route, a date, a distance and a confirmed `source_slug`; 0 derived
+slugs remain. Every Tour TTT has per-rider results.
+
+**Known-open, deliberately not fixed:** 36 stages with two rank-1 finishers (doping DQs
+where PCS lists both the stripped and the promoted rider — how to model a stripped win is
+Eric's call, do not guess); 14 stages with no finishing positions (neutralised or
+abandoned mid-race, plus three 1980s TTTs where PCS's rider tables are empty); 17 editions
+with a sparse final stage. Test new work with **mutation checks** — substitute the
+original bug back and confirm the test fails; that caught two blind spots in this pass.
+
+---
+
 ## Repository Structure
 
 ```

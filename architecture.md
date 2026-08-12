@@ -20,8 +20,10 @@ flowchart TD
         DB[("cycling.db<br/>SQLite — gitignored,<br/>NOT regenerable")]
         EXPORT["Exporters<br/>export_gc.py · export_riders_index.py<br/>export_race_summary.py · export_all_races_summary.py"]
         VALIDATE{{"validate_exports.py<br/>sanity checks"}}
+        DBCHECK{{"validate_db.py · audit_stage_counts.py<br/>DB-level integrity + PCS reconciliation"}}
 
         SCRAPE --> RAW --> INGEST --> DB --> EXPORT --> VALIDATE
+        DB --> DBCHECK
     end
 
     subgraph FRONTEND["Frontend — cycling-app/"]
@@ -116,6 +118,17 @@ flowchart TD
   against a reference. Runs locally after any export, and again in CI before every build so
   a bad export can never reach production.
 
+- **validate_db.py / audit_stage_counts.py** — integrity checks on the *database*, where
+  `validate_exports.py` only sees the JSON that was already written. `validate_db.py`
+  catches numbering gaps, duplicate or missing `source_slug`, orphaned provenance, and
+  distances copied from a neighbouring stage; ERROR exits 1, WARN reports a known upstream
+  limit. `audit_stage_counts.py` reconciles each edition against PCS's own published stage
+  list **by route**, which is the only way to catch an edition that simply ends early or
+  never got a split day's second half — those are numbered 1..N with no gap and look
+  perfectly healthy. Its `--confirm-slugs` mode also records provenance for every slug
+  that list confirms. Run both around any data change; they exist because a day of
+  corruption was once invisible until someone eyeballed a chart.
+
 - **Per-race JSON** (`cycling-app/src/data/{tour,giro,vuelta}/*.json`) — the frontend's only
   input. Vite discovers these via wildcard globs (`./data/*/gc_by_stage_*.json` etc.), so
   adding a new race is just a new `RACES` registry entry + a new `src/data/<slug>/`
@@ -196,6 +209,7 @@ erDiagram
     TEAMS ||--o{ STAGE_RESULTS : "fields"
     TEAMS ||--o{ CLASSIFICATION_STANDINGS : "fields"
     COUNTRIES ||--o{ RIDERS : "nationality of"
+    STAGES ||--o{ DATA_PROVENANCE : "records where each field came from"
 
     RACES {
         int race_id PK
@@ -223,6 +237,8 @@ erDiagram
         int profile_score
         text route_type "derived: F/H/M/TT/TTT"
         text won_how
+        int cancelled "stage never raced"
+        text source_slug "PCS page id — the stage's real identity"
     }
     STAGE_RESULTS {
         int result_id PK
@@ -272,6 +288,15 @@ erDiagram
         text code PK "e.g. fr, be, si"
         text name
     }
+    DATA_PROVENANCE {
+        text entity "table name, e.g. stages"
+        int entity_id "row id — polymorphic, so no FK"
+        text field "column the fact belongs to"
+        text source "pcs|wikipedia|bikeraceinfo|manual|derived|unknown"
+        text source_ref "exact URL or explanation"
+        text script "what wrote it"
+        text recorded_at
+    }
 ```
 
 ### Conceptual hierarchy
@@ -309,6 +334,28 @@ Rider  → Country                  (riders.nationality_code → countries.code)
   used as the primary key across all three races and every era — this is what makes the
   cross-race rider detail page possible (one rider ID, looked up independently in each
   race's index).
+- **`stages.source_slug` is the stage's real identity, not `stage_number`.** PCS numbers a
+  split day `stage-3a`/`stage-3b`; the DB numbers stages contiguously, so from the first
+  split onward the two diverge *permanently* — Tour 1981's `stage_number` 5 is PCS's
+  `stage-4`. Every re-fetch must key on `source_slug`. Rebuilding a URL as `stage-{n}` is
+  the single most repeated source of corruption in this project's history: it fetches a
+  different stage, or 500s forever on a day PCS only serves lettered. All 6,224 slugs are
+  now confirmed against PCS's own per-edition stage list (`audit_stage_counts.py
+  --confirm-slugs`), so the mapping is trustworthy — use it.
+- **`data_provenance` records where every stored fact came from**, at (entity, entity_id,
+  field) granularity, with the exact URL in `source_ref`. `entity_id` is polymorphic
+  across tables, so there is no foreign key and `ingest_race.py` must delete an edition's
+  rows itself on re-ingest or they orphan. A `source` of `unknown` means "patched by
+  something nobody recorded" and is a real signal — it is how six Paris finales carrying
+  the *previous* stage's distance were found.
+- **`stage_incidents` is the free-text note table** — relegations and fines originally,
+  now also why a stage was cancelled (Vuelta 1957 st4: snow on the mountain passes).
+  There is no `notes` column on `stages`; put narrative facts here.
+- **Re-ingest rebuilds an edition from its scrape FILES**, so anything living only in the
+  DB is destroyed unless explicitly carried across — this has cost elevation, patched
+  distances, the cancelled flag, `source_slug`, and (August 2026) three entire stages.
+  `ingest_race.py` now preserves the first four and refuses to drop a stage the incoming
+  files do not cover without `--allow-drop`.
 - **Indexes** exist on the hot lookup paths: `stage_results(stage_id)`,
   `stage_results(rider_id)`, `stage_results(team_id)`, `stages(edition_id)`,
   `classification_standings(edition_id, classification)`.
@@ -330,12 +377,13 @@ flowchart TD
         S1["1. actions/checkout@v4<br/>clone the repo"]
         S2["2. actions/setup-node@v4<br/>Node 20, npm cache keyed on package-lock.json"]
         S3["3. npm ci<br/>(in cycling-app/)<br/>clean install of exact locked deps"]
-        S4{{"4. python3 validate_exports.py<br/>(in pipeline/)<br/>sanity-check all 302 exported JSON files"}}
-        S5["5. npm run build<br/>(in cycling-app/)<br/>tsc -b (typecheck) + vite build → build/"]
-        S6{{"6. node verify.mjs && node verify-views.mjs<br/>(in cycling-app/)<br/>smoke-test the BUILT bundle in jsdom"}}
-        S7["7. actions/upload-pages-artifact@v3<br/>package cycling-app/build/ as the Pages artifact"]
+        STEST{{"4. python3 -m unittest discover -p 'test_*.py'<br/>(in pipeline/)<br/>142 pipeline regression tests"}}
+        S4{{"5. python3 validate_exports.py<br/>(in pipeline/)<br/>sanity-check all 302 exported JSON files"}}
+        S5["6. npm run build<br/>(in cycling-app/)<br/>tsc -b (typecheck) + vite build → build/"]
+        S6{{"7. node verify.mjs && node verify-views.mjs<br/>(in cycling-app/)<br/>smoke-test the BUILT bundle in jsdom"}}
+        S7["8. actions/upload-pages-artifact@v3<br/>package cycling-app/build/ as the Pages artifact"]
 
-        S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
+        S1 --> S2 --> S3 --> STEST --> S4 --> S5 --> S6 --> S7
     end
 
     subgraph DEPLOY["Job: deploy (needs: build)"]
@@ -359,23 +407,28 @@ flowchart TD
 3. **`npm ci`** — installs exactly what's in `package-lock.json` (unlike `npm install`, it
    never modifies the lockfile and fails if it's out of sync with `package.json`) — the
    right choice for CI reproducibility.
-4. **`validate_exports.py`** — runs against whatever is currently committed in
+4. **Pipeline tests** (`python3 -m unittest discover -p 'test_*.py'` in `pipeline/`) — 142
+   stdlib regression tests, no dependencies to install. Nearly every case encodes a bug
+   that actually reached the database, so a failure here means a real defect has been
+   reintroduced, not that a test is fussy. Runs before the exports are validated because
+   it is fast and needs nothing built.
+5. **`validate_exports.py`** — runs against whatever is currently committed in
    `cycling-app/src/data/`, *before* the build step touches anything. This is a gate on the
    data itself, independent of the frontend code: a bad export can fail CI even if the
    TypeScript compiles and the app renders.
-5. **`npm run build`** — `tsc -b` type-checks the whole frontend (a type error fails the
+6. **`npm run build`** — `tsc -b` type-checks the whole frontend (a type error fails the
    build here, before anything is deployed), then `vite build` produces the static bundle
    in `cycling-app/build/`.
-6. **Smoke tests** (`verify.mjs`, `verify-views.mjs`) — these run against the *built*
+7. **Smoke tests** (`verify.mjs`, `verify-views.mjs`) — these run against the *built*
    bundle in a `jsdom` environment, not the TypeScript source, because `main.ts` uses
    Vite's `import.meta.glob()` which only resolves at build time. `verify.mjs` checks the
    default stage-chart view renders with plausible data volumes; `verify-views.mjs` boots
    fresh `jsdom` instances at several deep-link hashes (stage, riders, rider detail,
    all-races, overview) to catch view-specific regressions the default-view check would
    miss.
-7. **Upload artifact** — packages `cycling-app/build/` for the `deploy` job to consume;
+8. **Upload artifact** — packages `cycling-app/build/` for the `deploy` job to consume;
    this is the GitHub Pages-specific artifact format (not a generic build artifact).
-8. **Deploy** — a separate job (`needs: build`) so it only runs if every build/validate/test
+9. **Deploy** — a separate job (`needs: build`) so it only runs if every build/validate/test
    step above succeeded; publishes the artifact to GitHub Pages and exposes the live URL as
    the job's `page_url` output.
 
