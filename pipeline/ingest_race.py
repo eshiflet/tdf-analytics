@@ -397,15 +397,29 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             abs_secs = parse_time_to_seconds(abs_time_txt)
             gap_secs = parse_time_to_seconds(gap_txt)
 
-            if status == "FINISHED" and abs_secs is not None and rnk == "1":
+            # Only the stage winner's row carries an absolute time. PCS renders
+            # that cell as the displayed time immediately followed by a hidden
+            # gap — "4:15:284:15:28" — so the parser reads BOTH fields as the
+            # same value, and winner + gap doubled the winner's finish time on
+            # 3,377 stages. Every later row shows a gap in that cell instead,
+            # so its abs field is not an absolute time at all.
+            #
+            # winner_seconds is set once and never overwritten: a promoted
+            # co-winner after a disqualification is also rank 1 (2008 TDF st4
+            # lists both Schumacher and Kirchen) and would otherwise replace
+            # the real winning time with an 18-second gap.
+            is_winner_row = False
+            if (status == "FINISHED" and abs_secs is not None and rnk == "1"
+                    and winner_seconds is None):
                 winner_seconds = abs_secs
+                is_winner_row = True
 
             finish_secs = None
             if status == "FINISHED" and winner_seconds is not None:
-                if gap_secs is not None:
-                    finish_secs = winner_seconds + gap_secs
-                elif parse_int(rnk) == 1:
+                if is_winner_row:
                     finish_secs = winner_seconds
+                elif gap_secs is not None:
+                    finish_secs = winner_seconds + gap_secs
 
             bonus_secs = parse_bonus_seconds(bonus_txt)
             stage_rank = parse_int(rnk) if status == "FINISHED" else None

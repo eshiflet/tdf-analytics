@@ -181,14 +181,16 @@ def main():
     # stage, and every other finisher is that plus their gap. On a TTT each
     # rider carries their team's time and gap, so this reproduces the team time.
     winner_seconds = None
-    for r in rows:
+    winner_index = None
+    for i, r in enumerate(rows):
         sr = StageRow.from_list(r)
         if sr.rnk == "1" and parse_time_to_seconds(sr.abs_time) is not None:
             winner_seconds = parse_time_to_seconds(sr.abs_time)
+            winner_index = i
             break
 
     inserted = 0
-    for r in rows:
+    for i, r in enumerate(rows):
         sr = StageRow.from_list(r)
         if not sr.slug:
             continue
@@ -206,10 +208,12 @@ def main():
         gap_secs = parse_time_to_seconds(sr.gap)
         finish_secs = None
         if status == "FINISHED" and winner_seconds is not None:
-            if gap_secs is not None:
-                finish_secs = winner_seconds + gap_secs
-            elif parse_int(sr.rnk) == 1:
+            # See ingest_race: only the winner's row carries an absolute time,
+            # and PCS repeats it in the gap field, so winner + gap doubles it.
+            if i == winner_index:
                 finish_secs = winner_seconds
+            elif gap_secs is not None:
+                finish_secs = winner_seconds + gap_secs
 
         cur.execute("""INSERT OR IGNORE INTO stage_results
               (stage_id, rider_id, team_id, bib_number, stage_rank, status,

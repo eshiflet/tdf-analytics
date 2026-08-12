@@ -207,6 +207,59 @@ class TestPreservationAcrossReingest(IngestHarness):
         self.assertEqual(s["distance_km"], 0.0)
 
 
+class TestFinishTimes(IngestHarness):
+    """The winner's finish time. Wrong on 3,377 stages before this was fixed.
+
+    PCS renders the time cell as the displayed time followed immediately by a
+    hidden gap, so the winner's row parses with abs_time AND gap set to the same
+    value — "4:15:28" in both. Computing finish = winner + gap therefore stored
+    double the real winning time, and nothing noticed because every other rider
+    on the stage was correct and the number is only a fallback in export_gc.
+    """
+
+    def winner_row(self, time_txt):
+        """The winner's row as the parser really produces it: gap repeats the
+        absolute time, because PCS prints them in one cell."""
+        return result_row("1", "Winner", "rider/winner", rnk="1", gap=time_txt)[:13] \
+            + [time_txt, time_txt]
+
+    def other_row(self, bib, name, rnk, gap):
+        return result_row(bib, name, f"rider/{name.lower()}", rnk=rnk, gap=gap)[:13] + ["", gap]
+
+    def times(self):
+        return {r["rider_id"]: r["finish_time_seconds"] for r in self.conn.execute(
+            "SELECT rider_id, finish_time_seconds FROM stage_results")}
+
+    def test_winner_time_is_not_doubled(self):
+        self.write_stage(1, rows=[self.winner_row("4:15:28"),
+                                  self.other_row("2", "Second", "2", "0:19")])
+        self.ingest()
+        t = self.times()
+        self.assertEqual(t["rider/winner"], 15328,
+                         "the winner's own time must not have its own gap added to it")
+        self.assertEqual(t["rider/second"], 15328 + 19)
+
+    def test_promoted_co_winner_keeps_a_real_gap(self):
+        """After a disqualification PCS lists two rank-1 riders — 2008 TDF st4
+        has Schumacher and the promoted Kirchen, 18s back. The second must not
+        overwrite the winning time, and must keep its own gap."""
+        # Kirchen's row carries "0:18" in BOTH fields, exactly like the
+        # winner's — PCS prints the gap in that cell for every row after the
+        # first. So "rank 1 with an absolute time" describes him too, and
+        # without the once-only guard he replaces a 35:44 winning time with 18
+        # seconds and drags every later rider's time down with him.
+        kirchen = self.other_row("41", "Kirchen", "1", "0:18")
+        kirchen[13] = "0:18"
+        self.write_stage(1, rows=[self.winner_row("35:44"), kirchen,
+                                  self.other_row("198", "Millar", "2", "0:18")])
+        self.ingest()
+        t = self.times()
+        self.assertEqual(t["rider/winner"], 2144)
+        self.assertEqual(t["rider/kirchen"], 2144 + 18,
+                         "a promoted co-winner must not reset the winning time")
+        self.assertEqual(t["rider/millar"], 2144 + 18)
+
+
 class TestSlugAndProvenance(IngestHarness):
 
     def test_slug_from_file_is_stored(self):
