@@ -224,8 +224,17 @@ def check_results(c):
           AND NOT EXISTS(SELECT 1 FROM stage_results WHERE stage_id=s.stage_id
                          AND stage_rank IS NOT NULL)""").fetchone()[0]
     if rankless:
-        warn(f"{rankless} stage(s) have results but no finishing positions at all "
-             "(PCS marks the whole field 'DF'; mostly team time trials). Upstream limitation.")
+        # "Mostly team time trials, upstream limitation" was wrong, and the
+        # label discouraged looking: 25 of the 28 TDF TTTs listed here DID have
+        # per-rider results on PCS, grouped by team, and were recovered with
+        # reingest_tdf_stage.py --from-pcs (43 stages -> 18). What is left is a
+        # real limitation — three TTTs where PCS's team blocks carry an empty
+        # rider table, and stages that were neutralised, stopped or protested
+        # so no individual result was ever declared. Before adding to this
+        # list, check the page for a ttt-results block with riders in it.
+        warn(f"{rankless} stage(s) have results but no finishing positions at all: "
+             "stages neutralised or abandoned mid-race, plus three 1980s TTTs "
+             "where PCS publishes team times against an empty rider table.")
 
     nogc = c.execute("""
         SELECT COUNT(*) FROM race_editions re WHERE NOT EXISTS (
