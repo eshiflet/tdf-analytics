@@ -148,7 +148,9 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 `validate_db` 0 errors / 3 warnings · `validate_exports` 302 files, 0 errors ·
 **142 tests** passing (`python3 -m unittest discover -p 'test_*.py'`, runs in CI).
 Every stage has a route, a date, a distance and a confirmed `source_slug`; 0 derived
-slugs remain. Every Tour TTT has per-rider results.
+slugs remain. Every Tour TTT has per-rider results. Elevation is the one field with a
+real remaining gap: PCS never published it for the Paris finales, so 2001–2010 are
+reconstructed (see the next section) and ~25 stages since 1990 are still NULL.
 
 **Known-open, deliberately not fixed:** 36 stages with two rank-1 finishers (doping DQs
 where PCS lists both the stripped and the promoted rider — how to model a stripped win is
@@ -156,6 +158,110 @@ Eric's call, do not guess); 14 stages with no finishing positions (neutralised o
 abandoned mid-race, plus three 1980s TTTs where PCS's rider tables are empty); 17 editions
 with a sparse final stage. Test new work with **mutation checks** — substitute the
 original bug back and confirm the test fails; that caught two blind spots in this pass.
+
+---
+
+## Derived elevation for the Paris finales (August 2026)
+
+PCS genuinely leaves `Vertical meters` **blank** on most Tour finales into Paris — the
+stage page shows an empty field, alongside an empty Parcours type / ProfileScore and
+`Distance: 0 km`. Those NULLs are faithful; there is nothing to scrape and no public GPX
+exists. **2001–2010 are now filled by reconstruction** via
+`patch_paris_finale_elevation.py`, every value recorded as `SOURCE_DERIVED` so a future
+bulk re-scrape can tell them from scraped data. ~25 stages since 1990 still lack elevation.
+
+| year | stage | km | m | m/km |    | year | stage | km | m | m/km |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2001 | 20 | 160.5 | 980 | 6.1 |  | 2006 | 20 | 154.5 | 1090 | 7.1 |
+| 2002 | 20 | 140.0 | 585 | 4.2 |  | 2007 | 20 | 146.0 | 885 | 6.1 |
+| 2003 | 20 | 152.0 | 730 | 4.8 |  | 2008 | 21 | 143.0 | 900 | 6.3 |
+| 2004 | 20 | 163.0 | 725 | 4.4 |  | 2009 | 21 | 164.0 | 650 | 4.0 |
+| 2005 | **21** | 144.0 | 855 | 5.9 |  | 2010 | 20 | 102.5 | 660 | 6.4 |
+
+### Method
+
+1. Trace the ASO road-book map onto OSM roads with **BRouter**, using the towns and spot
+   altitudes printed on the ASO profile as control points. Geocode town names through
+   Nominatim rather than hand-guessing coordinates.
+2. Sample **EU-DEM 25 m every 50 m** along the routed line (opentopodata).
+3. Sum positive deltas after a **250 m moving average**. Calibrated against 2010 stage 19
+   (Bordeaux–Pauillac ITT), the nearest stage with a PCS elevation and an unambiguous
+   route: it reproduces PCS's 167 m as 173 m (ratio 1.04). Raw unfiltered sums overshoot
+   by ~70%.
+4. Add the Champs-Élysées circuit **separately** — it cannot be measured from the DEM,
+   because central Paris is a *surface* model that puts Étoile at 66–74 m against a true
+   ~62 m. Anchor it on **2011 stage 21**, whose 436 m is known: steps 1–3 on its run-in
+   give 266 m, leaving 170 m for its eight laps, ≈**22 m per lap**.
+
+Expressing each stage as `436 + (its run-in − 266)` cancels most systematic bias, since
+the laps are common to every stage. Residual uncertainty ≈ ±5% where the profile anchors
+well, worse where it does not.
+
+### Traps, all found the hard way
+
+- **Use FEW waypoints.** Too many make BRouter zigzag and inflate distance 15–20%.
+  Bordeaux–Pauillac routed from 2 points came out 49.8 km (actual 52); from 13 points,
+  73.5 km.
+- **Never assume eight laps.** Read the count *and length* off each profile's passage
+  marks. 2002 ran **ten** (first "Haut des Champs" at km 81 of 144); 2003 ran **nine**
+  plus a one-off 29 km centenary loop via the Hôtel de Ville and Place de la Nation;
+  2004 and 2011 ran eight *shorter* 6.125 km laps. At ~22 m each, a miscount is worth
+  20–90 m.
+- **Check the stage number.** The finale is s20 some years, s21 others. 2005 s20 is a
+  *different* stage already carrying a real PCS 806 m.
+- **Check the start altitude against the DEM.** ASO's printed town altitudes are loose
+  (Longjumeau 70 m vs a real 48 m; Concorde 45 m vs 34 m). Worse, several starts print a
+  *plateau* altitude while the town sits in a valley — Montereau 118/120 m vs a town at
+  53 m (2004 and 2009), Étampes 133 m vs 80 m. Routing from the town centre then invents
+  a 70–80 m climb that was never ridden. Fix by clipping the route so the distance to the
+  first named anchor matches ASO's km; for 2009 that landed at 118.9 m against the
+  printed 118, confirming the clip.
+- **Match waypoints to the profile's altitudes, not just its town names.** In hilly
+  terrain a town-centre geocode can sit 100 m below where the route passed (2006 prints
+  Orsay 164 m and Gif 176 m; the valley towns are ~68 m and ~78 m). Relocate to the
+  printed altitude — but constrain the search geographically, since matching on altitude
+  alone can teleport a waypoint kilometres away.
+- **Do NOT digitise the profile artwork.** Its *labels* (km marks, spot altitudes) are
+  reliable and are the whole basis of this method; its *drawn silhouette* is decorative.
+  2011's terrain occupies **nine vertical pixels** for a stage with 436 m of real
+  climbing, and integrating it yields anywhere between 177 m and 499 m depending only on
+  the smoothing window.
+
+### Validation
+
+Two checks worth repeating on any new year:
+
+- **Shared final approach.** 2006–2010 all finish through Saclay → Verrières →
+  Châtenay-Malabry → Meudon → Paris. Measuring that identical 23.5 km section gave
+  **224 / 224 / 223 m** across three independent reconstructions — a cheap reproducibility
+  test.
+- **m/km against comparable stages.** The series separates cleanly by terrain: **4.0–4.8**
+  for flat Brie/Marne run-ins (2002, 2003, 2004, 2009) and **5.9–7.1** for the
+  Chevreuse/Hurepoix hills (2001, 2005–2008, 2010). 2011's known 436 m sits at 4.6, inside
+  the flat band. A value outside 4–8 m/km for a Paris finale is a bug, not a discovery.
+
+### ERR LOW (Eric's rule, 2026-08-09)
+
+Where a stage is uncertain, store the **low end** of the plausible range, not the
+midpoint. An understated figure mildly understates a stage's difficulty; an overstated one
+invents climbing that was never ridden and shows up as a bogus outlier in the Race
+Overview charts. In practice: when the reconstruction falls short of the ASO distance and
+the missing kilometres are **flat** (typically the run into Paris along the Seine), add
+them at ~3 m/km rather than scaling the whole route up — uniform scaling multiplies the
+hilly sections too. Where a doubt has a known size, subtract it rather than splitting the
+difference. Round down. 2006 (1150→1090) and 2007 (955→885) were revised under this rule.
+
+`patch_paris_finale_elevation.py` is idempotent and re-runnable: it skips stages already
+populated from any other source, and revises **only** values it derived itself (matched on
+provenance source + script name). It also treats a stored `0` as missing — 2006 s20 was
+the only TDF stage carrying `vertical_meters = 0` / `profile_score = 0`, a blank PCS field
+parsed as zero, and its bogus `profile_score` is nulled rather than left in place.
+
+**Known-open:** 2001 is the weakest of the set (±10%) — its profile names only three
+places across 108 km of run-in, leaving a 30 km unanchored approach, and it prints no
+start altitude. Separately, **2002's stored `distance_km` is 140.0 but its ASO profile is
+titled 144 km** and its axis runs to 144; the elevation used the profile's internal
+structure and the distance field was left untouched. Worth reconciling.
 
 ---
 
@@ -318,6 +424,10 @@ tdf-analytics/
     ├── patch_missing_distances.py    # Patches zero/null stage distances from PCS result pages
     ├── patch_bri_distances.py        # Patches distances from bikeraceinfo; reports conflicts
     ├── patch_route_types_wikipedia.py # Patches stage route types from Wikipedia
+    ├── patch_paris_finale_elevation.py # Reconstructed vertical_meters for Paris finales
+    │                                   #   PCS leaves blank (2001–2010), SOURCE_DERIVED.
+    │                                   #   Idempotent; revises only its own values.
+    │                                   #   See "Derived elevation for the Paris finales"
     │
     │   # Validation scripts
     ├── reconcile_kom.py              # Reconciles PCS KOM data against Wikipedia/BRI references
