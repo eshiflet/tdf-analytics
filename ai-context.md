@@ -278,19 +278,23 @@ silently corrupted:
   dropped Spanish second surnames (`Yus Querejeta`→`Yus`), `Krauß`/`Kraus`,
   `Jeff`/`Jeffry`, and a bikeraceinfo typo (`Speybrock`/`Speybroeck`). A fuzzy
   matcher would have swallowed the real conflict below.
-- **`disputed` ranks are skipped, never guessed.** Gent–Wevelgem 2005 rank 33:
-  bikeraceinfo says Bram Tankink @31sec, PCS says Guido Trenti — both Quick Step,
-  with PCS listing Tankink as DNF and bikeraceinfo omitting Trenti entirely. Every
-  other rank agrees, so it's a substitution at one position, not an offset. Trenti
-  keeps NULL time/gap until Eric rules on it.
+- **`disputed` ranks are skipped, never guessed** — and `corrections` records where
+  a third source later settled one. Gent–Wevelgem 2005 rank 33 is the worked
+  example: bikeraceinfo named Bram Tankink @31sec while PCS had Guido Trenti (both
+  Quick Step, PCS listing Tankink as DNF). **cyclingflash.com resolved it** —
+  `33 Guido Trenti Quick Step - Innergetic + 31`, no Tankink anywhere — so
+  bikeraceinfo simply had the wrong name against the right gap, which all three
+  sources agree is 31sec. Two sources against one; Eric confirmed. All 80
+  finishers now have times.
+  **cyclingflash.com is a useful third source for classics results**, though it
+  sits behind a Cloudflare bot check the in-app browser does not clear (real
+  Chrome does).
 - Only rank 1 gets an absolute time; **nothing already holding a time is
   overwritten**, keyed on `finish_time_seconds` alone (`gap_seconds` is 0 for every
   winner by construction and is not evidence of a recorded time).
 
 ### Known-open
 
-- **Gent–Wevelgem 2005 rank 33** — see `disputed` above. One rider's placing, two
-  sources, no basis to choose.
 - **Duplicate ranks in 13 race-years** — PCS itself prints one position twice
   (verified directly on the 2021 Paris–Roubaix page: rank 83 for both Stannard and
   Sajnok). **Every 2021 race has one**, which looks systematic. Same class as the 36

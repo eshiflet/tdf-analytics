@@ -30,9 +30,11 @@
         "72": "Krauß Sven",
         "79": "Louder Jeff"
       },
-      "_disputed_comment": "rank -> why it is NOT filled. Genuine source disagreement, not a spelling variant.",
-      "disputed": {
-        "33": "bikeraceinfo has Bram Tankink @31sec; PCS has Guido Trenti (both Quick Step - Innergetic). PCS lists Tankink as DNF, and bikeraceinfo omits Trenti entirely. Every other rank agrees, so this is a substitution at one position rather than an offset. Left unfilled — which rider actually placed 33rd is Eric's call."
+      "_disputed_comment": "rank -> why it is NOT filled. Genuine source disagreement, not a spelling variant. Empty here: the one conflict was resolved, see `corrections`.",
+      "disputed": {},
+      "_corrections_comment": "Where this file departs from bikeraceinfo because a third source settled it. Recorded rather than silently edited, so the divergence stays auditable.",
+      "corrections": {
+        "33": "bikeraceinfo names this rider Bram Tankink; the results row below says Guido Trenti instead. PCS has Trenti 33rd and Tankink DNF, and cyclingflash.com/race/gent-wevelgem-2005/result independently shows '33 Guido Trenti Quick Step - Innergetic + 31' with no Tankink anywhere. Two sources against one, and the +31sec gap is identical in all of them, so only the name was wrong. Confirmed by Eric 2026-08-13."
       },
       "results": [
         [1, "Nico Mattan", ""],
@@ -67,7 +69,7 @@
         [30, "Wilfried Cretskens", "s.t."],
         [31, "Roy Sentjens", "s.t."],
         [32, "Rory Sutherland", "s.t."],
-        [33, "Bram Tankink", "31sec"],
+        [33, "Guido Trenti", "31sec"],
         [34, "Nick Nuyens", "36sec"],
         [35, "Wim De Vocht", "57sec"],
         [36, "Kevin Hulsmans", "1min 8sec"],
