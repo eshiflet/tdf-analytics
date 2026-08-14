@@ -240,7 +240,9 @@ future scrape must keep handling:
 - **Columns vary by era.** 200 of 313 historical race-years have **no `UCI`
   column** at all, and Gent–Wevelgem 2005 has **no `Time` column** — those
   riders have ranks but no times, which is a source limitation, not a parse
-  failure. Read columns **by header name with an explicit absent-check**; the
+  failure. (Gent–Wevelgem 2005 has since been filled from bikeraceinfo — see
+  "Filling times PCS omits" below.) Read columns **by header name with an
+  explicit absent-check**; the
   obvious `td[headers.indexOf('UCI')]` silently becomes `td[-1]` and maps to
   the wrong cell. The capture snippet emits a `##HEADERS` line per race so
   this stays auditable.
@@ -258,8 +260,37 @@ future scrape must keep handling:
   name for all years. Its **2004 edition was genuinely cancelled** — a real 200
   page, dated, with no results.
 
+### Filling times PCS omits
+
+`classics_bri_times.json` (bikeraceinfo.com) + `patch_classics_times.py` fill a
+race-year where PCS publishes no Time column. Applied to **Gent–Wevelgem 2005**:
+79 of 80 finishers, winner 4:53:07 over 208 km, which recomputes to **42.577 km/h**
+against bikeraceinfo's published 42.577 — an independent check that the
+transcription is right.
+
+The script's design is the point, because aligning two sources is where data gets
+silently corrupted:
+
+- **Every rank is verified by name before anything is written**, and a single
+  mismatch aborts the whole race. bikeraceinfo prints "Firstname Lastname", PCS
+  stores "Lastname Firstname", so matching is by accent-folded token *set*.
+- **Spelling differences are explicit reviewed `aliases`, not fuzzy matching** —
+  dropped Spanish second surnames (`Yus Querejeta`→`Yus`), `Krauß`/`Kraus`,
+  `Jeff`/`Jeffry`, and a bikeraceinfo typo (`Speybrock`/`Speybroeck`). A fuzzy
+  matcher would have swallowed the real conflict below.
+- **`disputed` ranks are skipped, never guessed.** Gent–Wevelgem 2005 rank 33:
+  bikeraceinfo says Bram Tankink @31sec, PCS says Guido Trenti — both Quick Step,
+  with PCS listing Tankink as DNF and bikeraceinfo omitting Trenti entirely. Every
+  other rank agrees, so it's a substitution at one position, not an offset. Trenti
+  keeps NULL time/gap until Eric rules on it.
+- Only rank 1 gets an absolute time; **nothing already holding a time is
+  overwritten**, keyed on `finish_time_seconds` alone (`gap_seconds` is 0 for every
+  winner by construction and is not evidence of a recorded time).
+
 ### Known-open
 
+- **Gent–Wevelgem 2005 rank 33** — see `disputed` above. One rider's placing, two
+  sources, no basis to choose.
 - **Duplicate ranks in 13 race-years** — PCS itself prints one position twice
   (verified directly on the 2021 Paris–Roubaix page: rank 83 for both Stannard and
   Sajnok). **Every 2021 race has one**, which looks systematic. Same class as the 36
