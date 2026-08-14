@@ -163,7 +163,7 @@ original bug back and confirm the test fails; that caught two blind spots in thi
 
 ## One-day classics (August 2026)
 
-Eleven monuments/classics, **1990–2025**, added 2026-08-13. In the DB they are
+Eleven monuments/classics, **1970–2025**, added 2026-08-13. In the DB they are
 **11 independent races** (`races.race_type='one_day'`, race_id 4–14, one stage per
 edition). The frontend shows **one** race, `classics` — "One-day Classics" — whose
 "stages" are those races. That aggregation happens only at export time.
@@ -177,8 +177,19 @@ edition). The frontend shows **one** race, `classics` — "One-day Classics" —
 | `ronde-van-vlaanderen` | Tour of Flanders | RVV | | `il-lombardia` | Il Lombardia | IL |
 | `paris-roubaix` | Paris–Roubaix | PR | | | | |
 
-**379 race-years · 66,360 results · 4,923 riders · 4 cancelled.**
-(11 × 36 years, minus the 17 pre-2007 seasons Strade Bianche did not exist for.)
+**568 race-years · 79,627 results · 6,445 riders · 5 cancelled.**
+
+Coverage is bounded by each race's founding year, established from PCS returning
+**HTTP 500** for editions that never happened — not from assumption:
+
+| race | first edition present | note |
+|---|---|---|
+| Strade Bianche | **2007** | 500s for all of 1970–2006 (37 seasons) |
+| Clásica de San Sebastián | **1981** | 500s for 1970–1980 (11 seasons) |
+| the other nine | 1970 | full 56 seasons each |
+
+Cancellations found: 2020 lost Paris–Roubaix, Amstel Gold and San Sebastián to
+COVID; **Omloop Het Volk was also cancelled in 1986 and 2004**.
 
 ### The rules that matter here
 
@@ -231,6 +242,25 @@ cycling-app/src/data/classics/gc_by_stage_YEAR.json + riders_index.json
 around "one edition = one race with N stages". The classics invert that (N editions of
 N races = one displayed season), so sharing the code would contort both. There is no
 `all_races_summary.json` and never will be.
+
+### Data quality by era (measured, 1970–1989)
+
+Better than expected, and worth knowing before anyone "fixes" a perceived gap:
+
+| field | coverage | |
+|---|---|---|
+| finishing time | **100% of finishers** (11,443/11,443) | the 14% of *rows* without one are all DNFs |
+| age | 100% | |
+| team | 85% | |
+| **bib number** | **20%** | PCS simply lacks bibs for most pre-1990 editions |
+
+Sparse bibs are the only real gap, and only the by-Stage Table is affected (it
+orders by bib). Verified it degrades correctly: all 207 riders of 1975 render,
+those without a bib show "—" and sort last. **No rider is dropped.**
+
+The 1970s/80s calendar also differs from the modern one, which the date ordering
+handles for free — Amstel Gold ran **29 March 1975, before** the Tour of Flanders
+on 6 April, and Gent–Wevelgem sat midweek between Flanders and Roubaix.
 
 ### Era differences found scraping 1990–2019
 
@@ -308,14 +338,17 @@ silently corrupted:
   (Paris–Roubaix 2023, Rex Laurenz: `160 … -25`), splitting a row mid-record.
   `parse_classics_bundle.py` joins continuation lines; ingest keeps the awarded
   figure and ignores the annotation rather than guessing the net.
-- Coverage is 1990–2025. Going further back is a scrape-scope decision, not a code
-  change — but expect more era differences (Liège dates to 1892, Roubaix 1896), and
-  re-check the column-shape assumptions above before trusting anything pre-1990.
+- Coverage is 1970–2025. Going further back is a scrape-scope decision, not a code
+  change (Liège dates to 1892, Roubaix 1896), but re-check the column-shape and
+  completeness assumptions above first — 1970–1989 held up well, older editions may
+  not.
 - `classics/riders_index.json` is **1.56 MB (391 KB gzipped)** — larger than the three
   Grand Tour indexes combined, because it carries every rider's per-race breakdown.
   It is lazy-loaded, so first paint is unaffected, but `drawRiderDetail` awaits all
   four indexes in parallel. Dropping the redundant team index from each constituent
-  entry already saved 87 KB gzipped; further shrinking would mean restructuring `m`.
+  entry saved 87 KB gzipped; further shrinking would mean restructuring `m`.
+  **At 1970–2025 it is 1.96 MB / 494 KB gzipped** — the extra 36 seasons ate that
+  saving and then some. If it keeps growing, this is the first thing to revisit.
 
 ---
 
