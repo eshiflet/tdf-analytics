@@ -163,7 +163,7 @@ original bug back and confirm the test fails; that caught two blind spots in thi
 
 ## One-day classics (August 2026)
 
-Eleven monuments/classics, **2020–2025**, added 2026-08-13. In the DB they are
+Eleven monuments/classics, **1990–2025**, added 2026-08-13. In the DB they are
 **11 independent races** (`races.race_type='one_day'`, race_id 4–14, one stage per
 edition). The frontend shows **one** race, `classics` — "One-day Classics" — whose
 "stages" are those races. That aggregation happens only at export time.
@@ -177,7 +177,8 @@ edition). The frontend shows **one** race, `classics` — "One-day Classics" —
 | `ronde-van-vlaanderen` | Tour of Flanders | RVV | | `il-lombardia` | Il Lombardia | IL |
 | `paris-roubaix` | Paris–Roubaix | PR | | | | |
 
-**66 race-years · 10,887 results · 1,303 riders · 3 cancelled.**
+**379 race-years · 66,360 results · 4,923 riders · 4 cancelled.**
+(11 × 36 years, minus the 17 pre-2007 seasons Strade Bianche did not exist for.)
 
 ### The rules that matter here
 
@@ -231,20 +232,55 @@ around "one edition = one race with N stages". The classics invert that (N editi
 N races = one displayed season), so sharing the code would contort both. There is no
 `all_races_summary.json` and never will be.
 
+### Era differences found scraping 1990–2019
+
+The 1990s/2000s pages are **not** shaped like the modern ones. Three things a
+future scrape must keep handling:
+
+- **Columns vary by era.** 200 of 313 historical race-years have **no `UCI`
+  column** at all, and Gent–Wevelgem 2005 has **no `Time` column** — those
+  riders have ranks but no times, which is a source limitation, not a parse
+  failure. Read columns **by header name with an explicit absent-check**; the
+  obvious `td[headers.indexOf('UCI')]` silently becomes `td[-1]` and maps to
+  the wrong cell. The capture snippet emits a `##HEADERS` line per race so
+  this stays auditable.
+- **Bib numbers are only unique WITHIN a team**, not across the race. Flanders
+  2010 has AG2R and Liquigas both numbered 11–17, every rider correctly
+  attached to their own team. A global bib-uniqueness check flags 8 whole-team
+  blocks of pure noise and would bury a real name-swap; `parse_classics_bundle`
+  therefore keys on **(team, bib)**.
+- **Races have founding years.** Strade Bianche returns **HTTP 500** for
+  1990–2006 because it began in 2007. That is "did not exist", not "cancelled" —
+  which is only distinguishable because the snippet records the HTTP status.
+  A 500 page and a cancelled race look identical otherwise.
+- **Omloop was "Omloop Het Volk" until 2009** (the 2004 H1 reads "59th Omloop
+  Het Volk"). PCS keeps one slug across the rename, so we store one display
+  name for all years. Its **2004 edition was genuinely cancelled** — a real 200
+  page, dated, with no results.
+
 ### Known-open
 
 - **Duplicate ranks in 13 race-years** — PCS itself prints one position twice
   (verified directly on the 2021 Paris–Roubaix page: rank 83 for both Stannard and
   Sajnok). **Every 2021 race has one**, which looks systematic. Same class as the 36
   two-rank-1 stages: how to model it is Eric's call, do not guess.
-- **Bib collisions** in Amstel 2022 (bib 176) and San Sebastián 2021 (bib 17).
-  Neither is the adjacent-row name-swap artifact — the rows aren't adjacent and one
-  pair shares a team. Upstream PCS collisions; never rename.
+- **Same-team bib collisions in 13 race-years** (Amstel 2022 bib 176, Strade Bianche
+  2013 bib 96, …), clustered in 2013–2018. Each is two teammates sharing a bib, both
+  DNF, so no rank or time is affected. Not the name-swap artifact: there the bib
+  stays put and the *name* moves, whereas here the bib itself is duplicated.
+  Upstream PCS collisions; never rename.
 - **UCI points deductions** render inside the points cell across embedded newlines
   (Paris–Roubaix 2023, Rex Laurenz: `160 … -25`), splitting a row mid-record.
   `parse_classics_bundle.py` joins continuation lines; ingest keeps the awarded
   figure and ignores the annotation rather than guessing the net.
-- Only 2020–2025. Extending back is a scrape-scope decision, not a code change.
+- Coverage is 1990–2025. Going further back is a scrape-scope decision, not a code
+  change — but expect more era differences (Liège dates to 1892, Roubaix 1896), and
+  re-check the column-shape assumptions above before trusting anything pre-1990.
+- `classics/riders_index.json` is **1.56 MB (391 KB gzipped)** — larger than the three
+  Grand Tour indexes combined, because it carries every rider's per-race breakdown.
+  It is lazy-loaded, so first paint is unaffected, but `drawRiderDetail` awaits all
+  four indexes in parallel. Dropping the redundant team index from each constituent
+  entry already saved 87 KB gzipped; further shrinking would mean restructuring `m`.
 
 ---
 

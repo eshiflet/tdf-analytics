@@ -66,10 +66,11 @@ for (const [path, url] of Object.entries(riderIndexUrlModules)) {
 type RawYearTuple =
   | [number, number]
   | [number, number, number, number];
-/** Aggregate races only: one [raceIdx, rank, teamIdx] triple per constituent
- *  race the rider contested that season. raceIdx indexes the top-level
- *  `races` string table, the same trick `teams` uses. */
-type RawConstituent = [number, number, number];
+/** Aggregate races only: one [raceIdx, rank] pair per constituent race the
+ *  rider contested that season. raceIdx indexes the top-level `races` string
+ *  table, the same trick `teams` uses. The team is NOT repeated here — it is
+ *  already in that year's `y` tuple and is identical across the season. */
+type RawConstituent = [number, number];
 type RawRiderIndex = {
   teams: string[];
   /** Constituent-race name table; absent for the three Grand Tours. */
@@ -108,12 +109,13 @@ export async function ensureRiderIndexFor(race: RaceId): Promise<void> {
     if (rec.m) {
       constituents = new Map();
       for (const [yearStr, entries] of Object.entries(rec.m)) {
-        const results: ConstituentResult[] = [];
-        for (const [raceIdx, rank, teamIdx] of entries) {
-          const team = teamIdx >= 0 ? teamTable[teamIdx] : null;
-          results.push({ race: raceTable[raceIdx] ?? "—", rank: rank || 9999, team });
-          if (team) teams.add(team);
-        }
+        // The season's team, already resolved from that year's `y` tuple.
+        const team = years.get(parseInt(yearStr))?.team ?? null;
+        const results: ConstituentResult[] = entries.map(([raceIdx, rank]) => ({
+          race: raceTable[raceIdx] ?? "—",
+          rank: rank || 9999,
+          team,
+        }));
         constituents.set(parseInt(yearStr), results);
       }
     }

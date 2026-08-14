@@ -170,8 +170,11 @@ def build_index(years_data):
                 rec["ln"] = r["lastName"]
             ti = tidx(r["team"])
             rec["y"][str(year)] = [r["finalRank"], ti]
+            # [raceIdx, rank] only — the team is already stored once per year
+            # in `y`, and every constituent of a season carried the identical
+            # index, so repeating it cost ~150 KB gzipped for nothing.
             rec["m"][str(year)] = [
-                [ridx(labels[p["stage"]]), p["gcRank"] or DNF_SENTINEL, ti]
+                [ridx(labels[p["stage"]]), p["gcRank"] or DNF_SENTINEL]
                 for p in r["byStage"]
             ]
     return {"teams": teams, "races": races, "riders": riders}

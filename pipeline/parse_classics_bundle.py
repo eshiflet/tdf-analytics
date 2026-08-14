@@ -32,6 +32,8 @@ import os
 import re
 import sys
 
+from race_common import CLASSICS
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_ROOT = os.path.join(HERE, "classics_scrapes")
 STAGE_ROW_LEN = 15
@@ -71,7 +73,12 @@ def num(raw):
         v = float(m.group(1))
     except ValueError:
         return None
-    return v
+    # A blank PCS field renders as "0 km" / "0", and a stored 0 is worse than a
+    # NULL: it reads as real data and skews any average built over it. No race
+    # has zero distance or zero climbing (the 2004 Omloop's cancelled page
+    # reports "Distance: 0 km"). Cf. the 2006 Paris finale that carried
+    # vertical_meters=0 / profile_score=0 for exactly this reason.
+    return v if v > 0 else None
 
 
 def parse_blocks(text):
@@ -156,6 +163,15 @@ def main(argv):
 
     summary, problems = [], []
     for b in blocks:
+        # An unrecognised slug is almost always a wrong guess at a PCS URL, and
+        # a wrong URL 500s -> no results table -> looks exactly like a cancelled
+        # race. Refusing to write it is what stops six invented San Sebastian
+        # cancellations from reaching the DB a second time.
+        if b["race"] not in CLASSICS:
+            problems.append(
+                f"{b['race']} {b['year']}: UNKNOWN SLUG — not in race_common.CLASSICS, "
+                f"skipped. Check the real PCS URL before adding it.")
+            continue
         info = b["info"]
         payload = {
             "info": {
@@ -186,13 +202,23 @@ def main(argv):
 
         rows = payload["rows"]
         fin = [r for r in rows if r[0].isdigit()]
-        # A bib mapping to two different riders is the signature of the PCS
-        # adjacent-row name-swap artifact (see detect_name_swaps.py).
-        bibs, conflicts = {}, []
+        # Looking for the PCS adjacent-row name-swap artifact (see
+        # detect_name_swaps.py). The signature is a bib mapping to two riders
+        # ON THE SAME TEAM — bib uniqueness across the whole race is NOT an
+        # invariant here: several editions number riders per-team, so two
+        # squads legitimately share 11-17 (Flanders 2010: AG2R and Liquigas,
+        # every rider correctly attached to their own team). Checking global
+        # uniqueness flagged 8 whole-team blocks of pure noise, which is
+        # exactly how a real swap would go unnoticed.
+        seen, conflicts = {}, []
         for r in rows:
-            if r[3] and r[3] in bibs and bibs[r[3]] != r[6]:
-                conflicts.append(r[3])
-            bibs[r[3]] = r[6]
+            bib, rider, team = r[3], r[6], r[9]
+            if not bib:
+                continue
+            key = (team, bib)
+            if key in seen and seen[key] != rider:
+                conflicts.append(f"{bib}@{team or '?'}")
+            seen[key] = rider
         ranks = [int(r[0]) for r in fin]
         dupes = sorted({x for x in ranks if ranks.count(x) > 1})
 
