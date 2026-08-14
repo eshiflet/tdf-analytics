@@ -6,14 +6,14 @@
 import type { NumberValue } from "../d3";
 import { d3 } from "../d3";
 import type { RiderSeries, RiderStagePoint } from "../types";
-import { state } from "../state";
+import { state, raceConfig } from "../state";
 import {
   chartEl, legendEl, tooltipEl,
   teamFilterBtn, teamFilterPanel, nationFilterBtn, nationFilterPanel,
 } from "../dom";
 import { showStageTooltip, hideTooltip, positionTooltip } from "../tooltip";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
-import { fmtTotalTime, fmtGap, fmtHms, stageLabel } from "../formatters";
+import { fmtTotalTime, fmtGap, fmtHms, stageLabel, stageTitle, stageAxisLabel } from "../formatters";
 
 function buildRankMapsFromField(
   getRank: (sp: RiderStagePoint) => number | null | undefined,
@@ -158,6 +158,9 @@ export function drawChart() {
   const containerRect = chartEl.getBoundingClientRect();
   const width = Math.max(containerRect.width, 600);
   const height = Math.max(containerRect.height, 480);
+  // Ticks use each race's abbreviation ("LBL"), which fits horizontally at
+  // 11-across — so the classics need no extra margin over a Grand Tour. The
+  // full name is still one hover away on the top axis.
   const margin = { top: 32, right: 36, bottom: 36, left: state.currentMetric === "gc" ? 72 : 44 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
@@ -251,10 +254,14 @@ export function drawChart() {
     );
 
   const stagesByNumber = new Map(stages.map((s) => [s.stage_number, s]));
-  const stageLabelFmt = (d: NumberValue) => stagesByNumber.get(+d)?.stage_label ?? String(d);
+  const stageLabelFmt = (d: NumberValue) => {
+    const s = stagesByNumber.get(+d);
+    return s?.stage_short_label ?? s?.stage_label ?? String(d);
+  };
 
   // x axis — bottom
-  g.append("g")
+  const xAxisBottom = g
+    .append("g")
     .attr("class", "axis x-axis")
     .attr("transform", `translate(0,${innerHeight})`)
     .call(
@@ -288,7 +295,7 @@ export function drawChart() {
     .attr("x", innerWidth / 2)
     .attr("y", innerHeight + margin.bottom - 4)
     .attr("text-anchor", "middle")
-    .text("Stage");
+    .text(stageAxisLabel());
 
   // y axis
   g.append("g")
@@ -384,10 +391,16 @@ export function drawChart() {
       if (!rider) return;
       const gapStages = [];
       for (let s = b.from.stage + 1; s < b.to.stage; s++) gapStages.push(stageLabel(s));
+      // The same visual gap means different things: mid-stage-race it's a day
+      // with no recorded time for a rider still in the race; across a classics
+      // season it's simply a race the rider didn't enter.
+      const gapNote = raceConfig().stagesAreRaces
+        ? `${gapStages.join(", ")}: did not ride`
+        : `Stage${gapStages.length > 1 ? "s" : ""} ${gapStages.join(", ")}: no time recorded — still in the race`;
       tooltipEl.innerHTML = `
         <div class="t-name">${displayName(rider)}</div>
         <div class="t-team">${rider.team ?? ""}</div>
-        <div>Stage${gapStages.length > 1 ? "s" : ""} ${gapStages.join(", ")}: no time recorded — still in the race</div>
+        <div>${gapNote}</div>
       `;
       positionTooltip(event);
     })
@@ -578,7 +591,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
     tooltipEl.innerHTML = `
       <div class="t-name">${displayName(rider)}</div>
       <div class="t-team">${rider.team ?? ""}</div>
-      <div>Stage ${stageLabel(point.stage)} &middot; GC #${point.gcRank ?? "—"}</div>
+      <div>${stageTitle(point.stage)} &middot; ${raceConfig().hasCumulativeGc ? "GC" : "Result"} #${point.gcRank ?? "—"}</div>
       <div>Gap: ${fmtGap(point.gcGapSeconds, point.gcRank)}</div>
       ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
     `;
@@ -592,7 +605,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
       tooltipEl.innerHTML = `
         <div class="t-name">${displayName(rider)}</div>
         <div class="t-team">${rider.team ?? ""}</div>
-        <div>Stage ${stageLabel(point.stage)} &middot; KOM rank #${komRank ?? "—"}</div>
+        <div>${stageTitle(point.stage)} &middot; KOM rank #${komRank ?? "—"}</div>
         <div>Cumulative KOM pts: ${point.cumulativeKomPoints}</div>
         ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
       `;
@@ -601,7 +614,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
       tooltipEl.innerHTML = `
         <div class="t-name">${displayName(rider)}</div>
         <div class="t-team">${rider.team ?? ""}</div>
-        <div>Stage ${stageLabel(point.stage)} &middot; Points rank #${ptsRank ?? "—"}</div>
+        <div>${stageTitle(point.stage)} &middot; Points rank #${ptsRank ?? "—"}</div>
         <div>Cumulative pts: ${point.cumulativePoints}</div>
         ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
       `;

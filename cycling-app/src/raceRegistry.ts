@@ -5,7 +5,7 @@
 // wildcard globs below pick them up automatically. The slug is used in the
 // data path, the race dropdown, and the URL hash.
 
-export type RaceId = "tour" | "giro" | "vuelta";
+export type RaceId = "tour" | "giro" | "vuelta" | "classics";
 export type JerseyCategoryId = "gc" | "sprint" | "kom" | "youth";
 
 export interface RaceConfig {
@@ -19,6 +19,31 @@ export interface RaceConfig {
   warBands: { start: number; end: number; label: string }[];
   /** Youth-classification wins tracked in the pipeline for this race? */
   hasYouth: boolean;
+
+  // ── Capability flags ──────────────────────────────────────────────────────
+  // A "race" here can be a Grand Tour (an edition is one race, its stages are
+  // days) or the one-day classics aggregate (an edition is a SEASON, and each
+  // "stage" is a separate race). The flags below are what lets one set of
+  // views serve both shapes. Adding them was the last open item in
+  // ai-context.md's "Planned direction" note.
+
+  /** Does an edition accumulate a general classification across its stages?
+   *  False for the classics, where each "stage" is a standalone race and a
+   *  rider's rank is their placing that day, not a running total. Drives the
+   *  GC Time toggle (a season has no total time) and the wording of the
+   *  GC metric. */
+  hasCumulativeGc: boolean;
+  /** Sprint/KOM classifications contested? The classics award neither, so
+   *  both metric options are hidden rather than showing empty charts. */
+  hasSprintKom: boolean;
+  /** Cross-year All Years Summary available? Needs an all_races_summary.json,
+   *  which the classics deliberately has no equivalent of — totals across a
+   *  season of unrelated races aren't a meaningful series. */
+  hasAllYears: boolean;
+  /** Are this race's "stages" actually separate races? When true, views label
+   *  them by stage_label alone ("Paris-Roubaix") instead of prefixing "Stage",
+   *  and the x-axis reads "Race" rather than "Stage". */
+  stagesAreRaces: boolean;
 }
 
 export const RACES: Record<RaceId, RaceConfig> = {
@@ -35,6 +60,10 @@ export const RACES: Record<RaceId, RaceConfig> = {
       { start: 1939.5, end: 1946.5, label: "WWII" },
     ],
     hasYouth: true,
+    hasCumulativeGc: true,
+    hasSprintKom: true,
+    hasAllYears: true,
+    stagesAreRaces: false,
   },
   giro: {
     name: "Giro d'Italia",
@@ -49,6 +78,10 @@ export const RACES: Record<RaceId, RaceConfig> = {
       { start: 1940.5, end: 1945.5, label: "WWII" },
     ],
     hasYouth: false,
+    hasCumulativeGc: true,
+    hasSprintKom: true,
+    hasAllYears: true,
+    stagesAreRaces: false,
   },
   vuelta: {
     name: "Vuelta a España",
@@ -62,12 +95,43 @@ export const RACES: Record<RaceId, RaceConfig> = {
       { start: 1935.5, end: 1944.5, label: "Civil War / WWII" },
     ],
     hasYouth: false,
+    hasCumulativeGc: true,
+    hasSprintKom: true,
+    hasAllYears: true,
+    stagesAreRaces: false,
+  },
+  // The one-day classics are an AGGREGATE, not a single race: an "edition" is
+  // one season, and each "stage" is a separate monument/classic ordered by the
+  // date it was actually run (which is what gets 2020's COVID-reshuffled
+  // calendar right without a hardcoded order). In the DB these are 11
+  // independent races with race_type='one_day'; the combining happens in
+  // export_gc.py --race classics.
+  classics: {
+    name: "One-day Classics",
+    // One neutral gray for all of them. Every race-identifying hue in this app
+    // is already spoken for (Tour yellow, Giro pink, Vuelta red) as is every
+    // classification color (green sprint, red/blue KOM), and colouring 11
+    // races separately would need 11 more. Gray reads as "many races,
+    // aggregated" and stays legible against the dark background.
+    chart: { gc: "#9ca3af", sprint: "#9ca3af", kom: "#9ca3af" },
+    jersey: { gc: "#9ca3af", sprint: "#9ca3af", kom: { solid: "#9ca3af" } },
+    jerseyTooltips: {
+      gc: "Classics win", sprint: "Classics win",
+      kom: "Classics win", youth: "Classics win",
+    },
+    // No war bands: the classics series here starts in 1990.
+    warBands: [],
+    hasYouth: false,
+    hasCumulativeGc: false,
+    hasSprintKom: false,
+    hasAllYears: false,
+    stagesAreRaces: true,
   },
 };
 
 export const RACE_IDS = Object.keys(RACES) as RaceId[];
-export const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España" };
-export const RACE_SHORT_LABEL: Record<RaceId, string> = { tour: "Tour", giro: "Giro", vuelta: "Vuelta" };
+export const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España", classics: "One-day Classics" };
+export const RACE_SHORT_LABEL: Record<RaceId, string> = { tour: "Tour", giro: "Giro", vuelta: "Vuelta", classics: "Classics" };
 
 export function isRaceId(s: string | undefined): s is RaceId {
   return s !== undefined && s in RACES;

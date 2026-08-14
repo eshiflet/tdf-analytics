@@ -236,8 +236,13 @@ def check_results(c):
              "stages neutralised or abandoned mid-race, plus three 1980s TTTs "
              "where PCS publishes team times against an empty rider table.")
 
+    # Scoped to stage races: a one-day classic has no general classification at
+    # all, so every one of its editions would trip this check forever (it took
+    # the count from 17 to 83 the day the classics landed).
     nogc = c.execute("""
-        SELECT COUNT(*) FROM race_editions re WHERE NOT EXISTS (
+        SELECT COUNT(*) FROM race_editions re
+        JOIN races r ON r.race_id = re.race_id
+        WHERE r.race_type != 'one_day' AND NOT EXISTS (
           SELECT 1 FROM stage_results sr JOIN stages s ON sr.stage_id=s.stage_id
           WHERE s.edition_id=re.edition_id AND sr.gc_rank=1
             AND s.stage_number=(SELECT MAX(stage_number) FROM stages WHERE edition_id=re.edition_id))

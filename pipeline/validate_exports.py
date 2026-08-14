@@ -17,7 +17,9 @@ Warnings (reported, exit 0):
     DNF rider's last entry with their final-standings rank, which can
     collide with the rank map at that earlier stage)
   - duplicate finalRank among finishers, excluding the 9999 DNF/DQ sentinel
-    (genuine ties and post-doping-DQ standings produce real duplicates)
+    (genuine ties and post-doping-DQ standings produce real duplicates).
+    Not checked for races in AGGREGATE_FINAL_RANK, where finalRank is a
+    best-of-season aggregate and ties are the normal case.
   - final KOM totals off by >5% from reference (kom_totals.json) for years
     the reconcile report classifies as keep_pcs (other strategies are
     approximations by design)
@@ -41,14 +43,31 @@ RACE_DIRS = [
     ("tour", "tour", True),
     ("giro", "giro", False),
     ("vuelta", "vuelta", False),
+    # The one-day classics: no all_races_summary.json (a season of unrelated
+    # races has no meaningful cross-year total) and no sprint/KOM series, so
+    # those checks pass trivially rather than needing to be skipped.
+    ("classics", "classics", False),
 ]
+
+# Races whose finalRank is an aggregate (best result of the season) rather
+# than a finishing position, so ties in it are expected.
+AGGREGATE_FINAL_RANK = {"classics"}
+
+# Which script rebuilds a race's riders_index.json, for the staleness error.
+INDEX_REBUILD_CMD = {
+    "tour": "python3 export_riders_index.py --race tdf",
+    "giro": "python3 export_riders_index.py --race giro",
+    "vuelta": "python3 export_riders_index.py --race vuelta",
+    "classics": "python3 export_classics.py",
+}
 TOTALS_PATH = os.path.join(HERE, "kom_totals.json")
 REPORT_PATH = os.path.join(HERE, "kom_reconcile_report.json")
 
 KOM_REF_TOLERANCE = 0.05  # warn if a keep_pcs year's top riders drift >5%
 
 
-def validate_year(year: int, ds: dict) -> tuple[list[str], list[str]]:
+def validate_year(year: int, ds: dict,
+                  final_rank_is_unique: bool = True) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -113,9 +132,16 @@ def validate_year(year: int, ds: dict) -> tuple[list[str], list[str]]:
                     per_stage[rank] = rid
 
         # finalRank uniqueness only makes sense for riders who reached the end;
-        # 9999 is the DNF/DQ sentinel and duplicates freely
+        # 9999 is the DNF/DQ sentinel and duplicates freely.
+        #
+        # Skipped entirely where finalRank is an aggregate rather than a placing: for
+        # the classics it is the rider's BEST finish of the season, so ties are
+        # the normal case (2021 alone had nine riders share #1 — the nine
+        # winners of its eleven races). Left on, it emitted 325 warnings for
+        # entirely clean data and buried the real ones.
         fr = r.get("finalRank")
-        if fr is not None and fr != 9999 and by_stage and by_stage[-1]["stage"] == final_stage:
+        if (final_rank_is_unique and fr is not None and fr != 9999
+                and by_stage and by_stage[-1]["stage"] == final_stage):
             if fr in final_rank_seen:
                 warnings.append(
                     f"duplicate finalRank #{fr} ({final_rank_seen[fr]} and {rid})"
@@ -222,7 +248,8 @@ def main():
             with open(os.path.join(data_dir, fname), encoding="utf-8") as f:
                 ds = json.load(f)
 
-            errors, warnings = validate_year(year, ds)
+            errors, warnings = validate_year(
+                year, ds, final_rank_is_unique=(subdir not in AGGREGATE_FINAL_RANK))
 
             if has_kom_ref:
                 entry = totals_data.get(str(year), {})
@@ -249,8 +276,7 @@ def main():
             if stale:
                 print(f"ERROR {race_label}: riders_index.json is stale — "
                       f"{len(stale)} inconsistent rider-year(s). "
-                      f"Run: python3 export_riders_index.py --race "
-                      f"{'tdf' if subdir == 'tour' else subdir}")
+                      f"Run: {INDEX_REBUILD_CMD[subdir]}")
                 for line in stale[:5]:
                     print(f"        {line}")
                 if len(stale) > 5:

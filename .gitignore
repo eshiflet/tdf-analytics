@@ -9,6 +9,7 @@ cycling-app/dist/
 cycling-app/tour/
 cycling-app/giro/
 cycling-app/vuelta/
+cycling-app/classics/
 
 # Vite dev-server temp files
 cycling-app/vite.config.ts.timestamp-*.mjs

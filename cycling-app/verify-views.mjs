@@ -112,5 +112,38 @@ function check(name, cond, detail) {
   check("overview deep link renders bars", bars > 20, `${bars} bars`);
 }
 
+// 7. One-day classics: an aggregate race whose "stages" are separate races,
+//    with no All Years Summary and no sprint/KOM. Worth its own case because
+//    every one of those differences is a capability flag that a future change
+//    could silently drop.
+{
+  const doc = await boot("#classics/2021/stage/gc");
+  const lines = doc.querySelectorAll("#chart svg path.rider-line").length;
+  check("classics deep link renders chart", lines > 0, `${lines} lines`);
+
+  // Ticks must be the abbreviations, not "1..11" and not the full race names.
+  const ticks = [...doc.querySelectorAll("#chart .x-axis .tick text")].map((t) => t.textContent);
+  check("classics x-axis uses race abbreviations",
+        ticks.includes("PR") && ticks.includes("LBL"),
+        ticks.slice(0, 11).join(" "));
+
+  // All Years Summary is meaningless for a season of unrelated races.
+  const allRacesBtn = doc.getElementById("view-all-races");
+  check("classics hides All Years Summary", allRacesBtn.hidden === true,
+        `hidden=${allRacesBtn.hidden}`);
+
+  // Sprint/KOM are not contested; the metric select must not offer them.
+  const metrics = [...doc.getElementById("metric-select").options].map((o) => o.value);
+  check("classics offers only the result metric",
+        metrics.length === 1 && metrics[0] === "gc", metrics.join(","));
+}
+
+// 8. A cancelled race stays in the season rather than vanishing from it.
+{
+  const doc = await boot("#classics/2020/overview");
+  const bars = doc.querySelectorAll("#overview-chart .overview-bar").length;
+  check("classics 2020 overview renders every race", bars >= 8, `${bars} bars`);
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);

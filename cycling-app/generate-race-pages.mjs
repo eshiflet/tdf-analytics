@@ -26,6 +26,13 @@ const RACES = {
     description: "Stage-by-stage GC, sprint, and KOM standings for every Vuelta a España since 1935 — every rider, every stage, every year.",
     subtitle: "Stage-by-stage GC, sprint, and KOM rankings for every Vuelta a España, 1935–2025.",
   },
+  // No sprint/KOM wording here: the classics contest neither, and the metric
+  // is a finishing position rather than a GC standing.
+  classics: {
+    title: "One-Day Classics Cycling Analytics — Monument & Classic Results (2020–2025)",
+    description: "Race-by-race results for the cycling monuments and classics — Milan–San Remo, Tour of Flanders, Paris–Roubaix, Liège–Bastogne–Liège, Il Lombardia and more, 2020–2025.",
+    subtitle: "Race-by-race results across a full classics season, 2020–2025.",
+  },
 };
 
 const template = readFileSync(join(__dirname, "index.html"), "utf8");

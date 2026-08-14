@@ -1,7 +1,7 @@
 // Pure display-formatting helpers: time/gap strings, route-type colors, and
 // the climbing-difficulty score. No DOM, no event wiring.
 import type { StageInfo } from "./types";
-import { state } from "./state";
+import { state, raceConfig } from "./state";
 
 export const PALETTE = [
   "#ffce00", "#ff6b6b", "#4dabf7", "#69db7c", "#da77f2",
@@ -20,6 +20,27 @@ export function fmtTotalTime(seconds: number | null): string {
 
 export function stageLabel(stageNum: number): string {
   return state.dataset?.stages.find((s) => s.stage_number === stageNum)?.stage_label ?? String(stageNum);
+}
+
+/** Compact form for axis ticks and column headers. Falls back to the full
+ *  label when a race defines no abbreviation. */
+export function stageShortLabel(stageNum: number): string {
+  const s = state.dataset?.stages.find((st) => st.stage_number === stageNum);
+  return s?.stage_short_label ?? s?.stage_label ?? String(stageNum);
+}
+
+/** A stage's name in prose. Grand Tours read "Stage 12"; the classics read
+ *  just "Paris-Roubaix", since each of their "stages" IS a race and prefixing
+ *  it would give "Stage Paris-Roubaix". stage_label already carries the right
+ *  text in both cases — this only decides the prefix. */
+export function stageTitle(stageNum: number): string {
+  const label = stageLabel(stageNum);
+  return raceConfig().stagesAreRaces ? label : `Stage ${label}`;
+}
+
+/** Axis/column heading for the stage dimension. */
+export function stageAxisLabel(): string {
+  return raceConfig().stagesAreRaces ? "Race" : "Stage";
 }
 
 export function fmtGap(seconds: number | null, gcRank?: number | null): string {

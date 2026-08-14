@@ -67,7 +67,7 @@ A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen olde
 
 All four merges were verified byte-identical to the scripts they replaced before deletion: the ingest merge via an in-process run against scratch DB copies (2,120 Giro stages + 1,644 Vuelta stages + 8,973 rider names matched exactly; the real `cycling.db` was never opened, only redirected copies), and the two export merges via a real run + `git diff` showing zero changes to the committed `riders_index.json`/`all_races_summary.json` output files.
 
-**Planned direction:** one-day classics (e.g. Paris–Roubaix) will be added as races with a single stage. The DB schema already supports this (`races.race_type`); the remaining work is (a) capability flags in the `RACES` registry so stage-chart/sprint/KOM views disable for one-day races — the only item still open. (b) ~~consolidating the per-race ingest/export scripts~~ — done 2026-07-18, see above. (c) ~~moving TDF's unprefixed supplemental files into a per-race layout~~ — done 2026-07-31 (after the 2026 Tour ended, as planned): the frontend side (`export_all_races_summary.py`'s output) already wrote to `cycling-app/src/data/tour/`, matching Giro/Vuelta; the actual gap was in `pipeline/`, where TDF's per-stage supplement files predated the `{race}_` prefix convention. `sprint_points.json` → `tour_sprint_points.json`, `kom_points.json` → `tour_kom_points.json`, `kom_points_reconciled.json` → `tour_kom_points_reconciled.json`, `gc_winner_times.json` → `tour_gc_winner_times.json`, `all_races_summary_overrides.json` → `tour_all_races_summary_overrides.json`. `export_gc.py` also collapsed its two separate code paths (hardcoded TDF constants vs. a `race_subdir`-parameterized override for Giro/Vuelta) into one `resolve_supplement_paths()` lookup used by all three races. TDF-only files with no Giro/Vuelta sibling (`wiki_race_distances.json`, `gc_all_times.json`, `kom_totals.json`, `kom_reconcile_report.json`, `profile_icons.json`) were left unprefixed on purpose — there's no naming collision to resolve.
+**Planned direction:** ~~one-day classics will be added as races with a single stage~~ — **done 2026-08-13**, see "One-day classics" below. Item (a), capability flags in the `RACES` registry, landed with it; there are no open items left in this note. (b) ~~consolidating the per-race ingest/export scripts~~ — done 2026-07-18, see above. (c) ~~moving TDF's unprefixed supplemental files into a per-race layout~~ — done 2026-07-31 (after the 2026 Tour ended, as planned): the frontend side (`export_all_races_summary.py`'s output) already wrote to `cycling-app/src/data/tour/`, matching Giro/Vuelta; the actual gap was in `pipeline/`, where TDF's per-stage supplement files predated the `{race}_` prefix convention. `sprint_points.json` → `tour_sprint_points.json`, `kom_points.json` → `tour_kom_points.json`, `kom_points_reconciled.json` → `tour_kom_points_reconciled.json`, `gc_winner_times.json` → `tour_gc_winner_times.json`, `all_races_summary_overrides.json` → `tour_all_races_summary_overrides.json`. `export_gc.py` also collapsed its two separate code paths (hardcoded TDF constants vs. a `race_subdir`-parameterized override for Giro/Vuelta) into one `resolve_supplement_paths()` lookup used by all three races. TDF-only files with no Giro/Vuelta sibling (`wiki_race_distances.json`, `gc_all_times.json`, `kom_totals.json`, `kom_reconcile_report.json`, `profile_icons.json`) were left unprefixed on purpose — there's no naming collision to resolve.
 
 ---
 
@@ -158,6 +158,93 @@ Eric's call, do not guess); 14 stages with no finishing positions (neutralised o
 abandoned mid-race, plus three 1980s TTTs where PCS's rider tables are empty); 17 editions
 with a sparse final stage. Test new work with **mutation checks** — substitute the
 original bug back and confirm the test fails; that caught two blind spots in this pass.
+
+---
+
+## One-day classics (August 2026)
+
+Eleven monuments/classics, **2020–2025**, added 2026-08-13. In the DB they are
+**11 independent races** (`races.race_type='one_day'`, race_id 4–14, one stage per
+edition). The frontend shows **one** race, `classics` — "One-day Classics" — whose
+"stages" are those races. That aggregation happens only at export time.
+
+| slug | display | short | | slug | display | short |
+|---|---|---|---|---|---|---|
+| `omloop-het-nieuwsblad` | Omloop Het Nieuwsblad | OHN | | `amstel-gold-race` | Amstel Gold Race | AGR |
+| `strade-bianche` | Strade Bianche | SB | | `la-fleche-wallonne` | La Flèche Wallonne | FW |
+| `milano-sanremo` | Milan–San Remo | MSR | | `liege-bastogne-liege` | Liège–Bastogne–Liège | LBL |
+| `gent-wevelgem` | Gent–Wevelgem | GW | | `san-sebastian` | Clásica de San Sebastián | CSS |
+| `ronde-van-vlaanderen` | Tour of Flanders | RVV | | `il-lombardia` | Il Lombardia | IL |
+| `paris-roubaix` | Paris–Roubaix | PR | | | | |
+
+**66 race-years · 10,887 results · 1,303 riders · 3 cancelled.**
+
+### The rules that matter here
+
+1. **Stages are ordered by `stage_date`, never a fixed calendar.** COVID moved
+   **Il Lombardia to August 2020**, ahead of Flèche and Liège, and pushed
+   Paris–Roubaix to October in both 2020 and 2021. A hardcoded order renders those
+   seasons wrong; date ordering gets them right for free.
+
+2. **`finalRank` is the rider's BEST finish of the season**, not their last. It drives
+   legend order and Top 10/20. "Their placing at Lombardia" would be meaningless for
+   ranking a season. Consequence: **ties are normal** — 2021 has nine riders at #1
+   (the nine winners of its eleven races), so `validate_exports.py` skips its
+   duplicate-`finalRank` check for any race in `AGGREGATE_FINAL_RANK`. Leaving it on
+   emitted 325 warnings on clean data.
+
+3. **`totalTimeSeconds` is null** and the GC Time toggle is hidden — a season of
+   unrelated races has no total time.
+
+4. **Cancelled races are ingested, not dropped** (`stages.cancelled=1`, planned date
+   and distance, no results). 2020 lost Paris–Roubaix, Amstel Gold and San Sebastián.
+   They keep their calendar slot, draw muted in the Race Overview, and are excluded
+   from its distance/elevation totals — which also fixed a **pre-existing bug where
+   cancelled Grand Tour stages were counted** in those totals.
+
+5. **PCS slugs are not guessable.** San Sebastián is `san-sebastian`, **not**
+   `clasica-san-sebastian` — the latter 500s. A 500 page has no results table and so
+   looks *exactly* like a cancelled race to a parser: it silently produced six
+   fabricated cancellations before Eric spotted it. `parse_classics_bundle.py` now
+   distinguishes an HTTP error from a genuine no-results page. **Verify a slug
+   against a real URL before adding one.**
+
+6. **`route_type` is derived, not scraped** — `race_common.classic_route_type()` bands
+   PCS's own ProfileScore (<60 F, ≤150 H, else M), recorded as `SOURCE_DERIVED`. Raw
+   m/km does not separate these honestly; ProfileScore puts Roubaix at 15,
+   Gent–Wevelgem 33, Flanders 93, Liège 182, Lombardia 260.
+
+### Pipeline
+
+```
+DevTools snippet → ~/Downloads/classics_*.txt
+       ↓  parse_classics_bundle.py
+classics_scrapes/<race>/<year>.json      (+ .raw.txt captures, tracked in git)
+       ↓  ingest_classics.py             (--dry-run; atomic per race-year re-ingest)
+   cycling.db                            (11 races, race_type='one_day')
+       ↓  export_classics.py
+cycling-app/src/data/classics/gc_by_stage_YEAR.json + riders_index.json
+```
+
+`export_classics.py` is deliberately **separate from `export_gc.py`**, which is built
+around "one edition = one race with N stages". The classics invert that (N editions of
+N races = one displayed season), so sharing the code would contort both. There is no
+`all_races_summary.json` and never will be.
+
+### Known-open
+
+- **Duplicate ranks in 13 race-years** — PCS itself prints one position twice
+  (verified directly on the 2021 Paris–Roubaix page: rank 83 for both Stannard and
+  Sajnok). **Every 2021 race has one**, which looks systematic. Same class as the 36
+  two-rank-1 stages: how to model it is Eric's call, do not guess.
+- **Bib collisions** in Amstel 2022 (bib 176) and San Sebastián 2021 (bib 17).
+  Neither is the adjacent-row name-swap artifact — the rows aren't adjacent and one
+  pair shares a team. Upstream PCS collisions; never rename.
+- **UCI points deductions** render inside the points cell across embedded newlines
+  (Paris–Roubaix 2023, Rex Laurenz: `160 … -25`), splitting a row mid-record.
+  `parse_classics_bundle.py` joins continuation lines; ingest keeps the awarded
+  figure and ignores the annotation rather than guessing the net.
+- Only 2020–2025. Extending back is a scrape-scope decision, not a code change.
 
 ---
 
@@ -1027,7 +1114,42 @@ The button group itself is always rendered — only the youth button is hidden p
 
 ## Scraping a live/in-progress race from PCS
 
-PCS blocks plain HTTP scraping with a Cloudflare "Just a moment…" challenge (`scrape_pcs_stages.py` no longer works standalone against the live site). Use a real browser instead, navigate to each stage's PCS page, and extract data via injected JavaScript. The page structure below applies identically to both the Tour de France and Giro d'Italia — only the URL path differs (`tour-de-france` vs `giro-d-italia`).
+> **The `CF_CLEARANCE` cookie route is DEAD as of 2026-08-13.** `scrape_vuelta.py` and
+> `scrape_giro.py` still document it, and their docstrings are now wrong for every year,
+> not just live races. Verified: with a cookie minted minutes earlier in Eric's own
+> Chrome **and** that browser's exact User-Agent (`Chrome/150.0.0.0`), PCS returns
+> `HTTP 403` with `cf-mitigated: challenge` and `cType: 'managed'` — i.e. it issues a
+> *fresh* challenge and ignores the clearance entirely. The cookie is bound to the
+> **TLS fingerprint** of the client that solved it, and curl/urllib cannot present
+> Chrome's. Making them do so means a TLS-impersonation library (`curl_cffi`,
+> `curl-impersonate`), which exists solely to defeat bot detection — **do not go
+> there.** A managed challenge is PCS stating they don't want automated collection;
+> keep volumes modest and prefer the browser routes below.
+>
+> Two further blocks discovered the same day, both of which sound like they should
+> work and don't:
+> - **A PCS page cannot POST to a local save server.** In the in-app browser it's
+>   blocked as mixed content; in real Chrome it's blocked by **Private Network
+>   Access**, even with the server returning `Access-Control-Allow-Private-Network:
+>   true`. This is why the Grand Tour save-server methodology below no longer works
+>   as written. (`pipeline/classics_scrapes/save_server.py` has the PNA header and a
+>   `/relay` page anyway — neither is sufficient; treat that file as a record of
+>   what was tried.)
+> - **Programmatic downloads** (`Blob` + `<a download>`) are silently dropped in the
+>   in-app browser and need a real user gesture in Chrome.
+>
+> **What works, and is now the default for any bulk scrape:** hand Eric a
+> self-contained **DevTools console snippet** that fetches every race/year
+> same-origin, extracts compactly, and downloads **one combined `.txt`**. He pastes
+> it once (all years in a single run — it does not need to be repeated per year) and
+> the file lands in `~/Downloads`. Costs zero context and has no transcription risk.
+> Relaying page data back through the conversation instead measures at **~23K chars
+> per race** (~340K tokens for a 57-race scrape) and is error-prone — a hand-relayed
+> gzip payload failed its CRC on the first attempt. If data must pass through
+> context, verify it: hash in-page with `crypto.subtle.digest` and compare against
+> `shasum -a 256`. See `parse_classics_bundle.py` for the bundle format and parser.
+
+For a live/in-progress race, use a real browser, navigate to each stage's PCS page, and extract data via injected JavaScript. The page structure below applies identically to both the Tour de France and Giro d'Italia — only the URL path differs (`tour-de-france` vs `giro-d-italia`).
 
 ### Efficient multi-stage scraping methodology
 

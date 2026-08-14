@@ -129,10 +129,20 @@ flowchart TD
   that list confirms. Run both around any data change; they exist because a day of
   corruption was once invisible until someone eyeballed a chart.
 
-- **Per-race JSON** (`cycling-app/src/data/{tour,giro,vuelta}/*.json`) — the frontend's only
-  input. Vite discovers these via wildcard globs (`./data/*/gc_by_stage_*.json` etc.), so
-  adding a new race is just a new `RACES` registry entry + a new `src/data/<slug>/`
-  directory — no code changes to the loading logic.
+- **Per-race JSON** (`cycling-app/src/data/{tour,giro,vuelta,classics}/*.json`) — the
+  frontend's only input. Vite discovers these via wildcard globs
+  (`./data/*/gc_by_stage_*.json` etc.), so adding a new race is just a new `RACES`
+  registry entry + a new `src/data/<slug>/` directory — no code changes to the loading
+  logic. `classics/` has no `all_races_summary.json`; its `RaceConfig.hasAllYears`
+  flag hides that view rather than rendering an empty chart.
+
+- **One-day classics** (`ingest_classics.py`, `export_classics.py`) — 11 independent
+  `race_type='one_day'` races in the DB, aggregated at export time into a single
+  frontend race whose "stages" are those races, ordered by `stage_date`. This is a
+  separate path from `export_gc.py` on purpose: that script assumes one edition = one
+  race with N stages, and the classics invert it (N editions of N races = one displayed
+  season). See ai-context.md's "One-day classics" for the rules, including why
+  `finalRank` is a best-of-season aggregate and why cancelled races are kept.
 
 - **Vite build** — compiles `main.ts` (TypeScript) and bundles it with the JSON data files
   into a static site. Per-year `gc_by_stage_*.json` files are emitted as separate lazily
@@ -192,8 +202,9 @@ flowchart TD
 
 ## Data Model
 
-`cycling.db` is one SQLite database shared by all three races, distinguished by
-`races.race_id`. Every table below actually exists in the live DB. `riders` has three
+`cycling.db` is one SQLite database shared by every race, distinguished by
+`races.race_id` — the three Grand Tours (`race_type='stage_race'`, race_id 1–3) plus
+the 11 one-day classics (`race_type='one_day'`, race_id 4–14, one stage per edition). Every table below actually exists in the live DB. `riders` has three
 extra columns (`first_name`, `last_name`, `birthday`) that were added via `ALTER TABLE`
 by `scrape_rider_details.py` — `schema.sql` has been updated to reflect them.
 

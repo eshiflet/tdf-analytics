@@ -9,6 +9,14 @@ import { emptyPerRace, isRaceId } from "./raceRegistry";
 import { state } from "./state";
 import { fetchJson } from "./dataLoading";
 
+export interface ConstituentResult {
+  /** Display name of the individual race, e.g. "Paris-Roubaix". */
+  race: string;
+  /** Finishing position in that race; 9999 for DNF/DNS. */
+  rank: number;
+  team: string | null;
+}
+
 export interface RiderEntry {
   id: string;
   name: string;
@@ -18,6 +26,12 @@ export interface RiderEntry {
   youthWinYears: number[];
   years: Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>;
   teams: Set<string>;
+  /** Only present for aggregate races (the one-day classics), where a single
+   *  season holds up to 11 independent results and `years` can only carry one.
+   *  `years` still holds the rider's BEST finish that season, which is what
+   *  the Riders grid sorts and filters on; this is the per-race breakdown the
+   *  career chart plots. */
+  constituents?: Map<number, ConstituentResult[]>;
 }
 
 export const riderIndexByRace = emptyPerRace<Map<string, RiderEntry>>(() => new Map());
@@ -52,9 +66,19 @@ for (const [path, url] of Object.entries(riderIndexUrlModules)) {
 type RawYearTuple =
   | [number, number]
   | [number, number, number, number];
+/** Aggregate races only: one [raceIdx, rank, teamIdx] triple per constituent
+ *  race the rider contested that season. raceIdx indexes the top-level
+ *  `races` string table, the same trick `teams` uses. */
+type RawConstituent = [number, number, number];
 type RawRiderIndex = {
   teams: string[];
-  riders: Record<string, { n: string; fn?: string; ln?: string; c: string | null; yw?: number[]; y: Record<string, RawYearTuple> }>;
+  /** Constituent-race name table; absent for the three Grand Tours. */
+  races?: string[];
+  riders: Record<string, {
+    n: string; fn?: string; ln?: string; c: string | null; yw?: number[];
+    y: Record<string, RawYearTuple>;
+    m?: Record<string, RawConstituent[]>;
+  }>;
 };
 
 export const riderIndexBuilt = emptyPerRace<boolean>(() => false);
@@ -63,6 +87,7 @@ export async function ensureRiderIndexFor(race: RaceId): Promise<void> {
   if (riderIndexBuilt[race]) return;
   const raw = await fetchJson<RawRiderIndex>(RIDERS_INDEX_URL[race]);
   const teamTable = raw.teams;
+  const raceTable = raw.races ?? [];
   const index = riderIndexByRace[race];
   for (const [slug, rec] of Object.entries(raw.riders)) {
     const id = `rider/${slug}`;
@@ -78,7 +103,22 @@ export async function ensureRiderIndexFor(race: RaceId): Promise<void> {
       });
       if (team) teams.add(team);
     }
-    index.set(id, { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams });
+
+    let constituents: Map<number, ConstituentResult[]> | undefined;
+    if (rec.m) {
+      constituents = new Map();
+      for (const [yearStr, entries] of Object.entries(rec.m)) {
+        const results: ConstituentResult[] = [];
+        for (const [raceIdx, rank, teamIdx] of entries) {
+          const team = teamIdx >= 0 ? teamTable[teamIdx] : null;
+          results.push({ race: raceTable[raceIdx] ?? "—", rank: rank || 9999, team });
+          if (team) teams.add(team);
+        }
+        constituents.set(parseInt(yearStr), results);
+      }
+    }
+
+    index.set(id, { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams, constituents });
   }
   allTeamsSortedByRace[race] = [...teamTable].sort();
   allNationalitiesSortedByRace[race] = [...new Set(

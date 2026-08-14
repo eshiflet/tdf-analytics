@@ -8,7 +8,7 @@
 import { d3 } from "./d3";
 import type { RaceId } from "./raceRegistry";
 import { RACE_IDS, RACES, isRaceId, URLS_BY_RACE, getYearsForRace } from "./raceRegistry";
-import { state } from "./state";
+import { state, raceConfig } from "./state";
 import {
   raceSelectEl, chartEl, overviewChartEl, legendEl, sidebarEl, searchEl,
   yearSelectEl, metricSelectEl, stageViewSelectEl, stageTableEl,
@@ -58,6 +58,41 @@ function buildYearSelect() {
   });
 }
 
+/** Reflects the active race's capability flags in the chrome: which metrics
+ *  the dropdown offers, and whether All Years Summary is reachable. Also
+ *  sanitizes any state the new race can't represent — switching from the Giro
+ *  (KOM selected) to the classics (no KOM contested) must not leave the
+ *  dropdown on a metric with no data behind it. */
+function applyRaceCapabilities() {
+  const cfg = raceConfig();
+
+  // Options are rebuilt rather than hidden so the select can never hold a
+  // value this race doesn't serve.
+  const options: { value: "gc" | "points" | "kom"; label: string }[] = [
+    // Without a cumulative GC the metric is a per-race placing, not a
+    // standing, so "GC" would be actively misleading.
+    { value: "gc", label: cfg.hasCumulativeGc ? "GC" : "Result" },
+  ];
+  if (cfg.hasSprintKom) {
+    options.push({ value: "points", label: "Sprint" });
+    options.push({ value: "kom", label: "KOM" });
+  }
+  if (!options.some((o) => o.value === state.currentMetric)) state.currentMetric = "gc";
+  metricSelectEl.innerHTML = "";
+  for (const o of options) {
+    const opt = document.createElement("option");
+    opt.value = o.value;
+    opt.textContent = o.label;
+    metricSelectEl.appendChild(opt);
+  }
+  metricSelectEl.value = state.currentMetric;
+
+  viewAllRacesBtn.hidden = !cfg.hasAllYears;
+  if (!cfg.hasAllYears && state.currentView === "allraces") state.currentView = "stage";
+  // A season of unrelated races has no total time to plot against.
+  if (!cfg.hasCumulativeGc) state.gcDisplayMode = "position";
+}
+
 /** Switch the active race: updates the dropdowns, year list, and per-race
  *  filter state. Callers handle hash + data loading. */
 export function setRace(race: RaceId) {
@@ -66,6 +101,7 @@ export function setRace(race: RaceId) {
   state.YEARS = getYearsForRace(race);
   state.currentYear = state.YEARS[0];
   rebuildYearOptions();
+  applyRaceCapabilities();
   // Reset riders filter state so stale year/team selections don't carry over
   state.ridersFilterYear = "";
   state.ridersFilterTeam = "";
@@ -74,9 +110,13 @@ export function setRace(race: RaceId) {
 }
 
 function buildRaceSelect() {
-  // Options come from the race registry, not hardcoded markup.
+  // Options come from the race registry, not hardcoded markup. A registry
+  // entry with no exported year files is skipped rather than offered — it
+  // would set currentYear to undefined and break the year dropdown. This is
+  // what lets a race's registry entry land before its data does.
   raceSelectEl.innerHTML = "";
   for (const raceId of RACE_IDS) {
+    if (getYearsForRace(raceId).length === 0) continue;
     const opt = document.createElement("option");
     opt.value = raceId;
     opt.textContent = RACES[raceId].name;
@@ -116,7 +156,9 @@ function buildStageViewSelect() {
 }
 
 function buildMetricSelect() {
-  metricSelectEl.value = state.currentMetric;
+  // Seeds the option list for the initial race (setRace covers every later
+  // switch), so the dropdown starts consistent with that race's capabilities.
+  applyRaceCapabilities();
   updateGcTimeToggle();
   updateSprintModeToggle();
   updateKomModeToggle();
@@ -146,7 +188,8 @@ function buildMetricSelect() {
  *  "table-mode" class since the graph's rotated left-edge placement doesn't
  *  make sense next to a table. */
 function updateGcTimeToggle() {
-  gcTimeToggleBtn.hidden = !(state.currentView === "stage" && state.currentMetric === "gc");
+  gcTimeToggleBtn.hidden = !(state.currentView === "stage" && state.currentMetric === "gc"
+    && raceConfig().hasCumulativeGc);
   gcTimeToggleBtn.classList.toggle("table-mode", state.stageViewMode === "table");
   gcTimeToggleBtn.textContent = state.gcDisplayMode === "time"
     ? "GC Time → GC Position"
@@ -212,6 +255,10 @@ export async function loadDataset(year: string) {
 }
 
 export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
+  // Guard rather than trust the caller: a stale deep link or a race switch can
+  // ask for a view this race doesn't have (the classics have no All Years
+  // Summary), and drawAllRacesOverview would render an empty chart.
+  if (view === "allraces" && !raceConfig().hasAllYears) view = "stage";
   state.currentView = view;
   // Keep the select in sync: on stage, show the active mode; elsewhere, reset
   // to the hidden placeholder so any re-selection always fires 'change' and
@@ -254,6 +301,9 @@ async function applyHash(): Promise<boolean> {
   try {
     if (race !== state.currentRace) setRace(race);
     if (parts[0] === "allraces") {
+      // #classics/allraces has no view to show; fall back to defaults rather
+      // than landing on a blank chart.
+      if (!raceConfig().hasAllYears) return false;
       switchView("allraces");
       return true;
     }
@@ -406,7 +456,9 @@ function wireControls() {
  *  carries its own hash. */
 function seedHashFromPath() {
   if (window.location.hash) return;
-  const match = window.location.pathname.match(/\/(tour|giro|vuelta)\/?$/);
+  // Built from the registry so a new race's landing page works without
+  // touching this regex.
+  const match = window.location.pathname.match(new RegExp(`/(${RACE_IDS.join("|")})/?$`));
   if (match && isRaceId(match[1])) {
     window.history.replaceState(null, "", window.location.pathname + window.location.search + `#${match[1]}`);
   }

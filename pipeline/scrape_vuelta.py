@@ -22,6 +22,15 @@ The cookie expires after a while (commonly 30min-2h) — once it does, every
 request starts 403ing again and the script exits with a clear message
 instead of silently retrying forever. Get a fresh cookie and re-run
 (add --resume once a year has fully completed to skip it next time).
+
+WARNING (verified 2026-08-13): the CF_CLEARANCE workflow described above NO
+LONGER WORKS, for any year. PCS returns 403 with `cf-mitigated: challenge`
+and `cType: 'managed'` even given a cookie minted seconds earlier plus that
+browser's exact User-Agent, because clearance is bound to the client's
+TLS fingerprint and urllib cannot present Chrome's. Defeating that needs a
+TLS-impersonation library, which is out of bounds. Use the DevTools-snippet
+route instead -- see ai-context.md's "Scraping a live/in-progress race from
+PCS", and parse_classics_bundle.py for the bundle format.
 """
 
 import json

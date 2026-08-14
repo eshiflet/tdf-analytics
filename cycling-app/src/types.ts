@@ -1,6 +1,10 @@
 export interface StageInfo {
   stage_number: number;
   stage_label: string;
+  /** Abbreviation for axis ticks and table headers, where the full
+   *  stage_label is too wide ("LBL" for "Liege-Bastogne-Liege"). Only the
+   *  one-day classics set this; Grand Tour stage labels are already short. */
+  stage_short_label?: string;
   start_location: string | null;
   finish_location: string | null;
   distance_km: number | null;

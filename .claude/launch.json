@@ -2,16 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "weather-app",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5200", "--directory", "/Users/eric/Desktop/Weather"],
-      "port": 5200
-    },
-    {
-      "name": "cycling-app-dev",
+      "name": "cycling-app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "cycling-app", "--", "--port", "5199", "--strictPort"],
-      "port": 5199
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "cycling-app",
+      "port": 5173
     }
   ]
 }

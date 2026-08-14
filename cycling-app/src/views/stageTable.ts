@@ -3,7 +3,7 @@
 // Sprint / KOM value is currently selected via the same toggle buttons the
 // graph view uses (state.gcDisplayMode / sprintDisplayMode / komDisplayMode).
 import type { RiderSeries, RiderStagePoint } from "../types";
-import { state } from "../state";
+import { state, raceConfig } from "../state";
 import { stageTableEl, chartAreaEl, gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn } from "../dom";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
 import { fmtGapHM } from "../formatters";
@@ -197,8 +197,15 @@ export function drawStageTable() {
   for (const stage of stages) {
     const th = document.createElement("th");
     th.className = stage.cancelled ? "col-stage col-stage-cancelled" : "col-stage";
-    th.textContent = stage.stage_label;
-    th.title = stage.cancelled ? "Stage cancelled" : "";
+    // Columns are narrow, so use the abbreviation and keep the full race name
+    // in the title attribute alongside any cancellation note.
+    th.textContent = stage.stage_short_label ?? stage.stage_label;
+    const cancelledNote = stage.cancelled
+      ? `${raceConfig().stagesAreRaces ? "Race" : "Stage"} cancelled`
+      : "";
+    th.title = stage.stage_short_label
+      ? [stage.stage_label, cancelledNote].filter(Boolean).join(" — ")
+      : cancelledNote;
     th.addEventListener("mouseenter", (e) => showStageTooltip(e, stage));
     th.addEventListener("mouseleave", hideTooltip);
     headRow.appendChild(th);

@@ -2,10 +2,10 @@
 // difficulty score for the selected year, colored by route type.
 import type { StageInfo } from "../types";
 import { d3 } from "../d3";
-import { state } from "../state";
+import { state, raceConfig } from "../state";
 import { overviewChartEl, overviewSummaryEl, tooltipEl } from "../dom";
 import { positionTooltip, hideTooltip } from "../tooltip";
-import { ROUTE_COLOR, ROUTE_LABEL, difficultyScore } from "../formatters";
+import { ROUTE_COLOR, ROUTE_LABEL, difficultyScore, stageTitle } from "../formatters";
 
 const KM_TO_MI = 0.621371;
 const M_TO_FT = 3.28084;
@@ -17,9 +17,14 @@ export function drawOverview() {
   if (!stages.length) return;
 
   const imperial = state.overviewUnit === "imperial";
-  // Totals summary in the topbar
-  const totalDistKm = stages.reduce((s, st) => s + (st.distance_km ?? 0), 0);
-  const totalElevM = stages.reduce((s, st) => s + (st.vertical_meters ?? 0), 0);
+  // Totals summary in the topbar. Cancelled stages/races are excluded: PCS
+  // still publishes the planned distance for a day that was never raced (the
+  // 2020 Paris-Roubaix's 259 km, Giro 2011 st4), and counting it overstates
+  // what was actually ridden. They stay in the chart below, drawn muted, so
+  // the gap in the season is still visible.
+  const ridden = stages.filter((st) => !st.cancelled);
+  const totalDistKm = ridden.reduce((s, st) => s + (st.distance_km ?? 0), 0);
+  const totalElevM = ridden.reduce((s, st) => s + (st.vertical_meters ?? 0), 0);
   const distDisplay = imperial
     ? `${Math.round(totalDistKm * KM_TO_MI).toLocaleString()} mi`
     : `${Math.round(totalDistKm).toLocaleString()} km`;
@@ -116,7 +121,9 @@ export function drawOverview() {
         .attr("width", xScale.bandwidth())
         .attr("height", (s) => panelHeight - yScale(panel.value(s)))
         .attr("rx", 2)
-        .attr("fill", (s) => ROUTE_COLOR[s.route_type ?? "F"] ?? ROUTE_COLOR.F)
+        // A cancelled race is drawn muted so a planned-but-unridden bar can't
+        // be mistaken for a real result.
+        .attr("fill", (s) => (s.cancelled ? "#3a3f4b" : ROUTE_COLOR[s.route_type ?? "F"] ?? ROUTE_COLOR.F))
         .on("mousemove", (event: MouseEvent, s: StageInfo) => {
           const diff = difficultyScore(s);
           const distStr = s.distance_km != null
@@ -130,7 +137,7 @@ export function drawOverview() {
               : `${s.vertical_meters.toLocaleString()} m`
             : "—";
           tooltipEl.innerHTML = `
-            <div class="t-name">Stage ${s.stage_label}</div>
+            <div class="t-name">${stageTitle(s.stage_number)}${s.cancelled ? " — cancelled" : ""}</div>
             <div class="t-team">${s.start_location ?? "—"} → ${s.finish_location ?? "—"}</div>
             <div>${ROUTE_LABEL[s.route_type ?? "F"] ?? s.route_type}</div>
             <div>Distance: ${distStr}</div>
@@ -151,7 +158,7 @@ export function drawOverview() {
           d3.axisBottom(xScale)
             .tickFormat((d) => {
               const s = stages.find((st) => String(st.stage_number) === d);
-              return s?.stage_label ?? d;
+              return s?.stage_short_label ?? s?.stage_label ?? d;
             })
         )
         .call((ax) => ax.select(".domain").remove())

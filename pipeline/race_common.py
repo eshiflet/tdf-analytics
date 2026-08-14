@@ -138,6 +138,57 @@ RACES: dict[str, RaceInfo] = {
 }
 
 
+@dataclass(frozen=True)
+class ClassicInfo:
+    name: str        # DB races.name / frontend stage_label, e.g. "Paris-Roubaix"
+    short: str       # x-axis tick label, e.g. "PR"
+    country: str
+
+
+# The one-day classics, keyed by their PCS URL slug. These are 11 INDEPENDENT
+# races in the DB (races.race_type = 'one_day', one stage per edition); the
+# frontend's single "One-day Classics" race is an aggregation built at export
+# time by export_classics.py, ordered by each race's actual date so a
+# reshuffled season (2020: Lombardia in August) comes out right.
+#
+# Slugs are PCS's, not guessable: San Sebastian is `san-sebastian`, NOT
+# `clasica-san-sebastian` — the latter 500s, and a 500 page looks exactly like
+# a cancelled race to a parser, which silently invented six cancellations
+# before this was caught. Verify a slug against a real URL before adding one.
+CLASSICS: dict[str, ClassicInfo] = {
+    "omloop-het-nieuwsblad": ClassicInfo("Omloop Het Nieuwsblad", "OHN", "Belgium"),
+    "strade-bianche":        ClassicInfo("Strade Bianche", "SB", "Italy"),
+    "milano-sanremo":        ClassicInfo("Milan-San Remo", "MSR", "Italy"),
+    "gent-wevelgem":         ClassicInfo("Gent-Wevelgem", "GW", "Belgium"),
+    "ronde-van-vlaanderen":  ClassicInfo("Tour of Flanders", "RVV", "Belgium"),
+    "paris-roubaix":         ClassicInfo("Paris-Roubaix", "PR", "France"),
+    "amstel-gold-race":      ClassicInfo("Amstel Gold Race", "AGR", "Netherlands"),
+    "la-fleche-wallonne":    ClassicInfo("La Fleche Wallonne", "FW", "Belgium"),
+    "liege-bastogne-liege":  ClassicInfo("Liege-Bastogne-Liege", "LBL", "Belgium"),
+    "san-sebastian":         ClassicInfo("Clasica de San Sebastian", "CSS", "Spain"),
+    "il-lombardia":          ClassicInfo("Il Lombardia", "IL", "Italy"),
+}
+
+
+def classic_route_type(profile_score):
+    """F/H/M for a one-day race, from PCS's own ProfileScore.
+
+    The Race Overview colours its bars by route_type, and a NULL falls back to
+    Flat green — which would paint Liege-Bastogne-Liege the same as Roubaix.
+    ProfileScore is PCS's grade-aware climbing metric, so it separates these
+    honestly (Roubaix 15, Gent-Wevelgem 33, Flanders 93, Liege 182,
+    Lombardia 260) where raw m/km does not. Derived, not scraped — record it
+    as SOURCE_DERIVED.
+    """
+    if profile_score is None:
+        return None
+    if profile_score < 60:
+        return "F"
+    if profile_score <= 150:
+        return "H"
+    return "M"
+
+
 def parse_time_to_seconds(text):
     if not text:
         return None

@@ -4,7 +4,7 @@
 // in. See riders.ts's header comment for the circular-import note (this file
 // and riders.ts call each other for grid↔detail navigation).
 import type { RaceId } from "../raceRegistry";
-import { RACE_IDS, RACES } from "../raceRegistry";
+import { RACE_IDS, RACES, RACE_SHORT_LABEL } from "../raceRegistry";
 import { d3 } from "../d3";
 import { state } from "../state";
 import { ridersChartEl, yearSelectEl, metricSelectEl, tooltipEl } from "../dom";
@@ -37,11 +37,14 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
   // Prefer entry from currentRace for name/nationality; fall back to first found
   const primaryEntry = byRace.get(state.currentRace) ?? [...byRace.values()][0];
 
-  // Badge config per race (for toggle buttons and DNF dot outlines)
+  // Badge config per race (for toggle buttons and DNF dot outlines). The
+  // classics share one neutral gray across all 11 constituent races — see the
+  // registry's `chart` comment for why they aren't coloured individually.
   const BADGE: Record<RaceId, { bg: string; text: string; label: string }> = {
-    tour:   { bg: "#FFD400", text: "#111", label: "T" },
-    giro:   { bg: "#E4007C", text: "#fff", label: "G" },
-    vuelta: { bg: "#E30613", text: "#fff", label: "V" },
+    tour:     { bg: "#FFD400", text: "#111", label: "T" },
+    giro:     { bg: "#E4007C", text: "#fff", label: "G" },
+    vuelta:   { bg: "#E30613", text: "#fff", label: "V" },
+    classics: { bg: "#9ca3af", text: "#111", label: "C" },
   };
 
   // ── Header ──────────────────────────────────────────────────────────────────
@@ -68,7 +71,9 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
     const best = finished.length > 0
       ? Math.min(...finished.map((yr) => entry.years.get(yr)!.finalRank))
       : null;
-    const raceName = race === "tour" ? "TDF" : race === "giro" ? "Giro" : "Vuelta";
+    // "TDF" is kept for the Tour rather than the registry's "Tour" so this
+    // summary line reads exactly as it always has.
+    const raceName = race === "tour" ? "TDF" : RACE_SHORT_LABEL[race];
     let part = `${yrs.length} ${raceName}`;
     if (best !== null) part += ` · Best #${best}`;
     metaParts.push(part);
@@ -80,7 +85,12 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
   // ── Toggle bar: race buttons (T/G/V) + divider + classification buttons ───────
   type ClassifId = "gc" | "sprint" | "kom";
   const activeRaces   = new Set<RaceId>(byRace.keys());
-  const activeClassifs = new Set<ClassifId>(["gc", "sprint", "kom"]);
+  // Sprint/KOM only exist if at least one race this rider has data in
+  // contests them — a classics-only rider gets neither the toggles nor the
+  // legend rows, rather than two controls that can never show anything.
+  const hasSprintKom = [...byRace.keys()].some((r) => RACES[r].hasSprintKom);
+  const classifIds: ClassifId[] = hasSprintKom ? ["gc", "sprint", "kom"] : ["gc"];
+  const activeClassifs = new Set<ClassifId>(classifIds);
 
   const toggleGroup = document.createElement("div");
   toggleGroup.className = "race-toggle-group";
@@ -114,14 +124,17 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
     toggleGroup.appendChild(btn);
   }
 
-  // Divider
-  const divider = document.createElement("span");
-  divider.className = "toggle-divider";
-  divider.textContent = "|";
-  toggleGroup.appendChild(divider);
+  // Divider — only meaningful when there are classification toggles to
+  // separate the race toggles from.
+  if (classifIds.length > 1) {
+    const divider = document.createElement("span");
+    divider.className = "toggle-divider";
+    divider.textContent = "|";
+    toggleGroup.appendChild(divider);
+  }
 
   // Classification toggles
-  for (const classif of (["gc", "sprint", "kom"] as ClassifId[])) {
+  for (const classif of (classifIds.length > 1 ? classifIds : [])) {
     const label = classif === "gc" ? "GC" : classif === "sprint" ? "Sprint" : "KOM";
     const btn = document.createElement("button");
     btn.className = "classif-toggle-btn active";
@@ -152,12 +165,30 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
     type CrossPt = {
       year: number; race: RaceId;
       finalRank: number; sprintRank: number; komRank: number; team: string | null;
+      /** Constituent race name, for aggregate races (the classics). A Grand
+       *  Tour point is fully identified by race+year and leaves this unset. */
+      label?: string;
     };
 
     const allPoints: CrossPt[] = [];
     for (const race of activeRaces) {
-      for (const [yr, data] of byRace.get(race)!.years) {
-        allPoints.push({ year: yr, race, ...data });
+      const entry = byRace.get(race)!;
+      if (entry.constituents) {
+        // Aggregate race: one point per constituent race contested, so a
+        // single season contributes up to 11 dots. They share an x position
+        // and separate vertically by finishing rank.
+        for (const [yr, results] of entry.constituents) {
+          for (const r of results) {
+            allPoints.push({
+              year: yr, race, finalRank: r.rank,
+              sprintRank: 9999, komRank: 9999, team: r.team, label: r.race,
+            });
+          }
+        }
+      } else {
+        for (const [yr, data] of entry.years) {
+          allPoints.push({ year: yr, race, ...data });
+        }
       }
     }
     if (allPoints.length === 0) return;
@@ -256,7 +287,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       // Columns are right-to-left with a 12px gap between them.
       const activeList = [...activeRaces];
       const CHAR_W = 7, LINE_W = 12, LINE_GAP = 4, COL_GAP = 12;
-      const raceLabel = (r: RaceId) => r === "tour" ? "Tour" : r === "giro" ? "Giro" : "Vuelta";
+      const raceLabel = (r: RaceId) => RACE_SHORT_LABEL[r];
       const colMaxW = (r: RaceId): number => {
         const labels = [raceLabel(r)];
         if (activeClassifs.has("sprint")) labels.push("Sprint");
@@ -284,13 +315,20 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       if (sprintY !== null) nextLegendY -= 13;
       const raceY   = nextLegendY;
 
-      // Row 1: race name, solid line
+      // Row 1: race name. Solid line for the Grand Tours, a dot for aggregate
+      // races — matching what actually gets drawn for each (no trend line).
       for (const race of activeList) {
         const lx = lineX.get(race)!;
-        g.append("line")
-          .attr("x1", lx).attr("x2", lx + LINE_W)
-          .attr("y1", raceY).attr("y2", raceY)
-          .attr("stroke", RACES[race].chart.gc).attr("stroke-width", 2);
+        if (RACES[race].stagesAreRaces) {
+          g.append("circle")
+            .attr("cx", lx + LINE_W / 2).attr("cy", raceY)
+            .attr("r", 3.5).attr("fill", RACES[race].chart.gc);
+        } else {
+          g.append("line")
+            .attr("x1", lx).attr("x2", lx + LINE_W)
+            .attr("y1", raceY).attr("y2", raceY)
+            .attr("stroke", RACES[race].chart.gc).attr("stroke-width", 2);
+        }
         g.append("text")
           .attr("x", textX(race)).attr("y", raceY)
           .attr("text-anchor", "start").attr("dominant-baseline", "middle")
@@ -393,22 +431,29 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
         const { gc: gcColor, sprint: sprintColor, kom: komColor } = RACES[race].chart;
         const xFn = (d: CrossPt) => xPos(d.race, d.year);
 
+        // A classics point names the individual race it came from and reads
+        // "Result #n" — it's a placing on the day, not a GC standing.
+        const isAggregate = RACES[race].stagesAreRaces;
         const showTip = (event: MouseEvent, d: CrossPt) => {
-          const gcPart     = d.finalRank  < 9999 ? `<div>GC #${d.finalRank}</div>` : "<div>GC DNF/DNS</div>";
+          const rankWord   = isAggregate ? "Result" : "GC";
+          const gcPart     = d.finalRank  < 9999 ? `<div>${rankWord} #${d.finalRank}</div>` : `<div>${rankWord} DNF/DNS</div>`;
           const sprintPart = d.sprintRank < 9999 ? `<div style="color:${sprintColor}">Sprint #${d.sprintRank}</div>` : "";
           const komPart    = d.komRank    < 9999 ? `<div style="color:${komColor}">KOM #${d.komRank}</div>` : "";
           tooltipEl.innerHTML = `
-            <div class="t-name">${d.year} ${RACES[d.race].name}</div>
+            <div class="t-name">${d.year} ${d.label ?? RACES[d.race].name}</div>
             <div class="t-team">${d.team ?? "—"}</div>
             ${gcPart}${sprintPart}${komPart}
-            <div style="color:var(--text-dim);font-size:11px">Click to view stage chart</div>
+            <div style="color:var(--text-dim);font-size:11px">Click to view ${isAggregate ? "season" : "stage"} chart</div>
           `;
           positionTooltip(event);
         };
 
         if (activeClassifs.has("gc")) {
           const gcFinish = racePts.filter((p) => p.finalRank < 9999);
-          drawLine(gcFinish, xFn, (d) => yScale2(d.finalRank), gcColor);
+          // No trend line for an aggregate race: consecutive points are
+          // different races (often several within one season), so joining
+          // them would draw a progression that doesn't exist.
+          if (!isAggregate) drawLine(gcFinish, xFn, (d) => yScale2(d.finalRank), gcColor);
           g.selectAll<SVGCircleElement, CrossPt>(`.career-gc-${race}`)
             .data(gcFinish).join("circle")
             .attr("class", `career-gc-${race}`)
