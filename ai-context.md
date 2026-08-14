@@ -163,7 +163,7 @@ original bug back and confirm the test fails; that caught two blind spots in thi
 
 ## One-day classics (August 2026)
 
-Eleven monuments/classics, **1970–2025**, added 2026-08-13. In the DB they are
+Eleven monuments/classics, **1970–2026**, added 2026-08-13. In the DB they are
 **11 independent races** (`races.race_type='one_day'`, race_id 4–14, one stage per
 edition). The frontend shows **one** race, `classics` — "One-day Classics" — whose
 "stages" are those races. That aggregation happens only at export time.
@@ -177,7 +177,7 @@ edition). The frontend shows **one** race, `classics` — "One-day Classics" —
 | `ronde-van-vlaanderen` | Tour of Flanders | RVV | | `il-lombardia` | Il Lombardia | IL |
 | `paris-roubaix` | Paris–Roubaix | PR | | | | |
 
-**568 race-years · 79,627 results · 6,445 riders · 5 cancelled.**
+**578 race-years · 81,377 results · 6,545 riders · 5 cancelled.**
 
 Coverage is bounded by each race's founding year, established from PCS returning
 **HTTP 500** for editions that never happened — not from assumption:
@@ -186,10 +186,32 @@ Coverage is bounded by each race's founding year, established from PCS returning
 |---|---|---|
 | Strade Bianche | **2007** | 500s for all of 1970–2006 (37 seasons) |
 | Clásica de San Sebastián | **1981** | 500s for 1970–1980 (11 seasons) |
-| the other nine | 1970 | full 56 seasons each |
+| the other nine | 1970 | full 57 seasons each |
 
 Cancellations found: 2020 lost Paris–Roubaix, Amstel Gold and San Sebastián to
 COVID; **Omloop Het Volk was also cancelled in 1986 and 2004**.
+
+**2026 is an IN-PROGRESS season** — 10 of 11 races are in, and **Il Lombardia
+(scheduled 2026-10-10) has not been run**. It is deliberately *absent* from the
+season rather than stored as cancelled, so 2026 shows 10 race columns. Re-run the
+capture snippet and `ingest_classics.py --year 2026` after it happens; ingest is
+atomic per race-year, so re-running is safe and adds the race without duplicating
+anything.
+
+### A no-results page means THREE different things
+
+This has now caused one real data-fabrication incident and one near-miss, so the
+parser distinguishes all three cases and the capture snippet records the HTTP
+status precisely so it can:
+
+| signal | meaning | handling |
+|---|---|---|
+| HTTP 500 | the edition never existed (Strade Bianche pre-2007) | skipped, no file |
+| 200 + date in the **past** | genuinely cancelled (Omloop 1986, Roubaix 2020) | stored with `cancelled=1` |
+| 200 + date in the **future** | not run yet (Lombardia 2026) | skipped, no file |
+
+Without the date check, an in-progress season silently records every remaining
+race as a cancellation.
 
 ### The rules that matter here
 
@@ -360,7 +382,7 @@ silently corrupted:
   (Paris–Roubaix 2023, Rex Laurenz: `160 … -25`), splitting a row mid-record.
   `parse_classics_bundle.py` joins continuation lines; ingest keeps the awarded
   figure and ignores the annotation rather than guessing the net.
-- Coverage is 1970–2025. Going further back is a scrape-scope decision, not a code
+- Coverage is 1970–2026. Going further back is a scrape-scope decision, not a code
   change (Liège dates to 1892, Roubaix 1896), but re-check the column-shape and
   completeness assumptions above first — 1970–1989 held up well, older editions may
   not.

@@ -27,6 +27,7 @@ value is a gap. `winner + gap` applied to every row is what once doubled
 
 Usage:  python3 parse_classics_bundle.py ~/Downloads/classics_2020_2025.txt
 """
+import datetime
 import json
 import os
 import re
@@ -36,6 +37,8 @@ from race_common import CLASSICS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_ROOT = os.path.join(HERE, "classics_scrapes")
+# Compared against each race's date to tell "not run yet" from "cancelled".
+TODAY = datetime.date.today().isoformat()
 STAGE_ROW_LEN = 15
 
 MONTHS = {m: i + 1 for i, m in enumerate(
@@ -173,6 +176,21 @@ def main(argv):
                 f"skipped. Check the real PCS URL before adding it.")
             continue
         info = b["info"]
+        # A page with no results table means one of THREE different things, and
+        # only the date and the HTTP status tell them apart:
+        #   - HTTP 500        -> the edition never existed (handled above)
+        #   - 200, past date  -> genuinely cancelled (Omloop 1986, Roubaix 2020)
+        #   - 200, future date-> simply not run yet (Il Lombardia in an in-progress
+        #                        season), which must NOT be stored as a cancellation
+        # Skipping the last one also keeps it out of the season's race list until
+        # it actually happens, instead of showing an empty column all year.
+        parsed_date = norm_date(info.get("Date"))
+        if b["noresults"] and parsed_date and parsed_date > TODAY:
+            problems.append(
+                f"{b['race']} {b['year']}: not run yet (scheduled {parsed_date}) — "
+                f"skipped, NOT recorded as cancelled")
+            continue
+
         payload = {
             "info": {
                 "race_slug": b["race"],
