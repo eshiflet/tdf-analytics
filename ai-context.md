@@ -254,9 +254,9 @@ Better than expected, and worth knowing before anyone "fixes" a perceived gap:
 | team | 85% | |
 | **bib number** | **20%** | PCS simply lacks bibs for most pre-1990 editions |
 
-Sparse bibs are the only real gap, and only the by-Stage Table is affected (it
-orders by bib). Verified it degrades correctly: all 207 riders of 1975 render,
-those without a bib show "—" and sort last. **No rider is dropped.**
+Sparse bibs no longer matter for the classics: the by-Stage Table **hides the bib
+column and groups by team** for any race with `stagesAreRaces` (see below). Stage
+races are untouched and still order by bib.
 
 The 1970s/80s calendar also differs from the modern one, which the date ordering
 handles for free — Amstel Gold ran **29 March 1975, before** the Tour of Flanders
@@ -289,6 +289,28 @@ future scrape must keep handling:
   Het Volk"). PCS keeps one slug across the rename, so we store one display
   name for all years. Its **2004 edition was genuinely cancelled** — a real 200
   page, dated, with no results.
+
+### by-Stage Table for an aggregate race
+
+Gated on `RaceConfig.stagesAreRaces`, so only the classics get it:
+
+- **No bib column.** Bibs are reassigned every race and two teams can share a
+  range (Flanders 2010: AG2R and Liquigas both 11–17), so a bib is neither a
+  stable identity nor a sensible ordering across a season.
+- **Riders are grouped into one contiguous block per team**, ordered like a
+  **medal table**: most wins first, ties broken by most 2nd places, then 3rd, and
+  so on down. Within a team, the best finisher leads, then alphabetical. A team
+  with no finishers sorts last among equals by name; riders with no team go last.
+- `buildTeamOrder()` resolves the ordering **once** and hands each rider an
+  integer key — comparing full count vectors inside the rider comparator would be
+  O(maxRank) per comparison.
+- DNF/DNS contribute nothing: a team is ranked on what it achieved, not on how
+  many riders it entered.
+
+2021 is the worked example, and shows the tiebreak doing real work at two levels:
+Quick Step (3 wins) → Jumbo-Visma (2 wins, 1 second) → UAE (2 wins, 0 seconds) →
+Alpecin (1/1/1) → Bahrain (1/1/0). Without the flag the same table fragments 40
+teams into **620 blocks**, which is what the old bib ordering was doing.
 
 ### Filling times PCS omits
 

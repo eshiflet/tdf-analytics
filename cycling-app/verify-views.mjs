@@ -138,6 +138,34 @@ function check(name, cond, detail) {
         metrics.length === 1 && metrics[0] === "gc", metrics.join(","));
 }
 
+// 7b. by-Stage Table: an aggregate race drops the bib column and groups by
+//     team in medal-table order; a stage race keeps bib ordering untouched.
+{
+  const doc = await boot("#classics/2021/stage/gc/table");
+  const ths = [...doc.querySelectorAll("#stage-table thead th")].map((t) => t.textContent.trim());
+  check("classics table hides the bib column", !ths.includes("Bib"), ths.slice(0, 3).join(","));
+  check("classics table keeps a team column", ths[0] === "T", ths[0]);
+
+  // Each team must occupy ONE contiguous block.
+  const teamOfRow = [...doc.querySelectorAll("#stage-table tbody tr")].map((tr) => {
+    const cell = tr.querySelector(".col-team-inner");
+    return cell ? cell.textContent.trim() : null;
+  });
+  const starts = teamOfRow.filter(Boolean);
+  check("classics table groups each team once", new Set(starts).size === starts.length,
+        `${starts.length} blocks, ${new Set(starts).size} distinct`);
+
+  // Medal-table order: the first team must have at least as many wins as the last.
+  check("classics table leads with a winning team",
+        starts.length > 1 && starts[0] === "Deceuninck - Quick Step", starts[0]);
+}
+
+{
+  const doc = await boot("#2024/stage/gc/table");
+  const ths = [...doc.querySelectorAll("#stage-table thead th")].map((t) => t.textContent.trim());
+  check("stage-race table still shows the bib column", ths.includes("Bib"), ths.slice(0, 3).join(","));
+}
+
 // 8. A cancelled race stays in the season rather than vanishing from it.
 {
   const doc = await boot("#classics/2020/overview");

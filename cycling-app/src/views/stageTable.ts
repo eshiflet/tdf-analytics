@@ -109,6 +109,51 @@ function riderSortKey(rider: RiderSeries): [number, number, string] {
   return [1, 0, displayName(rider)];
 }
 
+/** Rank teams like a medal table: most wins first, ties broken by most 2nd
+ *  places, then 3rd, and so on.
+ *
+ *  Only meaningful for an aggregate race, where a season's "stages" are
+ *  separate races and a bib is not a stable identity (numbers are reassigned
+ *  every race, and two teams can share a range — see ai-context.md). Returns
+ *  team name -> display order; a team absent from the map (rider with no
+ *  team) sorts last.
+ *
+ *  Comparing full count vectors is O(maxRank) per comparison, so the ordering
+ *  is resolved ONCE here and each rider then carries a plain integer key —
+ *  rather than re-deriving it inside the rider comparator.
+ */
+function buildTeamOrder(riders: RiderSeries[]): Map<string, number> {
+  const counts = new Map<string, number[]>();
+  let maxRank = 0;
+  for (const rider of riders) {
+    if (!rider.team) continue;
+    let vec = counts.get(rider.team);
+    if (!vec) counts.set(rider.team, (vec = []));
+    for (const sp of rider.byStage) {
+      const rank = sp.gcRank;
+      // DNF/DNS carry no rank and contribute nothing — a team is ordered on
+      // what it achieved, not on how many riders it entered.
+      if (rank == null) continue;
+      vec[rank] = (vec[rank] ?? 0) + 1;
+      if (rank > maxRank) maxRank = rank;
+    }
+  }
+
+  const ordered = [...counts.keys()].sort((a, b) => {
+    const va = counts.get(a)!;
+    const vb = counts.get(b)!;
+    for (let rank = 1; rank <= maxRank; rank++) {
+      const diff = (vb[rank] ?? 0) - (va[rank] ?? 0);
+      if (diff !== 0) return diff;
+    }
+    // Identical record (commonly: no finishers at all) — keep it stable and
+    // predictable rather than leaving it to sort implementation order.
+    return a.localeCompare(b);
+  });
+
+  return new Map(ordered.map((team, i) => [team, i]));
+}
+
 /** Compute team groupings from the sorted rider list.
  *  Returns an array parallel to `riders` where each entry is:
  *  - rowspan > 0: emit a team cell spanning this many rows
@@ -140,9 +185,25 @@ export function drawStageTable() {
   stageTableEl.innerHTML = "";
 
   const stages = state.dataset.stages;
+  // An aggregate race groups by team and hides the bib column: bib numbers are
+  // reassigned per race and two teams can legitimately share a range, so they
+  // are neither a stable identity nor a useful ordering here.
+  const groupByTeam = raceConfig().stagesAreRaces;
+
   // Sort keys computed once per rider rather than rebuilt twice on every
   // comparison.
-  const sortKeys = new Map(state.dataset.riders.map((r) => [r.id, riderSortKey(r)] as const));
+  const teamOrder = groupByTeam ? buildTeamOrder(state.dataset.riders) : null;
+  const sortKeys = new Map(state.dataset.riders.map((r) => {
+    if (!teamOrder) return [r.id, riderSortKey(r)] as const;
+    // Team block first (medal-table order), then the team's best rider at the
+    // top of its block, then name.
+    const key: [number, number, string] = [
+      r.team ? teamOrder.get(r.team) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER,
+      r.finalRank,
+      displayName(r),
+    ];
+    return [r.id, key] as const;
+  }));
   const riders = [...state.dataset.riders].sort((a, b) => {
     const ka = sortKeys.get(a.id)!;
     const kb = sortKeys.get(b.id)!;
@@ -183,10 +244,12 @@ export function drawStageTable() {
     headRow.appendChild(teamTh);
   }
 
-  const bibTh = document.createElement("th");
-  bibTh.className = "col-bib";
-  bibTh.textContent = "Bib";
-  headRow.appendChild(bibTh);
+  if (!groupByTeam) {
+    const bibTh = document.createElement("th");
+    bibTh.className = "col-bib";
+    bibTh.textContent = "Bib";
+    headRow.appendChild(bibTh);
+  }
 
   const riderTh = document.createElement("th");
   riderTh.className = "col-rider";
@@ -235,10 +298,12 @@ export function drawStageTable() {
       // rowspan === 0: no cell emitted; the spanning cell above covers this row
     }
 
-    const bibTd = document.createElement("td");
-    bibTd.className = "col-bib";
-    bibTd.textContent = rider.bibNumber != null ? String(rider.bibNumber) : "—";
-    row.appendChild(bibTd);
+    if (!groupByTeam) {
+      const bibTd = document.createElement("td");
+      bibTd.className = "col-bib";
+      bibTd.textContent = rider.bibNumber != null ? String(rider.bibNumber) : "—";
+      row.appendChild(bibTd);
+    }
 
     const riderTd = document.createElement("td");
     riderTd.className = "col-rider";
