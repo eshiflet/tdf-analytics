@@ -6,6 +6,12 @@
   --text-dim: #9aa0ab;
   --accent: #ffce00;
   --line-dim: #3a3f4b;
+  /* Alternating wash between adjacent team blocks in the by-Stage Table. Two
+     values because the rider/team columns are sticky and must stay OPAQUE —
+     a translucent band would let scrolled cells show through them. Both are a
+     small, equal lift from the surface they sit on (--bg and --panel). */
+  --team-band: #191d25;
+  --team-band-sticky: #222630;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
 }
@@ -708,6 +714,28 @@ svg text {
 
 .stage-table.has-teams .col-rider {
   left: 74px;
+}
+
+/* One-day races hide the bib column, so the rider column must stick directly
+   against the team column instead of leaving a 52px hole where bib used to be. */
+.stage-table.has-teams.no-bib .col-rider {
+  left: 22px;
+}
+
+/* ── Team banding ─────────────────────────────────────────────────────────
+   Every other contiguous team block gets a faint wash so a team's riders read
+   as one group. Result cells set their background INLINE (the per-column heat
+   scale), and an inline style always beats a stylesheet rule — so placement
+   cells keep their colour untouched and only the empty cells take the band,
+   which is exactly the intent. */
+.stage-table tbody tr.team-band td {
+  background: var(--team-band);
+}
+
+.stage-table tbody tr.team-band .col-team,
+.stage-table tbody tr.team-band .col-bib,
+.stage-table tbody tr.team-band .col-rider {
+  background: var(--team-band-sticky);
 }
 
 .stage-table thead .col-bib,

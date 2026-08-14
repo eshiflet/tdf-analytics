@@ -154,6 +154,23 @@ function buildTeamOrder(riders: RiderSeries[]): Map<string, number> {
   return new Map(ordered.map((team, i) => [team, i]));
 }
 
+/** Which rows get the alternating team wash: flips at every team boundary in
+ *  the sorted list, so each contiguous block alternates with its neighbours.
+ *
+ *  Keyed on the BOUNDARY rather than on team identity, which means a trailing
+ *  run of riders with no team reads as one block instead of banding on and off
+ *  once per rider — and a team that somehow appears twice still delineates
+ *  correctly against whatever sits next to it. */
+function buildTeamBands(riders: RiderSeries[]): boolean[] {
+  const bands = new Array<boolean>(riders.length).fill(false);
+  let band = false;
+  for (let i = 0; i < riders.length; i++) {
+    if (i > 0 && riders[i].team !== riders[i - 1].team) band = !band;
+    bands[i] = band;
+  }
+  return bands;
+}
+
 /** Compute team groupings from the sorted rider list.
  *  Returns an array parallel to `riders` where each entry is:
  *  - rowspan > 0: emit a team cell spanning this many rows
@@ -226,12 +243,17 @@ export function drawStageTable() {
 
   const hasTeams = riders.some((r) => r.team !== null);
   const teamRowspans = hasTeams ? buildTeamRowspans(riders) : [];
+  const teamBands = hasTeams ? buildTeamBands(riders) : [];
 
   const wrap = document.createElement("div");
   wrap.className = "stage-table-wrap";
 
   const table = document.createElement("table");
-  table.className = hasTeams ? "stage-table has-teams" : "stage-table";
+  const classes = ["stage-table"];
+  if (hasTeams) classes.push("has-teams");
+  // Shifts the sticky rider column left over the hidden bib column.
+  if (groupByTeam) classes.push("no-bib");
+  table.className = classes.join(" ");
 
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
@@ -280,6 +302,7 @@ export function drawStageTable() {
   const tbody = document.createElement("tbody");
   riders.forEach((rider, ri) => {
     const row = document.createElement("tr");
+    if (teamBands[ri]) row.classList.add("team-band");
 
     if (hasTeams) {
       const rowspan = teamRowspans[ri];

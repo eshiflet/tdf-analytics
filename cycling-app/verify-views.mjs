@@ -158,6 +158,29 @@ function check(name, cond, detail) {
   // Medal-table order: the first team must have at least as many wins as the last.
   check("classics table leads with a winning team",
         starts.length > 1 && starts[0] === "Deceuninck - Quick Step", starts[0]);
+
+  // The sticky rider column must shift left over the hidden bib column, or it
+  // strands a 52px hole beside the team column when scrolled horizontally.
+  const tbl = doc.querySelector(".stage-table");
+  check("classics table marks itself no-bib", tbl.classList.contains("no-bib"), tbl.className);
+
+  // Alternating team wash: every flip must coincide with a team change, and
+  // there must be more than one band (otherwise nothing is being delineated).
+  const trs = [...doc.querySelectorAll("#stage-table tbody tr")];
+  let flips = 0, misaligned = 0, curTeam = null, prevBand = null;
+  for (const tr of trs) {
+    const cell = tr.querySelector(".col-team-inner");
+    if (cell) curTeam = cell.textContent.trim();
+    const band = tr.classList.contains("team-band");
+    if (prevBand !== null && band !== prevBand) {
+      flips++;
+      if (!cell) misaligned++; // flipped mid-team rather than at a boundary
+    }
+    prevBand = band;
+  }
+  check("classics table bands alternate per team block", flips > 5, `${flips} flips`);
+  check("classics table bands flip only at team boundaries", misaligned === 0,
+        `${misaligned} mid-team flips`);
 }
 
 {

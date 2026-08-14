@@ -328,6 +328,19 @@ Gated on `RaceConfig.stagesAreRaces`, so only the classics get it:
   O(maxRank) per comparison.
 - DNF/DNS contribute nothing: a team is ranked on what it achieved, not on how
   many riders it entered.
+- **Hiding the bib column moves the sticky rider column** — `.stage-table.has-teams`
+  pins it at `left: 74px` (22 team + 52 bib), which strands a 52 px hole beside the
+  team column once the table scrolls horizontally. The `no-bib` class re-pins it to
+  22 px. Any future column change here must revisit those offsets.
+
+**Team banding** (all races, not just the classics): every other contiguous team
+block takes a faint wash so a team's riders read as one group. Two CSS variables,
+because the rider/team columns are **sticky and must stay opaque** — a translucent
+band would let scrolled cells show through them. Placement cells are untouched:
+they set their heat colour *inline*, and an inline style always beats a stylesheet
+rule, so the band lands only on the empty cells. Banding is keyed on the team
+**boundary**, not on team identity, so a trailing run of team-less riders reads as
+one block instead of strobing once per rider.
 
 2021 is the worked example, and shows the tiebreak doing real work at two levels:
 Quick Step (3 wins) → Jumbo-Visma (2 wins, 1 second) → UAE (2 wins, 0 seconds) →
