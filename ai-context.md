@@ -967,11 +967,28 @@ giro    90 curated /  90 years   clean (was 88 — 1959 and 1977 were missing)
 vuelta  79 curated /  79 years   clean
 ```
 
-Separately, **34 editions have NO winner time at all** — a visible gap rather
-than a wrong value: Tour 1904–1912 (the points-system era, no times exist) plus
-2026 in progress; Vuelta 1995; and Giro 1909–13, 1928, 1930, 1931, 1946, 1950,
-1952, 1961, 1963–68, 1978. The Giro's mid-century ones are ordinary missing data
-and could be filled from PCS the same way.
+**13 Giro years were filled from PCS's GC pages** (1928, 1930, 1931, 1950, 1952,
+1961, 1963–68, 1978), taking the Giro from 90 to 103 years with a winner time.
+Every winner name was checked against the historical record and every time
+**speed-checked against the stored distance** — all landed at 26.9–36.7 km/h
+with a sensible era progression.
+
+Two deliberate omissions:
+- **Giro 1946 (Bartali, PCS says 65:32:20)** — that is 46.5 km/h over 3,050 km,
+  impossible for the first post-war Giro, and looks like a partial sum. Left
+  missing rather than written.
+- **Giro 1909–1913** have no time GC at all: the early Giro used a POINTS
+  classification, exactly like the Tour before 1913. Nothing to fill.
+
+Still missing overall: Tour 1904–1912 (points era) + 2026 in progress, Vuelta
+1995, Giro 1909–13 and 1946.
+
+**A second gate hid behind the first.** The curated lookup originally sat inside
+`if winner_row:` — i.e. it only ran once a `gc_rank=1` row was found on the
+final stage. 19 Giro editions have no such row (the sparse-final-stage case
+`validate_db` warns about), so adding their figures to the file changed nothing
+until the lookup was moved ahead of the winner lookup. It identifies the TIME
+and never needed the rider.
 
 **`gc_all_times.json`** — `{"1903": {"rider/garin-maurice": 340394, ...}, ...}` — official total times for all riders listed in Wikipedia's GC table (typically top 10 per year). Used to set `totalTimeSeconds` in the export. 1,144 rider-times across 104 years.
 
