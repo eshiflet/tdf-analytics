@@ -76,6 +76,10 @@ function applyRaceCapabilities() {
   if (cfg.hasSprintKom) {
     options.push({ value: "points", label: "Sprint" });
     options.push({ value: "kom", label: "KOM" });
+  } else if (cfg.hasSeasonPoints) {
+    // Same "points" metric path — cumulative totals and per-stage standings —
+    // just fed by season points instead of a sprint classification.
+    options.push({ value: "points", label: "Season Points" });
   }
   if (!options.some((o) => o.value === state.currentMetric)) state.currentMetric = "gc";
   metricSelectEl.innerHTML = "";

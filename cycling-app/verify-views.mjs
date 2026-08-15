@@ -132,10 +132,12 @@ function check(name, cond, detail) {
   check("classics hides All Years Summary", allRacesBtn.hidden === true,
         `hidden=${allRacesBtn.hidden}`);
 
-  // Sprint/KOM are not contested; the metric select must not offer them.
-  const metrics = [...doc.getElementById("metric-select").options].map((o) => o.value);
-  check("classics offers only the result metric",
-        metrics.length === 1 && metrics[0] === "gc", metrics.join(","));
+  // Sprint/KOM are not contested, so neither may be offered — but the "points"
+  // path is reused for the cumulative SEASON STANDING, labelled accordingly.
+  const opts = [...doc.getElementById("metric-select").options];
+  const labels = opts.map((o) => `${o.value}:${o.textContent}`);
+  check("classics offers result + season points, not sprint/KOM",
+        labels.join(",") === "gc:Result,points:Season Points", labels.join(","));
 }
 
 // 7b. by-Stage Table: an aggregate race drops the bib column and groups by
@@ -235,6 +237,18 @@ function check(name, cond, detail) {
         lines[1] === "04/21/2024", lines[1]);
   check("classics tooltip has name/date/start/finish/distance",
         lines.length === 5 && /km/.test(lines[4]), lines.join(" | "));
+}
+
+// 7e. Season standings: cumulative points must never decrease, and a rider who
+//     skipped the FINAL race must still appear in the standings — van der Poel
+//     was 2nd on 2024 points without riding Il Lombardia.
+{
+  const doc = await boot("#classics/2024/stage/points");
+  const legend = [...doc.querySelectorAll("#legend .legend-item, #legend .legend-row")]
+    .map((e) => e.textContent);
+  const hasMvdp = legend.some((t) => /van der Poel/.test(t));
+  check("season standings include a rider who skipped the last race",
+        hasMvdp, `${legend.length} legend rows`);
 }
 
 // 8. A cancelled race stays in the season rather than vanishing from it.

@@ -34,8 +34,15 @@ export interface RaceConfig {
    *  GC metric. */
   hasCumulativeGc: boolean;
   /** Sprint/KOM classifications contested? The classics award neither, so
-   *  both metric options are hidden rather than showing empty charts. */
+   *  both metric options are hidden rather than showing empty charts. Also
+   *  gates the Tour-specific "competition started in 1953/1933" overlays. */
   hasSprintKom: boolean;
+  /** Offer a cumulative season-points standing instead of Sprint/KOM. Only
+   *  meaningful for an aggregate race: a rider's placing in one classic says
+   *  nothing about the next, so the bump chart's line is noise until the
+   *  y-axis accumulates something. Reuses the "points" metric path, which
+   *  already does cumulative totals and per-stage standings. */
+  hasSeasonPoints: boolean;
   /** Cross-year All Years Summary available? Needs an all_races_summary.json,
    *  which the classics deliberately has no equivalent of — totals across a
    *  season of unrelated races aren't a meaningful series. */
@@ -62,6 +69,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasYouth: true,
     hasCumulativeGc: true,
     hasSprintKom: true,
+    hasSeasonPoints: false,
     hasAllYears: true,
     stagesAreRaces: false,
   },
@@ -80,6 +88,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasYouth: false,
     hasCumulativeGc: true,
     hasSprintKom: true,
+    hasSeasonPoints: false,
     hasAllYears: true,
     stagesAreRaces: false,
   },
@@ -97,6 +106,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasYouth: false,
     hasCumulativeGc: true,
     hasSprintKom: true,
+    hasSeasonPoints: false,
     hasAllYears: true,
     stagesAreRaces: false,
   },
@@ -124,6 +134,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasYouth: false,
     hasCumulativeGc: false,
     hasSprintKom: false,
+    hasSeasonPoints: true,
     hasAllYears: false,
     stagesAreRaces: true,
   },

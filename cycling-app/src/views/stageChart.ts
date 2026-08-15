@@ -37,13 +37,39 @@ function buildRankMapsFromField(
   // keep their mid-race rank in rankAtStage but are excluded from finalRank
   // so they don't pollute "Top N" selection or the legend ordering.
   const finalStageNum = Math.max(...state.dataset.stages.map((s) => s.stage_number));
+  // Requiring presence at the final stage is right for a stage race — a rider
+  // who abandoned has no final GC. It is wrong for a SEASON: skipping the last
+  // classic does not remove you from the standings. Mathieu van der Poel
+  // finished 2nd on 2024 points without riding Il Lombardia, and was being
+  // dropped from the legend and every Top-N preset entirely.
+  const seasonStanding = raceConfig().stagesAreRaces;
   const finalRank = new Map<string, number>();
-  for (const rider of state.dataset.riders) {
-    if (rider.byStage.length === 0) continue;
-    const lastSp = rider.byStage[rider.byStage.length - 1];
-    if (lastSp.stage !== finalStageNum) continue;
-    const rank = getRank(lastSp);
-    if (rank != null) finalRank.set(rider.id, rank);
+  if (seasonStanding) {
+    // Rank on the season TOTAL, not on the rank held at each rider's own last
+    // race — otherwise everyone who ever led shows as #1 (2024 listed both
+    // Pogacar and van der Poel there, since each led when they stopped).
+    const totals: Array<[string, number]> = [];
+    for (const rider of state.dataset.riders) {
+      if (rider.byStage.length === 0) continue;
+      const pts = getCumPts(rider.byStage[rider.byStage.length - 1]);
+      if (pts > 0) totals.push([rider.id, pts]);
+    }
+    totals.sort((a, b) => b[1] - a[1]);
+    let prevPts: number | null = null, prevRank = 0;
+    totals.forEach(([id, pts], i) => {
+      const rank = pts === prevPts ? prevRank : i + 1;
+      finalRank.set(id, rank);
+      prevRank = rank;
+      prevPts = pts;
+    });
+  } else {
+    for (const rider of state.dataset.riders) {
+      if (rider.byStage.length === 0) continue;
+      const lastSp = rider.byStage[rider.byStage.length - 1];
+      if (lastSp.stage !== finalStageNum) continue;
+      const rank = getRank(lastSp);
+      if (rank != null) finalRank.set(rider.id, rank);
+    }
   }
   const ridersAtFinal = new Map<number, { riders: RiderSeries[]; points: number }>();
   for (const rider of state.dataset.riders) {
@@ -208,10 +234,14 @@ export function drawChart() {
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
   // No-data overlays for classifications that didn't exist yet
+  // These era cutoffs are about the Tour's own jersey competitions, so they
+  // must not fire for a race that reuses the points metric for something else
+  // — the classics' season standings run back to the 1890s.
+  const jerseyEras = raceConfig().hasSprintKom;
   const noDataMessage =
-    state.currentMetric === "points" && parseInt(state.currentYear) < 1953
+    jerseyEras && state.currentMetric === "points" && parseInt(state.currentYear) < 1953
       ? "No data because the green jersey sprint points competition started in 1953"
-      : state.currentMetric === "kom" && parseInt(state.currentYear) < 1933
+      : jerseyEras && state.currentMetric === "kom" && parseInt(state.currentYear) < 1933
       ? "No data because the KOM points competition started in 1933, though the polka dot jersey wasn't used until 1975"
       : null;
 

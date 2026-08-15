@@ -66,7 +66,7 @@ def fetch_year(cur, year):
     qmarks = ",".join("?" * len(by_id))
     cur.execute(
         f"""SELECT sr.stage_id, sr.rider_id, sr.stage_rank, sr.status,
-                   sr.gap_seconds, sr.team_id, sr.bib_number,
+                   sr.gap_seconds, sr.team_id, sr.bib_number, sr.pcs_points,
                    ri.full_name, ri.first_name, ri.last_name,
                    c.name AS nationality, t.name AS team_name
             FROM stage_results sr
@@ -122,20 +122,57 @@ def build_year(cur, year, slug_of):
             "gcRank": r["stage_rank"],
             "gcGapSeconds": r["gap_seconds"],
             "status": r["status"],
-            # Sprint/KOM are not contested in the classics; the frontend hides
-            # both metrics for this race, but the shape stays uniform.
+            # cumulativePoints/sprintRank carry the SEASON STANDING, not a
+            # sprint classification — the classics contest none. Filled in
+            # below once every rider's races are known. KOM is genuinely
+            # unused, but the shape stays uniform for the frontend.
+            "points": r["pcs_points"] or 0,
             "cumulativePoints": 0,
             "cumulativeKomPoints": 0,
             "sprintRank": None,
             "komRank": None,
         })
 
-    riders = []
+    # ── Season standings ────────────────────────────────────────────────────
+    # A rider's placing in one classic says nothing about the next, so the bump
+    # chart's line is meaningless until the y-axis accumulates something. PCS
+    # points do accumulate, and PCS assigns them across the whole archive (the
+    # 1890s included), so this works for every season.
+    #
+    # Carried forward across races the rider did NOT contest: a standing is a
+    # running total, and resetting or gapping it would make a rider appear to
+    # lose points by missing a race.
     for rec in by_rider.values():
         rec["byStage"].sort(key=lambda p: p["stage"])
+    n_races = len(out_stages)
+    running = {rid: 0 for rid in by_rider}
+    # rank at each race number, over every rider seen so far this season
+    for n in range(1, n_races + 1):
+        for rid, rec in by_rider.items():
+            pt = next((p for p in rec["byStage"] if p["stage"] == n), None)
+            if pt:
+                running[rid] += pt["points"]
+        standing = sorted(running.items(), key=lambda kv: -kv[1])
+        rank_of, prev_pts, prev_rank = {}, None, 0
+        for i, (rid, pts) in enumerate(standing, start=1):
+            # Ties share a rank, as a standings table would show them.
+            rank_of[rid] = prev_rank if pts == prev_pts else i
+            prev_rank, prev_pts = rank_of[rid], pts
+        for rid, rec in by_rider.items():
+            pt = next((p for p in rec["byStage"] if p["stage"] == n), None)
+            if pt:
+                pt["cumulativePoints"] = running[rid]
+                # Only rank riders who have actually scored; a rider on zero
+                # is not "500th in the standings", they are simply unplaced.
+                pt["sprintRank"] = rank_of[rid] if running[rid] > 0 else None
+
+    riders = []
+    for rec in by_rider.values():
         finishes = [p["gcRank"] for p in rec["byStage"] if p["gcRank"] is not None]
         rec["finalRank"] = min(finishes) if finishes else DNF_SENTINEL
         rec["totalTimeSeconds"] = None
+        for p in rec["byStage"]:
+            p.pop("points", None)   # transient: only cumulativePoints ships
         if rec["firstName"] is None:
             rec.pop("firstName")
         if rec["lastName"] is None:

@@ -17,9 +17,10 @@ Warnings (reported, exit 0):
     DNF rider's last entry with their final-standings rank, which can
     collide with the rank map at that earlier stage)
   - duplicate finalRank among finishers, excluding the 9999 DNF/DQ sentinel
-    (genuine ties and post-doping-DQ standings produce real duplicates).
-    Not checked for races in AGGREGATE_FINAL_RANK, where finalRank is a
-    best-of-season aggregate and ties are the normal case.
+    (genuine ties and post-doping-DQ standings produce real duplicates)
+
+  Neither rank check runs for races in AGGREGATE_STANDINGS, where both fields
+  hold standings rather than finishing positions and ties are expected.
   - final KOM totals off by >5% from reference (kom_totals.json) for years
     the reconcile report classifies as keep_pcs (other strategies are
     approximations by design)
@@ -49,9 +50,14 @@ RACE_DIRS = [
     ("classics", "classics", False),
 ]
 
-# Races whose finalRank is an aggregate (best result of the season) rather
-# than a finishing position, so ties in it are expected.
-AGGREGATE_FINAL_RANK = {"classics"}
+# Races whose ranks are STANDINGS rather than finishing positions, so ties are
+# the normal case and not a defect:
+#   - finalRank is the best result of the season (2021: nine riders share #1)
+#   - sprintRank is the cumulative season-points standing, where hundreds of
+#     riders legitimately sit on equal totals
+# Checking either produced ~45,700 warnings on entirely clean data and buried
+# every real one.
+AGGREGATE_STANDINGS = {"classics"}
 
 # Which script rebuilds a race's riders_index.json, for the staleness error.
 INDEX_REBUILD_CMD = {
@@ -67,7 +73,7 @@ KOM_REF_TOLERANCE = 0.05  # warn if a keep_pcs year's top riders drift >5%
 
 
 def validate_year(year: int, ds: dict,
-                  final_rank_is_unique: bool = True) -> tuple[list[str], list[str]]:
+                  ranks_are_unique: bool = True) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -120,7 +126,7 @@ def validate_year(year: int, ds: dict,
 
             for field in ("sprintRank", "komRank"):
                 rank = sp.get(field)
-                if rank is None:
+                if rank is None or not ranks_are_unique:
                     continue
                 per_stage = rank_seen[field].setdefault(st, {})
                 if rank in per_stage:
@@ -140,7 +146,7 @@ def validate_year(year: int, ds: dict,
         # winners of its eleven races). Left on, it emitted 325 warnings for
         # entirely clean data and buried the real ones.
         fr = r.get("finalRank")
-        if (final_rank_is_unique and fr is not None and fr != 9999
+        if (ranks_are_unique and fr is not None and fr != 9999
                 and by_stage and by_stage[-1]["stage"] == final_stage):
             if fr in final_rank_seen:
                 warnings.append(
@@ -249,7 +255,7 @@ def main():
                 ds = json.load(f)
 
             errors, warnings = validate_year(
-                year, ds, final_rank_is_unique=(subdir not in AGGREGATE_FINAL_RANK))
+                year, ds, ranks_are_unique=(subdir not in AGGREGATE_STANDINGS))
 
             if has_kom_ref:
                 entry = totals_data.get(str(year), {})
