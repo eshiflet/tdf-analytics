@@ -6,7 +6,7 @@
 // cross-reference happens inside event handlers, never at module load time.
 // See architecture.md's "Frontend module map" for the full rationale.
 import type { RaceId } from "../raceRegistry";
-import { RACE_IDS, RACE_ABBR, RACE_SHORT_LABEL, RACES, URLS_BY_RACE } from "../raceRegistry";
+import { RACE_IDS, RACE_ABBR, RACE_SHORT_LABEL, URLS_BY_RACE } from "../raceRegistry";
 import { state } from "../state";
 import { ridersChartEl } from "../dom";
 import { updateHash } from "../hashRouting";
@@ -19,7 +19,7 @@ import {
   riderIndexBuilt, ensureRiderIndexFor,
 } from "../riderIndexData";
 import type { JerseyCategory } from "../jerseyIcons";
-import { JERSEY_LABELS, JERSEY_SIMPLE_LABEL, jerseyIconSvgForRace, jerseyIconsElMultiRace, jerseyYearsWon } from "../jerseyIcons";
+import { jerseyCategoriesForRace, jerseyIconSvgForRace, jerseyIconTitle, jerseyIconsElMultiRace, jerseyYearsWon } from "../jerseyIcons";
 import { drawRiderDetail } from "./riderDetail";
 
 export function selectedRacesForRiders(): RaceId[] {
@@ -247,14 +247,13 @@ export async function drawRidersPage() {
     raceBtns.className = "jersey-filter-race-btns";
     raceGroup.appendChild(raceBtns);
     jerseyFilterGroup.appendChild(raceGroup);
-    (Object.keys(JERSEY_LABELS) as JerseyCategory[]).forEach((category) => {
-      if (category === "youth" && !RACES[race].hasYouth) return;
+    jerseyCategoriesForRace(race).forEach((category) => {
       const key = `${race}:${category}`;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "jersey-filter-btn";
       btn.classList.toggle("active", state.ridersFilterJerseys.has(key));
-      btn.title = `${RACE_ABBR[race]} - ${JERSEY_SIMPLE_LABEL[category]}`;
+      btn.title = jerseyIconTitle(category, race);
       btn.innerHTML = jerseyIconSvgForRace(category, race);
       btn.dataset.key = key;
       raceBtns.appendChild(btn);

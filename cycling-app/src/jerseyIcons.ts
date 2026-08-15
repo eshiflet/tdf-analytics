@@ -42,6 +42,28 @@ export function jerseyTooltipLabel(category: JerseyCategory): string {
   return raceConfig().jerseyTooltips[category];
 }
 
+/** The classifications a race actually contests — the classics award no
+ *  sprint/KOM jersey (and no youth one), so those icons are omitted entirely
+ *  rather than rendered as jerseys nobody can win. */
+export function jerseyCategoriesForRace(race: RaceId): JerseyCategory[] {
+  const config = RACES[race];
+  return (Object.keys(JERSEY_LABELS) as JerseyCategory[]).filter((category) => {
+    if (category === "youth") return config.hasYouth;
+    if (category === "sprint" || category === "kom") return config.hasSprintKom;
+    return true;
+  });
+}
+
+/** "<Race> - <Classification>" title for the riders-grid icons and the jersey
+ *  filter buttons. A one-day race has no running general classification, so
+ *  its lone jersey belongs to the winner on the day, not a "GC". */
+export function jerseyIconTitle(category: JerseyCategory, race: RaceId): string {
+  const label = category === "gc" && !RACES[race].hasCumulativeGc
+    ? "Winner"
+    : JERSEY_SIMPLE_LABEL[category];
+  return `${RACE_ABBR[race]} - ${label}`;
+}
+
 // Doping notes shown next to GC jersey years on the rider detail page.
 export const DOPING_GC_NOTES: Record<string, string> = {
   "rider/lance-armstrong": "Stripped of yellow jersey due to doping",
@@ -116,11 +138,11 @@ export function jerseyIconsElMultiRace(entry: RiderEntry, races: RaceId[]): HTML
     const raceEntry = riderIndexByRace[race].get(entry.id);
     if (!raceEntry) continue;
     const won = jerseyYearsWon(raceEntry);
-    for (const category of Object.keys(JERSEY_LABELS) as JerseyCategory[]) {
+    for (const category of jerseyCategoriesForRace(race)) {
       if (won[category].length === 0) continue;
       const el = document.createElement("span");
       el.className = "jersey-icon";
-      el.title = `${RACE_ABBR[race]} - ${JERSEY_SIMPLE_LABEL[category]}`;
+      el.title = jerseyIconTitle(category, race);
       el.innerHTML = jerseyIconSvgForRace(category, race);
       out.push(el);
     }
