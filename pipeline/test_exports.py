@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import export_all_races_summary as EARS
 import export_gc
+import export_race_summary as ERS
 import export_riders_index as ERI
 from export_gc import Supplements, compute_stage_labels
 
@@ -201,10 +202,6 @@ class TestAllRacesSummary(unittest.TestCase):
         self.assertIn("reconciliation", self.output)
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
-
-
 class TestSupplements(unittest.TestCase):
     """export_gc.Supplements — replaced four path globals and four caches."""
 
@@ -354,3 +351,79 @@ class TestRidersIndex(unittest.TestCase):
 
     def test_empty_input(self):
         self.assertEqual(ERI.build_index([]), {"teams": [], "riders": {}})
+
+
+class TestDistanceBaseline(unittest.TestCase):
+    """
+    export_race_summary.report_distance_divergences — the Giro/Vuelta distance
+    reconciliation, shared with the TDF exporter.
+
+    19 of 189 Giro+Vuelta editions disagree with Wikipedia by >3% for reasons
+    that are not defects. Reporting all 19 on every run makes the warning
+    unreadable and means --strict can never pass, so the baseline is what makes
+    the check usable at all: only a NEW divergence is allowed to surface.
+    """
+
+    DIV = {"year": 1926, "wiki_km": 3249.7, "db_km": 3425.0, "pct": 5.4, "stages": 12}
+
+    def report(self, divergences, accepted, strict=False, have_source=True):
+        import io
+        buf, sys.stdout = sys.stdout, io.StringIO()
+        try:
+            new = ERS.report_distance_divergences(
+                divergences, accepted, 3.0, have_source, "giro", strict)
+        finally:
+            self.output = sys.stdout.getvalue()
+            sys.stdout = buf
+        return new
+
+    def test_unlisted_divergence_is_reported_as_new(self):
+        self.assertTrue(self.report([self.DIV], {}))
+        self.assertIn("WARNING", self.output)
+        self.assertIn("1926", self.output)
+
+    def test_baselined_divergence_is_not_new(self):
+        self.assertFalse(self.report([self.DIV], {"1926": "investigated"}))
+        self.assertNotIn("WARNING", self.output)
+        self.assertIn("already-investigated", self.output)
+
+    def test_baseline_hides_only_the_listed_year(self):
+        other = dict(self.DIV, year=1949)
+        self.assertTrue(self.report([self.DIV, other], {"1926": "investigated"}))
+        self.assertIn("1949", self.output)
+        # The baselined year must not reappear in the NEW table.
+        table = self.output[self.output.index("WARNING"):]
+        self.assertNotIn("1926", table)
+
+    def test_strict_exits_on_a_new_divergence(self):
+        with self.assertRaises(SystemExit) as cm:
+            self.report([self.DIV], {}, strict=True)
+        self.assertEqual(cm.exception.code, 1)
+
+    def test_strict_passes_when_every_divergence_is_baselined(self):
+        self.report([self.DIV], {"1926": "investigated"}, strict=True)  # must not raise
+
+    def test_missing_distance_file_says_how_to_build_it(self):
+        self.assertFalse(self.report([], {}, have_source=False))
+        self.assertIn("scrape_wiki_distances.py", self.output)
+
+    def test_shipped_baseline_is_well_formed(self):
+        """Every entry needs a real reason — an empty note silences a year
+        without recording why, which is the failure this file exists to fix."""
+        path = os.path.join(HERE, "distance_divergence_baseline.json")
+        with open(path, encoding="utf-8") as f:
+            baseline = json.load(f)
+        self.assertEqual(set(baseline), {"tour", "giro", "vuelta"})
+        for race, years in baseline.items():
+            for year, reason in years.items():
+                self.assertRegex(year, r"^(19|20)\d\d$", f"{race} {year}")
+                self.assertGreater(len(reason), 20, f"{race} {year} needs a real reason")
+
+    def test_every_race_loads_its_own_slice(self):
+        self.assertNotEqual(ERS.load_distance_baseline("giro"),
+                            ERS.load_distance_baseline("vuelta"))
+        self.assertEqual(ERS.load_distance_baseline("nonexistent-race"), {})
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

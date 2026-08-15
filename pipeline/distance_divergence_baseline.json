@@ -1,0 +1,28 @@
+{
+  "giro": {
+    "1926": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1928": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1949": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1965": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1967": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1989": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "2011": "accepted 2026-08-15: stage 4 (Quarto dei Mille - Livorno) is stored as 0.0 km with no results - the convention for a stage that produced no classification. It was ridden as a neutralized procession after Wouter Weylandt's death on stage 3, so its real distance is absent from the sum. Not a missing stage."
+  },
+  "tour": {
+    "1978": "accepted 2026-08-15: DB +4.4% over Wikipedia across 25 stages; stage numbering contiguous, no stage missing"
+  },
+  "vuelta": {
+    "1957": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1968": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1974": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1976": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1978": "accepted 2026-08-15: stage 21 is stored as 0.0 km with no results (cancelled-stage convention). The DB still runs +4.4% OVER Wikipedia, so the gap is source disagreement, not the zero-length stage.",
+    "1983": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1984": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1992": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "1995": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "2002": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "2004": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+    "2005": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing"
+  }
+}

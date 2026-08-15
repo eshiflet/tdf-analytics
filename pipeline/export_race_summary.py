@@ -21,9 +21,23 @@ Fields:
   gcWinnerTimeSeconds      — sum of finish_time_seconds for the overall GC winner
   slowestFinisherTimeSeconds — gcWinnerTimeSeconds + MAX(gc_gap_seconds) at final stage
 
+totalDistanceKm is RECONCILED against {race}_race_distances.json (Wikipedia's
+published total, built by scrape_wiki_distances.py) and any disagreement above
+DISTANCE_TOLERANCE_PCT is reported. A summed distance always looks plausible,
+so an edition missing whole stages produces a total that is merely small rather
+than obviously wrong — there is nothing in the number itself to notice.
+
+Unlike the TDF exporter, the DB sum is what gets EXPORTED here; Wikipedia is
+used only as the check. The TDF displays Wikipedia's figure because its PCS
+stage sums had errors 100-200 km wide, which is not the case for these two:
+across 189 editions the median disagreement is 0.13% (Giro) / 0.23% (Vuelta).
+Displaying the DB also keeps a defect visible in the UI instead of masking it
+behind a correct-looking total that only the console mentions.
+
 Usage:
   python3 export_race_summary.py --race giro
   python3 export_race_summary.py --race vuelta
+  python3 export_race_summary.py --race giro --strict   # exit 1 on divergence
 """
 
 import json
@@ -38,10 +52,69 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIRST_YEAR = {"giro": 1909, "vuelta": 1935}
 DB_RACE_NAME = {"giro": "Giro d'Italia", "vuelta": "Vuelta a España"}
 
+# How far the DB's summed stage distances may drift from Wikipedia's published
+# route total before it's treated as a defect rather than noise. Same 3% the
+# TDF exporter uses. Historical sources genuinely disagree by a percent or two
+# on neutralized sections and split stages; a whole missing stage lands well
+# outside it. 186 of 189 editions sit under 1%.
+DISTANCE_TOLERANCE_PCT = 3.0
+
 
 def _flag(name, default):
     """Value of an optional `--name VALUE` argument, or default."""
     return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
+
+
+def load_distance_baseline(race):
+    """
+    Already-investigated divergences: {"1926": "why it's accepted", ...}.
+
+    Without this the reconciliation is unusable. 19 of 189 editions disagree
+    with Wikipedia by >3% for reasons that are NOT defects (prologue and split
+    stage accounting, neutralized sections, stages stored as 0.0 km because
+    they produced no classification). A warning that prints the same 19 rows
+    forever is one nobody reads, and --strict could never pass, so nothing
+    would ever gate on it. Listing them here means a 20th arrival is the only
+    thing that shows up as new.
+
+    Shared by export_all_races_summary.py so all three races behave alike.
+    """
+    path = os.path.join(HERE, "distance_divergence_baseline.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f).get(race, {})
+
+
+def report_distance_divergences(divergences, accepted, tolerance, have_source, race, strict):
+    """Prints the reconciliation outcome. Returns True if anything is NEW."""
+    if not have_source:
+        print(f"No {race}_race_distances.json — distance NOT reconciled. "
+              f"Build it with: python3 scrape_wiki_distances.py --race {race}")
+        return False
+
+    new = [d for d in divergences if str(d["year"]) not in accepted]
+    known = len(divergences) - len(new)
+
+    if new:
+        print(f"\nWARNING: {len(new)} NEW edition(s) where the DB's summed stage "
+              f"distances disagree with Wikipedia by >{tolerance}%.")
+        print("A large NEGATIVE gap is the missing-stages signature; a positive one is")
+        print("usually a split stage counted twice or a differing neutralized section.")
+        print(f"  {'year':<6}{'wiki km':>9}{'db km':>10}{'diff':>8}{'stages':>8}")
+        for d in sorted(new, key=lambda d: d["pct"]):
+            print(f"  {d['year']:<6}{d['wiki_km']:>9}{d['db_km']:>10}"
+                  f"{d['pct']:>7}%{d['stages']:>8}")
+        print("Investigate, then add each to distance_divergence_baseline.json with a reason.")
+    else:
+        print(f"Distance reconciliation: no new divergence beyond {tolerance}%.")
+
+    if known:
+        print(f"  ({known} already-investigated divergence(s) in the baseline)")
+    if new and strict:
+        print("\n--strict: failing on new distance divergence.")
+        sys.exit(1)
+    return bool(new)
 
 
 def main():
@@ -64,6 +137,7 @@ def main():
         HERE, "..", "cycling-app", "src", "data", race, "all_races_summary.json"))
     overrides_path = _flag("--overrides", os.path.join(
         HERE, f"{race}_races_summary_overrides.json"))
+    strict = "--strict" in sys.argv
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -102,7 +176,18 @@ def main():
         with open(winner_times_path, encoding="utf-8") as f:
             curated_winner_times = json.load(f)
 
+    # Wikipedia's published route total — an independent check on the DB, not a
+    # value that gets exported. Built by scrape_wiki_distances.py --race <race>.
+    wiki_distances = {}
+    distances_path = os.path.join(HERE, f"{race}_race_distances.json")
+    if os.path.exists(distances_path):
+        with open(distances_path, encoding="utf-8") as f:
+            wiki_distances = json.load(f)
+
+    accepted = load_distance_baseline(race)
+
     out = []
+    divergences = []
     for year in range(first_year, last_year + 1):
         edition_id = editions.get(year)
         if edition_id is None:
@@ -118,6 +203,19 @@ def main():
         total_distance = cur.execute(
             "SELECT SUM(distance_km) FROM stages WHERE edition_id=?", (edition_id,)
         ).fetchone()[0]
+
+        wiki_distance = wiki_distances.get(str(year))
+        if wiki_distance and total_distance:
+            pct = (total_distance - wiki_distance) / wiki_distance * 100
+            if abs(pct) > DISTANCE_TOLERANCE_PCT:
+                n_stages = cur.execute(
+                    "SELECT COUNT(*) FROM stages WHERE edition_id=?", (edition_id,)
+                ).fetchone()[0]
+                divergences.append({
+                    "year": year, "wiki_km": wiki_distance,
+                    "db_km": round(total_distance, 1), "pct": round(pct, 1),
+                    "stages": n_stages,
+                })
 
         total_elevation = cur.execute(
             "SELECT SUM(vertical_meters) FROM stages WHERE edition_id=?", (edition_id,)
@@ -195,6 +293,9 @@ def main():
 
     years_with_data = sum(1 for r in out if r["totalDistanceKm"] is not None)
     print(f"Wrote {len(out)} years ({first_year}-{last_year}), {years_with_data} with data -> {out_path}")
+
+    report_distance_divergences(divergences, accepted, DISTANCE_TOLERANCE_PCT,
+                                bool(wiki_distances), race, strict)
 
 
 if __name__ == "__main__":

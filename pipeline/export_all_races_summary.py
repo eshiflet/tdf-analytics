@@ -44,6 +44,8 @@ import os
 import sqlite3
 import sys
 
+from export_race_summary import load_distance_baseline, report_distance_divergences
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 WIKI_DISTANCES_PATH = os.path.join(HERE, "wiki_race_distances.json")
@@ -169,21 +171,13 @@ def main():
 
     print(f"Wrote {len(out)} years ({FIRST_YEAR}-{last_year}) -> {OUT_PATH}")
 
-    if divergences:
-        print(f"\nWARNING: {len(divergences)} edition(s) where the DB's summed stage "
-              f"distances disagree with Wikipedia by >{DISTANCE_TOLERANCE_PCT}%.")
-        print("The app displays Wikipedia's figure, so these do NOT surface in the UI —")
-        print("a large negative gap usually means stages are missing from the DB.")
-        print(f"  {'year':<6}{'wiki km':>9}{'db km':>10}{'diff':>8}{'stages':>8}")
-        for d in divergences:
-            print(f"  {d['year']:<6}{d['wiki_km']:>9}{d['db_km']:>10}"
-                  f"{d['pct']:>7}%{d['stages']:>8}")
-        if STRICT:
-            print("\n--strict: failing on distance divergence.")
-            sys.exit(1)
-    else:
-        print(f"Distance reconciliation: all editions within "
-              f"{DISTANCE_TOLERANCE_PCT}% of Wikipedia.")
+    # Same baseline + reporting the Giro/Vuelta exporter uses, so all three
+    # races behave alike and an already-investigated year stops printing
+    # forever. The app displays Wikipedia's figure for the TDF, so a
+    # divergence here never surfaces in the UI — the console is the only
+    # place it can be noticed at all.
+    report_distance_divergences(divergences, load_distance_baseline("tour"),
+                                DISTANCE_TOLERANCE_PCT, True, "tour", STRICT)
 
 
 if __name__ == "__main__":
