@@ -11,13 +11,22 @@ hole is therefore fillable by a plain INSERT, with no renumbering.
 Confirmed instances (all verified on PCS):
     Giro 1912 stage 4   Pescara -> Roma
     Giro 1946 stage 12  Rovigo -> Trieste
-    Giro 1969 stage 20  Trento -> Marmolada        cold and snow
+    Giro 1969 stage 20  Trento -> Marmolada        bad weather (see date warning below)
     Giro 2001 stage 18  Imperia -> Sant'Anna di Vinadio   San Remo raids
     Giro 2011 stage 4   Genova -> Livorno          Weylandt tribute
     Giro 2013 stage 19  Ponte di Legno -> Val Martello    adverse weather
 
 Precedent: Vuelta 1968 stage 15 and Vuelta 1991 stage 11 already sit in the DB
 this way — cancelled=1, zero results.
+
+CHECK THE DATE this script parses, every time. A cancelled stage's page is
+nearly empty, and Giro 1969 stage 20 came out carrying stage 19's date
+(1969-06-04 instead of 1969-06-05). Nothing noticed for months: the row has no
+results, so nobody reads it. But compute_stage_labels() treats two stages on
+one date as a split day, so the stage rendered as "19b" and every later label
+shifted down one — the finale showed as 22 in a 23-stage Giro. validate_db.py's
+check_phantom_split_days() now catches exactly this, and stage_notes.json
+records the corrected date.
 
 Safety: a stage is only inserted when PCS's page for that slug actually says
 the stage was cancelled AND the neighbouring DB stages confirm the slug

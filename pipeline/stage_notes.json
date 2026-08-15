@@ -74,8 +74,9 @@
       "21": {
         "slug": "stage-20",
         "route": "Trento -> Marmolada",
-        "note": "Cancelled: cold and snow. No classification was recorded, so no result exists to scrape.",
-        "source": "insert_cancelled_stages.py verified list (PCS)"
+        "official_stage_number": 20,
+        "note": "STAGE 20 (not 21 — DB stage_number 21 is the internal integer; the 18a/18b split day on 3 June puts it one ahead of the official number from stage 19 onward). Scheduled Thursday 5 June 1969 and cancelled because of bad weather, confirmed by both bikeraceinfo and PCS. No classification was recorded, so no result exists to scrape and none ever will. DO NOT re-scrape. The stage was stored with the WRONG date (1969-06-04, duplicating stage 19's) until 2026-08-15, which made the app render it as a phantom split day '19b' and shifted every later label down one, so the finale showed as 22 instead of 23.",
+        "source": "https://www.bikeraceinfo.com/giro/giro1969.html ('Thursday, June 5: Stage 20, Trento - Marmolada. Stage 20 canceled because of bad weather') and https://www.procyclingstats.com/race/giro-d-italia/1969/stage-20/result/result — Eric, 2026-08-15"
       }
     },
     "2001": {

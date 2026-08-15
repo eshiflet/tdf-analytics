@@ -1,1 +1,16 @@
-{"n": 21, "slug": "stage-20", "cancelled": true, "info": {"Date": "1969-06-04", "Distance": "0 km", "Start": "Trento", "Finish": "Marmolada", "Won how": ""}, "profile_icon": "p1", "rows": [], "sprint_points": {}, "kom_points": {}}
+{
+ "n": 21,
+ "slug": "stage-20",
+ "cancelled": true,
+ "info": {
+  "Date": "1969-06-05",
+  "Distance": "0 km",
+  "Start": "Trento",
+  "Finish": "Marmolada",
+  "Won how": ""
+ },
+ "profile_icon": "p1",
+ "rows": [],
+ "sprint_points": {},
+ "kom_points": {}
+}

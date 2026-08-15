@@ -92,6 +92,63 @@ def check_intentional_gaps(cur):
                  f"which is not a cancelled stage in the DB (wrong stage_number?)")
 
 
+def check_phantom_split_days(cur):
+    """
+    A cancelled stage sharing a date with another stage, without the split-day
+    slug that would justify it.
+
+    compute_stage_labels() reads a repeated consecutive date as a split day and
+    labels the pair '19a'/'19b' — correct when the day really was split, and
+    wrong otherwise. Wrong is expensive: it renames the stage AND shifts every
+    later label down one, because the pair consumes a single day number. Giro
+    1969's cancelled Trento-Marmolada carried stage 19's date until 2026-08-15,
+    so it rendered as '19b' and the finale showed as 22 instead of 23.
+
+    SCOPED TO CANCELLED STAGES, and that scope is the whole check. A cancelled
+    stage is where a bad date hides: it has no results, so nobody reads its
+    row, and its date was parsed from a page that had nothing else on it.
+    Ordinary stages cannot be screened this way at all — PCS letters split days
+    in some editions and numbers them SEQUENTIALLY in others (TDF 1986
+    stage-1/stage-2 fall on one day and are a genuine split), so the same rule
+    applied to every stage produced 33 false errors on correct data.
+
+    The slug still separates the two cancelled cases: a real split half ends in
+    a letter, and Giro 1956 stage-9b and Vuelta 1978 stage-19b are both genuine
+    cancelled second halves that must NOT be flagged.
+    """
+    rows = cur.execute(
+        """SELECT r.name, e.year, s.stage_number, s.stage_date, s.source_slug, s.edition_id
+           FROM stages s
+           JOIN race_editions e USING(edition_id)
+           JOIN races r USING(race_id)
+           WHERE r.race_type = 'stage_race' AND s.stage_date IS NOT NULL
+           ORDER BY r.name, e.year, s.stage_number"""
+    ).fetchall()
+
+    dates_seen = defaultdict(int)
+    for row in rows:
+        dates_seen[(row[5], row[3])] += 1
+
+    cancelled = cur.execute(
+        """SELECT r.name, e.year, s.stage_number, s.stage_date, s.source_slug, s.edition_id
+           FROM stages s
+           JOIN race_editions e USING(edition_id)
+           JOIN races r USING(race_id)
+           WHERE r.race_type = 'stage_race' AND s.cancelled = 1
+             AND s.stage_date IS NOT NULL
+           ORDER BY r.name, e.year, s.stage_number"""
+    ).fetchall()
+
+    for race, year, num, date, slug, edition_id in cancelled:
+        if dates_seen[(edition_id, date)] < 2:
+            continue
+        if slug and slug[-1].isalpha():
+            continue        # 'stage-19b' — a genuine cancelled split half
+        err(f"{race} {year} stage {num} ({slug}) is cancelled and shares date "
+            f"{date} with another stage, but its slug is not a split half — it "
+            f"renders as a phantom split day and shifts every later label")
+
+
 def check_referential(c):
     for label, sql in [
         ("stage_results referencing a missing stage",
@@ -318,6 +375,7 @@ def main():
     check_editions(cur, races)
     check_split_slug_provenance(cur)
     check_results(cur)
+    check_phantom_split_days(cur)
     check_intentional_gaps(cur)
     conn.close()
 
