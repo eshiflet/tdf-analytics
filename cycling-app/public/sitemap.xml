@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://eshiflet.github.io/tdf-analytics/</loc>
+    <loc>https://www.ericshiflet.com/tdf-analytics/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://eshiflet.github.io/tdf-analytics/tour/</loc>
+    <loc>https://www.ericshiflet.com/tdf-analytics/tour/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://eshiflet.github.io/tdf-analytics/giro/</loc>
+    <loc>https://www.ericshiflet.com/tdf-analytics/giro/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://eshiflet.github.io/tdf-analytics/vuelta/</loc>
+    <loc>https://www.ericshiflet.com/tdf-analytics/vuelta/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://eshiflet.github.io/tdf-analytics/classics/</loc>
+    <loc>https://www.ericshiflet.com/tdf-analytics/classics/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>

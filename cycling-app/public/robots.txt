@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://eshiflet.github.io/tdf-analytics/sitemap.xml
+Sitemap: https://www.ericshiflet.com/tdf-analytics/sitemap.xml
