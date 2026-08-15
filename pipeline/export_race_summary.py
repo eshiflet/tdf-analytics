@@ -82,6 +82,14 @@ def main():
         with open(overrides_path, encoding="utf-8") as f:
             overrides = {int(k): v for k, v in json.load(f).items()}
 
+    # Authoritative GC winner times, keyed by year as a string. Same file
+    # export_gc.py reads; loaded here so both exporters agree on the figure.
+    curated_winner_times = {}
+    winner_times_path = os.path.join(HERE, f"{race}_gc_winner_times.json")
+    if os.path.exists(winner_times_path):
+        with open(winner_times_path, encoding="utf-8") as f:
+            curated_winner_times = json.load(f)
+
     out = []
     for year in range(first_year, last_year + 1):
         edition_id = editions.get(year)
@@ -121,18 +129,29 @@ def main():
 
             if winner_row:
                 winner_id = winner_row["rider_id"]
-                # Sum finish_time_seconds for winner across all stages
-                total_time = cur.execute(
-                    """SELECT SUM(sr.finish_time_seconds)
-                       FROM stage_results sr
-                       JOIN stages s ON sr.stage_id = s.stage_id
-                       WHERE s.edition_id=? AND sr.rider_id=?
-                         AND sr.finish_time_seconds IS NOT NULL""",
-                    (edition_id, winner_id),
-                ).fetchone()[0]
+                # The curated {race}_gc_winner_times.json wins when it has the
+                # year. Summing per-stage times is only a FALLBACK: it silently
+                # understates any edition where some stages lack a winner time,
+                # and there is no way to tell a short sum from a short race.
+                # Vuelta 1968 had times for 12 of its 20 stages and reported
+                # 18:33:54 against a real 78:29:00 — sitting between neighbours
+                # of 76:38 and 73:18 on the All Years chart. export_gc.py has
+                # always preferred this file; this exporter did not.
+                gc_winner_seconds = curated_winner_times.get(str(year))
 
-                if total_time:
-                    gc_winner_seconds = int(total_time)
+                if gc_winner_seconds is None:
+                    total_time = cur.execute(
+                        """SELECT SUM(sr.finish_time_seconds)
+                           FROM stage_results sr
+                           JOIN stages s ON sr.stage_id = s.stage_id
+                           WHERE s.edition_id=? AND sr.rider_id=?
+                             AND sr.finish_time_seconds IS NOT NULL""",
+                        (edition_id, winner_id),
+                    ).fetchone()[0]
+                    if total_time:
+                        gc_winner_seconds = int(total_time)
+
+                if gc_winner_seconds:
                     # Slowest = winner + max gap at final stage among finishers
                     max_gap = cur.execute(
                         """SELECT MAX(gc_gap_seconds) FROM stage_results

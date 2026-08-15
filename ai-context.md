@@ -944,6 +944,19 @@ Array index = stage position in DB ordering (matches `stages` table order). Each
 
 **`tour_gc_winner_times.json`** — `{"1903": 340380, "1904": 345955, ...}` — official total race time in seconds for the GC winner, scraped from Wikipedia's General Classification table. 103 of 112 years. Missing: 1905–1912 (points-system era, no times) and 1904 (non-standard table). 2000–2005 uses Armstrong's time (DSQ in 2012 but fastest in the race).
 
+**`{race}_gc_winner_times.json` is authoritative for BOTH exporters.** `export_gc.py`
+always preferred it; `export_race_summary.py` did not, and computed
+`gcWinnerTimeSeconds` by summing the winner's per-stage `finish_time_seconds`
+instead. That sum silently understates any edition where some stages lack a
+winner time, and nothing distinguishes a short sum from a short race: **Vuelta
+1968 had times for 12 of its 20 stages and reported 18:33:54 against a real
+78:29:00**, sitting between neighbours of 76:38 and 73:18 on the All Years
+chart. Both exporters now read the file first and fall back to the stage sum
+only when the year is absent. Adding a missing year to that file is the fix for
+this class of bug — 1968 (Gimondi, 78:29:00, verified on PCS's own GC page,
+51 finishers with the last at +1:46:09) was the only Vuelta year affected, and
+the Giro none.
+
 **`gc_all_times.json`** — `{"1903": {"rider/garin-maurice": 340394, ...}, ...}` — official total times for all riders listed in Wikipedia's GC table (typically top 10 per year). Used to set `totalTimeSeconds` in the export. 1,144 rider-times across 104 years.
 
 **`wiki_race_distances.json`** — `{"1903": 2428.0, "1904": 2428.0, ...}` — official total race distance in km scraped from Wikipedia infoboxes. 109 of 112 years. Used in `all_races_summary.json` as the authoritative source (PCS stage sums had many errors including some 100–200 km off).
