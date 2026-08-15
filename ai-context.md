@@ -271,20 +271,11 @@ N races = one displayed season), so sharing the code would contort both. There i
 **Finishing times are 100% complete for every finisher in every era measured**
 (1946 onward). What degrades going back is *team* attribution and field size:
 
-| decade | riders with a team |
-|---|---|
-| 1940s | **2%** |
-| 1950s | 32% |
-| 1960s | 31% |
-| 1970s | 72% |
-| 1980s | 96% |
-| 1990s → | 99–100% |
-
-**This directly weakens the team-grouped by-Stage Table pre-1970.** 1952 renders as
-37 real team blocks followed by a single 163-row team-less run — 46% of the table.
-That run is ordered by best finish and bands as one block, so it is honest rather
-than broken, but the grouping does less work the further back you go. Consider a
-different ordering for sparse-team years if this becomes annoying.
+Team attribution was the weak field; **bikeraceinfo has since filled 4,370 of the
+gaps** (see below), taking the 1960s from 31% to 74% and the 1970s to 88%. What
+remains missing is concentrated in the five non-Monument races, which bikeraceinfo
+only stubs pre-1990. 1952 improved from 37 team blocks + a 163-row team-less tail
+to 57 blocks + a 127-row tail.
 
 Field size shrinks too: 1946–1969 races carry mostly **25–75 riders** against ~175
 today, and only 344 non-finishers across 12,331 rows — PCS stores a partial field
@@ -326,11 +317,29 @@ future scrape must keep handling:
   Het Volk"). PCS keeps one slug across the rename, so we store one display
   name for all years. Its **2004 and 1986 editions were genuinely cancelled** —
   real 200 pages, dated, with no results.
-- **PCS has no Omloop 1960 edition at all**: it returns HTTP 500, reproducibly, on
-  a fresh independent fetch — every other year 1946–2026 resolves. Whether the race
-  was not held or PCS simply lacks it cannot be told from here, so nothing is
-  recorded (no invented cancellation). A candidate for the bikeraceinfo /
-  cyclingflash cross-check that `patch_classics_times.py` already supports.
+- **Omloop was NOT HELD in 1960** — a dispute between the race organisers and the
+  sport's governing body (Eric, 2026-08-14). PCS reflects this with a reproducible
+  HTTP 500 while every other year 1946–2026 resolves, so recording nothing is
+  correct: there is no edition to store, and it is not a cancellation of a race
+  that took place.
+
+### National teams: a Grand Tour thing, NOT a classics thing
+
+Worth stating because it looks like it should explain the sparse pre-1970 team
+data, and it does not. Checked against this DB:
+
+- **The Tour de France really did run national teams**: France and Belgium
+  1930–1961, Italy/Spain 1930–1968, Netherlands 1936–1968, Switzerland 1932–1957,
+  Germany 1930–1938, Luxembourg 1937–1953 — thousands of results each.
+- **The classics never did.** Every team in the 1946–1969 classics is commercial
+  (Faema, Bertin–Wolber, Mercier–BP–Hutchinson, Peugeot–BP–Michelin, Salvarani,
+  Alcyon–Dunlop, Bic). The sole national squad in 81 years is **Italy at Strade
+  Bianche 2015** — six riders on a wildcard invite, `team/italy-2015`.
+
+So the missing pre-1970 team attribution is **genuinely absent PCS data**, not
+riders racing under a national banner. Do not relabel it as nationality on that
+theory. Rider **nationality**, by contrast, is **100% populated in every decade**,
+which makes it the only viable fallback grouping if one is ever wanted.
 
 ### by-Stage Table for an aggregate race
 
@@ -366,6 +375,56 @@ one block instead of strobing once per rider.
 Quick Step (3 wins) → Jumbo-Visma (2 wins, 1 second) → UAE (2 wins, 0 seconds) →
 Alpecin (1/1/1) → Bahrain (1/1/0). Without the flag the same table fragments 40
 teams into **620 blocks**, which is what the old bib ordering was doing.
+
+### Filling team attribution PCS omits (bikeraceinfo)
+
+`scrape_bikeraceinfo_teams.py` → `patch_classics_teams.py` fill rider→team where
+PCS has none. **4,370 teams filled** across 1946–1989:
+
+| decade | before | after |
+|---|---|---|
+| 1940s | 2% | **31%** |
+| 1950s | 32% | **53%** |
+| 1960s | 31% | **74%** |
+| 1970s | 72% | **88%** |
+| 1980s | 96% | 97% |
+
+**bikeraceinfo is plain-HTTP scriptable — no Cloudflare, unlike PCS.** So this is
+an ordinary Python script with an on-disk page cache; no browser, no snippet, no
+data through the conversation. Be polite (`BRI_DELAY`, default 1s).
+
+What it has, and doesn't:
+
+- **Full fields only for the five Monuments** (Milan–San Remo, Flanders,
+  Paris–Roubaix, Liège, Lombardia). Omloop, Gent–Wevelgem, Flèche, Amstel and
+  San Sebastián are **summary-only stubs** pre-1990 — winner and distance, no
+  results list. That is the whole reason the gains above stop short of 100%.
+- Year pages are **discovered from each race's index**, never assembled from a
+  guessed pattern: the year is a suffix (`pr1955`), an infix
+  (`1966-Amstel-Gold-Race`) or a prefix (`1955-liege-bastogne-liege`).
+- Founding years it exposes **independently confirm the ones derived from PCS
+  500s** — Amstel 1966, San Sebastián 1981 — and it goes back further than we
+  ingest (Liège 1892, Roubaix 1896, Lombardia 1905).
+
+Three traps found the hard way, all of which would have corrupted data silently:
+
+1. **One `<li>` can hold SEVERAL riders.** A group finishing together is packed
+   into a single item — Il Lombardia 1949 item 20 is five riders — so list
+   position is NOT rank, and using it shifts every rank after the packed item.
+   `split_entries()` splits on the time terminator (`s.t.`, `@ 5min 43sec`).
+2. **Match on NAME, never on rank.** Even split correctly, the two sources order
+   an `s.t.` bunch differently (PCS has Pagliazzi 20th at Lombardia 1949,
+   bikeraceinfo 24th — both honest). Rank-matching mismatches across every tied
+   group. Names are compared accent-folded, order-insensitive, and allow a
+   strict subset (nicknames, dropped middle names) but nothing looser.
+3. **`?` is a placeholder team**, and would otherwise create a DB team named
+   "?". Filtered exactly — several REAL teams of this era have very short names
+   (**Z**, Greg LeMond's squad; RM; BP), so any filter-by-length heuristic
+   would discard genuine data.
+
+Only 1 ambiguity survived 383 race-years: Milan–San Remo 1966 Gilbert Desmet,
+where bikeraceinfo spells one team both "Romeo-Smiths" and "Romeo-Smoths".
+Skipped rather than guessed.
 
 ### Filling times PCS omits
 

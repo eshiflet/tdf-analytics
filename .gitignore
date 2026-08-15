@@ -39,3 +39,7 @@ pipeline/rider_scrapes/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# bikeraceinfo raw page cache (regenerable: scrape_bikeraceinfo_teams.py re-fetches;
+# the parsed per-race JSON beside it IS tracked)
+pipeline/bikeraceinfo_teams/_pages/
