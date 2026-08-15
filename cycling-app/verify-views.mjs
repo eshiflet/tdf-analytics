@@ -189,6 +189,28 @@ function check(name, cond, detail) {
   check("stage-race table still shows the bib column", ths.includes("Bib"), ths.slice(0, 3).join(","));
 }
 
+// 7c. A season where NO rider has a known team (1892-1894 Liege) still renders
+//     its race column. Those years get neither a team nor a bib column, and the
+//     sticky rider column's `left` offset must collapse to 0 to match — at the
+//     inherited 52px it shifts right and, being opaque, paints over the single
+//     race column, so the table looks like it has no races at all.
+//
+//     NOTE: jsdom does no layout, so this asserts the DOM and the class
+//     combination the CSS keys off — it cannot catch the overlap itself. The
+//     visual half needs a real browser.
+{
+  const doc = await boot("#classics/1892/stage/gc/table");
+  const tbl = doc.querySelector(".stage-table");
+  check("zero-team season omits the team column",
+        !tbl.classList.contains("has-teams"), tbl.className);
+  const ths = [...doc.querySelectorAll("#stage-table thead th")].map((t) => t.textContent.trim());
+  check("zero-team season still renders its race column",
+        ths.includes("LBL"), ths.join(","));
+  const cells = [...(doc.querySelector("#stage-table tbody tr")?.cells || [])]
+    .map((c) => c.textContent.trim());
+  check("zero-team season still renders a placing", cells.includes("1"), cells.join("|"));
+}
+
 // 8. A cancelled race stays in the season rather than vanishing from it.
 {
   const doc = await boot("#classics/2020/overview");

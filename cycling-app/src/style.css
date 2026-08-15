@@ -716,10 +716,22 @@ svg text {
   left: 74px;
 }
 
-/* One-day races hide the bib column, so the rider column must stick directly
-   against the team column instead of leaving a 52px hole where bib used to be. */
+/* The sticky `left` of the rider column must equal the total width of whatever
+   sticky columns precede it — team (22px) and/or bib (52px). Get it wrong and
+   the column does not merely sit askew: sticky SHIFTS it to that offset, and
+   because it is opaque with z-index 1 it then paints over the first race
+   column. All four combinations are therefore spelled out.
+
+   The last rule is the one that broke 1892-1894 Liege-Bastogne-Liege, where no
+   rider has a known team: with neither a team nor a bib column the rider cell
+   starts at x=0, but the base 52px offset pushed it right over the single race
+   column, leaving a table that looked like it had no races at all. */
 .stage-table.has-teams.no-bib .col-rider {
-  left: 22px;
+  left: 22px;   /* team only */
+}
+
+.stage-table.no-bib:not(.has-teams) .col-rider {
+  left: 0;      /* neither */
 }
 
 /* ── Team banding ─────────────────────────────────────────────────────────

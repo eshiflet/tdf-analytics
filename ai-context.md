@@ -369,10 +369,16 @@ Gated on `RaceConfig.stagesAreRaces`, so only the classics get it:
   O(maxRank) per comparison.
 - DNF/DNS contribute nothing: a team is ranked on what it achieved, not on how
   many riders it entered.
-- **Hiding the bib column moves the sticky rider column** — `.stage-table.has-teams`
-  pins it at `left: 74px` (22 team + 52 bib), which strands a 52 px hole beside the
-  team column once the table scrolls horizontally. The `no-bib` class re-pins it to
-  22 px. Any future column change here must revisit those offsets.
+- **The sticky rider column's `left` must equal the total width of the sticky
+  columns before it** — team (22 px) and/or bib (52 px). All four combinations are
+  spelled out in CSS, and getting one wrong does more than misalign: sticky SHIFTS
+  the column to that offset, and being opaque with `z-index: 1` it then **paints
+  over the first race column**. That is how 1892-1894 Liege-Bastogne-Liege — the
+  only three seasons where no rider has a known team, so neither a team nor a bib
+  column exists — rendered as a table that appeared to contain no races at all,
+  while the DOM was perfectly correct. **jsdom does no layout, so verify-views
+  cannot catch this class of bug**; it asserts the DOM and class combination only.
+  Any future column change here must revisit those offsets in a real browser.
 
 **Team banding** (all races, not just the classics): every other contiguous team
 block takes a faint wash so a team's riders read as one group. Two CSS variables,
