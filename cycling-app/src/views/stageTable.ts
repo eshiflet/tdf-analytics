@@ -285,12 +285,13 @@ export function drawStageTable() {
     // Columns are narrow, so use the abbreviation and keep the full race name
     // in the title attribute alongside any cancellation note.
     th.textContent = stage.stage_short_label ?? stage.stage_label;
-    const cancelledNote = stage.cancelled
-      ? `${raceConfig().stagesAreRaces ? "Race" : "Stage"} cancelled`
-      : "";
-    th.title = stage.stage_short_label
-      ? [stage.stage_label, cancelledNote].filter(Boolean).join(" — ")
-      : cancelledNote;
+    // No `title` attribute: it renders the NATIVE browser tooltip on top of the
+    // custom one below, which is why a one-day race's column showed two
+    // tooltips at once. Everything it carried — full race name, cancellation —
+    // now lives in showStageTooltip instead.
+    if (stage.cancelled && !stage.stage_short_label) {
+      th.title = `${raceConfig().stagesAreRaces ? "Race" : "Stage"} cancelled`;
+    }
     th.addEventListener("mouseenter", (e) => showStageTooltip(e, stage));
     th.addEventListener("mouseleave", hideTooltip);
     headRow.appendChild(th);

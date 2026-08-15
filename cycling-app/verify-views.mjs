@@ -211,6 +211,25 @@ function check(name, cond, detail) {
   check("zero-team season still renders a placing", cells.includes("1"), cells.join("|"));
 }
 
+// 7d. One tooltip per column header, not two. A `title` attribute renders the
+//     NATIVE browser tooltip on top of the custom one, which is exactly what
+//     went wrong when the abbreviations were introduced.
+{
+  const doc = await boot("#classics/2024/stage/gc/table");
+  const ths = [...doc.querySelectorAll("#stage-table thead th.col-stage")];
+  const titled = ths.filter((t) => t.title).map((t) => t.textContent.trim());
+  check("classics headers set no native title", titled.length === 0, titled.join(","));
+
+  const lbl = ths.find((t) => t.textContent.trim() === "LBL");
+  lbl.dispatchEvent(new doc.defaultView.MouseEvent("mouseenter", { bubbles: true }));
+  const tip = doc.getElementById("tooltip");
+  const lines = tip.textContent.split("\n").map((s) => s.trim()).filter(Boolean);
+  check("classics tooltip leads with the full race name",
+        lines[0] === "Liege-Bastogne-Liege", lines[0]);
+  check("classics tooltip has name/start/finish/distance",
+        lines.length === 4 && /km/.test(lines[3]), lines.join(" | "));
+}
+
 // 8. A cancelled race stays in the season rather than vanishing from it.
 {
   const doc = await boot("#classics/2020/overview");

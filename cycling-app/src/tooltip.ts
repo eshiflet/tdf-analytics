@@ -8,12 +8,24 @@ import { tooltipEl, chartAreaEl } from "./dom";
 export function showStageTooltip(event: MouseEvent, stage: StageInfo) {
   const distance = stage.distance_km != null ? `${Math.round(stage.distance_km)} km` : "—";
   const vertical = stage.vertical_meters != null ? `${stage.vertical_meters} m` : "—";
-  const type = stage.route_type ?? "—";
+
+  // A one-day race's column header is an abbreviation ("LBL"), so the full race
+  // name has to lead the tooltip — it appears nowhere else. A Grand Tour's
+  // header is already the stage number, so it stays as it was, route type
+  // included.
+  const isRace = stage.stage_short_label != null;
+  const heading = isRace
+    ? `<div class="t-name">${stage.stage_label}${stage.cancelled ? " — cancelled" : ""}</div>`
+    : "";
+  const detail = isRace
+    ? `${distance}, ${vertical}`
+    : `${distance}, ${vertical}, ${stage.route_type ?? "—"}`;
 
   tooltipEl.innerHTML = `
+    ${heading}
     <div>${stage.start_location ?? "—"}</div>
     <div>${stage.finish_location ?? "—"}</div>
-    <div>${distance}, ${vertical}, ${type}</div>
+    <div>${detail}</div>
   `;
   positionTooltip(event);
 }
