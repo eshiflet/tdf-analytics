@@ -1,0 +1,106 @@
+{
+  "_README": [
+    "Why a stage has no results, for stages where the absence is PERMANENT and correct.",
+    "Purpose: stop the same stage being re-investigated and re-scraped. A stage with",
+    "cancelled=1 and zero results looks identical to a stage nobody has gotten around to",
+    "scraping yet, and there is nothing in the row itself to tell the two apart.",
+    "",
+    "Keyed by races.name -> year -> stages.stage_number (the DB's contiguous integer).",
+    "'slug' records the PCS source_slug alongside it because the two diverge on any",
+    "edition with a split day: Giro 1946 DB stage 14 is PCS stage-12, Giro 1969 DB stage",
+    "21 is PCS stage-20. Never rebuild a PCS URL from stage_number.",
+    "",
+    "Only stages with a verified reason are listed. validate_db.py reports cancelled",
+    "stages that are still undocumented rather than inventing an explanation for them."
+  ],
+  "Amstel Gold Race": {
+    "2020": {
+      "1": {
+        "slug": null,
+        "route": "one-day race",
+        "note": "Not held: COVID-19. A one-day classic cancelled outright has no result anywhere; the row exists so the season keeps its shape.",
+        "source": "ai-context.md 'One-day classics' (2026-08-13)"
+      }
+    }
+  },
+  "Clasica de San Sebastian": {
+    "2020": {
+      "1": {
+        "slug": null,
+        "route": "one-day race",
+        "note": "Not held: COVID-19. Cancelled outright rather than postponed, so no result exists for 2020.",
+        "source": "ai-context.md 'One-day classics' (2026-08-13)"
+      }
+    }
+  },
+  "Paris-Roubaix": {
+    "2020": {
+      "1": {
+        "slug": null,
+        "route": "Compiègne -> Roubaix",
+        "note": "Not held: COVID-19. PCS returns the page with a past date and no results table, which is the documented cancelled signature.",
+        "source": "ai-context.md 'One-day classics' (2026-08-13)"
+      }
+    }
+  },
+  "Omloop Het Nieuwsblad": {
+    "1986": {
+      "1": {
+        "slug": null,
+        "route": "one-day race",
+        "note": "Cancelled (then run as Omloop Het Volk). Cause not recorded in any source used here — do not invent one; the cancellation itself is confirmed.",
+        "source": "ai-context.md 'One-day classics' (2026-08-13)"
+      }
+    },
+    "2004": {
+      "1": {
+        "slug": null,
+        "route": "one-day race",
+        "note": "Cancelled (then run as Omloop Het Volk). Cause not recorded in any source used here.",
+        "source": "ai-context.md 'One-day classics' (2026-08-13)"
+      }
+    }
+  },
+  "Giro d'Italia": {
+    "1912": {
+      "4": {
+        "slug": "stage-4",
+        "route": "Pescara -> Roma",
+        "note": "Cancelled. PCS shows 'Race/stage is cancelled' with no results table, so there is nothing to scrape. Cause not recorded in any source used here.",
+        "source": "ai-context.md historical audit (2026-08-01), verified on PCS"
+      }
+    },
+    "1969": {
+      "21": {
+        "slug": "stage-20",
+        "route": "Trento -> Marmolada",
+        "note": "Cancelled: cold and snow. No classification was recorded, so no result exists to scrape.",
+        "source": "insert_cancelled_stages.py verified list (PCS)"
+      }
+    },
+    "2001": {
+      "18": {
+        "slug": "stage-18",
+        "route": "Imperia -> Sant'Anna di Vinadio",
+        "note": "Cancelled in the aftermath of the San Remo anti-doping raids. No classification was recorded.",
+        "source": "insert_cancelled_stages.py verified list (PCS)"
+      }
+    },
+    "2011": {
+      "4": {
+        "slug": "stage-4",
+        "route": "Genova Quarto dei Mille -> Livorno",
+        "note": "Neutralized to honor Wouter Weylandt, whose death in a crash on stage 3 shook the entire cycling world. The stage was ridden as a processional tribute, with Weylandt's Leopard Trek teammates leading the peloton across the line together. No times and no classification were taken, so PCS publishes no result and none exists to find. DO NOT re-scrape. Its real distance (about 216 km) is consequently absent from the edition's summed total, and accounts for the whole of Giro 2011's -4.9% distance divergence against Wikipedia — see distance_divergence_baseline.json.",
+        "source": "Eric, 2026-08-15"
+      }
+    },
+    "2013": {
+      "19": {
+        "slug": "stage-19",
+        "route": "Ponte di Legno -> Val Martello/Martelital",
+        "note": "Cancelled: adverse weather on the Gavia and Stelvio. No classification was recorded.",
+        "source": "insert_cancelled_stages.py verified list (PCS)"
+      }
+    }
+  }
+}

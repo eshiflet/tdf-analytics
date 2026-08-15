@@ -418,5 +418,57 @@ class TestProvenance(unittest.TestCase):
         self.assertIn("cancelled", cols)
 
 
+
+class TestStageNotes(unittest.TestCase):
+    """
+    race_common.load_stage_notes — why a stage legitimately has no results.
+
+    A cancelled stage with zero results is byte-identical to a stage nobody has
+    scraped yet, so without a record the same handful get re-investigated on
+    every audit. Giro 2011 stage 4 is the case that prompted it: ridden as a
+    processional tribute to Wouter Weylandt with no classification taken, so no
+    result exists to find and none ever will.
+    """
+
+    def write(self, obj):
+        import json
+        import tempfile
+        p = os.path.join(tempfile.mkdtemp(), "notes.json")
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(obj, f)
+        return p
+
+    def test_flattens_to_race_year_stage_keys(self):
+        p = self.write({"Giro d'Italia": {"2011": {"4": {"note": "n"}}}})
+        self.assertEqual(rc.load_stage_notes(p), {("Giro d'Italia", 2011, 4): {"note": "n"}})
+
+    def test_year_and_stage_are_ints_not_strings(self):
+        """JSON keys are strings; DB rows are ints. Leaving them as strings
+        means every lookup misses and the file silently does nothing."""
+        (race, year, stage), = rc.load_stage_notes(
+            self.write({"R": {"1969": {"21": {}}}}))
+        self.assertIsInstance(year, int)
+        self.assertIsInstance(stage, int)
+
+    def test_underscore_keys_are_metadata_not_races(self):
+        notes = rc.load_stage_notes(self.write({"_README": ["docs"], "R": {"2000": {"1": {}}}}))
+        self.assertEqual(list(notes), [("R", 2000, 1)])
+
+    def test_missing_file_is_not_an_error(self):
+        self.assertEqual(rc.load_stage_notes("/nonexistent/notes.json"), {})
+
+    def test_shipped_file_documents_the_weylandt_stage(self):
+        notes = rc.load_stage_notes()
+        entry = notes.get(("Giro d'Italia", 2011, 4))
+        self.assertIsNotNone(entry, "the stage this file was created for")
+        self.assertIn("Weylandt", entry["note"])
+
+    def test_every_shipped_entry_carries_a_note_and_a_source(self):
+        """An entry without a source is a claim nobody can check, and this file
+        exists to stop people re-deriving the same answers."""
+        for key, entry in rc.load_stage_notes().items():
+            self.assertGreater(len(entry.get("note", "")), 20, key)
+            self.assertTrue(entry.get("source"), key)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

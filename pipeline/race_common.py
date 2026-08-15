@@ -21,6 +21,7 @@ Three independent groups live here:
     from the other two, so it has no entry in the ingest-only RACES below.
 """
 
+import json
 import os
 import re
 import sys
@@ -91,6 +92,41 @@ def swap_identity(row_a: list, row_b: list) -> None:
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
+
+STAGE_NOTES_PATH = os.path.join(HERE, "stage_notes.json")
+
+
+def load_stage_notes(path=STAGE_NOTES_PATH):
+    """
+    stage_notes.json as {(race_name, year, stage_number): entry}.
+
+    Records why a stage has no results in the cases where that absence is
+    permanent and correct. A cancelled stage with zero results is byte-for-byte
+    indistinguishable from a stage nobody has scraped yet, so without this the
+    same handful get re-investigated every time someone audits the DB — Giro
+    2011's stage 4, ridden as a processional tribute to Wouter Weylandt with no
+    classification taken, has no result to find and never will.
+
+    Lives outside the DB on purpose: ingest_race.py deletes and re-inserts a
+    whole edition, and only a fixed tuple of columns survives that. A note in a
+    stages column would be wiped by the next re-ingest with nothing to warn
+    that it had gone.
+
+    Keys use the DB's contiguous stage_number, NOT the PCS slug — the two
+    diverge after any split day. The slug is carried in the entry for
+    cross-checking, never for rebuilding a URL.
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    return {
+        (race, int(year), int(stage)): entry
+        for race, years in raw.items() if not race.startswith("_")
+        for year, stages in years.items()
+        for stage, entry in stages.items()
+    }
+
 
 ICON_TO_ROUTE = {"p1": "F", "p2": "H", "p3": "H", "p4": "M", "p5": "M"}
 

@@ -30,12 +30,13 @@ import sqlite3
 import sys
 from collections import defaultdict
 
-from race_common import DB_PATH
+from race_common import DB_PATH, load_stage_notes
 
 RACES = ["Tour de France", "Giro d'Italia", "Vuelta a España"]
 
 errors: list[str] = []
 warnings: list[str] = []
+notes: list[str] = []
 
 
 def err(msg):
@@ -44,6 +45,51 @@ def err(msg):
 
 def warn(msg):
     warnings.append(msg)
+
+
+def note(msg):
+    notes.append(msg)
+
+
+def check_intentional_gaps(cur):
+    """
+    Reports stages that carry no results ON PURPOSE, and which of those still
+    have no recorded reason.
+
+    A cancelled stage with zero results is indistinguishable from a stage
+    nobody has scraped yet — same row shape, same emptiness. Without this, each
+    one gets rediscovered and re-investigated on every audit. Neither state is
+    an error, so nothing here fails the run; the point is to say "this is
+    finished, stop looking" for the documented ones and to name the rest so a
+    reason can be added instead of invented.
+    """
+    stage_notes = load_stage_notes()
+    rows = cur.execute(
+        """SELECT r.name, e.year, s.stage_number, s.start_location, s.finish_location
+           FROM stages s
+           JOIN race_editions e USING(edition_id)
+           JOIN races r USING(race_id)
+           WHERE s.cancelled = 1
+           ORDER BY r.name, e.year, s.stage_number"""
+    ).fetchall()
+    if not rows:
+        return
+
+    undocumented = [r for r in rows if (r[0], r[1], r[2]) not in stage_notes]
+    note(f"{len(rows)} stage(s) carry no results by design (cancelled=1); "
+         f"{len(rows) - len(undocumented)} documented in stage_notes.json")
+    for race, year, num, start, finish in undocumented:
+        note(f"  undocumented: {race} {year} stage {num} ({start} -> {finish})")
+
+    # A note keyed to a stage that isn't there explains nothing and silences
+    # nothing — it just sits in the file looking like the job is done. The
+    # likeliest cause is keying by the PCS slug number instead of the DB's
+    # stage_number, which differ on every edition with a split day.
+    live = {(r[0], r[1], r[2]) for r in rows}
+    for key in stage_notes:
+        if key not in live:
+            warn(f"stage_notes.json has a note for {key[0]} {key[1]} stage {key[2]}, "
+                 f"which is not a cancelled stage in the DB (wrong stage_number?)")
 
 
 def check_referential(c):
@@ -272,12 +318,17 @@ def main():
     check_editions(cur, races)
     check_split_slug_provenance(cur)
     check_results(cur)
+    check_intentional_gaps(cur)
     conn.close()
 
     for e in errors:
         print(f"ERROR  {e}")
     for w in warnings:
         print(f"warn   {w}")
+    # Informational only — never affects the exit code, including under
+    # --strict. These describe data that is correct and finished.
+    for n in notes:
+        print(f"note   {n}")
     print(f"\n{len(errors)} error(s), {len(warnings)} warning(s)")
     sys.exit(1 if errors or (args.strict and warnings) else 0)
 

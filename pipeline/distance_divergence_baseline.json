@@ -6,7 +6,7 @@
     "1965": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
     "1967": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
     "1989": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "2011": "accepted 2026-08-15: stage 4 (Quarto dei Mille - Livorno) is stored as 0.0 km with no results - the convention for a stage that produced no classification. It was ridden as a neutralized procession after Wouter Weylandt's death on stage 3, so its real distance is absent from the sum. Not a missing stage."
+    "2011": "accepted 2026-08-15: stage 4 is stored as 0.0 km with no results, so its real distance (~216 km) is absent from the sum and accounts for the whole gap. Not a missing stage — see stage_notes.json for why it has no results."
   },
   "tour": {
     "1978": "accepted 2026-08-15: DB +4.4% over Wikipedia across 25 stages; stage numbering contiguous, no stage missing"
