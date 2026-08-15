@@ -5,6 +5,17 @@
 import type { StageInfo } from "./types";
 import { tooltipEl, chartAreaEl } from "./dom";
 
+/** ISO 'YYYY-MM-DD' -> 'MM/DD/YYYY'.
+ *
+ *  Reformatted by string split, NOT via `new Date(iso)`: a bare ISO date is
+ *  parsed as UTC midnight, which renders as the PREVIOUS day for anyone west
+ *  of Greenwich. A race date is a calendar fact, not an instant, so it must
+ *  not pass through a timezone at all. */
+function fmtDateUS(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iso;
+}
+
 export function showStageTooltip(event: MouseEvent, stage: StageInfo) {
   const distance = stage.distance_km != null ? `${Math.round(stage.distance_km)} km` : "—";
   const vertical = stage.vertical_meters != null ? `${stage.vertical_meters} m` : "—";
@@ -16,6 +27,7 @@ export function showStageTooltip(event: MouseEvent, stage: StageInfo) {
   const isRace = stage.stage_short_label != null;
   const heading = isRace
     ? `<div class="t-name">${stage.stage_label}${stage.cancelled ? " — cancelled" : ""}</div>`
+      + (stage.stage_date ? `<div class="t-team">${fmtDateUS(stage.stage_date)}</div>` : "")
     : "";
   const detail = isRace
     ? `${distance}, ${vertical}`

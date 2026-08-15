@@ -5,6 +5,9 @@ export interface StageInfo {
    *  stage_label is too wide ("LBL" for "Liege-Bastogne-Liege"). Only the
    *  one-day classics set this; Grand Tour stage labels are already short. */
   stage_short_label?: string;
+  /** ISO 'YYYY-MM-DD'. Only the one-day classics export it so far — a season's
+   *  race order is derived from it, and the column tooltip displays it. */
+  stage_date?: string | null;
   start_location: string | null;
   finish_location: string | null;
   distance_km: number | null;

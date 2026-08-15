@@ -91,6 +91,9 @@ def build_year(cur, year, slug_of):
             "stage_number": i,
             "stage_label": s["race_name"],
             "stage_short_label": CLASSICS[slug_of[s["race_name"]]].short,
+            # ISO. The frontend shows it in the column tooltip; it is also what
+            # the season is ordered by, so a missing one is worth seeing.
+            "stage_date": s["stage_date"],
             "start_location": s["start_location"],
             "finish_location": s["finish_location"],
             "distance_km": s["distance_km"],

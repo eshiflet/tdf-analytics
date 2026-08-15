@@ -223,11 +223,18 @@ function check(name, cond, detail) {
   const lbl = ths.find((t) => t.textContent.trim() === "LBL");
   lbl.dispatchEvent(new doc.defaultView.MouseEvent("mouseenter", { bubbles: true }));
   const tip = doc.getElementById("tooltip");
-  const lines = tip.textContent.split("\n").map((s) => s.trim()).filter(Boolean);
+  // Read the child <div>s rather than splitting textContent on newlines: the
+  // divs render as separate lines but textContent runs adjacent ones together,
+  // so line-splitting reports a layout that isn't what the user sees.
+  const lines = [...tip.querySelectorAll("div")].map((d) => d.textContent.trim()).filter(Boolean);
   check("classics tooltip leads with the full race name",
         lines[0] === "Liege-Bastogne-Liege", lines[0]);
-  check("classics tooltip has name/start/finish/distance",
-        lines.length === 4 && /km/.test(lines[3]), lines.join(" | "));
+  // MM/DD/YYYY, formatted by string split so it cannot drift a day through a
+  // timezone — a bare ISO date parses as UTC midnight.
+  check("classics tooltip shows the race date under the name",
+        lines[1] === "04/21/2024", lines[1]);
+  check("classics tooltip has name/date/start/finish/distance",
+        lines.length === 5 && /km/.test(lines[4]), lines.join(" | "));
 }
 
 // 8. A cancelled race stays in the season rather than vanishing from it.
