@@ -163,7 +163,7 @@ original bug back and confirm the test fails; that caught two blind spots in thi
 
 ## One-day classics (August 2026)
 
-Eleven monuments/classics, **1946–2026**, added 2026-08-13. In the DB they are
+Eleven monuments/classics, **1892–2026**, added 2026-08-13. In the DB they are
 **11 independent races** (`races.race_type='one_day'`, race_id 4–14, one stage per
 edition). The frontend shows **one** race, `classics` — "One-day Classics" — whose
 "stages" are those races. That aggregation happens only at export time.
@@ -177,17 +177,25 @@ edition). The frontend shows **one** race, `classics` — "One-day Classics" —
 | `ronde-van-vlaanderen` | Tour of Flanders | RVV | | `il-lombardia` | Il Lombardia | IL |
 | `paris-roubaix` | Paris–Roubaix | PR | | | | |
 
-**773 race-years · 93,708 results · 8,651 riders · 5 cancelled.**
+**968 race-years · 102,261 results · 11,934 riders · 5 cancelled.**
 
 Coverage is bounded by each race's founding year, established from PCS returning
 **HTTP 500** for editions that never happened — not from assumption:
 
 | race | first edition present | note |
 |---|---|---|
-| Strade Bianche | **2007** | 500s for all of 1946–2006 (61 seasons) |
-| Clásica de San Sebastián | **1981** | 500s for 1946–1980 (35 seasons) |
-| Amstel Gold Race | **1966** | 500s for 1946–1965 (20 seasons) |
-| the other eight | 1946 | full 81 seasons each |
+| Liège–Bastogne–Liège | **1892** | the oldest; ran irregularly before WWI |
+| Paris–Roubaix | **1896** | |
+| Il Lombardia | **1905** | |
+| Milan–San Remo | **1907** | |
+| Tour of Flanders | **1913** | ran through WWII |
+| Gent–Wevelgem | **1934** | |
+| La Flèche Wallonne | **1936** | |
+| Omloop Het Volk | **1945** | |
+| Amstel Gold Race | **1966** | |
+| Clásica de San Sebastián | **1981** | |
+| Strade Bianche | **2007** | |
+
 
 Cancellations found: 2020 lost Paris–Roubaix, Amstel Gold and San Sebastián to
 COVID; **Omloop Het Volk was also cancelled in 1986 and 2004**.
@@ -271,11 +279,15 @@ N races = one displayed season), so sharing the code would contort both. There i
 **Finishing times are 100% complete for every finisher in every era measured**
 (1946 onward). What degrades going back is *team* attribution and field size:
 
-Team attribution was the weak field; **bikeraceinfo has since filled 4,370 of the
-gaps** (see below), taking the 1960s from 31% to 74% and the 1970s to 88%. What
-remains missing is concentrated in the five non-Monument races, which bikeraceinfo
-only stubs pre-1990. 1952 improved from 37 team blocks + a 163-row team-less tail
-to 57 blocks + a 127-row tail.
+Team attribution is the weak field; **bikeraceinfo has filled 6,254 gaps** (see
+below). Coverage by decade after that fill: 1890s 46%, 1900s 27%, 1910s 44%,
+1920s 34%, 1930s 36%, 1940s 17%, 1950s 32%, 1960s 31%, 1970s 72%, 1980s 96%,
+1990s+ 99–100%. What remains missing is concentrated in the five non-Monument
+races, which bikeraceinfo only stubs pre-1990.
+
+**Field size shrinks hard going back**: 51 race-years before 1946 carry fewer
+than 25 riders — PCS stores a top-10/20 for the oldest editions, not a full
+result. Ages are 83% present pre-1946 (100% after).
 
 Field size shrinks too: 1946–1969 races carry mostly **25–75 riders** against ~175
 today, and only 344 non-finishers across 12,331 rows — PCS stores a partial field
@@ -474,7 +486,7 @@ silently corrupted:
   (Paris–Roubaix 2023, Rex Laurenz: `160 … -25`), splitting a row mid-record.
   `parse_classics_bundle.py` joins continuation lines; ingest keeps the awarded
   figure and ignores the annotation rather than guessing the net.
-- Coverage is 1946–2026. Going further back is a scrape-scope decision, not a code
+- Coverage is 1892–2026 (the full history of every race). Going further back is a scrape-scope decision, not a code
   change (Liège dates to 1892, Roubaix 1896), but re-check the column-shape and
   completeness assumptions above first — 1970–1989 held up well, older editions may
   not.
@@ -483,7 +495,7 @@ silently corrupted:
   It is lazy-loaded, so first paint is unaffected, but `drawRiderDetail` awaits all
   four indexes in parallel. Dropping the redundant team index from each constituent
   entry saved 87 KB gzipped; further shrinking would mean restructuring `m`.
-  **At 1946–2026 it is 2.43 MB / 608 KB gzipped** — bigger than the three Grand
+  **At 1892–2026 it is 2.93 MB / 719 KB gzipped** — bigger than the three Grand
   Tour indexes COMBINED (554 KB), and a rider-detail page pulls all four. This is
   now the clearest cost of extending coverage and the first thing to revisit if it
   grows again.
