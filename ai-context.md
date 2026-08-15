@@ -980,8 +980,18 @@ Two deliberate omissions:
 - **Giro 1909–1913** have no time GC at all: the early Giro used a POINTS
   classification, exactly like the Tour before 1913. Nothing to fill.
 
-Still missing overall: Tour 1904–1912 (points era) + 2026 in progress, Vuelta
-1995, Giro 1909–13 and 1946.
+**Vuelta 1995 (Jalabert, 95:30:33)** was the same story — absent from the file,
+and its stage times too sparse for the fallback (584 rows with a time against
+2,292 in 1994 and 3,100 in 1996), so it produced nothing at all rather than a
+short number.
+
+Final state — every remaining gap is explained, none is a defect:
+
+| race | years with a time | missing |
+|---|---|---|
+| tour | 103 | 1904–1912 (points era, no times exist) + 2026 in progress |
+| giro | 103 | 1909–13 (points era) + 1946 (PCS value fails its speed check) |
+| vuelta | 80 | none |
 
 **A second gate hid behind the first.** The curated lookup originally sat inside
 `if winner_row:` — i.e. it only ran once a `gc_rank=1` row was found on the
