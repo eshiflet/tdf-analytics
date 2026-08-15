@@ -1,359 +1,56 @@
 {
-  "1914": {
-    "gcWinnerTimeSeconds": 487076,
-    "slowestFinisherTimeSeconds": 505818
-  },
-  "1919": {
-    "gcWinnerTimeSeconds": 406289,
-    "slowestFinisherTimeSeconds": 439948
-  },
-  "1920": {
-    "gcWinnerTimeSeconds": 369873,
-    "slowestFinisherTimeSeconds": 391669
-  },
-  "1921": {
-    "gcWinnerTimeSeconds": 433498,
-    "slowestFinisherTimeSeconds": 464640
-  },
-  "1922": {
-    "gcWinnerTimeSeconds": 430980,
-    "slowestFinisherTimeSeconds": 462156
-  },
-  "1923": {
-    "gcWinnerTimeSeconds": 442697,
-    "slowestFinisherTimeSeconds": 475075
-  },
-  "1924": {
-    "gcWinnerTimeSeconds": 517417,
-    "slowestFinisherTimeSeconds": 549549
-  },
-  "1925": {
-    "gcWinnerTimeSeconds": 495073,
-    "slowestFinisherTimeSeconds": 499583
-  },
-  "1926": {
-    "gcWinnerTimeSeconds": 496559,
-    "slowestFinisherTimeSeconds": 523259
-  },
-  "1927": {
-    "gcWinnerTimeSeconds": 519335,
-    "slowestFinisherTimeSeconds": 545912
-  },
-  "1929": {
-    "gcWinnerTimeSeconds": 386364,
-    "slowestFinisherTimeSeconds": 394989
-  },
-  "1932": {
-    "gcWinnerTimeSeconds": 381230,
-    "slowestFinisherTimeSeconds": 414195
-  },
-  "1933": {
-    "gcWinnerTimeSeconds": 399712,
-    "slowestFinisherTimeSeconds": 407817
-  },
-  "1934": {
-    "gcWinnerTimeSeconds": 436637,
-    "slowestFinisherTimeSeconds": 460968
-  },
-  "1935": {
-    "gcWinnerTimeSeconds": 408166,
-    "slowestFinisherTimeSeconds": 418381
-  },
-  "1936": {
-    "gcWinnerTimeSeconds": 432750,
-    "slowestFinisherTimeSeconds": 445410
-  },
-  "1937": {
-    "gcWinnerTimeSeconds": 440740,
-    "slowestFinisherTimeSeconds": 462535
-  },
-  "1938": {
-    "gcWinnerTimeSeconds": 406168,
-    "slowestFinisherTimeSeconds": 431599
-  },
-  "1939": {
-    "gcWinnerTimeSeconds": 316920,
-    "slowestFinisherTimeSeconds": 342077
-  },
-  "1940": {
-    "gcWinnerTimeSeconds": 387070,
-    "slowestFinisherTimeSeconds": 402436
-  },
   "1947": {
-    "gcWinnerTimeSeconds": 417307,
     "slowestFinisherTimeSeconds": 428595
   },
   "1948": {
-    "gcWinnerTimeSeconds": 449512,
     "slowestFinisherTimeSeconds": 462703
   },
-  "1949": {
-    "gcWinnerTimeSeconds": 451550,
-    "slowestFinisherTimeSeconds": 469627
-  },
-  "1951": {
-    "gcWinnerTimeSeconds": 436297,
-    "slowestFinisherTimeSeconds": 448668
-  },
   "1953": {
-    "gcWinnerTimeSeconds": 427046,
     "slowestFinisherTimeSeconds": 437637
   },
-  "1954": {
-    "gcWinnerTimeSeconds": 465187,
-    "slowestFinisherTimeSeconds": 475095
-  },
-  "1955": {
-    "gcWinnerTimeSeconds": 392172,
-    "slowestFinisherTimeSeconds": 400663
-  },
   "1956": {
-    "gcWinnerTimeSeconds": 365989,
     "slowestFinisherTimeSeconds": 376041
   },
   "1957": {
-    "gcWinnerTimeSeconds": 377106,
     "slowestFinisherTimeSeconds": 383348
   },
   "1958": {
-    "gcWinnerTimeSeconds": 331770,
     "slowestFinisherTimeSeconds": 341737
   },
-  "1960": {
-    "gcWinnerTimeSeconds": 338634,
-    "slowestFinisherTimeSeconds": 354885
-  },
-  "1962": {
-    "gcWinnerTimeSeconds": 443223,
-    "slowestFinisherTimeSeconds": 458150
-  },
-  "1969": {
-    "gcWinnerTimeSeconds": 384423,
-    "slowestFinisherTimeSeconds": 395937
-  },
-  "1970": {
-    "gcWinnerTimeSeconds": 324527,
-    "slowestFinisherTimeSeconds": 332451
-  },
-  "1971": {
-    "gcWinnerTimeSeconds": 350643,
-    "slowestFinisherTimeSeconds": 362542
-  },
-  "1972": {
-    "gcWinnerTimeSeconds": 371044,
-    "slowestFinisherTimeSeconds": 376428
-  },
-  "1973": {
-    "gcWinnerTimeSeconds": 384881,
-    "slowestFinisherTimeSeconds": 400790
-  },
-  "1974": {
-    "gcWinnerTimeSeconds": 407293,
-    "slowestFinisherTimeSeconds": 418956
-  },
-  "1975": {
-    "gcWinnerTimeSeconds": 401494,
-    "slowestFinisherTimeSeconds": 404359
-  },
-  "1976": {
-    "gcWinnerTimeSeconds": 431895,
-    "slowestFinisherTimeSeconds": 443390
-  },
   "1979": {
-    "gcWinnerTimeSeconds": 322158,
     "slowestFinisherTimeSeconds": 330843
   },
-  "1980": {
-    "gcWinnerTimeSeconds": 403700,
-    "slowestFinisherTimeSeconds": 417147
-  },
-  "1981": {
-    "gcWinnerTimeSeconds": 377436,
-    "slowestFinisherTimeSeconds": 387616
-  },
-  "1982": {
-    "gcWinnerTimeSeconds": 396475,
-    "slowestFinisherTimeSeconds": 413918
-  },
-  "1983": {
-    "gcWinnerTimeSeconds": 362730,
-    "slowestFinisherTimeSeconds": 374895
-  },
-  "1984": {
-    "gcWinnerTimeSeconds": 354740,
-    "slowestFinisherTimeSeconds": 370888
-  },
   "1985": {
-    "gcWinnerTimeSeconds": 370011,
     "slowestFinisherTimeSeconds": 382000
   },
   "1986": {
-    "gcWinnerTimeSeconds": 369235,
     "slowestFinisherTimeSeconds": 380659
   },
   "1987": {
-    "gcWinnerTimeSeconds": 380380,
     "slowestFinisherTimeSeconds": 393323
   },
   "1988": {
-    "gcWinnerTimeSeconds": 350336,
     "slowestFinisherTimeSeconds": 361117
   },
   "1989": {
-    "gcWinnerTimeSeconds": 336616,
     "slowestFinisherTimeSeconds": 349242
   },
   "1990": {
-    "gcWinnerTimeSeconds": 330668,
     "slowestFinisherTimeSeconds": 345440
   },
-  "1991": {
-    "gcWinnerTimeSeconds": 358543,
-    "slowestFinisherTimeSeconds": 375465
-  },
   "1992": {
-    "gcWinnerTimeSeconds": 372968,
-    "slowestFinisherTimeSeconds": 389805,
     "totalElevationM": null
   },
-  "1993": {
-    "gcWinnerTimeSeconds": 353384,
-    "slowestFinisherTimeSeconds": 365643
-  },
-  "1994": {
-    "gcWinnerTimeSeconds": 362481,
-    "slowestFinisherTimeSeconds": 375386
-  },
   "1995": {
-    "gcWinnerTimeSeconds": 351590,
-    "slowestFinisherTimeSeconds": 366417,
     "totalElevationM": null
   },
   "1996": {
-    "gcWinnerTimeSeconds": 379223,
-    "slowestFinisherTimeSeconds": 392623,
     "totalElevationM": null
   },
   "1997": {
-    "gcWinnerTimeSeconds": 370438,
-    "slowestFinisherTimeSeconds": 386181,
     "totalElevationM": null
-  },
-  "1998": {
-    "gcWinnerTimeSeconds": 355712,
-    "slowestFinisherTimeSeconds": 367360
   },
   "1999": {
-    "gcWinnerTimeSeconds": 359756,
-    "slowestFinisherTimeSeconds": 373485,
     "totalElevationM": null
-  },
-  "2000": {
-    "gcWinnerTimeSeconds": 354614,
-    "slowestFinisherTimeSeconds": 368240
-  },
-  "2001": {
-    "gcWinnerTimeSeconds": 320578,
-    "slowestFinisherTimeSeconds": 331455
-  },
-  "2002": {
-    "gcWinnerTimeSeconds": 321762,
-    "slowestFinisherTimeSeconds": 334657
-  },
-  "2003": {
-    "gcWinnerTimeSeconds": 322329,
-    "slowestFinisherTimeSeconds": 333384
-  },
-  "2004": {
-    "gcWinnerTimeSeconds": 319243,
-    "slowestFinisherTimeSeconds": 333845
-  },
-  "2005": {
-    "gcWinnerTimeSeconds": 329151,
-    "slowestFinisherTimeSeconds": 345165
-  },
-  "2006": {
-    "gcWinnerTimeSeconds": 329616,
-    "slowestFinisherTimeSeconds": 346098
-  },
-  "2007": {
-    "gcWinnerTimeSeconds": 334779,
-    "slowestFinisherTimeSeconds": 348078
-  },
-  "2008": {
-    "gcWinnerTimeSeconds": 323809,
-    "slowestFinisherTimeSeconds": 340230
-  },
-  "2009": {
-    "gcWinnerTimeSeconds": 309791,
-    "slowestFinisherTimeSeconds": 327742
-  },
-  "2010": {
-    "gcWinnerTimeSeconds": 315841,
-    "slowestFinisherTimeSeconds": 333176
-  },
-  "2011": {
-    "gcWinnerTimeSeconds": 302714,
-    "slowestFinisherTimeSeconds": 320069
-  },
-  "2012": {
-    "gcWinnerTimeSeconds": 329942,
-    "slowestFinisherTimeSeconds": 349568
-  },
-  "2013": {
-    "gcWinnerTimeSeconds": 305608,
-    "slowestFinisherTimeSeconds": 321724
-  },
-  "2014": {
-    "gcWinnerTimeSeconds": 317672,
-    "slowestFinisherTimeSeconds": 336591
-  },
-  "2015": {
-    "gcWinnerTimeSeconds": 318145,
-    "slowestFinisherTimeSeconds": 342158
-  },
-  "2016": {
-    "gcWinnerTimeSeconds": 311569,
-    "slowestFinisherTimeSeconds": 330100
-  },
-  "2017": {
-    "gcWinnerTimeSeconds": 326094,
-    "slowestFinisherTimeSeconds": 347014
-  },
-  "2018": {
-    "gcWinnerTimeSeconds": 320559,
-    "slowestFinisherTimeSeconds": 341476
-  },
-  "2019": {
-    "gcWinnerTimeSeconds": 324107,
-    "slowestFinisherTimeSeconds": 346063
-  },
-  "2020": {
-    "gcWinnerTimeSeconds": 308421,
-    "slowestFinisherTimeSeconds": 330860
-  },
-  "2021": {
-    "gcWinnerTimeSeconds": 310648,
-    "slowestFinisherTimeSeconds": 330797
-  },
-  "2022": {
-    "gcWinnerTimeSeconds": 311474,
-    "slowestFinisherTimeSeconds": 337511
-  },
-  "2023": {
-    "gcWinnerTimeSeconds": 307742,
-    "slowestFinisherTimeSeconds": 327347
-  },
-  "2024": {
-    "gcWinnerTimeSeconds": 285243,
-    "slowestFinisherTimeSeconds": 306991
-  },
-  "2025": {
-    "gcWinnerTimeSeconds": 297061,
-    "slowestFinisherTimeSeconds": 320164
-  },
-  "2026": {
-    "gcWinnerTimeSeconds": 300171,
-    "slowestFinisherTimeSeconds": 322596
   }
 }

@@ -39,6 +39,11 @@ FIRST_YEAR = {"giro": 1909, "vuelta": 1935}
 DB_RACE_NAME = {"giro": "Giro d'Italia", "vuelta": "Vuelta a España"}
 
 
+def _flag(name, default):
+    """Value of an optional `--name VALUE` argument, or default."""
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
+
+
 def main():
     if "--race" not in sys.argv:
         sys.exit("usage: python3 export_race_summary.py --race {giro,vuelta}")
@@ -50,8 +55,15 @@ def main():
         )
     race_name = DB_RACE_NAME[race]
     first_year = FIRST_YEAR[race]
-    out_path = os.path.join(HERE, "..", "cycling-app", "src", "data", race, "all_races_summary.json")
-    overrides_path = os.path.join(HERE, f"{race}_races_summary_overrides.json")
+    # --out / --overrides both default to the real paths, so a bare run is
+    # unchanged. They exist so audit_summary_overrides.py can render this same
+    # export with an empty overrides file WITHOUT touching the shipped JSON —
+    # the alternative (move the overrides file aside, re-export, move it back)
+    # leaves the app's real data file overrides-free if it dies in between.
+    out_path = _flag("--out", os.path.join(
+        HERE, "..", "cycling-app", "src", "data", race, "all_races_summary.json"))
+    overrides_path = _flag("--overrides", os.path.join(
+        HERE, f"{race}_races_summary_overrides.json"))
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
