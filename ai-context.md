@@ -952,10 +952,26 @@ winner time, and nothing distinguishes a short sum from a short race: **Vuelta
 1968 had times for 12 of its 20 stages and reported 18:33:54 against a real
 78:29:00**, sitting between neighbours of 76:38 and 73:18 on the All Years
 chart. Both exporters now read the file first and fall back to the stage sum
-only when the year is absent. Adding a missing year to that file is the fix for
-this class of bug — 1968 (Gimondi, 78:29:00, verified on PCS's own GC page,
-51 finishers with the last at +1:46:09) was the only Vuelta year affected, and
-the Giro none.
+only when the year is absent. **Adding the missing year to that file is the fix
+for this class of bug**; fixed so far: Vuelta 1968 (Gimondi 78:29:00), Giro 1959
+(Gaul 101:50:26) and Giro 1977 (107:27:16), each verified on PCS's own GC page.
+
+**Detect these, don't wait to be told.** A year missing from the curated file is
+invisible — the fallback produces a plausible-looking number. Compare each
+year's winner time against the median of years within ±6 and flag anything below
+70% of it:
+
+```
+tour   103 curated / 103 years   clean
+giro    90 curated /  90 years   clean (was 88 — 1959 and 1977 were missing)
+vuelta  79 curated /  79 years   clean
+```
+
+Separately, **34 editions have NO winner time at all** — a visible gap rather
+than a wrong value: Tour 1904–1912 (the points-system era, no times exist) plus
+2026 in progress; Vuelta 1995; and Giro 1909–13, 1928, 1930, 1931, 1946, 1950,
+1952, 1961, 1963–68, 1978. The Giro's mid-century ones are ordinary missing data
+and could be filled from PCS the same way.
 
 **`gc_all_times.json`** — `{"1903": {"rider/garin-maurice": 340394, ...}, ...}` — official total times for all riders listed in Wikipedia's GC table (typically top 10 per year). Used to set `totalTimeSeconds` in the export. 1,144 rider-times across 104 years.
 
