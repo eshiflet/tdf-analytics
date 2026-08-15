@@ -1173,3 +1173,39 @@ svg text {
   border-radius: 2px;
   flex-shrink: 0;
 }
+
+/* ── Classics race history (small multiples) ──────────────────────────────
+   Eleven panels, one per race. Faceted rather than overlaid because
+   categorical color tops out at eight hues; each panel is a single series, so
+   its title carries identity and no legend or categorical palette is needed. */
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 4px 2px 16px;
+}
+
+.history-cell {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 8px 10px 6px;
+}
+
+.history-title {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.history-svg {
+  width: 100%;
+  height: 130px;
+  display: block;
+}
+
+.history-axis-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: right;
+}

@@ -30,8 +30,16 @@ import {
 import { drawStageTable } from "./views/stageTable";
 import { drawOverview } from "./views/overview";
 import { drawAllRacesOverview } from "./views/allRaces";
+import { drawClassicsHistory } from "./views/classicsHistory";
 import { drawRidersPage } from "./views/riders";
 import { drawRiderDetail } from "./views/riderDetail";
+
+/** The cross-year nav slot: per-race history for an aggregate race, season
+ *  totals for a stage race. */
+function drawCrossYear() {
+  if (raceConfig().hasRaceHistory) drawClassicsHistory().catch(showLoadError);
+  else drawAllRacesOverview();
+}
 
 export function showLoadError(err: unknown) {
   chartEl.innerHTML = `<p style="color:#ff6b6b">Failed to load data: ${err}</p>`;
@@ -91,8 +99,12 @@ function applyRaceCapabilities() {
   }
   metricSelectEl.value = state.currentMetric;
 
-  viewAllRacesBtn.hidden = !cfg.hasAllYears;
-  if (!cfg.hasAllYears && state.currentView === "allraces") state.currentView = "stage";
+  // One nav slot, two views: a stage race totals its own seasons, an aggregate
+  // race charts each constituent race's own history instead.
+  const crossYear = cfg.hasAllYears || cfg.hasRaceHistory;
+  viewAllRacesBtn.hidden = !crossYear;
+  viewAllRacesBtn.textContent = cfg.hasRaceHistory ? "Race History" : "All Years Summary";
+  if (!crossYear && state.currentView === "allraces") state.currentView = "stage";
   // A season of unrelated races has no total time to plot against.
   if (!cfg.hasCumulativeGc) state.gcDisplayMode = "position";
 }
@@ -217,7 +229,10 @@ function updateKomModeToggle() {
 }
 
 function updateUnitToggle() {
-  allRacesUnitToggleBtn.hidden = state.currentView !== "allraces";
+  // km/mi applies to the season-totals view only. The per-race history has its
+  // own metric switch (speed / distance / finishers) and no unit toggle.
+  allRacesUnitToggleBtn.hidden =
+    state.currentView !== "allraces" || raceConfig().hasRaceHistory;
   allRacesUnitToggleBtn.textContent = state.allRacesUnit === "metric" ? "km → mi" : "mi → km";
   overviewUnitToggleBtn.hidden = state.currentView !== "overview";
   overviewUnitToggleBtn.textContent = state.overviewUnit === "metric" ? "km → mi" : "mi → km";
@@ -255,14 +270,14 @@ export async function loadDataset(year: string) {
   buildLegend();
   if (state.currentView === "stage") renderStage();
   else if (state.currentView === "overview") drawOverview();
-  else if (state.currentView === "allraces") drawAllRacesOverview();
+  else if (state.currentView === "allraces") drawCrossYear();
 }
 
 export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   // Guard rather than trust the caller: a stale deep link or a race switch can
   // ask for a view this race doesn't have (the classics have no All Years
   // Summary), and drawAllRacesOverview would render an empty chart.
-  if (view === "allraces" && !raceConfig().hasAllYears) view = "stage";
+  if (view === "allraces" && !(raceConfig().hasAllYears || raceConfig().hasRaceHistory)) view = "stage";
   state.currentView = view;
   // Keep the select in sync: on stage, show the active mode; elsewhere, reset
   // to the hidden placeholder so any re-selection always fires 'change' and
@@ -285,7 +300,7 @@ export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   ridersChartEl.classList.toggle("visible", view === "riders");
   if (view === "stage") renderStage();
   else if (view === "overview") drawOverview();
-  else if (view === "allraces") drawAllRacesOverview();
+  else if (view === "allraces") drawCrossYear();
   else drawRidersPage().catch(showLoadError);
   updateHash();
 }
@@ -307,7 +322,7 @@ async function applyHash(): Promise<boolean> {
     if (parts[0] === "allraces") {
       // #classics/allraces has no view to show; fall back to defaults rather
       // than landing on a blank chart.
-      if (!raceConfig().hasAllYears) return false;
+      if (!(raceConfig().hasAllYears || raceConfig().hasRaceHistory)) return false;
       switchView("allraces");
       return true;
     }
@@ -482,7 +497,7 @@ function init() {
     window.addEventListener("resize", debounce(() => {
       if (state.currentView === "stage" && state.stageViewMode === "graph") drawChart();
       else if (state.currentView === "overview") drawOverview();
-      else if (state.currentView === "allraces") drawAllRacesOverview();
+      else if (state.currentView === "allraces") drawCrossYear();
     }, 200));
     window.addEventListener("hashchange", () => {
       applyHash().catch(showLoadError);

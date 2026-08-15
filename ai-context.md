@@ -394,6 +394,39 @@ Quick Step (3 wins) → Jumbo-Visma (2 wins, 1 second) → UAE (2 wins, 0 second
 Alpecin (1/1/1) → Bahrain (1/1/0). Without the flag the same table fragments 40
 teams into **620 blocks**, which is what the old bib ordering was doing.
 
+### Race History view (small multiples)
+
+`export_classics_history.py` -> `race_history.json` -> `views/classicsHistory.ts`.
+One panel per race across its own lifetime (winning speed / distance / finishers),
+sharing the cross-year nav slot with the Grand Tours' All Years Summary — the
+button relabels to "Race History" via `hasRaceHistory`.
+
+**Faceted, not eleven overlaid lines.** Categorical color tops out at eight hues
+before adjacent series stop being reliably distinguishable, and there are eleven
+races. Faceting also removes the need for a categorical palette entirely: each
+panel is a single series, so the panel title carries identity and one accent
+serves all eleven. That accent (`#3987e5`) was validated against this app's
+`#0f1115` surface — inside the L 0.48–0.67 band, chroma floor, ≥3:1 contrast.
+
+Axes are SHARED across panels; comparing races to each other is the whole point,
+and a per-panel axis would quietly prevent it. Lines break across gaps of >3
+years so the war years read as holes rather than a straight line implying racing
+continued.
+
+**Speed is derived** (distance ÷ winning time), not read from PCS's "Avg. speed
+winner" field, which is absent for most historical editions. The exporter
+**rejects and reports** any speed outside 15–60 km/h rather than publishing it:
+Milan–San Remo 1915 was the case that proved this, where PCS serves "3:18",
+parsing to 198 seconds and charting at 5,254 km/h. A rejection means the DB needs
+fixing, not that the guard did its job.
+
+Known upstream oddities this view surfaces, left as-is:
+- **Milan–San Remo 2013, 121 km** — PCS's own figure, but its 5:37:20 winning
+  time implies 21.5 km/h. Distance and time disagree at source. That edition was
+  genuinely disrupted by a snowstorm, so an outlier is arguably honest.
+- **Gent–Wevelgem 1934/35, 120 km** — NOT an error. It began as a short regional
+  race; the chart showing it grow is the point.
+
 ### Filling team attribution PCS omits (bikeraceinfo)
 
 `scrape_bikeraceinfo_teams.py` → `patch_classics_teams.py` fill rider→team where

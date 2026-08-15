@@ -13,6 +13,23 @@
     "matches them against PCS's 'Lastname Firstname' by normalized token set and",
     "REFUSES to write unless every rank matches."
   ],
+  "_overrides_comment": [
+    "Winner times that PCS has WRONG, not merely missing, replaced from",
+    "bikeraceinfo. patch_classics_times.py normally refuses to touch a row that",
+    "already has a time; an entry here is an explicit, reviewed exception.",
+    "Only add one when a second source and an arithmetic check agree."
+  ],
+  "overrides": {
+    "milano-sanremo": {
+      "1915": {
+        "source_ref": "https://www.bikeraceinfo.com/classics/Milan-San%20Remo/1915-milan-san-remo.html",
+        "rank": 1,
+        "rider": "Corlaita Ezio",
+        "winner_time": "10:36:03",
+        "why": "PCS serves '3:18' for this edition, which parses to 198 seconds and yields 5254 km/h over 289 km; read as 3h18m it still gives 88 km/h. bikeraceinfo has 'Ezio Corlaita (Dei) 10hr 36min 3sec. 27.26 km/hr', and 289 / 10.6008 = 27.26 reproduces their published speed exactly, confirming both the time and our stored distance."
+      }
+    }
+  },
   "gent-wevelgem": {
     "2005": {
       "source_ref": "https://www.bikeraceinfo.com/classics/gent-wevelgem/gent-wevelgem2005.html",

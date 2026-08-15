@@ -43,6 +43,11 @@ export interface RaceConfig {
    *  y-axis accumulates something. Reuses the "points" metric path, which
    *  already does cumulative totals and per-stage standings. */
   hasSeasonPoints: boolean;
+  /** Cross-year per-RACE history available (race_history.json): one small
+   *  multiple per constituent race across its own lifetime. The aggregate
+   *  counterpart to hasAllYears — a season's totals mean nothing, but each
+   *  race's own trend across 130 years does. */
+  hasRaceHistory: boolean;
   /** Cross-year All Years Summary available? Needs an all_races_summary.json,
    *  which the classics deliberately has no equivalent of — totals across a
    *  season of unrelated races aren't a meaningful series. */
@@ -70,6 +75,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasCumulativeGc: true,
     hasSprintKom: true,
     hasSeasonPoints: false,
+    hasRaceHistory: false,
     hasAllYears: true,
     stagesAreRaces: false,
   },
@@ -89,6 +95,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasCumulativeGc: true,
     hasSprintKom: true,
     hasSeasonPoints: false,
+    hasRaceHistory: false,
     hasAllYears: true,
     stagesAreRaces: false,
   },
@@ -107,6 +114,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasCumulativeGc: true,
     hasSprintKom: true,
     hasSeasonPoints: false,
+    hasRaceHistory: false,
     hasAllYears: true,
     stagesAreRaces: false,
   },
@@ -135,6 +143,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasCumulativeGc: false,
     hasSprintKom: false,
     hasSeasonPoints: true,
+    hasRaceHistory: true,
     hasAllYears: false,
     stagesAreRaces: true,
   },

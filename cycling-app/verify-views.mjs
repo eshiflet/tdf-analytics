@@ -127,10 +127,12 @@ function check(name, cond, detail) {
         ticks.includes("PR") && ticks.includes("LBL"),
         ticks.slice(0, 11).join(" "));
 
-  // All Years Summary is meaningless for a season of unrelated races.
+  // Season TOTALS are meaningless for eleven unrelated races, so that nav slot
+  // carries the per-race history instead — shown, but relabelled.
   const allRacesBtn = doc.getElementById("view-all-races");
-  check("classics hides All Years Summary", allRacesBtn.hidden === true,
-        `hidden=${allRacesBtn.hidden}`);
+  check("classics repurposes the cross-year slot as Race History",
+        allRacesBtn.hidden === false && allRacesBtn.textContent === "Race History",
+        `hidden=${allRacesBtn.hidden} label=${allRacesBtn.textContent}`);
 
   // Sprint/KOM are not contested, so neither may be offered — but the "points"
   // path is reused for the cumulative SEASON STANDING, labelled accordingly.
@@ -249,6 +251,22 @@ function check(name, cond, detail) {
   const hasMvdp = legend.some((t) => /van der Poel/.test(t));
   check("season standings include a rider who skipped the last race",
         hasMvdp, `${legend.length} legend rows`);
+}
+
+// 7f. Race History: one small-multiple panel per race. Faceted rather than
+//     overlaid because categorical color tops out at eight hues and there are
+//     eleven races.
+{
+  const doc = await boot("#classics/allraces");
+  await new Promise((r) => setTimeout(r, 300));   // lazy race_history.json fetch
+  const cells = doc.querySelectorAll("#all-races-chart .history-cell");
+  check("race history renders one panel per race", cells.length === 11, `${cells.length} panels`);
+  const titles = [...cells].map((c) => c.querySelector(".history-title")?.textContent ?? "");
+  check("race history panels are titled with race and span",
+        /Paris-Roubaix\s+1896/.test(titles.join("|")), titles[1] ?? "");
+  // km/mi belongs to the season-totals view and must not leak in here.
+  check("race history hides the km/mi toggle",
+        doc.getElementById("all-races-unit-toggle").hidden === true, "");
 }
 
 // 8. A cancelled race stays in the season rather than vanishing from it.

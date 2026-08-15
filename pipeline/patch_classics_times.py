@@ -178,6 +178,55 @@ def patch_one(cur, race_slug, year, entry, dry_run):
     return problems + notes, updated
 
 
+def apply_overrides(cur, overrides, dry_run):
+    """Replace winner times PCS has WRONG (not merely missing).
+
+    Deliberately separate from the fill path above, which refuses to touch a row
+    that already holds a value — that refusal is what stops this tool clobbering
+    scraped data, so overwriting has to be an explicit, named exception with a
+    recorded reason rather than a relaxation of the rule.
+    """
+    notes, n = [], 0
+    for race_slug, years in overrides.items():
+        if race_slug.startswith("_"):
+            continue
+        for year, o in years.items():
+            meta = CLASSICS[race_slug]
+            cur.execute("""SELECT s.stage_id FROM stages s
+                           JOIN race_editions e USING(edition_id)
+                           JOIN races r USING(race_id)
+                           WHERE r.name = ? AND e.year = ?""", (meta.name, int(year)))
+            row = cur.fetchone()
+            if not row:
+                notes.append(f"{race_slug} {year}: no edition in DB")
+                continue
+            stage_id = row[0]
+            cur.execute("""SELECT sr.rider_id, ri.full_name, sr.finish_time_seconds
+                           FROM stage_results sr JOIN riders ri ON ri.rider_id = sr.rider_id
+                           WHERE sr.stage_id = ? AND sr.stage_rank = ?""",
+                        (stage_id, o["rank"]))
+            hit = cur.fetchone()
+            if not hit:
+                notes.append(f"{race_slug} {year}: no rider at rank {o['rank']}")
+                continue
+            # The named rider must still be the one sitting at that rank.
+            if norm_tokens(hit[1]) != norm_tokens(o["rider"]):
+                notes.append(f"{race_slug} {year}: rank {o['rank']} is {hit[1]!r}, "
+                             f"override names {o['rider']!r} — SKIPPED")
+                continue
+            secs = parse_hms(o["winner_time"])
+            notes.append(f"{race_slug} {year}: {hit[1]} {hit[2]}s -> {secs}s")
+            if not dry_run:
+                cur.execute("""UPDATE stage_results SET finish_time_seconds = ?, gap_seconds = 0
+                               WHERE stage_id = ? AND rider_id = ?""",
+                            (secs, stage_id, hit[0]))
+                record_provenance(cur, "stage_results", stage_id,
+                                  f"finish_time_seconds:{hit[0]}", SOURCE,
+                                  source_ref=o["source_ref"])
+            n += 1
+    return notes, n
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
@@ -185,6 +234,7 @@ def main(argv=None):
 
     with open(SRC_PATH, encoding="utf-8") as f:
         src = json.load(f)
+    overrides = src.pop("overrides", {})
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -200,6 +250,10 @@ def main(argv=None):
                     all_problems.append(f"{race_slug} {year}: {p}")
                 print(f"  {race_slug} {year}: {n} rider time(s) "
                       f"{'would be ' if args.dry_run else ''}filled")
+        ov_notes, ov_n = apply_overrides(cur, overrides, args.dry_run)
+        for line in ov_notes:
+            print(f"  OVERRIDE {line}")
+        total += ov_n
         if args.dry_run:
             conn.rollback()
         else:
