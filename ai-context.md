@@ -42,6 +42,29 @@ The frontend is race-aware via the `RACES` registry in raceRegistry.ts (see "Rac
 
 ---
 
+## Open items as of 2026-08-15
+
+Nothing here is broken-and-unknown; each is a deliberate stop with a reason. Read the linked section before picking one up.
+
+**Decisions waiting on Eric (do not guess):**
+- **Project rename** — analysed and **deferred**; see "Renaming the project". If revived, take the subdomain step first.
+- **Landing pages have identical visible body content.** The four `<race>/index.html` pages differ only in `<title>`/meta — the body is the same SPA shell, and the per-race subtitle line was deliberately removed in `58ce75f`. Giving them distinct visible copy would help them rank separately, but it's a UI/content decision.
+- **Duplicate ranks + same-team bib collisions** in 13 classics race-years — upstream PCS, how to model it is Eric's call. See "Known-open".
+
+**Known-unfixable / explained, leave alone:**
+- **Giro 1946 winner time** — PCS's figure implies 46.5 km/h over 3,050 km. Either the time or the distance is wrong and there's no way to tell which; storing nothing beats storing a number that fails its own check.
+- **Tour 1904–1912, Giro 1909–13** — points-classification era, no time GC ever existed.
+- **19 editions diverge >3% from Wikipedia on distance** — all investigated, none is a missing stage. See "Distance reconciliation".
+- **8 of 18 cancelled stages have no recorded reason.** `validate_db.py` names them under `note` lines. Add a *sourced* reason or leave them; never invent a cause.
+
+**Cost/quality items worth revisiting:**
+- **`classics/riders_index.json` is 2.93 MB / 719 KB gzipped** — bigger than the three Grand Tour indexes combined, and a rider-detail page pulls all four. The clearest cost of the 1892–2026 coverage, and the first thing to revisit if it grows.
+- **`export_gc.py --race tdf`** while everything else says `tour` — a real trip hazard, hit during the 2026-08-15 session. See "Renaming the project" §B.
+- **Social cards are ~1.7 MB committed** across 5 PNGs. Fine for every platform's limit; `pngquant` would roughly halve them.
+- **2026 Vuelta** has not been run yet (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
+
+---
+
 ## Recent structural changes (July 2026) — read before assuming older patterns
 
 A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen older descriptions of this codebase, these supersede them:
@@ -652,8 +675,21 @@ tdf-analytics/
 ├── .github/workflows/deploy.yml      # GitHub Actions: builds + deploys on push to main
 ├── ai-context.md                     # This file
 ├── cycling-app/                      # Vite web application
-│   ├── index.html                    # App shell (nav buttons, sidebar, chart area)
-│   ├── vite.config.ts                # base: "/tdf-analytics/" — required for GitHub Pages
+│   ├── index.html                    # App shell (nav buttons, sidebar, chart area) + the root page's
+│   │                                 #   canonical/og/twitter/schema tags — the TEMPLATE the landing
+│   │                                 #   pages are generated from, so renaming a meta tag here now
+│   │                                 #   fails the generator loudly instead of silently
+│   ├── vite.config.ts                # base: "/tdf-analytics/" — required for GitHub Pages.
+│   │                                 #   rollupOptions.input is DERIVED from race-page-meta.mjs
+│   ├── race-page-meta.mjs            # Data-only: SITE (canonical host) + per-race title/description/
+│   │                                 #   image/alt. Read by BOTH the generator and vite.config.ts
+│   ├── generate-race-pages.mjs       # prebuild/predev: writes <race>/index.html, public/sitemap.xml
+│   │                                 #   and public/robots.txt. Throws if a rewrite matched nothing
+│   ├── og-image.html                 # Social-card template — iframes the live SPA and hides chrome.
+│   │                                 #   NOT in vite input, so it never ships
+│   ├── scripts/render-og-images.sh   # Screenshots the 5 og-*.png cards with headless Chrome against
+│   │                                 #   a running dev server. Run by hand; never in npm run build
+│   ├── public/og-*.png               # The 5 rendered 1200×630 social cards (committed)
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
@@ -1235,6 +1271,50 @@ git push
 `.github/workflows/deploy.yml` runs: `python3 validate_exports.py` (data validation, hard-fails on decreasing cumulative points or malformed structure) → `npm ci && npm run build` → `node verify.mjs && node verify-views.mjs` (smoke tests on the built bundle) → deploy to GitHub Pages. A bad data export or a broken build cannot deploy.
 
 > `vite.config.ts` must keep `base: "/tdf-analytics/"` — asset paths break without it.
+
+**Hosting topology (verified live 2026-08-15).** This is a GitHub Pages **project** site that inherits its custom domain from the `eshiflet.github.io` **user** site, which is why the repo name is a path segment:
+
+| URL | response |
+|---|---|
+| `https://www.ericshiflet.com/tdf-analytics/` | **200** — the only URL that serves |
+| `https://eshiflet.github.io/tdf-analytics/` | 301 → www.ericshiflet.com |
+| `https://ericshiflet.com/tdf-analytics/` | 301 → www.ericshiflet.com |
+
+`www.ericshiflet.com/` itself is Eric's separate personal site, not this app. `SITE` in `race-page-meta.mjs` holds the serving host and is the single definition used by canonical tags, `og:`/`twitter:` URLs, sitemap and robots.
+
+**The social cards are not rebuilt by CI.** `scripts/render-og-images.sh` needs headless Chrome and a running dev server, so `public/og-*.png` are committed artifacts. Re-run it by hand after a palette or chart change, or the cards quietly keep showing the old design.
+
+---
+
+## Renaming the project (analysed 2026-08-15 — DEFERRED, Eric's call)
+
+"tdf-analytics" now covers the Giro, the Vuelta and 11 one-day classics, so the name is wrong. Eric looked at the cost and **decided not to rename for now** ("it sounds a bit invasive"). Don't re-derive this; the analysis is below.
+
+**There are two independent renames. Conflating them makes a small job look enormous.**
+
+### A. The public name `tdf-analytics` — 40 occurrences, 17 files
+
+`vite.config.ts` base (1) · `index.html` canonical/og/schema (7) · `sitemap.xml` (5) · `robots.txt` (1) · `race-page-meta.mjs` SITE (1) · `verify.mjs`/`verify-views.mjs` base-stripping regexes (6) · 8 Python scrapers' User-Agent strings · `ai-context.md` (8) + `architecture.md` (1). **`.github/workflows/deploy.yml` needs no change** — it references `cycling-app/`, not the repo name.
+
+The code is an afternoon. **The cost is entirely in URLs**: renaming the repo changes the Pages path, so every bookmark and shared deep link under `/tdf-analytics/` stops resolving. Git remotes redirect automatically; the Pages path does not, so it needs a redirect shell at the old location that preserves the hash (all app state lives in the hash). Search ranking also resets for the new path.
+
+**The option that makes this free:** give the project its own custom domain (e.g. `cycling.ericshiflet.com`). A project repo can hold its own domain and is then served at that domain's *root* — `base` becomes `/`, the repo name never appears in a URL again, and renaming becomes a purely internal decision. Costs a DNS record, a `CNAME` in `public/`, and a redirect for existing `/tdf-analytics/` links. **If the rename is ever revived, do this first** so URLs churn once instead of twice.
+
+### B. The internal `tdf` → `tour` legacy — zero user impact
+
+The July 2026 pass migrated TDF's *supplemental* files to the `tour_` prefix but left the rest:
+
+- **`export_gc.py --race tdf` and `validate_db.py --race tdf`** while every path they write is `data/tour/`. This is a **live trip hazard, not a cosmetic one** — `export_gc.py --race tour` errors out, and it was hit during this very session. Unifying the race key is the highest-value, lowest-risk piece of the whole rename discussion: small, invisible to users, touches no URLs.
+- 47 `tdf_YYYY_full.json` raw scrape files and 16 Python files referencing them, plus `reingest_tdf_stage.py`. Pure consistency, no functional gain — do last, or never.
+
+### Suggested sequencing if revived
+
+1. Unify the `tdf`/`tour` race key (do this regardless — it's a bug magnet).
+2. Move to a dedicated subdomain, making the repo name invisible.
+3. Rename the repo, which is then free.
+4. Rename the `tdf_*_full.json` files last, or never.
+
+Names considered: `grand-tour-analytics` is **already too narrow** (the classics aren't grand tours). Prefer race-agnostic — `cycling-analytics`, `procycling-analytics`, `peloton-analytics`.
 
 ---
 
