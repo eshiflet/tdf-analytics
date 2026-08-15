@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OG image template</title>
+    <!--
+      Social-card template. NOT part of the built site — it is absent from
+      vite.config.ts's rollupOptions.input, so `npm run build` ignores it and it
+      never ships. It exists to be screenshotted by scripts/render-og-images.sh.
+
+      The card frames the app's REAL chart rather than a mockup: it iframes the
+      live SPA at a deep link, hides the chrome (topbar, sidebar, footer), and
+      scales the chart to fill. Same D3, same data, so the picture can never
+      drift from what a visitor actually gets — a hand-drawn card would.
+
+      Query params: ?hash=<app hash>&title=<headline>&sub=<subhead>
+    -->
+    <style>
+      :root { color-scheme: dark; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        width: 1200px; height: 630px; overflow: hidden;
+        background: #0f1115;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #e6e8ec;
+        display: flex; flex-direction: column;
+      }
+      header { padding: 34px 56px 14px; flex: none; }
+      h1 {
+        font-size: 48px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05;
+      }
+      .sub {
+        margin-top: 10px; font-size: 23px; font-weight: 400; color: #9aa3b2;
+        letter-spacing: -0.01em;
+      }
+      /* The chart sits in a fixed window; the iframe inside is rendered LARGE
+         and scaled down, so lines stay crisp instead of being re-laid-out at a
+         small width where D3 would drop ticks and crowd labels. */
+      .stage { flex: 1; position: relative; overflow: hidden; }
+      iframe {
+        position: absolute; border: 0;
+        width: 2000px; height: 700px;
+        transform-origin: top left;
+      }
+      footer {
+        flex: none; padding: 0 56px 30px;
+        display: flex; align-items: baseline; justify-content: space-between;
+        font-size: 21px; color: #6f7887;
+      }
+      .wordmark { color: #9aa3b2; font-weight: 600; }
+      .accent { color: #3987e5; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title"></h1>
+      <div class="sub" id="sub"></div>
+    </header>
+    <div class="stage"><iframe id="frame"></iframe></div>
+    <footer>
+      <span class="wordmark">ericshiflet.com<span class="accent">/tdf-analytics</span></span>
+      <span id="note"></span>
+    </footer>
+
+    <script>
+      const q = new URLSearchParams(location.search);
+      const hash = q.get("hash") || "#2026/stage/gc";
+      document.getElementById("title").textContent = q.get("title") || "Cycling Analytics";
+      document.getElementById("sub").textContent = q.get("sub") || "";
+      document.getElementById("note").textContent = q.get("note") || "";
+
+      const frame = document.getElementById("frame");
+      // Scale so the iframe's 2000px width covers the 1200px card, then nudge
+      // left/up to crop the app's own chrome out of the visible window.
+      // The iframe is 2000x700 and the card's chart window is 1200x~420, the
+      // same 2.9:1 shape, so a straight 0.6 scale fits the WHOLE chart --
+      // axes, tick labels and all. Cropping instead (an earlier attempt)
+      // turned the plot into abstract ribbons with no scale to read.
+      frame.style.transform = "scale(0.6)";
+
+      frame.addEventListener("load", () => {
+        const doc = frame.contentDocument;
+        const css = doc.createElement("style");
+        // Hide the app's own furniture. The card supplies its own title and
+        // wordmark, so the in-app header would just be a duplicate.
+        css.textContent = `
+          .topbar, .sidebar, #sidebar, .site-footer { display: none !important; }
+          /* Rider names sit at each line's final position. Legible in the app,
+             an unreadable smear once the card is scaled to a chat thumbnail. */
+          .labels .rider-end-label { display: none !important; }
+          /* Interactive affordances mean nothing in a static image. */
+          .unit-toggle, .race-toggle-group { display: none !important; }
+          .layout { grid-template-columns: 1fr !important; }
+          body { background: #0f1115 !important; }
+        `;
+        doc.head.appendChild(css);
+        // The chart sizes itself off its container, which just changed.
+        setTimeout(() => frame.contentWindow.dispatchEvent(new Event("resize")), 300);
+      });
+      frame.src = `/tdf-analytics/${hash}`;
+    </script>
+  </body>
+</html>

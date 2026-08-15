@@ -18,19 +18,27 @@ export const RACES = {
   tour: {
     title: "Tour de France Cycling Analytics — GC, Sprint & KOM Stats (1903–2026)",
     description: "Stage-by-stage GC, sprint, and KOM standings for every Tour de France since 1903 — every rider, every stage, every year.",
+    image: "og-tour.png",
+    alt: "Line chart of the 2026 Tour de France general classification, one coloured line per rider tracking position across all 21 stages.",
   },
   giro: {
     title: "Giro d'Italia Cycling Analytics — GC, Sprint & KOM Stats (1909–2026)",
     description: "Stage-by-stage GC, sprint, and KOM standings for every Giro d'Italia since 1909 — every rider, every stage, every year.",
+    image: "og-giro.png",
+    alt: "Line chart of the 2026 Giro d'Italia general classification, one coloured line per rider tracking position across all 21 stages.",
   },
   vuelta: {
     title: "Vuelta a España Cycling Analytics — GC, Sprint & KOM Stats (1935–2025)",
     description: "Stage-by-stage GC, sprint, and KOM standings for every Vuelta a España since 1935 — every rider, every stage, every year.",
+    image: "og-vuelta.png",
+    alt: "Line chart of the 2025 Vuelta a España general classification, one coloured line per rider tracking position across every stage.",
   },
   // No sprint/KOM wording here: the classics contest neither, and the metric
   // is a finishing position rather than a GC standing.
   classics: {
     title: "One-Day Classics Cycling Analytics — Monument & Classic Results (1892–2026)",
     description: "Race-by-race results for the cycling monuments and classics — Milan–San Remo, Tour of Flanders, Paris–Roubaix, Liège–Bastogne–Liège, Il Lombardia and more, 1892–2026.",
+    image: "og-classics.png",
+    alt: "Line chart of a one-day classics season, one coloured line per rider crossing eleven races from Omloop Het Nieuwsblad to Clásica de San Sebastián.",
   },
 };

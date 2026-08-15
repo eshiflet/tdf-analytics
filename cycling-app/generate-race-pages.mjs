@@ -53,6 +53,12 @@ for (const [race, meta] of Object.entries(RACES)) {
     `<meta name="twitter:title" content="${meta.title}" />`, "twitter:title");
   html = sub(html, /<meta name="twitter:description" content="[^"]*" \/>/,
     `<meta name="twitter:description" content="${meta.description}" />`, "twitter:description");
+  html = sub(html, /<meta property="og:image" content="[^"]*" \/>/,
+    `<meta property="og:image" content="${SITE}/${meta.image}" />`, "og:image");
+  html = sub(html, /<meta property="og:image:alt" content="[^"]*" \/>/,
+    `<meta property="og:image:alt" content="${meta.alt}" />`, "og:image:alt");
+  html = sub(html, /<meta name="twitter:image" content="[^"]*" \/>/,
+    `<meta name="twitter:image" content="${SITE}/${meta.image}" />`, "twitter:image");
   html = sub(html, /<link rel="canonical" href="[^"]*" \/>/,
     `<link rel="canonical" href="${url}" />`, "canonical");
   html = sub(html,
