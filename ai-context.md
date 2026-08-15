@@ -163,7 +163,7 @@ original bug back and confirm the test fails; that caught two blind spots in thi
 
 ## One-day classics (August 2026)
 
-Eleven monuments/classics, **1970–2026**, added 2026-08-13. In the DB they are
+Eleven monuments/classics, **1946–2026**, added 2026-08-13. In the DB they are
 **11 independent races** (`races.race_type='one_day'`, race_id 4–14, one stage per
 edition). The frontend shows **one** race, `classics` — "One-day Classics" — whose
 "stages" are those races. That aggregation happens only at export time.
@@ -177,16 +177,17 @@ edition). The frontend shows **one** race, `classics` — "One-day Classics" —
 | `ronde-van-vlaanderen` | Tour of Flanders | RVV | | `il-lombardia` | Il Lombardia | IL |
 | `paris-roubaix` | Paris–Roubaix | PR | | | | |
 
-**578 race-years · 81,377 results · 6,545 riders · 5 cancelled.**
+**773 race-years · 93,708 results · 8,651 riders · 5 cancelled.**
 
 Coverage is bounded by each race's founding year, established from PCS returning
 **HTTP 500** for editions that never happened — not from assumption:
 
 | race | first edition present | note |
 |---|---|---|
-| Strade Bianche | **2007** | 500s for all of 1970–2006 (37 seasons) |
-| Clásica de San Sebastián | **1981** | 500s for 1970–1980 (11 seasons) |
-| the other nine | 1970 | full 57 seasons each |
+| Strade Bianche | **2007** | 500s for all of 1946–2006 (61 seasons) |
+| Clásica de San Sebastián | **1981** | 500s for 1946–1980 (35 seasons) |
+| Amstel Gold Race | **1966** | 500s for 1946–1965 (20 seasons) |
+| the other eight | 1946 | full 81 seasons each |
 
 Cancellations found: 2020 lost Paris–Roubaix, Amstel Gold and San Sebastián to
 COVID; **Omloop Het Volk was also cancelled in 1986 and 2004**.
@@ -265,16 +266,30 @@ around "one edition = one race with N stages". The classics invert that (N editi
 N races = one displayed season), so sharing the code would contort both. There is no
 `all_races_summary.json` and never will be.
 
-### Data quality by era (measured, 1970–1989)
+### Data quality by era (measured — read before "fixing" a perceived gap)
 
-Better than expected, and worth knowing before anyone "fixes" a perceived gap:
+**Finishing times are 100% complete for every finisher in every era measured**
+(1946 onward). What degrades going back is *team* attribution and field size:
 
-| field | coverage | |
-|---|---|---|
-| finishing time | **100% of finishers** (11,443/11,443) | the 14% of *rows* without one are all DNFs |
-| age | 100% | |
-| team | 85% | |
-| **bib number** | **20%** | PCS simply lacks bibs for most pre-1990 editions |
+| decade | riders with a team |
+|---|---|
+| 1940s | **2%** |
+| 1950s | 32% |
+| 1960s | 31% |
+| 1970s | 72% |
+| 1980s | 96% |
+| 1990s → | 99–100% |
+
+**This directly weakens the team-grouped by-Stage Table pre-1970.** 1952 renders as
+37 real team blocks followed by a single 163-row team-less run — 46% of the table.
+That run is ordered by best finish and bands as one block, so it is honest rather
+than broken, but the grouping does less work the further back you go. Consider a
+different ordering for sparse-team years if this becomes annoying.
+
+Field size shrinks too: 1946–1969 races carry mostly **25–75 riders** against ~175
+today, and only 344 non-finishers across 12,331 rows — PCS stores a partial field
+for old races, not the full result. Bib coverage is 4% in that era (20% in the 70s/80s),
+which is the other reason the classics table ignores bibs entirely.
 
 Sparse bibs no longer matter for the classics: the by-Stage Table **hides the bib
 column and groups by team** for any race with `stagesAreRaces` (see below). Stage
@@ -309,8 +324,13 @@ future scrape must keep handling:
   A 500 page and a cancelled race look identical otherwise.
 - **Omloop was "Omloop Het Volk" until 2009** (the 2004 H1 reads "59th Omloop
   Het Volk"). PCS keeps one slug across the rename, so we store one display
-  name for all years. Its **2004 edition was genuinely cancelled** — a real 200
-  page, dated, with no results.
+  name for all years. Its **2004 and 1986 editions were genuinely cancelled** —
+  real 200 pages, dated, with no results.
+- **PCS has no Omloop 1960 edition at all**: it returns HTTP 500, reproducibly, on
+  a fresh independent fetch — every other year 1946–2026 resolves. Whether the race
+  was not held or PCS simply lacks it cannot be told from here, so nothing is
+  recorded (no invented cancellation). A candidate for the bikeraceinfo /
+  cyclingflash cross-check that `patch_classics_times.py` already supports.
 
 ### by-Stage Table for an aggregate race
 
@@ -395,7 +415,7 @@ silently corrupted:
   (Paris–Roubaix 2023, Rex Laurenz: `160 … -25`), splitting a row mid-record.
   `parse_classics_bundle.py` joins continuation lines; ingest keeps the awarded
   figure and ignores the annotation rather than guessing the net.
-- Coverage is 1970–2026. Going further back is a scrape-scope decision, not a code
+- Coverage is 1946–2026. Going further back is a scrape-scope decision, not a code
   change (Liège dates to 1892, Roubaix 1896), but re-check the column-shape and
   completeness assumptions above first — 1970–1989 held up well, older editions may
   not.
@@ -404,8 +424,10 @@ silently corrupted:
   It is lazy-loaded, so first paint is unaffected, but `drawRiderDetail` awaits all
   four indexes in parallel. Dropping the redundant team index from each constituent
   entry saved 87 KB gzipped; further shrinking would mean restructuring `m`.
-  **At 1970–2025 it is 1.96 MB / 494 KB gzipped** — the extra 36 seasons ate that
-  saving and then some. If it keeps growing, this is the first thing to revisit.
+  **At 1946–2026 it is 2.43 MB / 608 KB gzipped** — bigger than the three Grand
+  Tour indexes COMBINED (554 KB), and a rider-detail page pulls all four. This is
+  now the clearest cost of extending coverage and the first thing to revisit if it
+  grows again.
 
 ---
 
