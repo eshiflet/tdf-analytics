@@ -15,6 +15,11 @@ import { d3 } from "../d3";
 import { allRacesChartEl, tooltipEl } from "../dom";
 import { positionTooltip, hideTooltip } from "../tooltip";
 import { fetchJson } from "../dataLoading";
+import { state } from "../state";
+// main.ts imports this module, so this is a cycle — safe for the same reason
+// riders.ts's is (see its header comment): updateUnitToggle is only ever called
+// from inside an event handler, never while the module is being evaluated.
+import { updateUnitToggle } from "../main";
 
 type YearPoint = { y: number; km?: number; kmh?: number; n?: number };
 type RaceSeries = { name: string; short: string; first: number; last: number; years: YearPoint[] };
@@ -35,14 +40,40 @@ const HISTORY_URL = Object.values(historyUrlModules)[0];
 const LINE = "#3987e5";
 
 type MetricId = "kmh" | "km" | "n";
-const METRICS: { id: MetricId; label: string; axis: string; fmt: (v: number) => string }[] = [
-  { id: "kmh", label: "Winning speed", axis: "km/h", fmt: (v) => `${v.toFixed(1)} km/h` },
-  { id: "km", label: "Distance", axis: "km", fmt: (v) => `${Math.round(v)} km` },
-  { id: "n", label: "Finishers", axis: "riders", fmt: (v) => `${Math.round(v)} finishers` },
+const METRICS: { id: MetricId; label: string }[] = [
+  { id: "kmh", label: "Winning speed" },
+  { id: "km", label: "Distance" },
+  { id: "n", label: "Finishers" },
 ];
+
+const KM_TO_MI = 0.621371;
+
+/** Axis label, tooltip format and value conversion for the metric on screen,
+ *  in the unit the km/mi toggle currently selects. Speed converts too — mph is
+ *  the imperial reading of km/h — while finishers is a plain count and is the
+ *  same number either way. */
+function unitSpec(metricId: MetricId, imperial: boolean) {
+  if (metricId === "kmh") {
+    return imperial
+      ? { axis: "mph", fmt: (v: number) => `${v.toFixed(1)} mph`, convert: (v: number) => v * KM_TO_MI }
+      : { axis: "km/h", fmt: (v: number) => `${v.toFixed(1)} km/h`, convert: (v: number) => v };
+  }
+  if (metricId === "km") {
+    return imperial
+      ? { axis: "mi", fmt: (v: number) => `${Math.round(v)} mi`, convert: (v: number) => v * KM_TO_MI }
+      : { axis: "km", fmt: (v: number) => `${Math.round(v)} km`, convert: (v: number) => v };
+  }
+  return { axis: "riders", fmt: (v: number) => `${Math.round(v)} finishers`, convert: (v: number) => v };
+}
 
 let cache: RaceSeries[] | null = null;
 let metric: MetricId = "kmh";
+
+/** Whether the km/mi toggle means anything for the metric on screen — main.ts
+ *  hides the button for Finishers, which is a count with no unit. */
+export function raceHistoryUsesDistanceUnits(): boolean {
+  return metric !== "n";
+}
 
 export async function drawClassicsHistory(): Promise<void> {
   allRacesChartEl.innerHTML = "";
@@ -53,7 +84,13 @@ export async function drawClassicsHistory(): Promise<void> {
   }
   const races = cache;
 
-  const spec = METRICS.find((m) => m.id === metric)!;
+  const spec = unitSpec(metric, state.allRacesUnit === "imperial");
+  // Every read of a data point goes through this, so the axis, the lines and
+  // the tooltip can't disagree about which unit they're in.
+  const valueAt = (p: YearPoint): number | null => {
+    const raw = p[metric];
+    return raw == null ? null : spec.convert(raw);
+  };
 
   // Metric switch, one row above the charts.
   const bar = document.createElement("div");
@@ -62,14 +99,20 @@ export async function drawClassicsHistory(): Promise<void> {
     const b = document.createElement("button");
     b.className = m.id === metric ? "classif-toggle-btn active" : "classif-toggle-btn inactive";
     b.textContent = m.label;
-    b.addEventListener("click", () => { metric = m.id; drawClassicsHistory(); });
+    b.addEventListener("click", () => {
+      metric = m.id;
+      // Finishers has no unit, so the km/mi button has to appear or disappear
+      // with the metric, not just on entering the view.
+      updateUnitToggle();
+      drawClassicsHistory();
+    });
     bar.appendChild(b);
   }
   allRacesChartEl.appendChild(bar);
 
   // Shared scales across every panel — the whole point is comparing races to
   // each other, which a per-panel axis would quietly prevent.
-  const allPts = races.flatMap((r) => r.years.map((p) => p[metric]).filter((v): v is number => v != null));
+  const allPts = races.flatMap((r) => r.years.map(valueAt).filter((v): v is number => v != null));
   if (allPts.length === 0) return;
   const yMin = Math.min(...allPts), yMax = Math.max(...allPts);
   const xMin = Math.min(...races.map((r) => r.first));
@@ -122,10 +165,10 @@ export async function drawClassicsHistory(): Promise<void> {
     }
     if (seg.length) segs.push(seg);
 
-    const line = d3.line<YearPoint>().x((p) => x(p.y)).y((p) => y(p[metric]!));
+    const line = d3.line<YearPoint>().x((p) => x(p.y)).y((p) => y(valueAt(p)!));
     for (const s of segs) {
       if (s.length === 1) {
-        g.append("circle").attr("cx", x(s[0].y)).attr("cy", y(s[0][metric]!))
+        g.append("circle").attr("cx", x(s[0].y)).attr("cy", y(valueAt(s[0])!))
           .attr("r", 1.6).attr("fill", LINE);
       } else {
         g.append("path").datum(s).attr("fill", "none")
@@ -154,7 +197,7 @@ export async function drawClassicsHistory(): Promise<void> {
         tooltipEl.innerHTML =
           `<div class="t-name">${race.name}</div>` +
           `<div class="t-team">${best.y}</div>` +
-          `<div>${spec.fmt(best[metric]!)}</div>`;
+          `<div>${spec.fmt(valueAt(best)!)}</div>`;
         positionTooltip(event);
       })
       .on("mouseleave", () => { hover.attr("opacity", 0); hideTooltip(); });

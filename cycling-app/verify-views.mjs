@@ -273,9 +273,17 @@ function check(name, cond, detail) {
   const titles = [...cells].map((c) => c.querySelector(".history-title")?.textContent ?? "");
   check("race history panels are titled with race and span",
         /Paris-Roubaix\s+1896/.test(titles.join("|")), titles[1] ?? "");
-  // km/mi belongs to the season-totals view and must not leak in here.
-  check("race history hides the km/mi toggle",
-        doc.getElementById("all-races-unit-toggle").hidden === true, "");
+  // km/mi now serves the race history too — it opens on Winning speed, which
+  // has a unit to convert, so the button must be offered rather than hidden.
+  const unitBtn = doc.getElementById("all-races-unit-toggle");
+  check("race history offers the km/mi toggle",
+        unitBtn.hidden === false, `hidden=${unitBtn.hidden} label=${unitBtn.textContent}`);
+  // Switching to Finishers — a count with no unit — takes the button away.
+  const metricBtns = [...doc.querySelectorAll("#all-races-chart .classif-toggle-btn")];
+  const finishers = metricBtns.find((b) => b.textContent.trim() === "Finishers");
+  finishers?.click();
+  check("race history hides km/mi for the unit-less metric",
+        unitBtn.hidden === true, `hidden=${unitBtn.hidden}`);
 }
 
 // 8. A cancelled race stays in the season rather than vanishing from it.

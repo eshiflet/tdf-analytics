@@ -30,7 +30,7 @@ import {
 import { drawStageTable } from "./views/stageTable";
 import { drawOverview } from "./views/overview";
 import { drawAllRacesOverview } from "./views/allRaces";
-import { drawClassicsHistory } from "./views/classicsHistory";
+import { drawClassicsHistory, raceHistoryUsesDistanceUnits } from "./views/classicsHistory";
 import { drawRidersPage } from "./views/riders";
 import { drawRiderDetail } from "./views/riderDetail";
 
@@ -228,11 +228,12 @@ function updateKomModeToggle() {
     : "Rank → Points";
 }
 
-function updateUnitToggle() {
-  // km/mi applies to the season-totals view only. The per-race history has its
-  // own metric switch (speed / distance / finishers) and no unit toggle.
-  allRacesUnitToggleBtn.hidden =
-    state.currentView !== "allraces" || raceConfig().hasRaceHistory;
+export function updateUnitToggle() {
+  // km/mi applies to the season-totals view and to the per-race history, whose
+  // own metric switch decides whether there is a unit to convert at all —
+  // Finishers is a count, so the button goes away for it.
+  allRacesUnitToggleBtn.hidden = state.currentView !== "allraces"
+    || (raceConfig().hasRaceHistory && !raceHistoryUsesDistanceUnits());
   allRacesUnitToggleBtn.textContent = state.allRacesUnit === "metric" ? "km → mi" : "mi → km";
   overviewUnitToggleBtn.hidden = state.currentView !== "overview";
   overviewUnitToggleBtn.textContent = state.overviewUnit === "metric" ? "km → mi" : "mi → km";
@@ -459,7 +460,9 @@ function wireControls() {
   allRacesUnitToggleBtn.addEventListener("click", () => {
     state.allRacesUnit = state.allRacesUnit === "metric" ? "imperial" : "metric";
     updateUnitToggle();
-    drawAllRacesOverview();
+    // The same button serves both things this view can be.
+    if (raceConfig().hasRaceHistory) drawClassicsHistory().catch(showLoadError);
+    else drawAllRacesOverview();
   });
 
   overviewUnitToggleBtn.addEventListener("click", () => {
