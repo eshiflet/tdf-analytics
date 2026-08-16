@@ -664,6 +664,17 @@ svg text {
   cursor: help;
 }
 
+/* The table sizes columns to their content, so a stage whose values happen to
+   be short came out visibly narrower than its neighbours — stage 1 most of
+   all, since points and KOM totals start in single digits and a prologue's
+   ranks are short too (2026 sprint: 31.5px against 44.4px elsewhere). A floor
+   just above the widest natural column (44.4px, a 3-digit rank) evens them up.
+   It's a minimum, not a fixed width: GC-time cells are wider and all grow
+   together, so those stay uniform as well. */
+.stage-table th.col-stage {
+  min-width: 46px;
+}
+
 .stage-table .col-team {
   position: sticky;
   left: 0;
