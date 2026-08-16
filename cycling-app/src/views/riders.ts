@@ -314,6 +314,10 @@ export async function drawRidersPage() {
 
   const teamSel = document.createElement("select");
   teamSel.className = "riders-filter-select";
+  // Stable hooks for verify-views.mjs. It used to index .riders-filter-select
+  // positionally, which silently pointed at the nationality select the moment
+  // the year filter stopped being a plain <select>.
+  teamSel.id = "riders-team-filter";
   [["", "All teams"], ...allTeams.map((t) => [t, t])].forEach(([val, label]) => {
     const opt = document.createElement("option");
     opt.value = val;
@@ -325,6 +329,7 @@ export async function drawRidersPage() {
 
   const nationalitySel = document.createElement("select");
   nationalitySel.className = "riders-filter-select";
+  nationalitySel.id = "riders-nationality-filter";
   [["", "All nationalities"], ...allNats.map((n) => [n, n])].forEach(([val, label]) => {
     const opt = document.createElement("option");
     opt.value = val;

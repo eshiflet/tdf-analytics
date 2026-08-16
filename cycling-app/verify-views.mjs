@@ -81,9 +81,18 @@ function check(name, cond, detail) {
 {
   const doc = await boot("#riders");
   const btns = doc.querySelectorAll(".rider-name-btn").length;
-  const teamOptions = doc.querySelectorAll(".riders-filter-select")[1]?.options.length ?? 0;
+  // By id, not by position among .riders-filter-select: this check silently
+  // moved to the nationality select (and failed at 70 options) when the year
+  // filter became a multi-select dropdown and left that class behind.
+  const teamOptions = doc.querySelector("#riders-team-filter")?.options.length ?? 0;
+  const natOptions = doc.querySelector("#riders-nationality-filter")?.options.length ?? 0;
+  const filterBoxes = doc.querySelectorAll(".filter-panel input[type=checkbox]").length;
   check("riders grid renders all riders", btns > 5000, `${btns} rider buttons`);
   check("team filter populated from team table", teamOptions > 600, `${teamOptions} team options`);
+  check("nationality filter populated", natOptions > 50, `${natOptions} nationality options`);
+  // Years and races are both checkbox panels now; every year plus 4 races.
+  check("year filter offers a checkbox per year", filterBoxes > 100,
+    `${filterBoxes} year+race checkboxes`);
 }
 
 // 4. Rider detail deep link (career chart, teams resolved from string table).
