@@ -87,8 +87,10 @@ export const DOPING_REVOKED_NOTE = "Some race results revoked for doping";
 export const RIDERS_WITH_REVOKED_RESULTS = new Set<string>([
   "rider/lance-armstrong",   // all seven Tour wins, 1999-2005
   "rider/floyd-landis",      // 2006 Tour
-  "rider/alberto-contador",  // 2010 Tour and 2011 Giro
+  "rider/alberto-contador",  // 2010 Tour; 2011 Giro, re-awarded to Michele Scarponi by CAS
   "rider/bernhard-kohl",     // 2008 Tour KOM, re-awarded to Carlos Sastre
+  "rider/juan-jose-cobo",    // 2011 Vuelta, re-awarded to Chris Froome
+  // Not "rider/ivan-cobo-cayon" — a different, unrelated Cobo rides in the data.
 ]);
 
 // Doping notes shown next to GC jersey years on the rider detail page. Keys
