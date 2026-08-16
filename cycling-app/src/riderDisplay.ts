@@ -6,6 +6,44 @@ export function displayName(r: { name: string; firstName?: string; lastName?: st
   return r.firstName && r.lastName ? `${r.firstName} ${r.lastName}` : r.name;
 }
 
+// A peloton's worth of names carries every European diacritic there is, and
+// nobody types them: searching "pogacar" has to find Pogačar. NFD splits an
+// accented letter into its base letter plus a combining mark, so the marks can
+// be stripped — but a handful of letters are not accented forms of anything
+// and don't decompose, so they're mapped by hand (Jørgensen, Kwiatkowski's
+// countrymen with ł, Đurđević, Preiß).
+const UNDECOMPOSED_LETTERS: Record<string, string> = {
+  ø: "o", Ø: "O", ł: "l", Ł: "L", đ: "d", Đ: "D", ð: "d", Ð: "D",
+  þ: "th", Þ: "Th", ß: "ss", æ: "ae", Æ: "Ae", œ: "oe", Œ: "Oe", ı: "i",
+};
+
+/** Lowercased and stripped of accents, for comparing what a user typed against
+ *  a rider's name. Both sides of the comparison must go through this. */
+export function foldForSearch(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[øØłŁđĐðÐþÞßæÆœŒı]/g, (c) => UNDECOMPOSED_LETTERS[c])
+    .toLowerCase();
+}
+
+// German umlauts have a second, equally common written form: Zülle is spelled
+// "Zuelle" as often as "Zulle", and only the reader knows which they'll type.
+// 113 riders in the data carry one, so rather than pick a winner the haystack
+// carries both spellings.
+const UMLAUT_EXPANSIONS: Record<string, string> = {
+  ä: "ae", ö: "oe", ü: "ue", Ä: "Ae", Ö: "Oe", Ü: "Ue",
+};
+
+/** The text to match a folded query against — accent-stripped, plus the
+ *  umlaut-expanded spelling when that differs. Search the query (folded with
+ *  foldForSearch) against this, not the other way round. */
+export function searchHaystack(text: string): string {
+  const folded = foldForSearch(text);
+  const expanded = foldForSearch(text.replace(/[äöüÄÖÜ]/g, (c) => UMLAUT_EXPANSIONS[c]));
+  return expanded === folded ? folded : `${folded}\n${expanded}`;
+}
+
 // "Soviet Union" and "Yugoslavia" are genuine historical entities with no
 // current ISO 3166-1 code / flag emoji, so they get hand-built inline SVGs
 // (official Wikimedia Commons artwork) instead of an emoji lookup — see
@@ -42,9 +80,14 @@ export function isoToFlagEmoji(iso2: string): string {
   return [...iso2.toUpperCase()].map((c) => String.fromCodePoint(127397 + c.charCodeAt(0))).join("");
 }
 
-/** Small flag <span> for a nationality, or null if unrecognized/absent. */
-export function nationalityFlagEl(nationality: string | null | undefined): HTMLSpanElement | null {
-  if (!nationality) return null;
+// One prototype span per nationality, cloned on demand. The riders grid asks
+// for a flag once per rider — 14,260 times per rebuild, ~85ms of it — and
+// building each from scratch redid the same attribute writes, emoji codepoint
+// arithmetic, and (for the two historical flags) a full SVG innerHTML parse.
+// `null` is cached too, so an unrecognized nationality isn't retried.
+const flagPrototypes = new Map<string, HTMLSpanElement | null>();
+
+function buildFlagEl(nationality: string): HTMLSpanElement | null {
   const flag = document.createElement("span");
   flag.className = "nationality-flag";
   flag.title = nationality;
@@ -57,4 +100,16 @@ export function nationalityFlagEl(nationality: string | null | undefined): HTMLS
   if (!iso2) return null;
   flag.textContent = isoToFlagEmoji(iso2);
   return flag;
+}
+
+/** Small flag <span> for a nationality, or null if unrecognized/absent.
+ *  The returned node is a fresh clone, so callers may keep mutating it. */
+export function nationalityFlagEl(nationality: string | null | undefined): HTMLSpanElement | null {
+  if (!nationality) return null;
+  let prototype = flagPrototypes.get(nationality);
+  if (prototype === undefined) {
+    prototype = buildFlagEl(nationality);
+    flagPrototypes.set(nationality, prototype);
+  }
+  return prototype ? (prototype.cloneNode(true) as HTMLSpanElement) : null;
 }

@@ -12,7 +12,7 @@ import { ridersChartEl } from "../dom";
 import { updateHash } from "../hashRouting";
 import { showLoadError } from "../main";
 import { debounce } from "../utils";
-import { displayName, nationalityFlagEl } from "../riderDisplay";
+import { displayName, foldForSearch, nationalityFlagEl, searchHaystack } from "../riderDisplay";
 import type { RiderEntry } from "../riderIndexData";
 import {
   riderIndexByRace, allTeamsSortedByRace, allNationalitiesSortedByRace,
@@ -49,7 +49,14 @@ export function mergedRidersForSelectedRaces(): RiderEntry[] {
         }
         for (const team of entry.teams) existing.teams.add(team);
       } else {
-        mergedById.set(id, { ...entry, years: new Map(entry.years), teams: new Set(entry.teams) });
+        const clone: RiderEntry = { ...entry, years: new Map(entry.years), teams: new Set(entry.teams) };
+        // `constituents` is a non-enumerable lazy getter, so the spread above
+        // skips it (which is the point — spreading 11,934 classics riders must
+        // not build them all). Carry the descriptor across so the clone keeps
+        // the property, still lazy and sharing the original's memo.
+        const lazyConstituents = Object.getOwnPropertyDescriptor(entry, "constituents");
+        if (lazyConstituents) Object.defineProperty(clone, "constituents", lazyConstituents);
+        mergedById.set(id, clone);
       }
     }
   }
@@ -85,13 +92,26 @@ function matchesJerseyFilter(entry: RiderEntry, selectedRaces: RaceId[]): boolea
     .some((year) => yearsWonPerToggle.every((years) => years.includes(year)));
 }
 
+// Both name forms, accent-folded, in one haystack. Folding is ~14,000 string
+// normalizations per keystroke otherwise; the names never change once loaded,
+// so each entry pays for it once.
+const searchKeyCache = new WeakMap<RiderEntry, string>();
+function riderSearchKey(entry: RiderEntry): string {
+  let key = searchKeyCache.get(entry);
+  if (key === undefined) {
+    key = searchHaystack(`${entry.name}\n${displayName(entry)}`);
+    searchKeyCache.set(entry, key);
+  }
+  return key;
+}
+
 export function filteredRiders(): RiderEntry[] {
-  const q = state.ridersSearchQuery.toLowerCase();
+  const q = foldForSearch(state.ridersSearchQuery);
   const years = state.ridersFilterYears;
   const selectedRaces = selectedRacesForRiders();
   return mergedRidersForSelectedRaces()
     .filter((e) => {
-      if (q && !e.name.toLowerCase().includes(q) && !displayName(e).toLowerCase().includes(q)) return false;
+      if (q && !riderSearchKey(e).includes(q)) return false;
       // Years are OR'd: "2021, 2023" means either year, not both.
       if (years.size > 0 && ![...years].some((y) => e.years.has(y))) return false;
       if (state.ridersFilterTeam && !e.teams.has(state.ridersFilterTeam)) return false;
@@ -380,14 +400,19 @@ export async function drawRidersPage() {
     for (const entry of results) {
       const btn = document.createElement("button");
       btn.className = "rider-name-btn";
-      btn.appendChild(document.createTextNode(displayName(entry)));
+      // displayName is called twice per rider otherwise — once for the label,
+      // once for the tooltip.
+      const label = displayName(entry);
+      btn.appendChild(document.createTextNode(label));
       const flag = nationalityFlagEl(entry.nationality);
       if (flag) btn.appendChild(flag);
       for (const jersey of jerseyIconsElMultiRace(entry, racesToLoad, state.ridersFilterYears)) {
         btn.appendChild(jersey);
       }
-      btn.title = displayName(entry);
-      btn.dataset.id = entry.id;
+      btn.title = label;
+      // setAttribute rather than `btn.dataset.id`: the DOMStringMap proxy is
+      // measurably slower, and this runs 14,260 times per rebuild.
+      btn.setAttribute("data-id", entry.id);
       frag.appendChild(btn);
     }
     grid.appendChild(frag);

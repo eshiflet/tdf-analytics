@@ -11,6 +11,7 @@ import { ridersChartEl, yearSelectEl, metricSelectEl, tooltipEl } from "../dom";
 import { updateHash } from "../hashRouting";
 import { positionTooltip, hideTooltip } from "../tooltip";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
+import { DOPING_REVOKED_NOTE, RIDERS_WITH_REVOKED_RESULTS } from "../jerseyIcons";
 import type { RiderEntry } from "../riderIndexData";
 import { riderIndexByRace, ensureRiderIndexFor } from "../riderIndexData";
 import { buildLegend } from "./stageChart";
@@ -62,6 +63,17 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
   const detailFlag = nationalityFlagEl(primaryEntry.nationality);
   if (detailFlag) nameEl.appendChild(detailFlag);
 
+  // Sits immediately right of the name: the rider's headline results are not
+  // all still theirs, and that belongs next to the name rather than buried in
+  // the per-jersey notes further down the page.
+  const dopingNoteEl = RIDERS_WITH_REVOKED_RESULTS.has(primaryEntry.id)
+    ? document.createElement("span")
+    : null;
+  if (dopingNoteEl) {
+    dopingNoteEl.className = "rider-detail-doping-note";
+    dopingNoteEl.textContent = DOPING_REVOKED_NOTE;
+  }
+
   const metaEl = document.createElement("div");
   metaEl.className = "rider-detail-meta";
   const metaParts: string[] = [];
@@ -79,7 +91,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
     metaParts.push(part);
   }
   metaEl.textContent = metaParts.join(", ");
-  header.append(backBtn, nameEl, metaEl);
+  header.append(backBtn, nameEl, ...(dopingNoteEl ? [dopingNoteEl] : []), metaEl);
   ridersChartEl.appendChild(header);
 
   // ── Toggle bar: race buttons (T/G/V) + divider + classification buttons ───────

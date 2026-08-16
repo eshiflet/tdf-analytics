@@ -37,6 +37,11 @@ own field here — that classification isn't tracked anywhere else in the
 exported per-year JSON, only in the DB's classification_standings table
 (and only for the TDF; see race_common.EXPORT_RACE_INFO).
 
+sprintRank/komRank come from that same classification_standings table for
+every year it covers, and fall back to the gc_by_stage cumulative-points
+order elsewhere — see load_final_classification_ranks() for why the two are
+not interchangeable.
+
 Run after export_gc.py (it reads that script's output for everything except
 the youth-winner years, which come directly from cycling.db).
 
@@ -76,7 +81,42 @@ def load_youth_winners(db_path=None):
     return {rider_id: sorted(years) for rider_id, years in winners.items()}
 
 
-def build_index(datasets, youth_winners=None):
+def load_final_classification_ranks(race_name, db_path=None):
+    """Final points/KOM classification ranks per year, from cycling.db's
+    PCS-scraped classification_standings.
+
+    These are the official end-of-race standings, and they are not the same
+    thing as "who led on cumulative points after the last stage", which is what
+    the gc_by_stage files carry. The two diverge whenever the per-stage points
+    this project reconstructs don't reproduce the era's scoring exactly, and
+    they diverge permanently where a title was re-awarded after a doping
+    disqualification (Bernhard Kohl's 2008 KOM going to Carlos Sastre). Where
+    the DB has the official standings they win; the derived ranking is the
+    fallback for years it doesn't cover.
+
+    Returns ({classification: {(year, rider_id): rank}},
+             {classification: {years covered}}).
+    """
+    conn = sqlite3.connect(db_path or DB_PATH)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT cs.classification, re.year, cs.rider_id, cs.rank "
+        "FROM classification_standings cs "
+        "JOIN race_editions re ON re.edition_id = cs.edition_id "
+        "JOIN races ra ON ra.race_id = re.race_id "
+        "WHERE ra.name = ? AND cs.classification IN ('points', 'kom')",
+        (race_name,),
+    )
+    ranks = {"points": {}, "kom": {}}
+    years_covered = {"points": set(), "kom": set()}
+    for classification, year, rider_id, rank in cur.fetchall():
+        ranks[classification][(str(year), rider_id)] = rank
+        years_covered[classification].add(str(year))
+    conn.close()
+    return ranks, years_covered
+
+
+def build_index(datasets, youth_winners=None, final_ranks=None, ranked_years=None):
     """Collapse per-year gc_by_stage datasets into the compact rider index.
 
     `datasets` is an iterable of (year_str, parsed_gc_by_stage_dict). Pure —
@@ -85,8 +125,15 @@ def build_index(datasets, youth_winners=None):
 
     Two passes are required, not one: teamIdx points into a string table that
     can only be built once every team across every year is known.
+
+    `final_ranks`/`ranked_years` come from load_final_classification_ranks():
+    for a year the DB has official standings for, the sprint/KOM rank is that
+    standing (absent from it = unclassified), not the cumulative-points order
+    at the last stage.
     """
     youth_winners = youth_winners or {}
+    final_ranks = final_ranks or {}
+    ranked_years = ranked_years or {}
     riders, team_names, raw_years = {}, set(), []
 
     for year, ds in datasets:
@@ -111,6 +158,11 @@ def build_index(datasets, youth_winners=None):
         last_stage = r["byStage"][-1] if r.get("byStage") else None
         sprint_rank = (last_stage.get("sprintRank") or 9999) if last_stage else 9999
         kom_rank = (last_stage.get("komRank") or 9999) if last_stage else 9999
+        # Official standings override the derived ones for the years they cover.
+        if year in ranked_years.get("points", ()):
+            sprint_rank = final_ranks["points"].get((year, r["id"]), 9999)
+        if year in ranked_years.get("kom", ()):
+            kom_rank = final_ranks["kom"].get((year, r["id"]), 9999)
         # Most rider-years have neither ranking; the short 2-element form keeps
         # sentinels out of ~65% of entries.
         if sprint_rank == 9999 and kom_rank == 9999:
@@ -128,11 +180,12 @@ def build_index(datasets, youth_winners=None):
 
 def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
-    _, subdir = resolve_race_arg(argv)
+    race_name, subdir = resolve_race_arg(argv)
     data_dir = os.path.join(HERE, "..", "cycling-app", "src", "data", subdir)
     out_path = os.path.join(data_dir, "riders_index.json")
 
     youth_winners = load_youth_winners() if subdir == "tour" else {}
+    final_ranks, ranked_years = load_final_classification_ranks(race_name)
 
     files = sorted(glob.glob(os.path.join(data_dir, "gc_by_stage_*.json")))
     if not files:
@@ -145,9 +198,16 @@ def main(argv=None):
         with open(path, encoding="utf-8") as f:
             datasets.append((year, json.load(f)))
 
-    index = build_index(datasets, youth_winners)
+    index = build_index(datasets, youth_winners, final_ranks, ranked_years)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(index, f, separators=(",", ":"), ensure_ascii=False)
+
+    covered = sorted(ranked_years["points"] | ranked_years["kom"])
+    if covered:
+        print(
+            f"Sprint/KOM ranks from official standings for {len(covered)} years "
+            f"({covered[0]}-{covered[-1]}); derived ranks used outside that range"
+        )
 
     size_kb = os.path.getsize(out_path) / 1024
     print(

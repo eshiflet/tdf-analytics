@@ -285,6 +285,95 @@ class TestExportGcArgs(unittest.TestCase):
         self.assertIn("requires a value", str(cm.exception))
 
 
+class TestAbandonedRidersLeaveTheClassifications(unittest.TestCase):
+    """export_gc.export_year — a rider who abandons keeps the points they
+    scored but stops being ranked against the riders still racing.
+
+    Without this, whoever led a classification when they climbed off held that
+    lead to the finish: Roger De Vlaeminck abandoned stage 12 of the 1969 Tour
+    on 61 sprint points and so outranked Merckx's eventual 59 on stage 25,
+    taking the year's green jersey in the riders index.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.db = os.path.join(self.tmp, "t.db")
+        conn = sqlite3.connect(self.db)
+        with open(os.path.join(HERE, "schema.sql"), encoding="utf-8") as f:
+            conn.executescript(f.read())
+        cur = conn.cursor()
+        cur.execute("INSERT INTO races (name, race_type) VALUES ('Tour de France','stage_race')")
+        self.race_id = cur.lastrowid
+        cur.execute("INSERT INTO race_editions (race_id, year) VALUES (?, 1969)", (self.race_id,))
+        eid = cur.lastrowid
+        for name in ("quitter", "stayer"):
+            cur.execute("INSERT INTO riders (rider_id, full_name) VALUES (?,?)",
+                        (f"rider/{name}", name))
+        stage_ids = []
+        for n in (1, 2, 3):
+            cur.execute("""INSERT INTO stages (edition_id, stage_number, stage_date, distance_km)
+                           VALUES (?,?,?,100.0)""", (eid, n, f"1969-07-0{n}"))
+            stage_ids.append(cur.lastrowid)
+        # The quitter abandons on stage 2; the stayer goes to Paris.
+        for idx, sid in enumerate(stage_ids):
+            cur.execute("""INSERT INTO stage_results (stage_id, rider_id, status, gc_rank)
+                           VALUES (?, 'rider/stayer', 'FINISHED', ?)""", (sid, idx + 1))
+        cur.execute("""INSERT INTO stage_results (stage_id, rider_id, status, gc_rank)
+                       VALUES (?, 'rider/quitter', 'FINISHED', 2)""", (stage_ids[0],))
+        cur.execute("""INSERT INTO stage_results (stage_id, rider_id, status, gc_rank)
+                       VALUES (?, 'rider/quitter', 'DNF', NULL)""", (stage_ids[1],))
+        conn.commit()
+        conn.close()
+
+        # The quitter builds a bigger points total before abandoning.
+        sprint = os.path.join(self.tmp, "sprint.json")
+        with open(sprint, "w", encoding="utf-8") as f:
+            json.dump({"1969": [{"rider/quitter": 50, "rider/stayer": 10},
+                                {"rider/stayer": 10},
+                                {"rider/stayer": 10}]}, f)
+        self.supp = Supplements(sprint_path=sprint)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def export(self):
+        import io
+        out = os.path.join(self.tmp, "out.json")
+        buf, sys.stdout = sys.stdout, io.StringIO()   # export_year narrates
+        try:
+            export_gc.export_year(1969, out, race_id=self.race_id,
+                                  db_path=self.db, supplements=self.supp)
+        finally:
+            sys.stdout = buf
+        with open(out, encoding="utf-8") as f:
+            return {r["id"]: r for r in json.load(f)["riders"]}
+
+    def ranks(self, rider):
+        return {s["stage"]: s.get("sprintRank") for s in rider["byStage"]}
+
+    def test_the_finisher_leads_the_final_standings(self):
+        riders = self.export()
+        self.assertEqual(self.ranks(riders["rider/stayer"])[3], 1,
+                         "30 points still racing beats 50 points gone home")
+
+    def test_the_leader_is_ranked_until_the_stage_they_abandon(self):
+        riders = self.export()
+        quitter = self.ranks(riders["rider/quitter"])
+        self.assertEqual(quitter[1], 1, "led the classification while racing")
+        self.assertIsNone(quitter[2], "unranked from the stage they abandon on")
+
+    def test_a_rider_whose_results_merely_stop_is_left_in(self):
+        # A gap in old PCS pages is not an abandonment: the stayer's stage-3
+        # row disappears, but their FINISHED stage-2 row keeps them ranked.
+        conn = sqlite3.connect(self.db)
+        conn.execute("""DELETE FROM stage_results WHERE rider_id = 'rider/stayer'
+                        AND stage_id = (SELECT MAX(stage_id) FROM stages)""")
+        conn.commit()
+        conn.close()
+        riders = self.export()
+        self.assertEqual(self.ranks(riders["rider/stayer"])[2], 1)
+
+
 class TestRidersIndex(unittest.TestCase):
     """export_riders_index.build_index — now pure, no file or DB access."""
 
@@ -351,6 +440,37 @@ class TestRidersIndex(unittest.TestCase):
 
     def test_empty_input(self):
         self.assertEqual(ERI.build_index([]), {"teams": [], "riders": {}})
+
+    # Official standings beat the derived cumulative-points order — the 1969
+    # green jersey was Merckx's, not the rider who led on points when he
+    # abandoned, and the 2008 KOM title is Sastre's after Kohl's DQ.
+    def test_official_standings_override_derived_ranks(self):
+        r = self.rider("rider/a", "A", by_stage=[{"stage": 1, "sprintRank": 2, "komRank": 5}])
+        idx = ERI.build_index(
+            [("2020", {"riders": [r]})],
+            final_ranks={"points": {("2020", "rider/a"): 1}, "kom": {("2020", "rider/a"): 3}},
+            ranked_years={"points": {"2020"}, "kom": {"2020"}},
+        )
+        self.assertEqual(idx["riders"]["a"]["y"]["2020"], [1, -1, 1, 3])
+
+    def test_rider_absent_from_official_standings_is_unranked(self):
+        r = self.rider("rider/a", "A", by_stage=[{"stage": 1, "sprintRank": 1}])
+        idx = ERI.build_index(
+            [("2020", {"riders": [r]})],
+            final_ranks={"points": {}, "kom": {}},
+            ranked_years={"points": {"2020"}, "kom": {"2020"}},
+        )
+        self.assertEqual(idx["riders"]["a"]["y"]["2020"], [1, -1],
+                         "an unclassified rider keeps no derived rank")
+
+    def test_derived_ranks_kept_for_years_the_db_does_not_cover(self):
+        r = self.rider("rider/a", "A", by_stage=[{"stage": 1, "sprintRank": 2}])
+        idx = ERI.build_index(
+            [("1930", {"riders": [r]})],
+            final_ranks={"points": {("2020", "rider/a"): 1}, "kom": {}},
+            ranked_years={"points": {"2020"}, "kom": {"2020"}},
+        )
+        self.assertEqual(idx["riders"]["a"]["y"]["1930"], [1, -1, 2, 0])
 
 
 class TestDistanceBaseline(unittest.TestCase):

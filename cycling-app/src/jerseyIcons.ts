@@ -42,16 +42,26 @@ export function jerseyTooltipLabel(category: JerseyCategory): string {
   return raceConfig().jerseyTooltips[category];
 }
 
+// Computed once per race, not per call: the riders grid asks for this once per
+// rider PER RACE (14,260 x 4 per rebuild), and a fresh filtered array each time
+// was the bulk of that loop's cost. The registry is static, so one array per
+// race is safe to share — treat the result as read-only.
+const jerseyCategoryCache = new Map<RaceId, readonly JerseyCategory[]>();
+
 /** The classifications a race actually contests — the classics award no
  *  sprint/KOM jersey (and no youth one), so those icons are omitted entirely
  *  rather than rendered as jerseys nobody can win. */
-export function jerseyCategoriesForRace(race: RaceId): JerseyCategory[] {
+export function jerseyCategoriesForRace(race: RaceId): readonly JerseyCategory[] {
+  const cached = jerseyCategoryCache.get(race);
+  if (cached) return cached;
   const config = RACES[race];
-  return (Object.keys(JERSEY_LABELS) as JerseyCategory[]).filter((category) => {
+  const categories = (Object.keys(JERSEY_LABELS) as JerseyCategory[]).filter((category) => {
     if (category === "youth") return config.hasYouth;
     if (category === "sprint" || category === "kom") return config.hasSprintKom;
     return true;
   });
+  jerseyCategoryCache.set(race, categories);
+  return categories;
 }
 
 /** "<Race> - <Classification>" title for the riders-grid icons and the jersey
@@ -64,7 +74,26 @@ export function jerseyIconTitle(category: JerseyCategory, race: RaceId): string 
   return `${RACE_ABBR[race]} - ${label}`;
 }
 
-// Doping notes shown next to GC jersey years on the rider detail page.
+// Riders who had a result taken away for doping. This drives the note beside
+// the rider's name on the detail page; DOPING_GC_NOTES below adds which jersey
+// for the GC years where the revoked result was the overall win.
+//
+// Membership is a documented revocation, not a suspension and not an
+// inference: a rider belongs here only when a governing body actually removed
+// a result. Duplicate ranks in the data are a hint that one happened, never
+// evidence on their own — the same duplicates also come from PCS artefacts —
+// so nothing is added here without the case behind it.
+export const DOPING_REVOKED_NOTE = "Some race results revoked for doping";
+export const RIDERS_WITH_REVOKED_RESULTS = new Set<string>([
+  "rider/lance-armstrong",   // all seven Tour wins, 1999-2005
+  "rider/floyd-landis",      // 2006 Tour
+  "rider/alberto-contador",  // 2010 Tour and 2011 Giro
+  "rider/bernhard-kohl",     // 2008 Tour KOM, re-awarded to Carlos Sastre
+]);
+
+// Doping notes shown next to GC jersey years on the rider detail page. Keys
+// are a subset of RIDERS_WITH_REVOKED_RESULTS — a rider whose revoked result
+// wasn't a GC win (Kohl's KOM) has no entry here.
 export const DOPING_GC_NOTES: Record<string, string> = {
   "rider/lance-armstrong": "Stripped of yellow jersey due to doping",
   "rider/floyd-landis": "Stripped of yellow jersey due to doping",
@@ -72,10 +101,24 @@ export const DOPING_GC_NOTES: Record<string, string> = {
 };
 export type JerseyCategory = keyof typeof JERSEY_LABELS;
 
+// A rider's win years never change once the index is loaded, but the Riders
+// grid asks for them once per rider PER RACE on every keystroke — 14,000
+// riders x 4 races, each call allocating and sorting four arrays. Keyed on the
+// entry object so it dies with the index it came from.
+const jerseyYearsCache = new WeakMap<RiderEntry, Record<JerseyCategory, number[]>>();
+
 /** Every year this rider won each classification (GC/sprint/KOM derived from
  *  per-year rank data; youth from the pipeline's classification_standings
  *  lookup, since that classification isn't in the per-year JSON at all). */
 export function jerseyYearsWon(entry: RiderEntry): Record<JerseyCategory, number[]> {
+  const cached = jerseyYearsCache.get(entry);
+  if (cached) return cached;
+  const computed = computeJerseyYearsWon(entry);
+  jerseyYearsCache.set(entry, computed);
+  return computed;
+}
+
+function computeJerseyYearsWon(entry: RiderEntry): Record<JerseyCategory, number[]> {
   const gc: number[] = [], sprint: number[] = [], kom: number[] = [];
   for (const [year, y] of entry.years) {
     if (y.finalRank === 1) gc.push(year);

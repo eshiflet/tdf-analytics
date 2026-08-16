@@ -987,6 +987,19 @@ svg text {
   text-overflow: ellipsis;
   break-inside: avoid;
   line-height: 1.6;
+  /* With all four races selected the grid holds 14,260 of these, and laying
+     them out is the single most expensive step of a filter change. Row height
+     is fixed by `grid-auto-rows` above, so the browser can skip layout and
+     paint for the rows scrolled out of view and still size the scrollbar
+     correctly. Find-in-page and the accessibility tree still reach them.
+     Measured by forcing synchronous layout and toggling this rule three times
+     each way: 157ms without, 46ms with, 156ms with it removed again.
+     (An earlier pass wrongly called this a no-op — that test measured a
+     rebuild that deferred layout past the end of the measurement, so both
+     arms looked identical. Any re-test must force layout, e.g. read
+     getBoundingClientRect() straight after attaching the fragment.) */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 29px;
 }
 
 .rider-name-btn:hover {
@@ -1028,6 +1041,17 @@ svg text {
   font-size: 22px;
   font-weight: 600;
   color: var(--text);
+}
+
+/* Sits directly right of the rider's name, and wraps onto its own line on a
+   narrow screen — so no negative margin here, which clipped its first letter
+   against the viewport edge once wrapped. Dimmed and italic rather than a
+   warning colour: it qualifies the results below it, it isn't an alert. */
+.rider-detail-doping-note {
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--text-dim);
 }
 
 .rider-detail-meta {

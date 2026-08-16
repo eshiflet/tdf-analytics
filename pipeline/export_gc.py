@@ -196,6 +196,36 @@ def export_year(year, out_path, race_id, db_path=None, supplements=None):
     sprint_pts_by_year = supp.sprint_points.get(str(year), [])
     kom_pts_by_year = supp.kom_points.get(str(year), [])
 
+    # Riders who leave the race leave the sprint/KOM classifications with it:
+    # they keep the points they scored, but stop being ranked against the
+    # riders still racing. Without this, whoever led a classification when they
+    # climbed off keeps that lead to the finish — Roger De Vlaeminck abandoned
+    # on stage 12 of the 1969 Tour holding 61 sprint points and so still
+    # outranked Merckx's eventual 59 on stage 25, which handed him the year's
+    # green jersey in export_riders_index.py.
+    #
+    # Only riders whose last recorded result is an abandonment (DNF/DNS/OTL/
+    # DSQ) are dropped, from that stage onward. A rider whose results merely
+    # stop — old PCS pages omit legitimate finishers, see the finalRank
+    # fallback below — is left in, since that is a data gap, not an exit.
+    cur.execute(
+        """SELECT sr.rider_id, st.stage_number, sr.status
+           FROM stage_results sr
+           JOIN stages st ON st.stage_id = sr.stage_id
+           WHERE st.edition_id = ?
+           ORDER BY st.stage_number""",
+        (edition_id,),
+    )
+    last_result_by_rider = {r["rider_id"]: (r["stage_number"], r["status"]) for r in cur.fetchall()}
+    left_race_at_idx = {
+        rider_id: stage_num_to_idx[stage_number]
+        for rider_id, (stage_number, status) in last_result_by_rider.items()
+        if status != "FINISHED" and stage_number in stage_num_to_idx
+    }
+
+    def still_racing(rider_id, stage_idx):
+        return stage_idx < left_race_at_idx.get(rider_id, len(stages))
+
     # Pre-compute cumulative sprint & KOM standings and ranks at each stage.
     # This lets us rank all riders relative to each other per stage.
     golf_sprint = year in GOLF_SPRINT_YEARS
@@ -215,16 +245,22 @@ def export_year(year, out_path, race_id, db_path=None, supplements=None):
             kom_cum_running[rid] = kom_cum_running.get(rid, 0) + pts
 
         # Sprint rank: golf years → ascending (lower pts = better), else descending
-        if sprint_cum_running:
+        sprint_contenders = [
+            (rid, pts) for rid, pts in sprint_cum_running.items() if still_racing(rid, stage_idx)
+        ]
+        if sprint_contenders:
             reverse = not golf_sprint
-            ranked = sorted(sprint_cum_running.items(), key=lambda x: x[1], reverse=reverse)
+            ranked = sorted(sprint_contenders, key=lambda x: x[1], reverse=reverse)
             sprint_ranks_by_stage.append({rid: r + 1 for r, (rid, _) in enumerate(ranked)})
         else:
             sprint_ranks_by_stage.append({})
 
         # KOM rank: always descending (higher pts = better)
-        if kom_cum_running:
-            ranked = sorted(kom_cum_running.items(), key=lambda x: -x[1])
+        kom_contenders = [
+            (rid, pts) for rid, pts in kom_cum_running.items() if still_racing(rid, stage_idx)
+        ]
+        if kom_contenders:
+            ranked = sorted(kom_contenders, key=lambda x: -x[1])
             kom_ranks_by_stage.append({rid: r + 1 for r, (rid, _) in enumerate(ranked)})
         else:
             kom_ranks_by_stage.append({})

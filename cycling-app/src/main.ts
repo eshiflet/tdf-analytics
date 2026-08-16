@@ -21,7 +21,7 @@ import { getDataset } from "./dataLoading";
 import { PALETTE } from "./formatters";
 import { computeHash, updateHash } from "./hashRouting";
 import { debounce } from "./utils";
-import { displayName } from "./riderDisplay";
+import { displayName, foldForSearch, searchHaystack } from "./riderDisplay";
 import {
   drawChart, buildLegend, refreshLegendState, updateLineClasses, applyDefaultSelection,
   computePointsRankings, buildStageFilters, closeFilterPanels, clearStageTeamNationFilters,
@@ -407,14 +407,16 @@ function wireControls() {
 
   searchEl.addEventListener("input", () => {
     if (!state.dataset) return; // initial fetch in flight; nothing to search yet
-    const q = searchEl.value.trim().toLowerCase();
+    const q = foldForSearch(searchEl.value.trim());
     if (!q) {
       state.highlighted = null;
       updateLineClasses();
       refreshLegendState();
       return;
     }
-    const match = state.dataset.riders.find((r) => r.name.toLowerCase().includes(q) || displayName(r).toLowerCase().includes(q));
+    const match = state.dataset.riders.find(
+      (r) => searchHaystack(`${r.name}\n${displayName(r)}`).includes(q),
+    );
     if (match) {
       state.selected.add(match.id);
       state.highlighted = match.id;

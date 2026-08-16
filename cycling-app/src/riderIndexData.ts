@@ -30,7 +30,10 @@ export interface RiderEntry {
    *  season holds up to 11 independent results and `years` can only carry one.
    *  `years` still holds the rider's BEST finish that season, which is what
    *  the Riders grid sorts and filters on; this is the per-race breakdown the
-   *  career chart plots. */
+   *  career chart plots.
+   *
+   *  Built on FIRST READ, not at load — see defineLazyConstituents(). Reading
+   *  it is transparent; just don't reach for it in a loop over every rider. */
   constituents?: Map<number, ConstituentResult[]>;
 }
 
@@ -82,10 +85,68 @@ type RawRiderIndex = {
   }>;
 };
 
+/** Attach `constituents` as a memoizing getter rather than building it up front.
+ *
+ *  The classics index carries a per-race breakdown for 11,934 riders, and
+ *  turning all of them into objects cost ~380ms of the ~510ms that index took
+ *  to load — for data only the career chart reads, one rider at a time.
+ *
+ *  The getter is NON-ENUMERABLE on purpose: mergedRidersForSelectedRaces()
+ *  clones entries with a spread, and an enumerable getter would fire for every
+ *  rider there and hand back exactly the eager cost this avoids. That merge
+ *  copies this property's descriptor instead, so a cloned entry stays lazy and
+ *  shares this memo rather than losing the property.
+ */
+function defineLazyConstituents(
+  entry: RiderEntry,
+  raw: Record<string, RawConstituent[]>,
+  raceTable: string[],
+  years: RiderEntry["years"],
+): void {
+  let built: Map<number, ConstituentResult[]> | undefined;
+  Object.defineProperty(entry, "constituents", {
+    enumerable: false,
+    configurable: true,
+    get(): Map<number, ConstituentResult[]> {
+      if (built) return built;
+      built = new Map();
+      for (const [yearStr, entries] of Object.entries(raw)) {
+        const year = parseInt(yearStr);
+        // The season's team, already resolved from that year's `y` tuple.
+        const team = years.get(year)?.team ?? null;
+        built.set(year, entries.map(([raceIdx, rank]) => ({
+          race: raceTable[raceIdx] ?? "—",
+          rank: rank || 9999,
+          team,
+        })));
+      }
+      return built;
+    },
+  });
+}
+
 export const riderIndexBuilt = emptyPerRace<boolean>(() => false);
 
-export async function ensureRiderIndexFor(race: RaceId): Promise<void> {
-  if (riderIndexBuilt[race]) return;
+// `riderIndexBuilt` only flips once the fetch AND the build have finished, so
+// it cannot deduplicate concurrent callers — a second caller arriving while
+// the first was still awaiting passed the guard and started its own download.
+// drawRidersPage and drawRiderDetail both call this for every race, so opening
+// a rider straight from a link did exactly that: two 2.8 MB classics fetches
+// and two ~500ms rebuilds racing to populate the same Map. Sharing the
+// in-flight promise collapses them into one; clearing it on settle means a
+// failed load can still be retried.
+const inFlightRiderIndex = emptyPerRace<Promise<void> | null>(() => null);
+
+export function ensureRiderIndexFor(race: RaceId): Promise<void> {
+  if (riderIndexBuilt[race]) return Promise.resolve();
+  const pending = inFlightRiderIndex[race];
+  if (pending) return pending;
+  const load = buildRiderIndexFor(race).finally(() => { inFlightRiderIndex[race] = null; });
+  inFlightRiderIndex[race] = load;
+  return load;
+}
+
+async function buildRiderIndexFor(race: RaceId): Promise<void> {
   const raw = await fetchJson<RawRiderIndex>(RIDERS_INDEX_URL[race]);
   const teamTable = raw.teams;
   const raceTable = raw.races ?? [];
@@ -105,22 +166,9 @@ export async function ensureRiderIndexFor(race: RaceId): Promise<void> {
       if (team) teams.add(team);
     }
 
-    let constituents: Map<number, ConstituentResult[]> | undefined;
-    if (rec.m) {
-      constituents = new Map();
-      for (const [yearStr, entries] of Object.entries(rec.m)) {
-        // The season's team, already resolved from that year's `y` tuple.
-        const team = years.get(parseInt(yearStr))?.team ?? null;
-        const results: ConstituentResult[] = entries.map(([raceIdx, rank]) => ({
-          race: raceTable[raceIdx] ?? "—",
-          rank: rank || 9999,
-          team,
-        }));
-        constituents.set(parseInt(yearStr), results);
-      }
-    }
-
-    index.set(id, { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams, constituents });
+    const entry: RiderEntry = { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams };
+    if (rec.m) defineLazyConstituents(entry, rec.m, raceTable, years);
+    index.set(id, entry);
   }
   allTeamsSortedByRace[race] = [...teamTable].sort();
   allNationalitiesSortedByRace[race] = [...new Set(
