@@ -298,12 +298,21 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       // Layout: [line 12px] [gap 4px] [text left-aligned] — per column.
       // Columns are right-to-left with a 12px gap between them.
       const activeList = [...activeRaces];
+      // The classics award neither jersey (registry: hasSprintKom) and no such
+      // line is ever drawn for them, so they get no Sprint/KOM legend entry —
+      // and their column isn't widened to fit labels that never appear.
+      const contestsSprintKom = (r: RaceId) => RACES[r].hasSprintKom;
+      const sprintKomRaces = activeList.filter(contestsSprintKom);
+      const showSprintRow = activeClassifs.has("sprint") && sprintKomRaces.length > 0;
+      const showKomRow    = activeClassifs.has("kom")    && sprintKomRaces.length > 0;
       const CHAR_W = 7, LINE_W = 12, LINE_GAP = 4, COL_GAP = 12;
       const raceLabel = (r: RaceId) => RACE_SHORT_LABEL[r];
       const colMaxW = (r: RaceId): number => {
         const labels = [raceLabel(r)];
-        if (activeClassifs.has("sprint")) labels.push("Sprint");
-        if (activeClassifs.has("kom"))    labels.push("KOM");
+        if (contestsSprintKom(r)) {
+          if (showSprintRow) labels.push("Sprint");
+          if (showKomRow)    labels.push("KOM");
+        }
         return Math.max(...labels.map(l => l.length * CHAR_W));
       };
 
@@ -321,9 +330,9 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
 
       // Y positions, bottom-up
       let nextLegendY = -9;
-      const komY    = activeClassifs.has("kom")    ? nextLegendY : null;
+      const komY    = showKomRow    ? nextLegendY : null;
       if (komY    !== null) nextLegendY -= 13;
-      const sprintY = activeClassifs.has("sprint") ? nextLegendY : null;
+      const sprintY = showSprintRow ? nextLegendY : null;
       if (sprintY !== null) nextLegendY -= 13;
       const raceY   = nextLegendY;
 
@@ -350,7 +359,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
 
       // Row 2: Sprint, dashed
       if (sprintY !== null) {
-        for (const race of activeList) {
+        for (const race of sprintKomRaces) {
           const lx = lineX.get(race)!;
           g.append("line")
             .attr("x1", lx).attr("x2", lx + LINE_W)
@@ -367,7 +376,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
 
       // Row 3: KOM, dotted
       if (komY !== null) {
-        for (const race of activeList) {
+        for (const race of sprintKomRaces) {
           const lx = lineX.get(race)!;
           g.append("line")
             .attr("x1", lx).attr("x2", lx + LINE_W)
