@@ -708,6 +708,14 @@ svg text {
   color: var(--text-dim);
   z-index: 1;
   text-align: right;
+  /* Pinned, because the rider column's sticky `left` below is written in terms
+     of this width. Left to size itself from its content it came out at ~44px
+     against the 52px those offsets assume, which shifted the rider column 8px
+     right and painted it over the left edge of the stage-1 column — the first
+     column looked narrower than the rest, its padding swallowed. */
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
 }
 
 /* Shift bib and rider right when team column is present */
@@ -728,10 +736,13 @@ svg text {
 }
 
 /* The sticky `left` of the rider column must equal the total width of whatever
-   sticky columns precede it — team (22px) and/or bib (52px). Get it wrong and
-   the column does not merely sit askew: sticky SHIFTS it to that offset, and
-   because it is opaque with z-index 1 it then paints over the first race
-   column. All four combinations are therefore spelled out.
+   sticky columns precede it — team (22px) and/or bib (52px). Both of those are
+   pinned to fixed widths above precisely so these offsets stay true; if either
+   is ever allowed to size itself from its content again, every offset here
+   goes stale with it. Get it wrong and the column does not merely sit askew:
+   sticky SHIFTS it to that offset, and because it is opaque with z-index 1 it
+   then paints over the first race column. All four combinations are therefore
+   spelled out.
 
    The last rule is the one that broke 1892-1894 Liege-Bastogne-Liege, where no
    rider has a known team: with neither a team nor a bib column the rider cell
