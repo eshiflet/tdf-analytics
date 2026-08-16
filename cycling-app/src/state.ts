@@ -60,7 +60,10 @@ export const state = {
 
   // ── Riders page filter state ──────────────────────────────────────────────
   ridersSearchQuery: "",
-  ridersFilterYear: "",
+  // empty = all years shown. OR semantics across years ("2021, 2023" = either),
+  // and a year here also scopes the jersey filters and the grid's jersey icons
+  // to what was actually won in one of these years.
+  ridersFilterYears: new Set<number>(),
   ridersFilterTeam: "",
   ridersFilterNationality: "",
   // AND semantics: a rider must have won every selected category, not just

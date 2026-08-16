@@ -119,7 +119,7 @@ export function setRace(race: RaceId) {
   rebuildYearOptions();
   applyRaceCapabilities();
   // Reset riders filter state so stale year/team selections don't carry over
-  state.ridersFilterYear = "";
+  state.ridersFilterYears.clear();
   state.ridersFilterTeam = "";
   state.ridersFilterNationality = "";
   state.ridersFilterJerseys.clear();

@@ -58,33 +58,66 @@ export function mergedRidersForSelectedRaces(): RiderEntry[] {
   return entries;
 }
 
+/** Does a rider satisfy every active jersey toggle?
+ *
+ *  With no year selected the question is career-wide: won each selected
+ *  classification at least once, ever. Selecting years makes it a question
+ *  about those years specifically — the rider must have won ALL the selected
+ *  jerseys within a SINGLE one of the selected years. So "yellow + 2021, 2023"
+ *  is the two riders who actually wore yellow in one of those years, and
+ *  "yellow + green" is one rider who took both in the same season rather than
+ *  one in each of two years a decade apart. Applied across races, that same
+ *  rule asks for a Giro/Tour double in one season. */
+function matchesJerseyFilter(entry: RiderEntry, selectedRaces: RaceId[]): boolean {
+  // Toggles belonging to a race the user has since deselected are ignored.
+  const active = [...state.ridersFilterJerseys]
+    .map((key) => key.split(":") as [RaceId, JerseyCategory])
+    .filter(([raceId]) => selectedRaces.includes(raceId));
+  if (active.length === 0) return true;
+  const yearsWonPerToggle = active.map(([raceId, category]) => {
+    const raceEntry = riderIndexByRace[raceId].get(entry.id);
+    return raceEntry ? jerseyYearsWon(raceEntry)[category] : [];
+  });
+  if (state.ridersFilterYears.size === 0) {
+    return yearsWonPerToggle.every((years) => years.length > 0);
+  }
+  return [...state.ridersFilterYears]
+    .some((year) => yearsWonPerToggle.every((years) => years.includes(year)));
+}
+
 export function filteredRiders(): RiderEntry[] {
   const q = state.ridersSearchQuery.toLowerCase();
-  const yr = state.ridersFilterYear ? parseInt(state.ridersFilterYear) : null;
+  const years = state.ridersFilterYears;
   const selectedRaces = selectedRacesForRiders();
   return mergedRidersForSelectedRaces()
     .filter((e) => {
       if (q && !e.name.toLowerCase().includes(q) && !displayName(e).toLowerCase().includes(q)) return false;
-      if (yr !== null && !e.years.has(yr)) return false;
+      // Years are OR'd: "2021, 2023" means either year, not both.
+      if (years.size > 0 && ![...years].some((y) => e.years.has(y))) return false;
       if (state.ridersFilterTeam && !e.teams.has(state.ridersFilterTeam)) return false;
       if (state.ridersFilterNationality && e.nationality !== state.ridersFilterNationality) return false;
-      if (state.ridersFilterJerseys.size > 0) {
-        for (const key of state.ridersFilterJerseys) {
-          const [raceId, category] = key.split(":") as [RaceId, JerseyCategory];
-          if (!selectedRaces.includes(raceId)) continue;
-          const raceEntry = riderIndexByRace[raceId].get(e.id);
-          if (!raceEntry || jerseyYearsWon(raceEntry)[category].length === 0) return false;
-        }
-      }
+      if (!matchesJerseyFilter(e, selectedRaces)) return false;
       return true;
     })
     .sort((a, b) => (a.lastName ?? a.name).localeCompare(b.lastName ?? b.name));
+}
+
+// "Click outside to close" handlers for the filter dropdowns. drawRidersPage()
+// rebuilds its controls from scratch on every call, so the previous render's
+// handlers are torn down here instead of piling up on document, each one
+// holding a detached panel alive.
+const closeDropdownHandlers: ((e: MouseEvent) => void)[] = [];
+function registerCloseOnOutsideClick(handler: (e: MouseEvent) => void) {
+  document.addEventListener("click", handler);
+  closeDropdownHandlers.push(handler);
 }
 
 export async function drawRidersPage() {
   state.currentRiderId = null;
   updateHash();
   ridersChartEl.innerHTML = "";
+  for (const handler of closeDropdownHandlers) document.removeEventListener("click", handler);
+  closeDropdownHandlers.length = 0;
 
   const racesToLoad = selectedRacesForRiders();
   const needsLoad = racesToLoad.some((r) => !riderIndexBuilt[r]);
@@ -113,16 +146,80 @@ export async function drawRidersPage() {
   searchInput.className = "riders-search-input";
   searchInput.value = state.ridersSearchQuery;
 
-  const yearSel = document.createElement("select");
-  yearSel.className = "riders-filter-select";
-  [["", "All years"], ...allYears.map((y) => [y, y])].forEach(([val, label]) => {
-    const opt = document.createElement("option");
-    opt.value = val;
-    opt.textContent = label;
-    yearSel.appendChild(opt);
+  // ── Years multi-select dropdown ───────────────────────────────────────────
+  // Multi-select rather than a plain <select> because a year is a real
+  // constraint on the jersey filters (see matchesJerseyFilter), which makes
+  // "yellow jersey, 2021 and 2023" a question worth being able to ask.
+  // Drop any year that the currently-selected races don't actually cover.
+  for (const y of state.ridersFilterYears) {
+    if (!allYears.includes(String(y))) state.ridersFilterYears.delete(y);
+  }
+
+  const yearDropdownWrap = document.createElement("div");
+  yearDropdownWrap.className = "filter-dropdown";
+
+  const yearDropdownBtn = document.createElement("button");
+  yearDropdownBtn.type = "button";
+  yearDropdownBtn.className = "riders-multi-dropdown-btn";
+  function updateYearDropdownBtn() {
+    const picked = [...state.ridersFilterYears].sort((a, b) => b - a);
+    // Past three years the list is wider than the control; count instead.
+    const label = picked.length === 0 ? "All years"
+      : picked.length <= 3 ? picked.join(", ")
+      : `${picked.length} years`;
+    yearDropdownBtn.textContent = label + " ▾";
+    yearDropdownBtn.classList.toggle("active", picked.length > 0);
+  }
+  updateYearDropdownBtn();
+
+  const yearPanel = document.createElement("div");
+  yearPanel.className = "filter-panel";
+  yearPanel.hidden = true;
+
+  const yearShowAll = document.createElement("div");
+  yearShowAll.className = "filter-panel-actions";
+  const yearShowAllBtn = document.createElement("button");
+  yearShowAllBtn.type = "button";
+  yearShowAllBtn.className = "filter-panel-clear";
+  yearShowAllBtn.textContent = "Show all";
+  yearShowAllBtn.addEventListener("click", () => {
+    state.ridersFilterYears.clear();
+    yearPanel.querySelectorAll<HTMLInputElement>("input[type=checkbox]")
+      .forEach((cb) => (cb.checked = false));
+    updateYearDropdownBtn();
+    refreshGrid();
   });
-  yearSel.value = allYears.includes(state.ridersFilterYear) ? state.ridersFilterYear : "";
-  if (!allYears.includes(state.ridersFilterYear)) state.ridersFilterYear = "";
+  yearShowAll.appendChild(yearShowAllBtn);
+  yearPanel.appendChild(yearShowAll);
+
+  for (const year of allYears) {
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = year;
+    cb.checked = state.ridersFilterYears.has(Number(year));
+    cb.addEventListener("change", () => {
+      if (cb.checked) state.ridersFilterYears.add(Number(year));
+      else state.ridersFilterYears.delete(Number(year));
+      updateYearDropdownBtn();
+      // Unlike the race panel this stays open: picking several years is the
+      // point, and no data needs reloading, so the grid updates underneath.
+      refreshGrid();
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(year));
+    yearPanel.appendChild(label);
+  }
+
+  yearDropdownBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    yearPanel.hidden = !yearPanel.hidden;
+  });
+  registerCloseOnOutsideClick((e) => {
+    if (!yearDropdownWrap.contains(e.target as Node)) yearPanel.hidden = true;
+  });
+
+  yearDropdownWrap.append(yearDropdownBtn, yearPanel);
 
   // ── Races multi-select dropdown ───────────────────────────────────────────
   const raceDropdownWrap = document.createElement("div");
@@ -130,7 +227,7 @@ export async function drawRidersPage() {
 
   const raceDropdownBtn = document.createElement("button");
   raceDropdownBtn.type = "button";
-  raceDropdownBtn.className = "riders-race-dropdown-btn";
+  raceDropdownBtn.className = "riders-multi-dropdown-btn";
   function updateRaceDropdownBtn() {
     const label = state.ridersFilterRaces.size === 0
       ? "All races"
@@ -189,10 +286,9 @@ export async function drawRidersPage() {
     racePanel.hidden = !racePanel.hidden;
   });
   // Close the panel when clicking outside it.
-  const closeRacePanel = (e: MouseEvent) => {
+  registerCloseOnOutsideClick((e) => {
     if (!raceDropdownWrap.contains(e.target as Node)) racePanel.hidden = true;
-  };
-  document.addEventListener("click", closeRacePanel);
+  });
 
   raceDropdownWrap.append(raceDropdownBtn, racePanel);
 
@@ -269,7 +365,7 @@ export async function drawRidersPage() {
   const countLabel = document.createElement("span");
   countLabel.className = "riders-count-label";
 
-  controls.append(searchInput, yearSel, raceDropdownWrap, teamSel, nationalitySel, jerseyFilterGroup, clearBtn, countLabel);
+  controls.append(searchInput, yearDropdownWrap, raceDropdownWrap, teamSel, nationalitySel, jerseyFilterGroup, clearBtn, countLabel);
   ridersChartEl.appendChild(controls);
 
   const grid = document.createElement("div");
@@ -287,7 +383,9 @@ export async function drawRidersPage() {
       btn.appendChild(document.createTextNode(displayName(entry)));
       const flag = nationalityFlagEl(entry.nationality);
       if (flag) btn.appendChild(flag);
-      for (const jersey of jerseyIconsElMultiRace(entry, racesToLoad)) btn.appendChild(jersey);
+      for (const jersey of jerseyIconsElMultiRace(entry, racesToLoad, state.ridersFilterYears)) {
+        btn.appendChild(jersey);
+      }
       btn.title = displayName(entry);
       btn.dataset.id = entry.id;
       frag.appendChild(btn);
@@ -304,7 +402,6 @@ export async function drawRidersPage() {
   // Debounced: refreshGrid rebuilds the whole grid, so don't do it per keystroke.
   const debouncedSearch = debounce(() => { state.ridersSearchQuery = searchInput.value; refreshGrid(); }, 150);
   searchInput.addEventListener("input", debouncedSearch);
-  yearSel.addEventListener("change", () => { state.ridersFilterYear = yearSel.value; refreshGrid(); });
   teamSel.addEventListener("change", () => { state.ridersFilterTeam = teamSel.value; refreshGrid(); });
   nationalitySel.addEventListener("change", () => { state.ridersFilterNationality = nationalitySel.value; refreshGrid(); });
   for (const btn of jerseyFilterBtns) {
@@ -318,17 +415,15 @@ export async function drawRidersPage() {
   }
   clearBtn.addEventListener("click", () => {
     state.ridersSearchQuery = "";
-    state.ridersFilterYear = "";
+    state.ridersFilterYears.clear();
     state.ridersFilterTeam = "";
     state.ridersFilterNationality = "";
     state.ridersFilterJerseys.clear();
     state.ridersFilterRaces.clear();
     searchInput.value = "";
-    yearSel.value = "";
     teamSel.value = "";
     nationalitySel.value = "";
     for (const btn of jerseyFilterBtns) btn.classList.remove("active");
-    document.removeEventListener("click", closeRacePanel);
     drawRidersPage().catch(showLoadError);
   });
   refreshGrid();

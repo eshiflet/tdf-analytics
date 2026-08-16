@@ -131,8 +131,15 @@ export function jerseyIconsEl(entry: RiderEntry): HTMLSpanElement[] {
 }
 
 /** Jersey icons for the riders grid, one per race that the rider won a
- *  classification in. Each jersey is colored for its specific race. */
-export function jerseyIconsElMultiRace(entry: RiderEntry, races: RaceId[]): HTMLSpanElement[] {
+ *  classification in. Each jersey is colored for its specific race.
+ *  `years`, when non-empty, restricts the icons to wins from those years, so
+ *  the icons agree with the year filter instead of contradicting it — a 2019
+ *  yellow-jersey winner shows no jersey while the grid is filtered to 2026. */
+export function jerseyIconsElMultiRace(
+  entry: RiderEntry,
+  races: RaceId[],
+  years: ReadonlySet<number> = new Set(),
+): HTMLSpanElement[] {
   const out: HTMLSpanElement[] = [];
   for (const race of races) {
     const raceEntry = riderIndexByRace[race].get(entry.id);
@@ -140,6 +147,7 @@ export function jerseyIconsElMultiRace(entry: RiderEntry, races: RaceId[]): HTML
     const won = jerseyYearsWon(raceEntry);
     for (const category of jerseyCategoriesForRace(race)) {
       if (won[category].length === 0) continue;
+      if (years.size > 0 && !won[category].some((y) => years.has(y))) continue;
       const el = document.createElement("span");
       el.className = "jersey-icon";
       el.title = jerseyIconTitle(category, race);

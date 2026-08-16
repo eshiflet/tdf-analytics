@@ -828,7 +828,7 @@ svg text {
   border-color: var(--accent);
 }
 
-.riders-race-dropdown-btn {
+.riders-multi-dropdown-btn {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   color: var(--text-dim);
@@ -842,11 +842,11 @@ svg text {
   -webkit-appearance: none;
 }
 
-.riders-race-dropdown-btn:hover {
+.riders-multi-dropdown-btn:hover {
   border-color: var(--accent);
 }
 
-.riders-race-dropdown-btn.active {
+.riders-multi-dropdown-btn.active {
   border-color: var(--accent);
   color: var(--text);
 }
