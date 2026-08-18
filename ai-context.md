@@ -42,15 +42,25 @@ The frontend is race-aware via the `RACES` registry in raceRegistry.ts (see "Rac
 
 ---
 
-## Open items as of 2026-08-15
+## Open items as of 2026-08-18
 
 Nothing here is broken-and-unknown; each is a deliberate stop with a reason. Read the linked section before picking one up.
+
+**Landed 2026-08-18** (all on `main`, CI green): the year-aware Riders filters and
+multi-select year dropdown (`15cdc9f`), the Riders-page performance work (`d4d2593`),
+the smoke-test selector fix (`39033fc`), the doping note (`59e3cb9`), the classics
+Sprint/KOM legend removal (`aadb139`), `th.col-stage` min-width (`57711fa`), the
+stage-table sticky-column fix (`173ea6e`), and the km/mi toggle on the classics Race
+History (`59404b8`). `verify-views.mjs` gained checks for the last of those, replacing
+"race history hides the km/mi toggle" — that assertion had become the opposite of
+intended behavior.
 
 **Decisions waiting on Eric (do not guess):**
 - **Project rename** — analysed and **deferred**; see "Renaming the project". If revived, take the subdomain step first.
 - **Landing pages have identical visible body content.** The four `<race>/index.html` pages differ only in `<title>`/meta — the body is the same SPA shell, and the per-race subtitle line was deliberately removed in `58ce75f`. Giving them distinct visible copy would help them rank separately, but it's a UI/content decision.
 - **Duplicate ranks + same-team bib collisions** in 13 classics race-years — upstream PCS, how to model it is Eric's call. See "Known-open".
-- **TDF 2008 KOM has two rank-1 rows** in `classification_standings` — Bernhard Kohl (128 pts, stripped for doping) and Carlos Sastre (80, the re-award). Both therefore show a polka-dot jersey for 2008 on the Riders page. Keeping both is Eric's decision (2026-08-15): the jersey stays, and the rider detail page carries a "Some race results revoked for doping" note beside the name instead (`RIDERS_WITH_REVOKED_RESULTS` in `jerseyIcons.ts`). It is the only such duplicate in the DB. Modelling revocations in the DB itself — a flag on the row, so the app stops depending on a hand-kept list — is still open.
+- **More riders may belong on the doping list.** Five are recorded (see "Rider detail chart"). These re-award pairs are visible in the data and were deliberately NOT added without confirmation, since attributing doping to a named rider must not be inferred from a duplicate rank row: **Vuelta 2011** (Froome/Cobo — Cobo *is* listed), **Giro 2009** (Di Luca, Pellizotti, Valjavec), **Vuelta 2010** (Velits/Mosquera), **Vuelta 2022** (Almeida/López). Giro 1913/1932/1948 show the same duplicate pattern from old-data artefacts and are not doping.
+- **TDF 2008 KOM has two rank-1 rows** in `classification_standings` — Bernhard Kohl (128 pts, stripped for doping) and Carlos Sastre (80, the re-award). Both therefore show a polka-dot jersey for 2008 on the Riders page. Keeping both is Eric's decision (2026-08-18): the jersey stays, and the rider detail page carries a "Some race results revoked for doping" note beside the name instead (`RIDERS_WITH_REVOKED_RESULTS` in `jerseyIcons.ts`). It is the only such duplicate in the DB. Modelling revocations in the DB itself — a flag on the row, so the app stops depending on a hand-kept list — is still open.
 
 **Known-unfixable / explained, leave alone:**
 - **Giro 1946 winner time** — PCS's figure implies 46.5 km/h over 3,050 km. Either the time or the distance is wrong and there's no way to tell which; storing nothing beats storing a number that fails its own check.
@@ -1166,11 +1176,11 @@ This is the most important script. It reads cycling.db + all supplemental JSON f
 
 **KOM rank computation**: Same approach as sprint, always descending (higher points = better). Stored as `komRank`.
 
-**Abandoned riders leave the classifications** (fixed 2026-08-15): a rider is ranked only for stages *before* the one their last result row abandons on (DNF/DNS/OTL/DSQ). They keep the points they scored — they just stop being ranked against riders still racing. Without this, whoever led a classification when they climbed off held that lead to Paris: Roger De Vlaeminck abandoned stage 12 of the 1969 Tour on 61 sprint points and still outranked Merckx's eventual 59 on stage 25, which cost Merckx his green jersey in the riders index and broke the famous 1969 triple. **Only riders whose last row is an abandonment are dropped** — a rider whose results merely stop is a data gap (old PCS pages omit legitimate finishers, see the `finalRank` fallback), not an exit, and stays in.
+**Abandoned riders leave the classifications** (fixed 2026-08-18): a rider is ranked only for stages *before* the one their last result row abandons on (DNF/DNS/OTL/DSQ). They keep the points they scored — they just stop being ranked against riders still racing. Without this, whoever led a classification when they climbed off held that lead to Paris: Roger De Vlaeminck abandoned stage 12 of the 1969 Tour on 61 sprint points and still outranked Merckx's eventual 59 on stage 25, which cost Merckx his green jersey in the riders index and broke the famous 1969 triple. **Only riders whose last row is an abandonment are dropped** — a rider whose results merely stop is a data gap (old PCS pages omit legitimate finishers, see the `finalRank` fallback), not an exit, and stays in.
 
 **DNF tail catch-up**: After the per-stage loop for a rider, if they DNF'd before the last stage, their cumulative points are topped up with any points stored in later stage slots (some sources store final totals in the last stage entry). Their final `sprintRank`/`komRank` is also set from the pre-computed final-stage rank tables — which now returns nothing for a genuine abandonment, by design.
 
-**The riders index does not use these ranks where the DB has the real ones** (2026-08-15): `export_riders_index.py` takes `sprintRank`/`komRank` from `classification_standings` for every year that table covers (TDF 1960–2025), and falls back to the derived cumulative-points order outside it (pre-1960, 2026, and all Giro/Vuelta years — that table has no points/kom rows for them). The two are not interchangeable: the derived order is "who led on reconstructed points after the last stage", the DB is the official final standing. Before this, 16 of 66 TDF points years and 7 of 66 KOM years named the wrong rider on the Riders page (1972 green, 2014 and 2015 polka dot among them). The abandonment fix above closed 4 of them; the rest only agree because the scraped standings now win.
+**The riders index does not use these ranks where the DB has the real ones** (2026-08-18): `export_riders_index.py` takes `sprintRank`/`komRank` from `classification_standings` for every year that table covers (TDF 1960–2025), and falls back to the derived cumulative-points order outside it (pre-1960, 2026, and all Giro/Vuelta years — that table has no points/kom rows for them). The two are not interchangeable: the derived order is "who led on reconstructed points after the last stage", the DB is the official final standing. Before this, 16 of 66 TDF points years and 7 of 66 KOM years named the wrong rider on the Riders page (1972 green, 2014 and 2015 polka dot among them). The abandonment fix above closed 4 of them; the rest only agree because the scraped standings now win.
 
 **`finalRank`**: Derived from each rider's last `byStage` entry's `gc_rank`, not from the last stage's result row. This ensures DNF'd KOM/sprint leaders still get correct classification ranks.
 
@@ -1644,23 +1654,49 @@ This is exactly the same pattern as `scrape_giro_stage_info.py` — if you forge
 {"2025": {"totalElevationM": 53914}}
 ```
 
-### Jersey filter buttons on the Riders page
+### Riders page filters (rewritten 2026-08-18)
 
-The Riders page shows GC / Sprint / KOM / Youth jersey filter buttons for **all three races**. Youth wins are not tracked for Giro or Vuelta (the pipeline captures sprint and KOM winners but not youth), so the youth button is hidden on non-TDF:
+**Jersey buttons are per-race and driven by capability flags, not by hardcoded
+exceptions.** `jerseyCategoriesForRace(race)` in `jerseyIcons.ts` is the single
+place that decides which jerseys a race offers: `hasYouth` gates the white
+jersey (TDF only), `hasSprintKom` gates green and polka dot. The one-day
+classics therefore show exactly **one** gray jersey, and because a one-day race
+has no running general classification its tooltip reads **"One-day Classics -
+Winner"** rather than "GC" (`jerseyIconTitle()` swaps the word wherever
+`hasCumulativeGc` is false). The same two helpers drive both the filter buttons
+and the per-rider icons in the grid, so the two can't drift apart.
 
-```typescript
-if (category === "youth" && !raceConfig().hasYouth) btn.style.display = "none";
-```
+**The year filter is a multi-select, and it scopes the jersey filters.** Years
+live in `state.ridersFilterYears: Set<number>` and are OR'd — "2021, 2023" means
+either year. With no year selected a jersey filter asks the career-wide question
+("won this at least once, ever"). With years selected it asks about those years
+specifically: the rider must have won **every** selected jersey within a
+**single** one of them. So "yellow + 2021, 2023" is the two riders who actually
+wore yellow in one of those years, and "yellow + green" is one rider who took
+both in the same season rather than one in each of two years a decade apart.
+Applied across races, that same rule asks for a Giro/Tour double in one season.
+`matchesJerseyFilter()` in `views/riders.ts` is the whole rule.
 
-The button group itself is always rendered — only the youth button is hidden per-category. The AND semantics (selecting multiple jerseys narrows to riders who've won every selected category) apply on all races.
+Before 2026-08-18 the two filters were independent: "2026 + yellow jersey"
+returned Bernal, Pogačar and Vingegaard, because it meant "rode the 2026 Tour
+AND has ever won yellow". The grid's jersey icons are year-scoped too, so a 2019
+winner shows no jersey while the grid is filtered to 2026 — otherwise the icons
+contradict the filter.
 
-`jerseyIconSvg(category)` reads jersey colors from `raceConfig().jersey` (solid fill, or white-with-dots when the config uses `{ dots: color }`).
+**Test hooks.** The team and nationality selects carry `#riders-team-filter` and
+`#riders-nationality-filter`. `verify-views.mjs` used to find the team select by
+position among `.riders-filter-select`, which silently retargeted the
+nationality select the moment the year filter stopped being a plain `<select>` —
+the check kept its name, measured 70 nationalities against a "> 600 teams"
+threshold, and failed. Query these ids; never index that NodeList.
 
-**If you add a new race:** set `hasYouth` in its `RACES` entry according to whether youth wins are tracked in its pipeline.
+**If you add a new race:** set `hasYouth`, `hasSprintKom` and `hasCumulativeGc`
+in its `RACES` entry — the jersey buttons, the grid icons and the tooltip
+wording all follow from those three, with no per-race code.
 
 ### Rider detail chart: cross-race, with race + classification toggles (`drawRiderDetail`)
 
-`drawRiderDetail(riderId)` is **async and cross-race** — it is not filtered to `currentRace`. It awaits all three races' rider indexes in parallel (`Promise.all(RACE_IDS.map(ensureRiderIndexFor))`), builds a `Map<RaceId, RiderEntry>` of every race the rider appears in (`byRace`), and returns early if the rider is in none. The header/meta line (`"7 TDF · Best #1, 8 Giro · Best #1, 1 Vuelta · Best #1"`) is built from `byRace` directly — no nationality text (the flag next to the name + its hover tooltip already convey it).
+`drawRiderDetail(riderId)` is **async and cross-race** — it is not filtered to `currentRace`. It awaits all four races' rider indexes in parallel (`Promise.all(RACE_IDS.map(ensureRiderIndexFor))`), builds a `Map<RaceId, RiderEntry>` of every race the rider appears in (`byRace`), and returns early if the rider is in none. The header/meta line (`"7 TDF · Best #1, 8 Giro · Best #1, 1 Vuelta · Best #1"`) is built from `byRace` directly — no nationality text (the flag next to the name + its hover tooltip already convey it).
 
 **Toggle bar**, above the chart: race buttons (T/G/V, one per race in `RACE_IDS`) then a `|` divider then classification buttons (GC/Sprint/KOM). Both toggle groups behave the same way — clicking toggles membership in a `Set` (`activeRaces` / `activeClassifs`), refusing to deactivate the last remaining member so the chart is never empty; a `BADGE: Record<RaceId, {bg, text, label}>` constant (not `RACES[race].chart`, for reliable hex values in SVG `stroke`/`fill` attributes) drives each race button's color and letter. A race button is disabled (`.no-data`) if the rider has no entry for that race at all.
 
@@ -1670,9 +1706,149 @@ The button group itself is always rendered — only the youth button is hidden p
 
 **Legend** (top-right, above the chart, up to 3 rows): row 1 is one column per active race (name + solid line, in that race's GC color); rows 2/3 (only if Sprint/KOM are active) repeat under each race's column ("Sprint"/"KOM", dashed/dotted, in that race's sprint/kom color) — columns are left-aligned to a fixed per-column x so "Tour"/"Sprint"/"KOM" (and same for Giro/Vuelta) line up vertically.
 
+The Sprint/KOM rows list only races with `hasSprintKom` (2026-08-18): the classics award neither jersey and no such line is ever drawn for them, so listing them promised two series that cannot exist. Their column is not widened to fit a label it never renders either, and when *no* active race contests them the two rows disappear entirely rather than leaving reserved empty space — deselect the Grand Tours on a rider who also has classics results to exercise that path.
+
+**Doping note.** Riders in `RIDERS_WITH_REVOKED_RESULTS` (`jerseyIcons.ts`) get "Some race results revoked for doping" immediately right of the name, dimmed italic, wrapping to its own line on narrow screens. Five riders as of 2026-08-18: Armstrong (seven Tours), Landis (2006 Tour), Contador (2010 Tour, 2011 Giro), Kohl (2008 Tour KOM), Cobo (2011 Vuelta). Membership means a governing body actually **removed a result** — not a suspension, and never inferred from the data. Duplicate ranks hint that a re-award happened but are not evidence: the same duplicates arise from PCS artefacts (Giro 1913/1932/1948). Note `rider/juan-jose-cobo` is not `rider/ivan-cobo-cayon`, a different rider in the same data.
+
+**Dead code warning:** `DOPING_GC_NOTES` and `jerseyIconsWithYearsEl()` in `jerseyIcons.ts` are **not called by anything** — the per-jersey-year doping annotation they implement has never rendered. Don't cite them as precedent for how the app displays anything; the name-level note above is the only live one.
+
 **Click a dot** to jump to that race/year's stage chart at the matching metric (`gc`, `points` for Sprint, or `kom` for KOM) — `setRace()` + `loadDataset()` + `switchView("stage")`.
 
 **If you add a new race:** its `RACES` entry's `chart` colors and `name` are used automatically for the cross-race chart and legend; add a `BADGE` entry too (hex color, not a CSS var) for its toggle button and DNF-dot outline.
+
+---
+
+## Frontend performance — Riders page (measured 2026-08-18)
+
+Numbers below are from a local dev build, all four races selected (14,260 rider
+buttons). They are here so the next person optimizes the thing that is actually
+slow rather than the thing that looks slow.
+
+**Where a grid rebuild goes** (per filter change, before the fixes):
+
+| Phase | ms |
+|---|---|
+| filter + merge + sort | ~40 |
+| `displayName` + text node | ~33 |
+| `nationalityFlagEl` | ~85 |
+| `jerseyIconsElMultiRace` | ~190 |
+| button create + title + data-id | ~82 |
+| attach + forced layout | ~157 |
+
+Sorting 14,260 names with `localeCompare` is 14ms and clearing the old nodes is
+4ms — neither is worth touching. `Intl.Collator` is *not* faster here (16ms).
+
+**Index load** (the ~2.7s first paint of the Riders page is mostly this):
+
+| Race | Riders | Size | Parse | Build |
+|---|---|---|---|---|
+| tour | 5,471 | 0.77 MB | 10ms | 48ms |
+| giro | 4,718 | 0.65 MB | 15ms | 61ms |
+| vuelta | 4,430 | 0.58 MB | 11ms | 60ms |
+| **classics** | **11,934** | **2.79 MB** | **132ms** | **379ms** |
+
+### What was done
+
+- **`jerseyYearsWon` memoized** on a `WeakMap` keyed by the entry object. The
+  grid called it once per rider PER RACE — 57,000 calls per rebuild, each
+  allocating and sorting four arrays over data that never changes after load.
+- **`jerseyCategoriesForRace` memoized per race.** It returned a freshly
+  filtered array on every one of those 57,000 calls. 190ms → 132ms.
+- **Flag elements cloned, not rebuilt.** One prototype `<span>` per nationality,
+  `cloneNode` thereafter; it was redoing attribute writes, emoji codepoint
+  arithmetic and (for the two historical flags) an SVG `innerHTML` parse 14,260
+  times. 85ms → 30ms.
+- **`setAttribute("data-id")` instead of `btn.dataset.id`**, and `displayName`
+  called once per rider instead of twice. 82ms → 66ms.
+- **`content-visibility: auto` on `.rider-name-btn`** — 157ms → 46ms. See the
+  trap below before touching this.
+- **`constituents` built lazily** — see the trap below.
+- **In-flight promise dedupe in `ensureRiderIndexFor`.** `riderIndexBuilt[race]`
+  only flips after fetch AND build finish, so two concurrent callers both passed
+  the guard and both downloaded and rebuilt the same index. `drawRidersPage` and
+  `drawRiderDetail` both call it for every race, so opening a rider from a link
+  did exactly that: two 2.8 MB classics fetches and two ~500ms rebuilds racing
+  to populate the same Map. Callers now share the promise; it clears on settle
+  so a failed load can still be retried.
+
+### Traps
+
+**Measuring layout.** `content-visibility` was measured, declared a no-op, and
+reverted — wrongly. The A/B ran against a rebuild that deferred layout past the
+end of the measurement window, so both arms timed everything *except* the thing
+the property affects, and both read 416ms. Re-measured with a forced synchronous
+layout (`getBoundingClientRect()` straight after appending the fragment) it is a
+clean 157ms → 46ms → 156ms across three toggles each way. **Any re-test of this
+must force layout.** A synthetic benchmark also lied in the other direction
+(357ms → 58ms on a probe div in a different layout context); trust only the live
+grid.
+
+**`constituents` is a non-enumerable lazy getter.** The classics index carries a
+per-race breakdown for 11,934 riders, ~380ms of the ~510ms that index takes to
+build, for data only the career chart reads one rider at a time. It is now
+defined by `defineLazyConstituents()` as a memoizing getter — and deliberately
+**non-enumerable**, because `mergedRidersForSelectedRaces()` clones entries with
+a spread and an enumerable getter would fire for all 11,934 and hand back
+exactly the eager cost being avoided. That merge copies the property's
+*descriptor* (`getOwnPropertyDescriptor`, which does not invoke the getter) so
+the clone stays lazy and shares the memo. Make it enumerable, or replace the
+descriptor copy with a value copy, and the optimization silently evaporates.
+
+**Search is accent-folded, and folding is cached.** `foldForSearch()` in
+`riderDisplay.ts` NFD-normalizes, strips `\p{Diacritic}`, then hand-maps the
+letters that don't decompose because they aren't accented forms of anything
+(ø ł đ ð þ ß æ œ ı — 28 riders with ø, 20 with ł, 4 with ß, one Đ).
+`searchHaystack()` additionally keeps an umlaut-expanded spelling, so both
+"zulle" and "zuelle" find Zülle (113 riders carry an umlaut). Folding 14,260
+names per keystroke would undo the work above, so the haystack is computed once
+per rider into a `WeakMap`. Both search boxes (Riders grid, stage-chart "Find a
+rider") go through it.
+
+### Still open
+
+The ~415ms JS half of a rebuild is now ~305ms; the remainder is spread across
+the per-rider helpers and has not been attributed further. The bigger prize is
+the ~2.7s first paint — deferring the classics index until a classics filter is
+touched, or streaming the grid after the first index resolves, is worth more
+than anything left in the rebuild loop.
+
+---
+
+## Dev-loop traps (2026-08-18)
+
+**Vite HMR serves stale modules more often than you'd think.** Three separate
+times in one session an edit appeared to have no effect: the dev server was
+serving the new source (verified by `fetch()`ing the module and grepping it) but
+the page kept executing a cached copy. A plain reload was not always enough — a
+cache-busting query param on the page URL (`/tdf-analytics/?cb=123#riders`) was.
+Before debugging "my change didn't work", confirm the running page actually has
+it.
+
+**The stage table's sticky columns depend on fixed widths.** `.col-rider` pins
+itself with `left: 74px` (22px team + 52px bib) and the other three combinations
+are spelled out in `style.css`. `.col-bib` had no width, so it sized itself from
+its content at ~44px; sticky then shifted the rider column 8px right of where it
+belonged and, being opaque with a z-index, painted over the left edge of the
+stage-1 column — which read as "column 1 is narrower than the others". Both
+sticky columns are now pinned (`width`/`min-width`/`max-width`) precisely so
+those offsets stay true. If either is ever allowed to size itself from content
+again, every offset goes stale with it.
+
+Separately, `th.col-stage` carries `min-width: 46px` because the table sizes
+columns to content and a stage whose values are short rendered narrower — worst
+in Sprint/KOM, where totals start in single digits (31.5px against 44.4px). It
+is a minimum, not a fixed width: GC-time cells are wider and grow together.
+
+**The km/mi toggle serves two views.** `all-races-unit-toggle` now drives both
+the Grand Tours' All Years Summary and the classics Race History, sharing
+`state.allRacesUnit` so a preference for miles carries across. On Race History
+it converts speed (km/h → mph) as well as distance, and hides itself for the
+Finishers metric, which is a unit-less count — so the button appears and
+disappears as the metric switch changes, not only on entering the view
+(`raceHistoryUsesDistanceUnits()`). `classicsHistory.ts` imports
+`updateUnitToggle` from `main.ts`, a cycle that is safe for the same reason
+`riders.ts`'s is: the call happens inside an event handler, never at
+module-evaluation time.
 
 ---
 
@@ -1972,7 +2148,9 @@ These Tours were decided by points (fewer = better), not elapsed time. There are
 `tour_sprint_points.json`, `tour_kom_points_reconciled.json`, and `profile_icons.json` all use the same array indexing: index 0 = first stage in DB ordering for that year. This matches the order returned by `SELECT ... FROM stages WHERE edition_id=? ORDER BY stage_number`. The `stage_num_to_idx` dict in `export_gc.py` maps `stage_number → array_index` to handle the alignment.
 
 ### DNF riders in classifications
-A rider who DNFs before the final stage has their last `byStage` entry used for `finalRank`. Their cumulative points are topped up via a catch-up loop after the main `byStage` loop (some sources store final totals in stage slots after the rider's last actual stage). `sprintRank`/`komRank` at their last entry is also backfilled from the final-stage pre-computed rank tables.
+A rider who DNFs before the final stage has their last `byStage` entry used for `finalRank`. Their cumulative points are topped up via a catch-up loop after the main `byStage` loop (some sources store final totals in stage slots after the rider's last actual stage).
+
+**They are NOT ranked past the stage they abandon on** (2026-08-18). The per-stage sprint/KOM ranking excludes any rider whose last result row is an abandonment, from that stage onward — see "Abandoned riders leave the classifications" under "export_gc.py — Key Logic". The final-stage backfill on their last entry still runs but now finds nothing for a genuine abandonment, which is the point: a rider who climbed off leading the points classification must not still hold it in Paris.
 
 ### totalTimeSeconds resolution
 Three-tier priority in `export_gc.py` (TDF):
@@ -2011,7 +2189,28 @@ python3 validate_kom.py --summary   # one line per year
 python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
+
+# Unit tests — 162 as of 2026-08-18
+python3 -m unittest discover -p "test_*.py"
+
+# Exported-JSON checks (run after any export). 436 files, 0 errors and
+# 90 warnings is the expected clean result as of 2026-08-18 — compare the
+# COUNT against that baseline rather than expecting zero.
+python3 validate_exports.py
+python3 validate_db.py               # 0 errors, 3 warnings expected
 ```
+
+`validate_kom.py` / `validate_gc.py` need external reference data that isn't in
+the repo; without it they report `0 ok / 0 mismatch` or `no_data` for every year
+and prove nothing. `validate_exports.py`, `validate_db.py` and the unittest
+suite are the ones that actually gate a change.
+
+**Tests worth knowing about** (`pipeline/test_exports.py`): `TestAbandonedRidersLeaveTheClassifications`
+builds a scratch DB where one rider leads the sprint classification and then
+abandons, and asserts the finisher takes the final standings — that is the 1969
+De Vlaeminck/Merckx bug in miniature. `TestRidersIndex` covers the official-
+standings override, including that a rider absent from those standings ends up
+unranked rather than keeping a derived rank.
 
 ---
 

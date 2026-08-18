@@ -168,17 +168,18 @@ flowchart TD
   | `raceRegistry.ts` | `RaceId`, `RaceConfig`, the `RACES` registry, and the `URLS_BY_RACE`/`ALL_RACES_BY_RACE` glob-discovery of per-race data files |
   | `state.ts` | The shared **mutable state object** — see note below — plus `raceConfig()` |
   | `formatters.ts` | Time/gap string formatting, route-type colors, difficulty score |
-  | `riderDisplay.ts` | `displayName`, nationality flag rendering — shared across 3+ views |
+  | `riderDisplay.ts` | `displayName`, nationality flag rendering (prototype-cloned per nationality), and `foldForSearch`/`searchHaystack` accent folding — shared across 3+ views |
   | `tooltip.ts` | Generic tooltip positioning/show/hide (the rider-hover tooltip content itself lives in `stageChart.ts` — too coupled to that view's state to be a leaf) |
-  | `jerseyIcons.ts` | Jersey SVG builders, per-classification win-year lookups |
+  | `jerseyIcons.ts` | Jersey SVG builders, per-classification win-year lookups (memoized), the per-race jersey capability helpers, and `RIDERS_WITH_REVOKED_RESULTS` |
   | `dataLoading.ts` | Pure fetch + LRU cache for per-year datasets (`getDataset`) |
-  | `riderIndexData.ts` | Loads/caches the compact `riders_index.json` per race |
+  | `riderIndexData.ts` | Loads/caches the compact `riders_index.json` per race; dedupes concurrent loads and builds `constituents` lazily |
   | `hashRouting.ts` | `computeHash`/`updateHash` only — `applyHash()` stays in `main.ts` (see below) |
   | `views/overview.ts` | Race Overview (per-stage distance/elevation/difficulty bars) |
   | `views/allRaces.ts` | All Races Overview (4-panel cross-year comparison) |
   | `views/stageChart.ts` | By Stage bump chart + its legend and Team/Nation filters — the app's biggest, most state-coupled view, kept as one file since ranking computation, rendering, legend, and filters are genuinely one unit |
   | `views/riders.ts` | Riders grid: search/filter and the merged-index cache |
   | `views/riderDetail.ts` | Cross-race rider career chart (446 lines — was the single largest function in the old `main.ts`) |
+  | `views/classicsHistory.ts` | Race History small multiples for the one-day classics (one panel per race across its own lifetime) |
   | `main.ts` | Orchestration only: `init()`, `wireControls()`, `setRace()`, `switchView()`, `loadDataset()`, `applyHash()` — the last two stay here rather than in `dataLoading.ts`/`hashRouting.ts` because both call into nearly every view module to trigger redraws |
 
   **Shared mutable state:** ES modules can't reassign an imported `let` binding from outside
@@ -192,7 +193,28 @@ flowchart TD
   other for grid↔detail navigation, and both call back into `main.ts`'s
   `setRace`/`loadDataset`/`switchView`. Every cross-reference happens inside event handlers,
   never at module-evaluation time, so Vite/esbuild resolve it correctly — this is the normal
-  shape of a router-plus-views SPA without a framework, not a bug to design around.
+  shape of a router-plus-views SPA without a framework, not a bug to design around. The same
+  applies to `views/classicsHistory.ts` importing `updateUnitToggle` from `main.ts`.
+
+  **Riders-page performance invariants (2026-08-18).** The grid renders 14,260 buttons with
+  all four races selected, so several things there are load-bearing rather than incidental,
+  and each has a comment at its site explaining why. Measurements and the full story are in
+  `ai-context.md`'s "Frontend performance — Riders page".
+
+  - `jerseyYearsWon` and `jerseyCategoriesForRace` are **memoized**; both were being called
+    once per rider per race (~57,000 times per rebuild) over data that never changes.
+  - Nationality flags are **cloned from a per-nationality prototype**, and search haystacks
+    are **accent-folded once per rider into a `WeakMap`** — folding per keystroke would cost
+    more than everything else saved.
+  - `RiderEntry.constituents` is a **non-enumerable memoizing getter**. Non-enumerable is the
+    load-bearing part: `mergedRidersForSelectedRaces()` clones entries with a spread, which
+    would fire an enumerable getter for all 11,934 classics riders and reinstate the ~380ms
+    it exists to avoid. That merge copies the property *descriptor* instead of its value.
+  - `ensureRiderIndexFor` **shares its in-flight promise**; its `riderIndexBuilt` flag only
+    flips after the build, so it cannot deduplicate concurrent callers on its own.
+  - `.rider-name-btn` uses `content-visibility: auto`. Re-measuring it requires **forcing
+    synchronous layout**, or the A/B reads as a no-op — this exact mistake was made and
+    reverted once.
 
 - **User** — interacts entirely client-side after the initial page load; race/year
   switches, filters, and the Riders search all `fetch()` additional JSON on demand rather
@@ -450,6 +472,20 @@ flowchart TD
    fresh `jsdom` instances at several deep-link hashes (stage, riders, rider detail,
    all-races, overview) to catch view-specific regressions the default-view check would
    miss.
+
+   **Assert against ids, never against position in a NodeList.** A check named "team filter
+   populated from team table" reached the team `<select>` as `.riders-filter-select[1]`.
+   When the year filter became a multi-select dropdown and stopped carrying that class, the
+   index silently retargeted the *nationality* select, measured 70 options against a
+   "> 600 teams" threshold, and failed on two commits (`15cdc9f`, `d4d2593`) — while still
+   reporting itself as the team-filter check. It now queries `#riders-team-filter` /
+   `#riders-nationality-filter`. A positional selector fails in the worst way available: it
+   keeps its name while measuring something else.
+
+   These tests also encode *intended* behavior, so a deliberate UI change can make one
+   wrong rather than merely broken — "race history hides the km/mi toggle" asserted exactly
+   what was later asked for as a feature. Read the failing assertion before assuming the
+   app regressed.
 8. **Upload artifact** — packages `cycling-app/build/` for the `deploy` job to consume;
    this is the GitHub Pages-specific artifact format (not a generic build artifact).
 9. **Deploy** — a separate job (`needs: build`) so it only runs if every build/validate/test
