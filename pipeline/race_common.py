@@ -499,13 +499,15 @@ def assign_stage_numbers(slugs: list[str]) -> tuple[list[tuple[int, str]], str |
 SOURCE_PCS = "pcs"              # scraped from procyclingstats.com
 SOURCE_WIKIPEDIA = "wikipedia"  # from a Wikipedia route/results table
 SOURCE_BIKERACEINFO = "bikeraceinfo"  # from bikeraceinfo.com (patch_bri_distances.py)
+SOURCE_CYCLINGFLASH = "cyclingflash"  # from cyclingflash.com; relayed by the repo
+                                # owner, since Cloudflare blocks automated fetches
 SOURCE_MANUAL = "manual"        # hand-entered or hand-corrected
 SOURCE_DERIVED = "derived"      # computed from other DB values, not fetched
 SOURCE_UNKNOWN = "unknown"      # predates provenance tracking; origin unproven
 
 VALID_SOURCES = frozenset({
-    SOURCE_PCS, SOURCE_WIKIPEDIA, SOURCE_BIKERACEINFO, SOURCE_MANUAL,
-    SOURCE_DERIVED, SOURCE_UNKNOWN,
+    SOURCE_PCS, SOURCE_WIKIPEDIA, SOURCE_BIKERACEINFO, SOURCE_CYCLINGFLASH,
+    SOURCE_MANUAL, SOURCE_DERIVED, SOURCE_UNKNOWN,
 })
 
 

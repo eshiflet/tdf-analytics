@@ -30,7 +30,7 @@ import sqlite3
 import sys
 from collections import defaultdict
 
-from race_common import DB_PATH, load_stage_notes
+from race_common import DB_PATH, VALID_SOURCES, load_stage_notes
 
 RACES = ["Tour de France", "Giro d'Italia", "Vuelta a España"]
 
@@ -177,9 +177,13 @@ def check_provenance(c):
         err(f"{n} orphaned data_provenance row(s) — an edition was re-ingested "
             "without clearing them; ingest_race.py should do this")
 
+    # Driven off race_common.VALID_SOURCES rather than a second hardcoded
+    # list: the two silently diverged when 'cyclingflash' was added, and the
+    # validator failed a value record_provenance() had already accepted.
     bad = c.execute(
         "SELECT DISTINCT source FROM data_provenance WHERE source NOT IN "
-        "('pcs','wikipedia','bikeraceinfo','manual','derived','unknown')"
+        "(%s)" % ",".join("?" * len(VALID_SOURCES)),
+        tuple(sorted(VALID_SOURCES))
     ).fetchall()
     for (s,) in bad:
         err(f"data_provenance has unknown source value {s!r}")

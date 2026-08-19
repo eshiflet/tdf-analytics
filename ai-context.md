@@ -157,8 +157,12 @@ of them is how the data got broken in the first place.
 ### Provenance
 
 `data_provenance` records where every stored fact came from at (entity, entity_id, field)
-granularity — `pcs`, `wikipedia`, `bikeraceinfo`, `manual`, `derived`, `unknown` — with
-the exact URL in `source_ref`. **Every writer must call `record_provenance()`.** A source
+granularity — `pcs`, `wikipedia`, `bikeraceinfo`, `cyclingflash`, `manual`, `derived`,
+`unknown` — with the exact URL in `source_ref`. **Every writer must call
+`record_provenance()`,** and the valid set lives in `race_common.VALID_SOURCES` only:
+`validate_db.py` reads that frozenset rather than keeping its own copy, because the two
+did silently diverge once and the validator rejected a source `record_provenance()` had
+already accepted. A source
 of `unknown` means "patched by something nobody recorded" and is a real signal: it is how
 six Paris finales carrying the *previous* stage's distance were found. `entity_id` is
 polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows itself.
@@ -177,6 +181,7 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `fix_doubled_winner_times.py` | the 3,377-row winner repair (arithmetic, no re-scrape) |
 | `backfill_stage_metadata.py` | fills NULL route/date from PCS's info panel |
 | `scrape_route_overview_elevation.py` | elevation from the race ROUTE page (stage pages omit Paris finales/prologues); `--replace-derived` |
+| `patch_cyclingflash_elevation.py` | 2001/2006 s20 from cyclingflash.com; guards on distance before writing |
 
 ### State as of 2026-08-11
 
@@ -607,11 +612,22 @@ turned out to be PCS's own 40,225 m minus a Paris finale nobody could read.
 
 | year | stage | km | derived → **PCS** | m/km |    | year | stage | km | derived → **PCS** | m/km |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 2001 | 20 | 160.5 | 980 → **1873** | 11.7 |  | 2006 | 20 | 154.5 | 1090 → **376** | 2.4 |
+| 2001 | 20 | 160.5 | 980 → 1873 → **1791** ᶜ | 11.2 |  | 2006 | 20 | 154.5 | 1090 → 376 → **1012** ᶜ | 6.6 |
 | 2002 | 20 | 140.0 | 585 → **1423** | 10.2 |  | 2007 | 20 | 146.0 | 885 → **796** | 5.5 |
 | 2003 | 20 | 152.0 | 730 → **757** | 5.0 |  | 2008 | 21 | 143.0 | 900 → **807** | 5.6 |
 | 2004 | 20 | 163.0 | 725 → **1453** | 8.9 |  | 2009 | 21 | 164.0 | 650 → **521** | 3.2 |
 | 2005 | **21** | 144.0 | 855 → **851** | 5.9 |  | 2010 | 20 | 102.5 | 660 → **481** | 4.7 |
+
+ᶜ **2001 s20 and 2006 s20 are `SOURCE_CYCLINGFLASH`, not PCS** (`patch_cyclingflash_elevation.py`,
+2026-08-19). PCS's route-page figures for these two were the only outliers in the set —
+376 m (2.4 m/km) and 1873 m (11.7 m/km) — and cyclingflash.com's "Elevation gain" gives
+1012 and 1791 instead. Eric supplied both, with distances (154.5 / 160.5 km) that match
+this DB exactly, which is what confirms both sites mean the same stage. **Not
+independently verified:** cyclingflash.com sits behind Cloudflare bot detection and
+refuses automated fetches, so the rows carry the citing URL and say so. The 2006
+correction is the significant one — 376 → 1012 moves it from below every modern finale
+into the normal band. 2001 barely moves (1873 → 1791), which is itself a result: a second
+source broadly agreeing means 2001 really was an unusually hilly run-in, not a PCS error.
 
 **How badly the reconstruction did:** 2005/2003/2007/2008 landed within 1–11%, but 2001
 and 2002 came in at roughly *half* the real figure, 2004 at half, and 2006 ran **2.9x
@@ -619,10 +635,12 @@ over**. The method's own validation had called those four its most confident res
 that as the cost of deriving anything at all — not as a tuning problem.
 
 **The "4–8 m/km is a sanity band" rule is falsified** and must not be reapplied. It was
-calibrated on the derived set. PCS's real values run 2.4 (2006) to 11.7 (2001), and the
-scraped 2011+ finales reach 11.6 (2026) and 8.5 (2025). 2006's 376 m over 154.5 km and
-2001's 1873 m are both surprising; they are also both what PCS publishes, and
-the never-fabricate-data rule says we store that and flag it, not smooth it.
+calibrated on the derived set. Real values run 4.7 to 11.2 across 2001–2010, and the
+scraped 2011+ finales reach 11.6 (2026) and 8.5 (2025) — so the band's *ceiling* is
+simply wrong. Its floor did useful work, though: it is what flagged 2006's 2.4 m/km as
+worth a second source, and that one turned out to be a genuine bad figure. Treat a
+reading outside 4–8 as a prompt to go find another source, never as licence to adjust
+the number.
 
 **Genuinely absent from PCS everywhere** — stage page *and* route page — and still the
 only two stages needing reconstruction: **1991 s17** Gap→Alpe d'Huez and **1998 s17**
