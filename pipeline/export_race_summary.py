@@ -16,8 +16,11 @@ in the DB, including gap years (wars, cancellations) so the x-axis is
 continuous.
 
 Fields:
-  totalDistanceKm          — SUM(stages.distance_km) for the edition
-  totalElevationM          — SUM(stages.vertical_meters); null if unavailable
+  totalDistanceKm          — SUM(stages.distance_km) over the edition's
+                             stages, excluding cancelled ones
+  totalElevationM          — SUM(stages.vertical_meters), but null unless at
+                             least ELEVATION_MIN_COVERAGE of the edition's
+                             stages carry a figure (see total_elevation())
   gcWinnerTimeSeconds      — sum of finish_time_seconds for the overall GC winner
   slowestFinisherTimeSeconds — gcWinnerTimeSeconds + MAX(gc_gap_seconds) at final stage
 
@@ -117,6 +120,72 @@ def report_distance_divergences(divergences, accepted, tolerance, have_source, r
     return bool(new)
 
 
+# A cancelled stage counts toward NOTHING in the year's totals — not distance,
+# not ascent. `cancelled=1` means the stage produced no classification: no GC
+# time, no points. A stage whose racing was thrown away did not contribute the
+# race's kilometres or its climbing either, and counting one but not the other
+# is how distance and elevation end up describing two different races. Four
+# figures move under this rule (2026-08-18): TDF 1982 stage 5 (556 m, ridden
+# then annulled after the Orchies blockade), Vuelta 1991 stage 12 (3,015 m),
+# and the distances of Vuelta 1957 stage 4 (136 km) and Vuelta 1968 stage 17
+# (204 km). The other nine cancelled Grand Tour stages are already stored as
+# 0.0 km with no elevation, so the rule only makes their convention explicit.
+#
+# Elevation additionally needs a COVERAGE floor, because SQL's SUM ignores
+# NULLs: an edition where 1 stage of 23 has a figure reported that one stage as
+# the whole race — Giro 1998 summed to 11 m (the Nice prologue) and Giro 1994 to
+# 212 m, both plotted as real totals on the All Races Overview. Five such Giro
+# years were suppressed by hand in giro_races_summary_overrides.json and two
+# were missed, which is why this is a rule here and not a curated list.
+#
+# Coverage across all 302 editions splits cleanly: every edition with sparse
+# elevation sits at or below 18% of its stages, and the least-covered plausible
+# one (TDF 1998) at 86%. 50% is the wide middle of that gap, not a tuned edge.
+ELEVATION_MIN_COVERAGE = 0.5
+
+
+def total_distance(cur, edition_id):
+    """Summed distance of the stages that counted, in km (None if no stages)."""
+    return cur.execute(
+        "SELECT SUM(distance_km) FROM stages WHERE edition_id=? AND cancelled=0",
+        (edition_id,),
+    ).fetchone()[0]
+
+
+def total_elevation(cur, edition_id):
+    """
+    (elevation_or_None, coverage_note_or_None) for one edition.
+
+    Returns None rather than a sum whenever too few stages carry a figure, so a
+    near-empty edition reads as "no data" (like the 39 Giro years with none at
+    all) instead of as a real, absurdly small total.
+    """
+    row = cur.execute(
+        """SELECT COUNT(*) AS n,
+                  COUNT(vertical_meters) AS have,
+                  SUM(vertical_meters) AS total
+           FROM stages WHERE edition_id=? AND cancelled=0""",
+        (edition_id,),
+    ).fetchone()
+    n, have, total = row["n"], row["have"], row["total"]
+    if not have:
+        return None, None
+    if n and have / n < ELEVATION_MIN_COVERAGE:
+        return None, {"have": have, "n": n, "suppressed": total}
+    return total, None
+
+
+def report_elevation_coverage(notes):
+    """Prints the editions whose elevation was suppressed as too sparse."""
+    if not notes:
+        return
+    print(f"\nElevation: {len(notes)} edition(s) exported as null — under "
+          f"{ELEVATION_MIN_COVERAGE:.0%} stage coverage:")
+    for year, note in sorted(notes.items()):
+        print(f"  {year}: {note['have']}/{note['n']} stages "
+              f"(would have summed to {note['suppressed']} m)")
+
+
 def main():
     if "--race" not in sys.argv:
         sys.exit("usage: python3 export_race_summary.py --race {giro,vuelta}")
@@ -188,6 +257,7 @@ def main():
 
     out = []
     divergences = []
+    elevation_notes = {}
     for year in range(first_year, last_year + 1):
         edition_id = editions.get(year)
         if edition_id is None:
@@ -200,26 +270,24 @@ def main():
             })
             continue
 
-        total_distance = cur.execute(
-            "SELECT SUM(distance_km) FROM stages WHERE edition_id=?", (edition_id,)
-        ).fetchone()[0]
+        edition_distance = total_distance(cur, edition_id)
 
         wiki_distance = wiki_distances.get(str(year))
-        if wiki_distance and total_distance:
-            pct = (total_distance - wiki_distance) / wiki_distance * 100
+        if wiki_distance and edition_distance:
+            pct = (edition_distance - wiki_distance) / wiki_distance * 100
             if abs(pct) > DISTANCE_TOLERANCE_PCT:
                 n_stages = cur.execute(
                     "SELECT COUNT(*) FROM stages WHERE edition_id=?", (edition_id,)
                 ).fetchone()[0]
                 divergences.append({
                     "year": year, "wiki_km": wiki_distance,
-                    "db_km": round(total_distance, 1), "pct": round(pct, 1),
+                    "db_km": round(edition_distance, 1), "pct": round(pct, 1),
                     "stages": n_stages,
                 })
 
-        total_elevation = cur.execute(
-            "SELECT SUM(vertical_meters) FROM stages WHERE edition_id=?", (edition_id,)
-        ).fetchone()[0]
+        edition_elevation, elevation_note = total_elevation(cur, edition_id)
+        if elevation_note:
+            elevation_notes[year] = elevation_note
 
         # GC winner = rider with gc_rank=1 at the final stage
         last_stage = cur.execute(
@@ -277,8 +345,8 @@ def main():
 
         row = {
             "year": year,
-            "totalDistanceKm": round(total_distance, 1) if total_distance else None,
-            "totalElevationM": int(total_elevation) if total_elevation else None,
+            "totalDistanceKm": round(edition_distance, 1) if edition_distance else None,
+            "totalElevationM": int(edition_elevation) if edition_elevation else None,
             "gcWinnerTimeSeconds": gc_winner_seconds,
             "slowestFinisherTimeSeconds": slowest_finisher,
         }
@@ -296,6 +364,7 @@ def main():
 
     report_distance_divergences(divergences, accepted, DISTANCE_TOLERANCE_PCT,
                                 bool(wiki_distances), race, strict)
+    report_elevation_coverage(elevation_notes)
 
 
 if __name__ == "__main__":

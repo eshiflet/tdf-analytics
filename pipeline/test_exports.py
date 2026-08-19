@@ -202,6 +202,98 @@ class TestAllRacesSummary(unittest.TestCase):
         self.assertIn("reconciliation", self.output)
 
 
+class TestElevationCoverage(unittest.TestCase):
+    """
+    ERS.total_elevation — the guard on SUM(vertical_meters).
+
+    SQL's SUM ignores NULLs, so an edition where one stage of 23 has a figure
+    reported that stage as the whole race's climbing: Giro 1998 charted an
+    11 m total (the Nice prologue) and 1994 a 212 m one, both drawn as real
+    points on the All Races Overview next to genuine 45,000 m years.
+
+    Cancelled stages are excluded from both totals here — see total_distance.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.db = os.path.join(self.tmp, "t.db")
+        self.conn = sqlite3.connect(self.db)
+        self.conn.row_factory = sqlite3.Row
+        with open(os.path.join(HERE, "schema.sql"), encoding="utf-8") as f:
+            self.conn.executescript(f.read())
+        cur = self.conn.cursor()
+        cur.execute("INSERT INTO races (name, race_type) VALUES (?, 'stage_race')",
+                    ("Giro d'Italia",))
+        cur.execute("INSERT INTO race_editions (race_id, year) VALUES (?, 1994)", (cur.lastrowid,))
+        self.eid = cur.lastrowid
+
+    def tearDown(self):
+        self.conn.close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def add(self, count, vm, cancelled=0):
+        cur = self.conn.cursor()
+        n = cur.execute("SELECT COUNT(*) FROM stages WHERE edition_id=?", (self.eid,)).fetchone()[0]
+        for i in range(count):
+            cur.execute("""INSERT INTO stages (edition_id, stage_number, distance_km,
+                           vertical_meters, cancelled) VALUES (?,?,?,?,?)""",
+                        (self.eid, n + i + 1, 150.0, vm, cancelled))
+        self.conn.commit()
+
+    def elevation(self):
+        return ERS.total_elevation(self.conn.cursor(), self.eid)
+
+    def test_one_stage_in_twenty_three_is_not_a_race_total(self):
+        self.add(1, 212)
+        self.add(22, None)
+        total, note = self.elevation()
+        self.assertIsNone(total, "a lone stage's figure must not be exported as the total")
+        self.assertEqual((note["have"], note["n"], note["suppressed"]), (1, 23, 212))
+
+    def test_a_covered_edition_still_sums(self):
+        self.add(20, 2000)
+        self.add(1, None)
+        total, note = self.elevation()
+        self.assertEqual(total, 40000)
+        self.assertIsNone(note)
+
+    def test_no_elevation_at_all_is_null_without_a_note(self):
+        """The 39 Giro years with none — nothing was suppressed, so nothing to report."""
+        self.add(21, None)
+        self.assertEqual(self.elevation(), (None, None))
+
+    def test_cancelled_stages_do_not_count_against_coverage(self):
+        """A stage that was never ridden has no figure to be missing."""
+        self.add(11, 2000)
+        self.add(10, None, cancelled=1)
+        total, note = self.elevation()
+        self.assertEqual(total, 22000, "11 of 11 raced stages is full coverage")
+        self.assertIsNone(note)
+
+    def test_a_cancelled_stage_contributes_no_ascent(self):
+        """
+        TDF 1982 stage 5 was ridden and then annulled, so its 556 m is not part
+        of that Tour's climbing — a stage that counted toward neither GC nor
+        points counted toward no total either.
+        """
+        self.add(20, 2000)
+        self.add(1, 556, cancelled=1)
+        self.assertEqual(self.elevation()[0], 40000)
+
+    def test_a_cancelled_stage_contributes_no_distance(self):
+        """
+        Vuelta 1957 stage 4 (136 km) and 1968 stage 17 (204 km) are the two
+        cancelled stages stored with a real distance; every other one is 0.0 km.
+        Dropping them moved both editions to within 0.4% of Wikipedia's
+        published route total, from >3% out — Wikipedia excludes them too.
+        """
+        self.add(10, None)
+        self.conn.execute("UPDATE stages SET distance_km=136.0 WHERE stage_number=10")
+        self.conn.execute("UPDATE stages SET cancelled=1 WHERE stage_number=10")
+        self.conn.commit()
+        self.assertAlmostEqual(ERS.total_distance(self.conn.cursor(), self.eid), 9 * 150.0)
+
+
 class TestSupplements(unittest.TestCase):
     """export_gc.Supplements — replaced four path globals and four caches."""
 

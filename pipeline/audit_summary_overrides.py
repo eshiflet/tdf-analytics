@@ -5,8 +5,8 @@ fields that pin exactly the value export_race_summary.py already computes from
 the DB.
 
 Why this exists: an override is a hardcoded value that silently outranks real
-data. That is the whole point when it's correcting something (Giro 1992's
-elevation sums to an absurd 70 m, so it's pinned to null), but a pin that
+data. That is the whole point when it's correcting something (13 Giro
+slowestFinisherTimeSeconds the DB computes too high), but a pin that
 merely restates the computed value is dead weight that will quietly mask the
 DB the day the DB changes underneath it — and nothing warns about it. Most of
 these were left behind when the curated {race}_gc_winner_times.json lookup

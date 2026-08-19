@@ -18,7 +18,10 @@ applicable):
                       shows Wikipedia's number and would otherwise display a
                       correct total for an edition missing whole stages.
   totalElevationM  — SUM(stages.vertical_meters); null if no stage in that
-                      edition has a recorded value.
+                      edition has a recorded value, and also null when too few
+                      of them do (see total_elevation() in
+                      export_race_summary.py — a lone stage's figure is not a
+                      race total).
   gcWinnerTimeSeconds      — tour_gc_winner_times.json[year]; null if absent
                               (points-system years 1905-1912, or a Tour
                               still in progress with no official winner yet).
@@ -44,7 +47,13 @@ import os
 import sqlite3
 import sys
 
-from export_race_summary import load_distance_baseline, report_distance_divergences
+from export_race_summary import (
+    load_distance_baseline,
+    report_distance_divergences,
+    report_elevation_coverage,
+    total_distance,
+    total_elevation,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -94,6 +103,7 @@ def main():
     }
 
     out = []
+    elevation_notes = {}
     divergences: list[dict] = []
     for year in range(FIRST_YEAR, last_year + 1):
         edition_id = editions.get(year)
@@ -116,12 +126,10 @@ def main():
         # Vuelta sat two stages short and the only reason anyone noticed was a
         # human spotting it in the UI. Compute both, display Wikipedia's,
         # and report any material disagreement.
-        db_distance = cur.execute(
-            "SELECT SUM(distance_km) FROM stages WHERE edition_id=?", (edition_id,)
-        ).fetchone()[0]
+        db_distance = total_distance(cur, edition_id)
         wiki_distance = wiki_distances.get(yr_str)
 
-        total_distance = wiki_distance if wiki_distance is not None else db_distance
+        display_distance = wiki_distance if wiki_distance is not None else db_distance
         if wiki_distance and db_distance:
             pct = (db_distance - wiki_distance) / wiki_distance * 100
             if abs(pct) > DISTANCE_TOLERANCE_PCT:
@@ -134,9 +142,9 @@ def main():
                     "stages": n_stages,
                 })
 
-        total_elevation = cur.execute(
-            "SELECT SUM(vertical_meters) FROM stages WHERE edition_id=?", (edition_id,)
-        ).fetchone()[0]
+        edition_elevation, elevation_note = total_elevation(cur, edition_id)
+        if elevation_note:
+            elevation_notes[year] = elevation_note
 
         gc_winner_seconds = gc_winner_times.get(yr_str)
 
@@ -156,8 +164,8 @@ def main():
 
         row = {
             "year": year,
-            "totalDistanceKm": total_distance,
-            "totalElevationM": total_elevation,
+            "totalDistanceKm": display_distance,
+            "totalElevationM": edition_elevation,
             "gcWinnerTimeSeconds": gc_winner_seconds,
             "slowestFinisherTimeSeconds": slowest_finisher,
         }
@@ -178,6 +186,7 @@ def main():
     # place it can be noticed at all.
     report_distance_divergences(divergences, load_distance_baseline("tour"),
                                 DISTANCE_TOLERANCE_PCT, True, "tour", STRICT)
+    report_elevation_coverage(elevation_notes)
 
 
 if __name__ == "__main__":

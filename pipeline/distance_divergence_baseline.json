@@ -12,8 +12,6 @@
     "1978": "accepted 2026-08-15: DB +4.4% over Wikipedia across 25 stages; stage numbering contiguous, no stage missing"
   },
   "vuelta": {
-    "1957": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1968": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
     "1974": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
     "1976": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
     "1978": "accepted 2026-08-15: stage 21 is stored as 0.0 km with no results (cancelled-stage convention). The DB still runs +4.4% OVER Wikipedia, so the gap is source disagreement, not the zero-length stage.",
