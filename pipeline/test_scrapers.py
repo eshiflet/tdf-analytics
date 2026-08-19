@@ -32,6 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import insert_cancelled_stages as ICS
 import patch_missing_distances as PMD
 import resolve_source_slugs as RSS
+import scrape_route_overview_elevation as SROE
 import scrape_vuelta as SV
 import scrape_vuelta_stage_info as SVSI
 from race_common import STAGE_ROW_LEN, StageRow
@@ -274,6 +275,50 @@ class TestElevationExtraction(unittest.TestCase):
         self.assertEqual(
             SVSI.extract_info(require("vuelta_1991_stage_11_cancelled"))["vertical_meters"],
             3015)
+
+
+class TestRouteOverviewElevation(unittest.TestCase):
+    """scrape_route_overview_elevation.parse_route_table — the RACE ROUTE page.
+
+    This page is the answer to a wrong assumption that stood for weeks: PCS
+    leaves 'Vertical meters' blank on many Tour stage pages, and every scraper
+    here read only stage pages, so ten Paris finales were reconstructed from
+    a DEM before anyone checked the route page that had them all along.
+    """
+
+    def table(self):
+        return SROE.parse_route_table(require("tdf_2001_route_stages"))
+
+    def test_paris_finale_has_a_figure_the_stage_page_lacks(self):
+        """The whole point. /2001/stage-20 serves no vertical metres; this page
+        serves 1873, and that is now what the DB stores."""
+        self.assertEqual(self.table()["stage-20"], 1873)
+
+    def test_hardest_stages_table_does_not_overwrite_real_elevations(self):
+        """The trap. The page's second table links the same stage URLs but its
+        last cell is the ProfileScore. Stage 10 is Aix-les-Bains-L'Alpe d'Huez,
+        209 km with 5864 m of climbing and a ProfileScore of 431 — so a parser
+        that reads the whole page records 431 and every figure comes out
+        wrong-but-plausible."""
+        vertical = self.table()["stage-10"]
+        self.assertEqual(vertical, 5864)
+        self.assertNotEqual(vertical, 431)
+
+    def test_totals_row_is_not_read_as_a_stage(self):
+        """The stages table ends in a totals line carrying the race's whole
+        ascent. It has no stage link, and requiring an href is what excludes
+        it — otherwise a five-figure total lands on a single stage."""
+        for slug, vertical in self.table().items():
+            self.assertLess(vertical, 10000, f"{slug} looks like a race total")
+
+    def test_every_key_is_a_stage_slug(self):
+        for slug in self.table():
+            self.assertRegex(slug, r"^(prologue|stage-\d+[a-z]?)$")
+
+    def test_missing_stages_heading_yields_nothing_rather_than_guessing(self):
+        """A page shape we do not recognise must return {} — a partial parse
+        would fill columns with whatever the first table happened to hold."""
+        self.assertEqual(SROE.parse_route_table("<html><body>nope</body></html>"), {})
 
 
 class TestHeaderDistance(unittest.TestCase):

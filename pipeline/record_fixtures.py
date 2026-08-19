@@ -73,6 +73,15 @@ FIXTURES = {
         "edition's split day sequentially, so DB stage 8 is stage-8 here, not "
         "stage-7. Departure/Arrival parsing is what verified that.",
     ),
+    "tdf_2001_route_stages": (
+        "/race/tour-de-france/2001/route/stages",
+        "RACE ROUTE page, not a stage page. Carries vertical metres for the "
+        "Paris finale that /2001/stage-20 leaves blank — the discovery that "
+        "withdrew ten reconstructed values. Also carries the trap: a second "
+        "table, 'Hardest stages', links the same stage URLs but ends in the "
+        "ProfileScore, so a parser that reads the whole page records a "
+        "ProfileScore as an elevation.",
+    ),
     "vuelta_2015_stage_1_ttt": (
         "/race/vuelta-a-espana/2015/stage-1",
         "Modern TEAM time trial. Results are grouped by team in a "

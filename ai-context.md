@@ -176,15 +176,18 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `rescrape_ditto_stages.py` | re-scrapes stale-ditto files; rewrites only on strictly fewer violations |
 | `fix_doubled_winner_times.py` | the 3,377-row winner repair (arithmetic, no re-scrape) |
 | `backfill_stage_metadata.py` | fills NULL route/date from PCS's info panel |
+| `scrape_route_overview_elevation.py` | elevation from the race ROUTE page (stage pages omit Paris finales/prologues); `--replace-derived` |
 
 ### State as of 2026-08-11
 
 `validate_db` 0 errors / 3 warnings · `validate_exports` 302 files, 0 errors ·
 **142 tests** passing (`python3 -m unittest discover -p 'test_*.py'`, runs in CI).
 Every stage has a route, a date, a distance and a confirmed `source_slug`; 0 derived
-slugs remain. Every Tour TTT has per-rider results. Elevation is the one field with a
-real remaining gap: PCS never published it for the Paris finales, so 2001–2010 are
-reconstructed (see the next section) and ~25 stages since 1990 are still NULL.
+slugs remain. Every Tour TTT has per-rider results. Elevation was the one field with a
+real remaining gap; as of **2026-08-19** it is essentially closed — the race *route* page
+carries the Paris finales and prologues that the stage pages omit, so 34 stages are now
+scraped rather than NULL or derived (see the next section). **0 `derived` elevation values
+remain.** Only 1991 s17 and 1998 s17 are genuinely absent from PCS.
 
 **Known-open, deliberately not fixed:** 36 stages with two rank-1 finishers (doping DQs
 where PCS lists both the stripped and the promoted rider — how to model a stripped win is
@@ -575,22 +578,75 @@ silently corrupted:
 
 ---
 
-## Derived elevation for the Paris finales (August 2026)
+## Paris-finale elevation: the route page, and the reconstruction it replaced (August 2026)
 
-PCS genuinely leaves `Vertical meters` **blank** on most Tour finales into Paris — the
-stage page shows an empty field, alongside an empty Parcours type / ProfileScore and
-`Distance: 0 km`. Those NULLs are faithful; there is nothing to scrape and no public GPX
-exists. **2001–2010 are now filled by reconstruction** via
-`patch_paris_finale_elevation.py`, every value recorded as `SOURCE_DERIVED` so a future
-bulk re-scrape can tell them from scraped data. ~25 stages since 1990 still lack elevation.
+> **Corrected 2026-08-19. The premise of this section was wrong.** PCS *does* publish
+> these figures. It leaves `Vertical meters` blank on the **stage** page — which is all
+> any scraper here had ever read — but carries the same numbers on the **race route**
+> page, `/race/tour-de-france/<year>/route/stages`. Nothing needed deriving. The
+> reconstruction below has been **withdrawn from the database** and is kept only as
+> history and as the method for the two stages PCS genuinely lacks.
 
-| year | stage | km | m | m/km |    | year | stage | km | m | m/km |
+`scrape_route_overview_elevation.py` reads that page: one request per edition instead of
+one per stage, matched on each row's own `source_slug`, stamped `SOURCE_PCS`. It fills
+NULLs only, **except** under `--replace-derived`, which also overwrites values this repo
+computed itself — a scraped figure always beats a reconstruction. It never touches `pcs`,
+`wikipedia`, `bikeraceinfo`, `manual` or `unknown` provenance.
+
+**Parse only the "Stages" table.** The page's second table, "Hardest stages", links the
+same stage URLs but its last cell is the ProfileScore — parsing the whole page reads 395
+as Alpe d'Huez's vertical metres, and every figure comes out wrong-but-plausible.
+
+The 1990 Tour is what exposed this: it charted 38,940 m, the lowest total on record, which
+turned out to be PCS's own 40,225 m minus a Paris finale nobody could read.
+
+### What is now stored (all `SOURCE_PCS`, scraped 2026-08-19)
+
+24 stages were filled from NULL (Paris finales 1990–2000, prologues through 2012). The ten
+2001–2010 finales then **replaced** the derived values, Eric having approved the swap:
+
+| year | stage | km | derived → **PCS** | m/km |    | year | stage | km | derived → **PCS** | m/km |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 2001 | 20 | 160.5 | 980 | 6.1 |  | 2006 | 20 | 154.5 | 1090 | 7.1 |
-| 2002 | 20 | 140.0 | 585 | 4.2 |  | 2007 | 20 | 146.0 | 885 | 6.1 |
-| 2003 | 20 | 152.0 | 730 | 4.8 |  | 2008 | 21 | 143.0 | 900 | 6.3 |
-| 2004 | 20 | 163.0 | 725 | 4.4 |  | 2009 | 21 | 164.0 | 650 | 4.0 |
-| 2005 | **21** | 144.0 | 855 | 5.9 |  | 2010 | 20 | 102.5 | 660 | 6.4 |
+| 2001 | 20 | 160.5 | 980 → **1873** | 11.7 |  | 2006 | 20 | 154.5 | 1090 → **376** | 2.4 |
+| 2002 | 20 | 140.0 | 585 → **1423** | 10.2 |  | 2007 | 20 | 146.0 | 885 → **796** | 5.5 |
+| 2003 | 20 | 152.0 | 730 → **757** | 5.0 |  | 2008 | 21 | 143.0 | 900 → **807** | 5.6 |
+| 2004 | 20 | 163.0 | 725 → **1453** | 8.9 |  | 2009 | 21 | 164.0 | 650 → **521** | 3.2 |
+| 2005 | **21** | 144.0 | 855 → **851** | 5.9 |  | 2010 | 20 | 102.5 | 660 → **481** | 4.7 |
+
+**How badly the reconstruction did:** 2005/2003/2007/2008 landed within 1–11%, but 2001
+and 2002 came in at roughly *half* the real figure, 2004 at half, and 2006 ran **2.9x
+over**. The method's own validation had called those four its most confident results. Read
+that as the cost of deriving anything at all — not as a tuning problem.
+
+**The "4–8 m/km is a sanity band" rule is falsified** and must not be reapplied. It was
+calibrated on the derived set. PCS's real values run 2.4 (2006) to 11.7 (2001), and the
+scraped 2011+ finales reach 11.6 (2026) and 8.5 (2025). 2006's 376 m over 154.5 km and
+2001's 1873 m are both surprising; they are also both what PCS publishes, and
+the never-fabricate-data rule says we store that and flag it, not smooth it.
+
+**Genuinely absent from PCS everywhere** — stage page *and* route page — and still the
+only two stages needing reconstruction: **1991 s17** Gap→Alpe d'Huez and **1998 s17**
+Albertville→Aix-les-Bains.
+
+**Deliberately NOT changed:** 2005 s14 and 2006 stages 4/5/6/10/13, where the route page
+runs 0.3–5% *under* our stored stage-page values (all `unknown` provenance, old scrape).
+Likely a PCS re-measurement. Eric chose to leave these and investigate separately — the
+right shape for that is a mode auditing route-page vs stored across *every* edition, not
+just ones with gaps.
+
+### The lesson
+
+This is the case where the scrape-from-PCS rule looked inapplicable but wasn't. The
+field was blank on the page we checked, so "PCS doesn't have it" felt like an observation
+rather than an assumption. **Before deriving anything, check every PCS page that could
+carry the field** — the route page, not just the stage page.
+
+---
+
+## The reconstruction method (withdrawn from the DB; kept for 1991 s17 and 1998 s17)
+
+Retained because two stages still need it, and because the traps below cost real time to
+find. Values produced this way are `SOURCE_DERIVED` and are always second-best to a scrape.
 
 ### Method
 
@@ -667,15 +723,15 @@ difference. Round down. 2006 (1150→1090) and 2007 (955→885) were revised und
 
 `patch_paris_finale_elevation.py` is idempotent and re-runnable: it skips stages already
 populated from any other source, and revises **only** values it derived itself (matched on
-provenance source + script name). It also treats a stored `0` as missing — 2006 s20 was
-the only TDF stage carrying `vertical_meters = 0` / `profile_score = 0`, a blank PCS field
-parsed as zero, and its bogus `profile_score` is nulled rather than left in place.
+provenance source + script name). That last property is why the withdrawal was safe — and
+why re-running it today is a no-op: it will not overwrite the `pcs` values that replaced
+its own. It also treats a stored `0` as missing — 2006 s20 was the only TDF stage carrying
+`vertical_meters = 0` / `profile_score = 0`, a blank PCS field parsed as zero, and its
+bogus `profile_score` is nulled rather than left in place.
 
-**Known-open:** 2001 is the weakest of the set (±10%) — its profile names only three
-places across 108 km of run-in, leaving a 30 km unanchored approach, and it prints no
-start altitude. Separately, **2002's stored `distance_km` is 140.0 but its ASO profile is
-titled 144 km** and its axis runs to 144; the elevation used the profile's internal
-structure and the distance field was left untouched. Worth reconciling.
+**Still open, and unaffected by the correction:** **2002's stored `distance_km` is 140.0
+but its ASO profile is titled 144 km** and its axis runs to 144. The elevation used the
+profile's internal structure and the distance field was left untouched. Worth reconciling.
 
 ---
 
@@ -867,7 +923,13 @@ tdf-analytics/
     ├── patch_missing_distances.py    # Patches zero/null stage distances from PCS result pages
     ├── patch_bri_distances.py        # Patches distances from bikeraceinfo; reports conflicts
     ├── patch_route_types_wikipedia.py # Patches stage route types from Wikipedia
-    ├── patch_paris_finale_elevation.py # Reconstructed vertical_meters for Paris finales
+    ├── scrape_route_overview_elevation.py # vertical_meters from the RACE ROUTE page, which
+    │                                   #   carries the finales/prologues the stage pages leave
+    │                                   #   blank. Fills NULLs; --replace-derived also supersedes
+    │                                   #   this repo's own reconstructions. Parse ONLY the
+    │                                   #   "Stages" table — see the Paris-finale section.
+    ├── patch_paris_finale_elevation.py # SUPERSEDED 2026-08-19 for 2001-2010 (PCS had the
+    │                                   #   figures all along). Reconstructed vertical_meters
     │                                   #   PCS leaves blank (2001–2010), SOURCE_DERIVED.
     │                                   #   Idempotent; revises only its own values.
     │                                   #   See "Derived elevation for the Paris finales"
