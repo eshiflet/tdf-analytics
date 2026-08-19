@@ -277,7 +277,8 @@ body {
   gap: 6px;
 }
 
-.button-row button {
+.button-row button,
+.table-filter-row button {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   color: var(--text-dim);
@@ -287,12 +288,14 @@ body {
   cursor: pointer;
 }
 
-.button-row button:hover {
+.button-row button:hover,
+.table-filter-row button:hover {
   color: var(--text);
   border-color: var(--accent);
 }
 
-.button-row button.active {
+.button-row button.active,
+.table-filter-row button.active {
   background: var(--accent);
   color: #1a1a1a;
   border-color: var(--accent);
@@ -625,17 +628,71 @@ svg text {
   display: none;
 }
 
+/* Table + its filter cluster sit side by side, so the controls stay put while
+   the grid scrolls under them. They cannot live inside .stage-table-wrap:
+   that element is the scroll container, and an absolutely-positioned child
+   would scroll away with the 600+ rows a classics season carries. */
 #stage-table.visible {
-  display: block;
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
 }
 
 .stage-table-wrap {
   position: relative;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   height: 100%;
   overflow: auto;
   border: 1px solid var(--panel-border);
   border-radius: 6px;
+}
+
+.stage-table-controls {
+  flex: 0 0 auto;
+  width: 128px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.table-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Full width so the two read as a stacked pair against the table edge, rather
+   than as two loose chips. */
+.table-filter-row button,
+.table-filter-dropdown .filter-toggle-btn {
+  width: 100%;
+  text-align: center;
+}
+
+.table-filter-dropdown {
+  position: relative;
+}
+
+/* Opens leftward, over the table: the cluster is flush against the viewport's
+   right edge, so a panel anchored left: 0 would be clipped. */
+.table-filter-dropdown .filter-panel {
+  right: 0;
+  left: auto;
+}
+
+.table-filter-count {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-table-empty {
+  padding: 24px 16px;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
 }
 
 .stage-table {

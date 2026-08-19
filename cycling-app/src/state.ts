@@ -31,6 +31,14 @@ export const state = {
   // dataset (year) changes since team/nation membership is year-specific.
   stageFilterTeams: new Set<string>(),
   stageFilterNations: new Set<string>(),
+  // Row filters for the "by Stage" TABLE, kept separate from the graph's
+  // filters above on purpose: those rewrite `state.selected`, which is the
+  // user's hand-picked set of chart lines, and driving that from the table
+  // would silently discard it. These only hide rows.
+  //   stageTableTopFilter: 10 | 20 = keep riders with at least one finish
+  //   inside that position in ANY race this season; null = no limit.
+  stageTableTopFilter: null as null | 10 | 20,
+  stageTableFilterNations: new Set<string>(),
   // Rider whose career chart is open on the Riders view (null = grid). Only
   // consulted for hash routing while currentView === "riders".
   currentRiderId: null as string | null,

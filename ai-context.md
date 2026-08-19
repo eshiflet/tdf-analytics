@@ -1930,6 +1930,35 @@ cache-busting query param on the page URL (`/tdf-analytics/?cb=123#riders`) was.
 Before debugging "my change didn't work", confirm the running page actually has
 it.
 
+**The by-Stage TABLE's row filters (August 2026) are aggregate-only.** The Top 10
+/ Top 20 / Nation cluster to the right of the table renders only when
+`raceConfig().stagesAreRaces` — i.e. the one-day classics. The reason is
+semantic, not cosmetic: for an aggregate season each column IS a separate race,
+so `gcRank` is a finishing position and "at least one top-10 result" means what
+it says; on a Grand Tour the same field is the *running GC position*, where the
+identical button would be claiming something entirely different. Three things
+worth knowing before touching it:
+
+- **They do not reuse the sidebar's controls, deliberately.** The sidebar's
+  Top 10/20 and Nation rewrite `state.selected` — the user's hand-picked set of
+  chart lines — and `main.ts` re-queries `.button-row button` to clear `.active`
+  on every year change. Reusing either the state or the class names would let a
+  year change silently strip the table's buttons, so these carry their own
+  `state.stageTableTopFilter` / `stageTableFilterNations` and their own
+  `table-filter-*` classes. The table's filters only hide rows; they never
+  touch the graph.
+- **The colour ramp stays anchored to the WHOLE field.** Column colours are
+  built from every rider, not the visible subset — otherwise filtering to the
+  top 10 re-spreads the scale across a field that is now all winners and
+  repaints their wins from green to red. `verify-views.mjs` pins this.
+- **The cluster lives outside `.stage-table-wrap`.** That element is the scroll
+  container; an absolutely-positioned child would scroll away with the 600+
+  rows a classics season carries. `#stage-table` is a flex row instead.
+
+Nationality selections are pruned to the nations present when the year changes
+(carried over otherwise), so a filter left on from 2026 cannot silently empty
+1913.
+
 **The stage table's sticky columns depend on fixed widths.** `.col-rider` pins
 itself with `left: 74px` (22px team + 52px bib) and the other three combinations
 are spelled out in `style.css`. `.col-bib` had no width, so it sized itself from

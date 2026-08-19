@@ -293,5 +293,63 @@ function check(name, cond, detail) {
   check("classics 2020 overview renders every race", bars >= 8, `${bars} bars`);
 }
 
+// 7f. by-Stage Table row filters (aggregate races only): Top 10 / Top 20 keep
+//     riders with at least one finish inside that position in ANY race of the
+//     season, and Nation intersects with them.
+{
+  const doc = await boot("#classics/2021/stage/gc/table");
+  const rows = () => doc.querySelectorAll("#stage-table tbody tr").length;
+  const btn = (label) =>
+    [...doc.querySelectorAll(".table-filter-row button")].find((b) => b.textContent === label);
+
+  check("classics table offers Top 10 / Top 20 / Nation",
+        !!btn("Top 10") && !!btn("Top 20")
+          && !!doc.querySelector(".table-filter-dropdown .filter-toggle-btn"),
+        [...doc.querySelectorAll(".stage-table-controls button")].map((b) => b.textContent).join(","));
+
+  const all = rows();
+  btn("Top 10").click();
+  const top10 = rows();
+  btn("Top 20").click();
+  const top20 = rows();
+
+  // The real invariant: each is a strict subset of the next, and neither is
+  // the whole field. A filter that silently matched everything would still
+  // "work" by row count alone.
+  check("Top 10 narrows the field", top10 > 0 && top10 < all, `${top10} of ${all}`);
+  check("Top 20 is wider than Top 10 but still filtered",
+        top20 > top10 && top20 < all, `${top20} vs ${top10}, all ${all}`);
+  check("Top 10/20 are mutually exclusive",
+        !btn("Top 10").classList.contains("active") && btn("Top 20").classList.contains("active"),
+        `top10=${btn("Top 10").classList.contains("active")} top20=${btn("Top 20").classList.contains("active")}`);
+
+  btn("Top 20").click();
+  check("clicking the lit button clears the filter", rows() === all, `${rows()} of ${all}`);
+
+  // Colour ramp must stay anchored to the WHOLE field, so filtering cannot
+  // repaint a win from green to red.
+  const winnerBg = (r) => {
+    const tr = [...doc.querySelectorAll("#stage-table tbody tr")]
+      .find((x) => x.querySelector(".stage-table-name")?.textContent === r);
+    return [...tr.querySelectorAll("td")].map((td) => td.style.background).join("|");
+  };
+  const someone = doc.querySelector("#stage-table tbody tr .stage-table-name").textContent;
+  const before = winnerBg(someone);
+  btn("Top 10").click();
+  check("filtering does not repaint the cells it keeps", winnerBg(someone) === before,
+        before.slice(0, 40));
+  btn("Top 10").click();
+}
+
+// 7g. A stage race must NOT get the row filters: its gcRank is a running GC
+//     position, so "a top-10 result" would be a different claim entirely.
+{
+  const doc = await boot("#2021/stage/gc/table");
+  check("stage race omits the table row filters",
+        doc.querySelectorAll(".stage-table-controls").length === 0
+          && doc.querySelectorAll("#stage-table tbody tr").length > 100,
+        `${doc.querySelectorAll(".stage-table-controls").length} control blocks`);
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);

@@ -192,6 +192,156 @@ function buildTeamRowspans(riders: RiderSeries[]): number[] {
   return rowspans;
 }
 
+/** Does this rider have at least one finish inside `limit` in ANY race of the
+ *  season?
+ *
+ *  For an aggregate race each column IS a separate one-day race, so `gcRank`
+ *  is that rider's finishing position in it and "a top-10 result" means
+ *  exactly what it sounds like. On a Grand Tour the same field is the running
+ *  GC position instead — a completely different claim — which is why the
+ *  controls that use this only render when `stagesAreRaces`.
+ *
+ *  Deliberately reads byStage rather than `finalRank`. The two agree today
+ *  (an aggregate's finalRank IS the season's best finish, see ai-context.md),
+ *  but that is a property of the exporter, and this reads the thing the
+ *  button actually claims to filter on. */
+function hasTopFinish(rider: RiderSeries, limit: number): boolean {
+  return rider.byStage.some((sp) => sp.gcRank != null && sp.gcRank <= limit);
+}
+
+/** Row filter for the table: best-finish limit AND nationality (OR within the
+ *  nation list). Both empty = every rider passes. */
+function passesTableFilter(rider: RiderSeries): boolean {
+  if (state.stageTableTopFilter != null && !hasTopFinish(rider, state.stageTableTopFilter)) {
+    return false;
+  }
+  if (state.stageTableFilterNations.size > 0
+      && !(rider.nationality && state.stageTableFilterNations.has(rider.nationality))) {
+    return false;
+  }
+  return true;
+}
+
+/** The Top 10 / Top 20 / Nation cluster that sits to the right of the table.
+ *
+ *  Built here rather than in index.html because it is table-scoped: the
+ *  sidebar's visually-identical controls are wired to `state.selected` and are
+ *  re-queried by main.ts through `.button-row button`, so reusing those class
+ *  names would let a year change strip these buttons' active state. Hence the
+ *  parallel `table-filter-*` classes.
+ *
+ *  `redraw` re-enters drawStageTable, which rebuilds this cluster too — fine,
+ *  because every piece of its state lives in `state`, not in the DOM. */
+function buildTableControls(riders: RiderSeries[], redraw: () => void): HTMLDivElement {
+  const controls = document.createElement("div");
+  controls.className = "stage-table-controls";
+
+  const row = document.createElement("div");
+  row.className = "table-filter-row";
+  for (const limit of [10, 20] as const) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = `Top ${limit}`;
+    btn.title = `Riders with at least one top-${limit} finish in any race this season`;
+    btn.classList.toggle("active", state.stageTableTopFilter === limit);
+    btn.addEventListener("click", () => {
+      // Mutually exclusive, and clicking the active one clears it — the pair
+      // has no "All" button, so the lit button must be its own way out.
+      state.stageTableTopFilter = state.stageTableTopFilter === limit ? null : limit;
+      redraw();
+    });
+    row.appendChild(btn);
+  }
+  controls.appendChild(row);
+
+  const nations = [...new Set(riders.map((r) => r.nationality).filter((n): n is string => !!n))]
+    .sort();
+
+  const dropdown = document.createElement("div");
+  dropdown.className = "table-filter-dropdown";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "filter-toggle-btn";
+  const count = state.stageTableFilterNations.size;
+  toggle.textContent = count > 0 ? `Nation (${count})` : "Nation";
+  toggle.classList.toggle("active", count > 0);
+
+  const panel = document.createElement("div");
+  panel.className = "filter-panel";
+  panel.hidden = true;
+
+  const actions = document.createElement("div");
+  actions.className = "filter-panel-actions";
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "filter-panel-clear";
+  clear.textContent = "Clear";
+  clear.addEventListener("click", () => {
+    state.stageTableFilterNations.clear();
+    redraw();
+  });
+  actions.appendChild(clear);
+  panel.appendChild(actions);
+
+  for (const nation of nations) {
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = nation;
+    cb.checked = state.stageTableFilterNations.has(nation);
+    cb.addEventListener("change", () => {
+      if (cb.checked) state.stageTableFilterNations.add(nation);
+      else state.stageTableFilterNations.delete(nation);
+      // Keep the panel open across a redraw: picking several nations in a row
+      // is the normal case, and reopening it every time would be hostile.
+      tableFilterPanelOpen = true;
+      redraw();
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(nation));
+    const flag = nationalityFlagEl(nation);
+    if (flag) label.appendChild(flag);
+    panel.appendChild(label);
+  }
+
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    tableFilterPanelOpen = panel.hidden;
+    panel.hidden = !panel.hidden;
+  });
+  panel.hidden = !tableFilterPanelOpen;
+
+  dropdown.appendChild(toggle);
+  dropdown.appendChild(panel);
+  controls.appendChild(dropdown);
+
+  const shown = riders.filter(passesTableFilter).length;
+  if (shown !== riders.length) {
+    const count = document.createElement("div");
+    count.className = "table-filter-count";
+    count.textContent = `${shown} of ${riders.length}`;
+    controls.appendChild(count);
+  }
+
+  return controls;
+}
+
+/** Whether the Nation panel is open. Module-level rather than DOM-read because
+ *  drawStageTable rebuilds the cluster from scratch on every filter change. */
+let tableFilterPanelOpen = false;
+
+/** Closes the table's Nation dropdown on an outside click. main.ts's own
+ *  handler only knows about the sidebar's two panels (it closes anything
+ *  outside `.filter-dropdown`, which this deliberately is not). */
+document.addEventListener("click", (e) => {
+  if (!tableFilterPanelOpen) return;
+  const target = e.target as HTMLElement;
+  if (target.closest(".table-filter-dropdown")) return;
+  tableFilterPanelOpen = false;
+  stageTableEl.querySelectorAll<HTMLDivElement>(".table-filter-dropdown .filter-panel")
+    .forEach((p) => (p.hidden = true));
+});
+
 export function drawStageTable() {
   if (!state.dataset) return;
   // Rescue toggle buttons from the previous wrap (if they were moved there)
@@ -221,25 +371,43 @@ export function drawStageTable() {
     ];
     return [r.id, key] as const;
   }));
-  const riders = [...state.dataset.riders].sort((a, b) => {
+  const allRiders = [...state.dataset.riders].sort((a, b) => {
     const ka = sortKeys.get(a.id)!;
     const kb = sortKeys.get(b.id)!;
     if (ka[0] !== kb[0]) return ka[0] - kb[0];
     if (ka[1] !== kb[1]) return ka[1] - kb[1];
     return ka[2].localeCompare(kb[2]);
   });
+  // Row filters apply only where they are offered (see buildTableControls).
+  const filterable = raceConfig().stagesAreRaces;
+  if (filterable) {
+    // Nationalities are per-season, so carry the selection across a year
+    // change but drop any nation that did not race this year — otherwise a
+    // filter left on from 2023 can silently empty 1913.
+    const present = new Set(allRiders.map((r) => r.nationality).filter((n): n is string => !!n));
+    for (const n of state.stageTableFilterNations) {
+      if (!present.has(n)) state.stageTableFilterNations.delete(n);
+    }
+  }
+  const riders = filterable ? allRiders.filter(passesTableFilter) : allRiders;
 
   // Every cell, indexed [riderIndex][stageIndex], precomputed so the
   // per-column color scales can be built before any row is rendered. Each
   // rider's byStage array is walked once into a stage-number lookup, rather
   // than a .find() scan per (rider, stage) pair — the same O(riders x
   // stages^2) trap the bump chart's rank maps already avoid.
-  const grid: Cell[][] = riders.map((rider) => {
+  const cellsFor = (rider: RiderSeries): Cell[] => {
     const byStage = new Map<number, RiderStagePoint>();
     for (const sp of rider.byStage) byStage.set(sp.stage, sp);
     return stages.map((s) => cellFor(byStage.get(s.stage_number)));
-  });
-  const colorScales = stages.map((_, si) => colorScaleForColumn(grid.map((row) => row[si])));
+  };
+  const grid: Cell[][] = riders.map(cellsFor);
+  // Built from EVERY rider, not just the visible ones: the ramp answers "how
+  // good is this result against the field", and filtering to the top 10 must
+  // not repaint their wins from green to red by re-spreading the scale over a
+  // field that is now all winners.
+  const scaleGrid = riders.length === allRiders.length ? grid : allRiders.map(cellsFor);
+  const colorScales = stages.map((_, si) => colorScaleForColumn(scaleGrid.map((row) => row[si])));
 
   const hasTeams = riders.some((r) => r.team !== null);
   const teamRowspans = hasTeams ? buildTeamRowspans(riders) : [];
@@ -365,12 +533,28 @@ export function drawStageTable() {
   for (const btn of [gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn]) {
     wrap.appendChild(btn);
   }
+  if (riders.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "stage-table-empty";
+    empty.textContent = "No riders match these filters.";
+    wrap.appendChild(empty);
+  }
+
   stageTableEl.appendChild(wrap);
+  if (filterable) {
+    stageTableEl.appendChild(buildTableControls(allRiders, drawStageTable));
+  }
 
   // Auto table-layout sizes each stage column to its own content, so an
   // early stage with only short values (e.g. "leader") ends up visibly
   // narrower than later stages with wider gaps. Pin every stage column to
   // the widest one so the grid reads evenly.
-  const widest = Math.max(...stageThs.map((th) => th.getBoundingClientRect().width));
-  for (const th of stageThs) th.style.width = `${widest}px`;
+  //
+  // Guarded: a filter can empty the table, and Math.max() of nothing is
+  // -Infinity, which sets every width to "-Infinitypx" and throws the header
+  // layout away for the rest of the session.
+  if (stageThs.length > 0) {
+    const widest = Math.max(...stageThs.map((th) => th.getBoundingClientRect().width));
+    for (const th of stageThs) th.style.width = `${widest}px`;
+  }
 }
