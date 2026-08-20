@@ -358,6 +358,22 @@ future scrape must keep handling:
   obvious `td[headers.indexOf('UCI')]` silently becomes `td[-1]` and maps to
   the wrong cell. The capture snippet emits a `##HEADERS` line per race so
   this stays auditable.
+- **PCS can print a distance that contradicts its own average speed.**
+  Milan–San Remo **2013** — the snow edition, neutralised at Ovada and restarted
+  at Cogoleto — shows `Distance: 121 km` and `Avg. speed winner: 43.577 km/h`
+  side by side on the same page. With the winner's 5h37m20s those disagree by a
+  factor of two (121 km gives 21.5 km/h; PCS's speed implies 245 km), and 121 is
+  most likely just the sector ridden before the stop. We scraped 121 faithfully,
+  so it charted as a 21.5 km/h spike at half its neighbours' speed. Now stored
+  as **246 km, `SOURCE_WIKIPEDIA`** (`patch_msr_2013_distance.py`) — a directly
+  published distance rather than one back-computed from PCS's speed; the cost is
+  that our 43.76 km/h reads 0.4% above PCS's 43.577, because PCS internally used
+  245. **The lesson: `distance_km` from PCS is not self-validating.** Where a
+  race carries a winner's time, distance/time is a free cross-check, and it is
+  the only thing that catches this class of error.
+  An audit of all 966 classics editions against each race's own 15-year median
+  found no other edition beyond 25% off; the 1919 and 1945 Paris–Roubaix
+  outliers (~24%) are war-damaged roads, not data errors.
 - **Bib numbers are only unique WITHIN a team**, not across the race. Flanders
   2010 has AG2R and Liquigas both numbered 11–17, every rider correctly
   attached to their own team. A global bib-uniqueness check flags 8 whole-team
