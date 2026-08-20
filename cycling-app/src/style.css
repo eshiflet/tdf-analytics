@@ -212,22 +212,6 @@ body {
   outline: 1px solid var(--accent);
 }
 
-.site-footer {
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-  font-size: 12px;
-}
-
-.site-footer a {
-  color: var(--text-dim);
-  text-decoration: none;
-}
-
-.site-footer a:hover {
-  text-decoration: underline;
-}
-
 .layout {
   display: flex;
   flex: 1;
