@@ -302,10 +302,21 @@ function check(name, cond, detail) {
   const btn = (label) =>
     [...doc.querySelectorAll(".table-filter-row button")].find((b) => b.textContent === label);
 
-  check("classics table offers Top 10 / Top 20 / Nation",
-        !!btn("Top 10") && !!btn("Top 20")
+  check("classics table offers Top 10 / Top 20 / All / Nation",
+        !!btn("Top 10") && !!btn("Top 20") && !!btn("All")
           && !!doc.querySelector(".table-filter-dropdown .filter-toggle-btn"),
         [...doc.querySelectorAll(".stage-table-controls button")].map((b) => b.textContent).join(","));
+
+  // Controls sit to the LEFT of the grid — the slot the sidebar occupies in
+  // graph mode, so they don't jump across the screen on a sub-view switch.
+  check("table controls precede the grid",
+        [...doc.getElementById("stage-table").children].map((c) => c.className).join(",")
+          === "stage-table-controls,stage-table-wrap",
+        [...doc.getElementById("stage-table").children].map((c) => c.className).join(","));
+
+  check("All is lit by default", btn("All").classList.contains("active"),
+        [...doc.querySelectorAll(".table-filter-row button")]
+          .filter((b) => b.classList.contains("active")).map((b) => b.textContent).join(","));
 
   const all = rows();
   btn("Top 10").click();
@@ -323,8 +334,14 @@ function check(name, cond, detail) {
         !btn("Top 10").classList.contains("active") && btn("Top 20").classList.contains("active"),
         `top10=${btn("Top 10").classList.contains("active")} top20=${btn("Top 20").classList.contains("active")}`);
 
+  // Radio, not toggle: re-clicking the lit button must NOT clear it — "All" is
+  // the only way back, exactly as the graph view's Quick select behaves.
   btn("Top 20").click();
-  check("clicking the lit button clears the filter", rows() === all, `${rows()} of ${all}`);
+  check("re-clicking the lit button is a no-op",
+        rows() === top20 && btn("Top 20").classList.contains("active"), `${rows()} of ${all}`);
+  btn("All").click();
+  check("All restores the whole field",
+        rows() === all && btn("All").classList.contains("active"), `${rows()} of ${all}`);
 
   // Colour ramp must stay anchored to the WHOLE field, so filtering cannot
   // repaint a win from green to red.
@@ -338,7 +355,27 @@ function check(name, cond, detail) {
   btn("Top 10").click();
   check("filtering does not repaint the cells it keeps", winnerBg(someone) === before,
         before.slice(0, 40));
-  btn("Top 10").click();
+
+  // "All" must mean all rows, so it drops the Nation filter too — otherwise the
+  // lit button would claim the whole field while a nation still hid most of it.
+  // Belgium specifically: it has top-10 finishers in every classics season, so
+  // the intersection is non-empty. The alphabetically-first nation is Argentina,
+  // which has none in 2021 — picking blindly tests nothing.
+  const nationCb = [...doc.querySelectorAll(".table-filter-dropdown .filter-panel input[type=checkbox]")]
+    .find((c) => c.value === "Belgium");
+  nationCb.checked = true;
+  nationCb.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
+  const withNation = rows();
+  check("Nation intersects with the active limit (AND, not override)",
+        withNation < top10 && withNation > 0
+          && btn("Top 10").classList.contains("active"),
+        `${withNation} with nation vs ${top10} top-10`);
+
+  btn("All").click();
+  check("All also clears the Nation filter",
+        rows() === all
+          && doc.querySelector(".table-filter-dropdown .filter-toggle-btn").textContent === "Nation",
+        `${rows()} of ${all}, btn=${doc.querySelector(".table-filter-dropdown .filter-toggle-btn").textContent}`);
 }
 
 // 7g. A stage race must NOT get the row filters: its gcRank is a running GC

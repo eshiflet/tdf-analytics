@@ -648,12 +648,18 @@ svg text {
   border-radius: 6px;
 }
 
+/* Sits to the LEFT of the grid, in the slot the sidebar occupies in graph mode
+   (main.ts hides the sidebar in table mode), so the controls do not jump across
+   the screen when you switch sub-views. Narrower than the 260px sidebar because
+   it carries four buttons rather than a search box and a 600-row legend. */
 .stage-table-controls {
   flex: 0 0 auto;
-  width: 128px;
+  width: 132px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-right: 12px;
+  border-right: 1px solid var(--panel-border);
 }
 
 .table-filter-row {
@@ -674,11 +680,11 @@ svg text {
   position: relative;
 }
 
-/* Opens leftward, over the table: the cluster is flush against the viewport's
-   right edge, so a panel anchored left: 0 would be clipped. */
+/* Opens rightward, over the table. The panel is wider than the 132px column it
+   hangs from, and there is nothing to its left but the viewport edge. */
 .table-filter-dropdown .filter-panel {
-  right: 0;
-  left: auto;
+  left: 0;
+  right: auto;
 }
 
 .table-filter-count {

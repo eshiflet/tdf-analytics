@@ -238,16 +238,25 @@ function buildTableControls(riders: RiderSeries[], redraw: () => void): HTMLDivE
 
   const row = document.createElement("div");
   row.className = "table-filter-row";
-  for (const limit of [10, 20] as const) {
+  // Radio, not toggles: exactly one is lit and "All" is the way back, matching
+  // the graph view's Quick select. `null` IS the All state, so there is no
+  // fourth value to keep in sync.
+  for (const limit of [10, 20, null] as const) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = `Top ${limit}`;
-    btn.title = `Riders with at least one top-${limit} finish in any race this season`;
+    btn.textContent = limit === null ? "All" : `Top ${limit}`;
+    btn.title = limit === null
+      ? "Every rider who started any race this season"
+      : `Riders with at least one top-${limit} finish in any race this season`;
     btn.classList.toggle("active", state.stageTableTopFilter === limit);
     btn.addEventListener("click", () => {
-      // Mutually exclusive, and clicking the active one clears it — the pair
-      // has no "All" button, so the lit button must be its own way out.
-      state.stageTableTopFilter = state.stageTableTopFilter === limit ? null : limit;
+      state.stageTableTopFilter = limit;
+      // "All" means all rows, so it also drops the Nation filter — otherwise
+      // the lit button would claim the whole field while a nation was still
+      // hiding most of it. Same reasoning as the graph's All (main.ts), where
+      // selecting everyone subsumes any team/nation filter. The panel's own
+      // Clear is the way to drop nations without touching the limit.
+      if (limit === null) state.stageTableFilterNations.clear();
       redraw();
     });
     row.appendChild(btn);
@@ -540,10 +549,12 @@ export function drawStageTable() {
     wrap.appendChild(empty);
   }
 
-  stageTableEl.appendChild(wrap);
+  // Controls first: they sit to the LEFT of the grid, where the graph view's
+  // sidebar (hidden in table mode) puts the same controls.
   if (filterable) {
     stageTableEl.appendChild(buildTableControls(allRiders, drawStageTable));
   }
+  stageTableEl.appendChild(wrap);
 
   // Auto table-layout sizes each stage column to its own content, so an
   // early stage with only short values (e.g. "leader") ends up visibly

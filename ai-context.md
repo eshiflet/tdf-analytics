@@ -1931,7 +1931,7 @@ Before debugging "my change didn't work", confirm the running page actually has
 it.
 
 **The by-Stage TABLE's row filters (August 2026) are aggregate-only.** The Top 10
-/ Top 20 / Nation cluster to the right of the table renders only when
+/ Top 20 / All / Nation cluster to the LEFT of the table renders only when
 `raceConfig().stagesAreRaces` — i.e. the one-day classics. The reason is
 semantic, not cosmetic: for an aggregate season each column IS a separate race,
 so `gcRank` is a finishing position and "at least one top-10 result" means what
@@ -1953,7 +1953,23 @@ worth knowing before touching it:
   repaints their wins from green to red. `verify-views.mjs` pins this.
 - **The cluster lives outside `.stage-table-wrap`.** That element is the scroll
   container; an absolutely-positioned child would scroll away with the 600+
-  rows a classics season carries. `#stage-table` is a flex row instead.
+  rows a classics season carries. `#stage-table` is a flex row instead, with
+  the controls as its FIRST child — they sit where the sidebar does in graph
+  mode (`main.ts` hides the sidebar in table mode), so switching sub-views
+  doesn't throw the controls across the screen.
+- **Top 10 / Top 20 / All are a radio, not toggles**, matching the graph's
+  Quick select: exactly one is lit, re-clicking the lit one does nothing, and
+  All is the only way back. `null` IS the All state, so there is no fourth
+  value to keep in sync. All also clears the Nation filter — otherwise a lit
+  "All" would claim the whole field while a nation still hid most of it (the
+  graph's All clears team/nation for the same reason). The Nation panel's own
+  Clear drops nations without touching the limit.
+- **Nation ANDs with the active limit; it does not override it.** This is a
+  deliberate divergence from the graph, where `applyStageTeamNationFilter()`
+  *replaces* `state.selected` outright and unlights the preset buttons. That
+  behaviour falls out of both controls writing to one selection set, which the
+  table doesn't share — and "Belgium riders with a top-10 finish" is worth
+  being able to ask.
 
 Nationality selections are pruned to the nations present when the year changes
 (carried over otherwise), so a filter left on from 2026 cannot silently empty
