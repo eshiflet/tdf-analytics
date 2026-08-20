@@ -319,8 +319,14 @@ function check(name, cond, detail) {
           .filter((b) => b.classList.contains("active")).map((b) => b.textContent).join(","));
 
   const all = rows();
+  const countText = () => doc.querySelector(".table-filter-count")?.textContent ?? null;
+  // Present even with no filter on, so the field size is readable without
+  // having to filter first.
+  check("unfiltered count reads '<n> riders'", countText() === `${all} riders`, countText());
+
   btn("Top 10").click();
   const top10 = rows();
+  check("filtered count reads '<n> of <m>'", countText() === `${top10} of ${all}`, countText());
   btn("Top 20").click();
   const top20 = rows();
 

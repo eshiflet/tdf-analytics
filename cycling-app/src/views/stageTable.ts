@@ -324,13 +324,15 @@ function buildTableControls(riders: RiderSeries[], redraw: () => void): HTMLDivE
   dropdown.appendChild(panel);
   controls.appendChild(dropdown);
 
+  // Always rendered, so the field size is readable without having to filter
+  // first — and so the cluster doesn't change height when a filter goes on.
   const shown = riders.filter(passesTableFilter).length;
-  if (shown !== riders.length) {
-    const count = document.createElement("div");
-    count.className = "table-filter-count";
-    count.textContent = `${shown} of ${riders.length}`;
-    controls.appendChild(count);
-  }
+  const countEl = document.createElement("div");
+  countEl.className = "table-filter-count";
+  countEl.textContent = shown === riders.length
+    ? `${riders.length} riders`
+    : `${shown} of ${riders.length}`;
+  controls.appendChild(countEl);
 
   return controls;
 }

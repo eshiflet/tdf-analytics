@@ -1971,6 +1971,10 @@ worth knowing before touching it:
   table doesn't share — and "Belgium riders with a top-10 finish" is worth
   being able to ask.
 
+The row count under the cluster always renders — `"670 riders"` unfiltered,
+`"59 of 635"` filtered — so the season's field size is readable without having
+to filter first, and the cluster doesn't change height when a filter goes on.
+
 Nationality selections are pruned to the nations present when the year changes
 (carried over otherwise), so a filter left on from 2026 cannot silently empty
 1913.
