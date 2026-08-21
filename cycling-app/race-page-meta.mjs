@@ -41,4 +41,14 @@ export const RACES = {
     image: "og-classics.png",
     alt: "Line chart of a one-day classics season, one coloured line per rider crossing eleven races from Omloop Het Nieuwsblad to Clásica de San Sebastián.",
   },
+  // Off-road: gravel and mountain bike, six races, men's top-level field only.
+  // The date range is the ARCHIVE's, not the Life Time Grand Prix's — the
+  // series began in 2022 but Leadville has run since 1994, and the deep
+  // history is the point of including these at all.
+  gravel: {
+    title: "Gravel & MTB Cycling Analytics — Unbound, Leadville & Life Time Results (1994–2026)",
+    description: "Race-by-race results for America's biggest gravel and mountain-bike races — Unbound Gravel, Leadville Trail 100, Chequamegon, Sea Otter, Big Sugar and Little Sugar, 1994–2026.",
+    image: "og-gravel.png",
+    alt: "Line chart of a gravel and mountain-bike season, one coloured line per rider crossing six races from Sea Otter to Big Sugar.",
+  },
 };

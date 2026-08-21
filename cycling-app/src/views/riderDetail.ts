@@ -39,13 +39,16 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
   const primaryEntry = byRace.get(state.currentRace) ?? [...byRace.values()][0];
 
   // Badge config per race (for toggle buttons and DNF dot outlines). The
-  // classics share one neutral gray across all 11 constituent races — see the
-  // registry's `chart` comment for why they aren't coloured individually.
+  // classics share one neutral gray across all 11 constituent races, and the
+  // off-road races one brown across their six — see the registry's `chart`
+  // comment for why neither set is coloured individually. "X" for gravel
+  // because G is already the Giro.
   const BADGE: Record<RaceId, { bg: string; text: string; label: string }> = {
     tour:     { bg: "#FFD400", text: "#111", label: "T" },
     giro:     { bg: "#E4007C", text: "#fff", label: "G" },
     vuelta:   { bg: "#E30613", text: "#fff", label: "V" },
     classics: { bg: "#9ca3af", text: "#111", label: "C" },
+    gravel:   { bg: "#b4794a", text: "#fff", label: "X" },
   };
 
   // ── Header ──────────────────────────────────────────────────────────────────

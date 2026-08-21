@@ -48,6 +48,9 @@ RACE_DIRS = [
     # races has no meaningful cross-year total) and no sprint/KOM series, so
     # those checks pass trivially rather than needing to be skipped.
     ("classics", "classics", False),
+    # The off-road set: same aggregate shape as the classics, and likewise no
+    # all_races_summary.json and no sprint/KOM series.
+    ("gravel", "gravel", False),
 ]
 
 # Races whose ranks are STANDINGS rather than finishing positions, so ties are
@@ -57,7 +60,7 @@ RACE_DIRS = [
 #     riders legitimately sit on equal totals
 # Checking either produced ~45,700 warnings on entirely clean data and buried
 # every real one.
-AGGREGATE_STANDINGS = {"classics"}
+AGGREGATE_STANDINGS = {"classics", "gravel"}
 
 # Which script rebuilds a race's riders_index.json, for the staleness error.
 INDEX_REBUILD_CMD = {
@@ -65,6 +68,7 @@ INDEX_REBUILD_CMD = {
     "giro": "python3 export_riders_index.py --race giro",
     "vuelta": "python3 export_riders_index.py --race vuelta",
     "classics": "python3 export_classics.py",
+    "gravel": "python3 export_gravel.py",
 }
 TOTALS_PATH = os.path.join(HERE, "kom_totals.json")
 REPORT_PATH = os.path.join(HERE, "kom_reconcile_report.json")
@@ -82,7 +86,16 @@ def validate_year(year: int, ds: dict,
     if not stages:
         errors.append("no stages")
     if not riders:
-        errors.append("no riders")
+        # A season whose every race was cancelled has no riders and is still
+        # correct. 2020 in the off-road set is exactly that: Unbound was the
+        # only one of the six that existed yet, and COVID took it. Dropping the
+        # year instead would erase the cancellation, which is the one fact that
+        # season has to offer.
+        if stages and all(s.get("cancelled") for s in stages):
+            warnings.append(
+                f"no riders — all {len(stages)} race(s) cancelled, which is why")
+        else:
+            errors.append("no riders")
     if errors:
         return errors, warnings
 

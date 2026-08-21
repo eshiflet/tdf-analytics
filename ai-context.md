@@ -599,6 +599,313 @@ silently corrupted:
 
 ---
 
+## Gravel & MTB — the Life Time off-road races (August 2026)
+
+Six American gravel and mountain-bike races, **1994–2026**, added 2026-08-21. In the
+DB they are **6 independent races** (`races.race_type='gravel'`, one stage per
+edition); the frontend shows **one** race, `gravel` — "Gravel & MTB" — whose
+"stages" are those races. Same aggregation as the classics, done at export time
+by `export_gravel.py`.
+
+| slug | display | short | discipline | | slug | display | short | discipline |
+|---|---|---|---|---|---|---|---|---|
+| `sea-otter` | Sea Otter Classic | SO | mtb→gravel | | `chequamegon` | Chequamegon MTB Festival | CQ | mtb |
+| `unbound` | Unbound Gravel | UB | gravel | | `little-sugar` | Little Sugar MTB | LS | mtb |
+| `leadville` | Leadville Trail 100 MTB | LV | mtb | | `big-sugar` | Big Sugar Gravel | BS | gravel |
+
+**89 race-years · 7,607 results · 3,569 riders · 93 of them already in the DB from their road careers.**
+
+These six are today's Life Time Grand Prix line-up, but **the archive is
+deliberately wider than that series**. The Grand Prix began in 2022; Leadville
+has run since 1994 and Chequamegon since 1999 (on Athlinks — the race itself
+dates to 1983). A season before 2021 therefore holds fewer than six races, the
+same way a classics season before 1907 holds fewer than eleven. Nothing
+special-cases it: ordering by `stage_date` renders it correctly for free.
+
+**Men's fields only, for now.** These races run co-equal men's and women's
+series and the women's half is a deliberate gap, not an oversight — `riders`
+has no gender column, so adding it is a schema change and a second pass.
+
+### PCS has nothing here — do not reach for it
+
+Verified, not assumed: searching PCS for "unbound" returns zero results while
+"gravel" returns plenty. No rider slugs, no team attribution, no ProfileScore,
+no `won_how`. Every instinct the rest of this pipeline has about where data
+comes from is wrong for these six races.
+
+### The source: Athlinks, which Life Time owns
+
+Life Time owns Athlinks, so for its own events this is the timer's own data
+rather than a third-party aggregation. Three public, unauthenticated endpoints,
+wrapped in `athlinks_api.py`:
+
+| endpoint | gives |
+|---|---|
+| `alaska.athlinks.com/MasterEvents/Api/{masterId}` | every edition of a race: date, eventId, result count |
+| `reignite-api.athlinks.com/event/{eventId}/metadata` | courses, distances in metres, **division names**, split intervals |
+| `reignite-api.athlinks.com/event/{e}/race/{course}/results` | the field, paginated |
+| `…/race/{course}/division/{d}/results` | one class inside a mass-start race |
+
+Two things that are not obvious and cost real time:
+
+1. **`reignite-api` 403s a default User-Agent.** It sits behind CloudFront. A
+   browser UA plus a `www.athlinks.com` Referer returns 200. No key, no cookie.
+2. **Page size is not fixed.** Results carry each rider's splits as
+   Elasticsearch inner hits, so a course with many splits 400s
+   ("Inner result window is too large") at a page size another course serves
+   happily. `results()` starts at 100 and halves on failure.
+
+### Which course is the race? — `_course_map.json`
+
+This is the load-bearing decision of the whole pipeline and it gets its own
+reviewed artifact, written by `resolve_gravel_courses.py`.
+
+Athlinks addresses everything by numeric id and renames courses constantly
+("DK 200" → "UNBOUND 200" → "Elite Men - 200 MILE"; "Chequamegon 40" →
+"Pro/Elite Chequamegon 40"), and one edition can carry a dozen courses of the
+same distance differing only by tandem/single-speed/relay. **A heuristic that
+picks the wrong one does not fail — it produces a plausible, entirely fictional
+race.** So: resolve once, write it down, review the table, then fetch by id.
+Exactly the discipline `source_slug` enforces for PCS.
+
+Three selection rules come out of it, and they are not interchangeable:
+
+| rule | what it means | field kept |
+|---|---|---|
+| `elite_course` | the edition ran a separate top-level men's race | all of it |
+| `elite_division` | one mass start, pro/elite class scored as a division inside it | that division |
+| `open_field` | no pro class existed — the pros started with everyone | **top 100 men** |
+
+`open_field` is the honest-but-lossy one. Before roughly 2016 these races had no
+pro class at all: the eventual winner started alongside 1,800 people riding for
+a buckle, scored as one list. There is no line in the data between "elite" and
+"everyone else" because there was no line in the race, so **any cutoff is ours,
+not the sport's**. `FIELD_CAP = 100` sits comfortably outside the competitive
+front of every one of these races (the pro fields that DO exist run 36–143
+riders) while keeping the archive to a size the Riders page can carry. Each
+scrape file records `field_size_source` alongside `field_size_selected` so the
+window is always visible as a window. **Editions with a pro class are never
+truncated.**
+
+Preference order matters: `Pro/Elite Men` outranks `Grand Prix Male`. The Grand
+Prix is a 25-rider invitational inside the pro race; the pro race is the field
+this archive is about, and Vermeulen and Stetina appear in the former only some
+years and the latter always.
+
+### Sea Otter is a festival, not a race
+
+Athlinks models each Sea Otter discipline-day as its own **event**, with age
+groups as "courses" and no distances. There is no lineage to pattern-match, so
+`SEA_OTTER` in `resolve_gravel_courses.py` names the endurance round outright,
+year by year:
+
+| year | course | note |
+|---|---|---|
+| 2022 | Fuego XC 80k, "MEN OPEN" | the 2022 Grand Prix opener; **not** the bigger Fuego XC 40k event held the same week |
+| 2023 | MTB Endurance – Fuego XL 67M | not La Gravilla, the gravel race that week |
+| 2024 | Fuego XL | |
+| 2025 | Sea Otter Gravel Men Elite/Pro | the round moved from MTB to gravel |
+| 2026 | Sea Otter Gravel Men Elite | |
+
+**Sea Otter before 2022 is deliberately absent.** Athlinks holds only
+category-by-category XC results (Cat 1/2/3, no pro class) with no distances,
+and no endurance race of this lineage existed. Calling the Cat 1 XC race the
+same event would be a fabricated continuity. Also note the year-picking rule:
+for every other race the edition is the Athlinks event with the most results;
+for Sea Otter it is the *named* event, because the endurance race is never the
+biggest one that week.
+
+### Traps found the hard way
+
+1. **A DNF's time is not a finish.** Athlinks fills `gunTime`/`chipTime` for a
+   DNF from their last recorded split, so Leadville 2025 shows Tsgabu Grmay at
+   1h33 for a 100-miler. Sorted by time, the DNFs win the race. Only a finisher
+   keeps a time, and only a finisher keeps a rank — Athlinks numbers some DNFs
+   anyway (it ranks one 21st in the 2025 Grand Prix division).
+
+2. **Pre-2016 editions carry no `status` field at all.** Defaulting those to DNF
+   marked all 100 riders of every early edition as non-finishers, nulled their
+   ranks and threw away their times — and the files still looked perfectly
+   well-formed. `row_status()` infers: a row with both a time and a finishing
+   position is a finisher.
+
+3. **`age: 0` means "not recorded".** Every Dirty Kanza 2012 and 2013 row has
+   it. Stored as-is it becomes a rider born the year they raced.
+
+4. **The plain course response usually omits `divisions` per rider.** Filtering
+   client-side for the pro class silently returns nothing for most editions.
+   Use the `/division/{id}/results` endpoint. Consequence: **`elite_division`
+   editions carry no DNF rows** — a division counts its DNFs in
+   `totalAthletes` but never serves them.
+
+5. **A correctly-named elite course can be EMPTY.** Leadville 2025 publishes
+   "Leadville 100 MTB - Elite Men" with zero athletes while the real pro field
+   sits in the mass-start course tagged `Pro/Elite Men`. The resolver probes
+   every candidate's athlete count before committing.
+
+6. **Mojibake and inconsistent case, both upstream.** Athlinks serves Andrew
+   L'Esperance's apostrophe as UTF-8 read through MacRoman, and its case is
+   per-event, not per-name — Sea Otter 2026 ships "bradyn lange" while
+   Leadville 2026 ships "Bradyn Lange". Left alone, the same rider becomes two.
+   `clean_name()` repairs both; it title-cases only strings that arrive all-one-
+   case, so "McElveen" survives by not being touched.
+
+7. **Distance is per-course and occasionally nonsense** (2024's "Circuit Race"
+   and 2026's "Dual Slalom" are both listed at exactly 100.00 km). The
+   resolver's km band is the guard. Note Leadville's own figure moved from
+   160.93 km (the nominal 100 miles) to 169.43 km in 2025 — the race has always
+   been about 104 miles, and that is a measurement change, not an error.
+
+### Rider identity — the crossover, and what protects it
+
+The point of having these races in the same app as the Tour is that Peter
+Stetina rode seven Tours and then went gravel, and Alexey Vermeulen, Lachlan
+Morton, Alex Howes, Ian Boswell, Laurens ten Dam, Petr Vakoč, Greg Van
+Avermaet, Niki Terpstra, Thomas De Gendt, Taylor Phinney, David Millar and
+Floyd Landis all cross the same line. If the ingest minted a second identity
+for them, the Riders detail page would show two half-careers and the crossover
+would be invisible.
+
+PCS has no id to join on, so names are all there is — and a name match is a
+claim about a person. `link_gravel_riders.py` makes that claim explicitly,
+records its evidence, and writes `_rider_ids.json` for review. A **wrong merge
+is the expensive error**: it fuses two careers and nothing downstream can tell.
+So a match requires *all* of:
+
+* exactly one existing rider with the same folded name **token set** (the DB
+  stores PCS's "Vermeulen Alexey", Athlinks ships "Alexey Vermeulen")
+* at least two name tokens
+* **career plausibility** — the road results within `CAREER_SPAN` (30) years of
+  the gravel result. This does most of the work: it is what stops a 2014
+  Leadville amateur from being merged into a 1930s Tour rider of the same name.
+* birth years within 2, when both sides know one
+
+Anything else mints `rider/<slug>` — or `<slug>-gvl` when that slug belongs to
+someone the rule just declined to match, so the merge cannot come back in
+through the door.
+
+**Known limitation: homonyms *inside* the gravel corpus are not split.**
+Identity there is by name, the same basis PCS uses, and Athlinks gives nothing
+better (`racerId` is null on most rows). `_rider_ids.json` flags
+`homonym_suspect` where one name's implied birth years disagree by more than
+three, but flagging is all it does — and deliberately. The signal is not
+conclusive in either direction: Lachlan Morton's Dirty Kanza 2019 row records
+his age as 19 when he was 27, so that spread is one upstream typo rather than
+two riders, while Ryan Sellner's 1967 and 2003 in the same Minnesota town
+really do look like a father and a son. Splitting automatically would fracture
+the real crossover riders to fix a handful of amateur collisions.
+
+`birth_year_approx` is the **median** of the implied years, not the mean, so one
+mistyped age cannot drag it.
+
+### What is NOT stored, and why
+
+| field | why |
+|---|---|
+| `vertical_meters` | Athlinks publishes no elevation; PCS has nothing. Published figures disagree wildly — 11,586 ft and 14,517 ft for the same Leadville course, from two RideWithGPS traces. A NULL is a gap; a guess would be a claim. The Race Overview hides its elevation and difficulty metrics automatically (`hasElevationData`). |
+| `profile_score` | PCS's metric, and PCS has nothing here. |
+| `team_id` | Athlinks records no team. lifetimegrandprix.com does — but only ONE team per athlete, their current one, so attaching it to a 2022 result would be fiction. |
+| season points | Life Time's own 30-to-1 Grand Prix scale exists, but it scores a 25-rider invitational, not the race. `hasSeasonPoints: false`; the bump chart plots finishing position, as the classics' does. |
+| women's fields | Deliberate, and the next thing to do here. |
+
+`route_type` carries **`G` (gravel) / `X` (mountain bike)** rather than F/H/M.
+These are not points on the climbing scale — with no elevation there is no
+honest way to grade them — they encode **surface**, which is what actually
+distinguishes these races. Leaving the column NULL was the alternative, and
+that paints Unbound flat green in the Race Overview, which is a claim rather
+than a gap. `SOURCE_DERIVED`, from the discipline.
+
+`nationality_code` for a gravel-only rider is Athlinks' **registered location
+country**, not necessarily nationality — Torbjørn Andre Røed races as Norwegian
+out of Grand Junction, Colorado. It is stored because it is right for the
+overwhelming majority, and it is **never** allowed to overwrite a nationality
+that came from PCS.
+
+### Pipeline
+
+```
+resolve_gravel_courses.py   → gravel_scrapes/_course_map.json   (REVIEW THIS)
+       ↓  scrape_athlinks.py
+gravel_scrapes/<race>/<year>.json        (tracked in git; _raw/ is not)
+       ↓  link_gravel_riders.py          → gravel_scrapes/_rider_ids.json
+       ↓  ingest_gravel.py               (--dry-run; atomic per race-year)
+   cycling.db                            (6 races, race_type='gravel')
+       ↓  export_gravel.py               → cycling-app/src/data/gravel/
+       ↓  export_classics_history.py --set gravel
+```
+
+`gravel_scrapes/_raw/` is a **gitignored local cache** of raw API responses.
+It exists because the selection logic needed several corrections after the
+fetch, and re-deriving from cache takes seconds where re-fetching 90 editions
+takes half an hour. Delete it to force a true refetch.
+
+### Cross-source validation: `crosscheck_ltgp.py`
+
+Athlinks cannot check the course map — the wrong course returns a perfectly
+well-formed race. But Life Time publishes each Grand Prix athlete's finishing
+**place and time** for every round, on `lifetimegrandprix.com/athlete/<slug>/`,
+server-rendered and parseable with a plain fetch. That is an independent oracle
+for the riskiest decision in the pipeline, and if a course pick were wrong every
+rider on it would mismatch at once.
+
+It covers 2022–2026 and Grand Prix athletes only, so it verifies the modern
+editions and says nothing about Leadville 1994 — which is still the half where
+the course structure changes most.
+
+Its last run: **385 results agree with Life Time on both place and time.** The 92
+that do not are grouped by edition, and every one is a systematic difference
+between two sources rather than a wrong course:
+
+| edition | agree | what differs |
+|---|---|---|
+| Leadville 2022 | 0 | **every** time +60s. Two clocks, not sixty defects |
+| Sea Otter 2026 | 53 | 19 times, median +19s — Life Time publishes chip, the division was scored on gun |
+| Unbound 2026 | 7 | 33 places, median +3 — the two sources count a different field |
+| Leadville 2024 | 9 | one rider (Vermeulen: Life Time says 113th, we say 57th — overall place vs place among pros) |
+
+### Adding a new season, or a new race
+
+```bash
+cd pipeline
+python3 resolve_gravel_courses.py --race leadville     # then READ the table
+python3 resolve_gravel_courses.py --report             # or re-read it later, offline
+python3 scrape_athlinks.py --race leadville --year 2027
+python3 link_gravel_riders.py                          # idempotent; re-run after ANY scrape
+python3 ingest_gravel.py --dry-run                     # then without --dry-run
+python3 export_gravel.py                               # no --year: the index is cross-year
+python3 export_classics_history.py --set gravel
+python3 validate_db.py && python3 validate_exports.py
+python3 crosscheck_ltgp.py                             # 2022+ only
+```
+
+A new race needs a `GRAVEL` entry in `race_common.py` (with its Athlinks
+masterEventId), a `HEADLINE` pattern and km band in
+`resolve_gravel_courses.py`, and nothing else — the frontend discovers the data
+by glob.
+
+**`scrape_athlinks.py --force` re-derives from the raw cache without refetching.**
+Every selection rule in this pipeline has needed correcting after the fact; that
+is what the cache is for.
+
+### Open questions for Eric (2026-08-21)
+
+1. **The name.** "Gravel & MTB" (slug `gravel`). Not "Life Time Grand Prix" —
+   the archive starts in 1994 and that series began in 2022.
+2. **Six races, not eight.** Crusher in the Tushar (Grand Prix 2022–2024) and
+   The Rad (2023–2024) are out because they are not in your list. Each would be
+   one `GRAVEL` entry plus a `HEADLINE` pattern.
+3. **`FIELD_CAP = 100`** is the only invented number here. It decides how much
+   of a pre-2016 mass-start field the archive keeps. Change the constant and
+   re-run `--force`; the cache makes it cheap.
+4. **Sea Otter starts in 2022.** Its pro XC race goes back further but is a
+   different race from the endurance round, and Athlinks has it only as
+   category-by-category results with no distances and no pro class.
+5. **Leadville 2022 runs 60s slow** against Life Time's own published times,
+   uniformly. Ours is Athlinks'. Worth a decision about which source wins.
+
+
+---
+
 ## Paris-finale elevation: the route page, and the reconstruction it replaced (August 2026)
 
 > **Corrected 2026-08-19. The premise of this section was wrong.** PCS *does* publish

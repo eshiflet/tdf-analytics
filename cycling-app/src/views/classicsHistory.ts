@@ -28,12 +28,18 @@ type RaceSeries = { name: string; short: string; first: number; last: number; ye
 // `new URL(..., import.meta.url)` also builds, but emits an absolute URL that
 // resolves against a file:// base outside a browser — which silently broke the
 // jsdom smoke tests. The glob yields a plain path string instead.
-const historyUrlModules = import.meta.glob<string>("../data/classics/race_history.json", {
+// One glob per race SET, keyed by the data directory, so a second aggregate
+// race (the off-road set) is picked up without touching this view again.
+const historyUrlModules = import.meta.glob<string>("../data/*/race_history.json", {
   query: "?url",
   import: "default",
   eager: true,
 });
-const HISTORY_URL = Object.values(historyUrlModules)[0];
+const HISTORY_URL_BY_RACE: Record<string, string> = {};
+for (const [path, url] of Object.entries(historyUrlModules)) {
+  const match = path.match(/\.\.\/data\/([^/]+)\/race_history\.json$/);
+  if (match) HISTORY_URL_BY_RACE[match[1]] = url;
+}
 
 // Slot-1 blue at its dark-surface step. Validated against this app's #0f1115
 // surface: inside the L 0.48-0.67 band, chroma floor, and >= 3:1 contrast.
@@ -66,7 +72,10 @@ function unitSpec(metricId: MetricId, imperial: boolean) {
   return { axis: "riders", fmt: (v: number) => `${Math.round(v)} finishers`, convert: (v: number) => v };
 }
 
-let cache: RaceSeries[] | null = null;
+// Keyed by race, not a single slot: two aggregate races now have a history
+// file, and a shared cache would show the classics' panels under Gravel after
+// a visit to either.
+const cache: Record<string, RaceSeries[]> = {};
 let metric: MetricId = "kmh";
 
 /** Whether the km/mi toggle means anything for the metric on screen — main.ts
@@ -77,12 +86,18 @@ export function raceHistoryUsesDistanceUnits(): boolean {
 
 export async function drawClassicsHistory(): Promise<void> {
   allRacesChartEl.innerHTML = "";
-  if (!cache) {
+  const raceKey = state.currentRace;
+  if (!cache[raceKey]) {
+    const url = HISTORY_URL_BY_RACE[raceKey];
+    if (!url) {
+      allRacesChartEl.textContent = "No race history for this race.";
+      return;
+    }
     allRacesChartEl.textContent = "Loading race history…";
-    cache = (await fetchJson<{ races: RaceSeries[] }>(HISTORY_URL)).races;
+    cache[raceKey] = (await fetchJson<{ races: RaceSeries[] }>(url)).races;
     allRacesChartEl.innerHTML = "";
   }
-  const races = cache;
+  const races = cache[raceKey];
 
   const spec = unitSpec(metric, state.allRacesUnit === "imperial");
   // Every read of a data point goes through this, so the axis, the lines and

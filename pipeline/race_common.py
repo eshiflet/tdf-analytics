@@ -206,6 +206,52 @@ CLASSICS: dict[str, ClassicInfo] = {
 }
 
 
+@dataclass(frozen=True)
+class GravelInfo:
+    name: str          # DB races.name / frontend stage_label, e.g. "Unbound Gravel"
+    short: str         # x-axis tick label, e.g. "UB"
+    country: str
+    master_id: int     # Athlinks masterEventId — the race's whole edition list
+    discipline: str    # 'gravel' | 'mtb'; drives route_type, see gravel_route_type
+
+
+# The six Life Time off-road races, keyed by a slug of our own (Athlinks has no
+# stable text slug — it addresses everything by numeric id). These are six
+# INDEPENDENT races in the DB (races.race_type = 'gravel', one stage per
+# edition); the frontend's single "Gravel & MTB" race is an aggregation built
+# at export time by export_gravel.py, ordered by each race's actual date. Same
+# shape as the one-day classics, for the same reason.
+#
+# The six are today's Life Time Grand Prix line-up, but the archive here is
+# deliberately WIDER than that series: Leadville has run since 1994 and
+# Chequamegon since 1983, and those editions are the point. A season before
+# 2021 therefore holds fewer than six races, exactly as a classics season
+# before 1907 holds fewer than eleven.
+GRAVEL: dict[str, GravelInfo] = {
+    "sea-otter":    GravelInfo("Sea Otter Classic", "SO", "United States", 36141, "mtb"),
+    "unbound":      GravelInfo("Unbound Gravel", "UB", "United States", 174195, "gravel"),
+    "leadville":    GravelInfo("Leadville Trail 100 MTB", "LV", "United States", 219291, "mtb"),
+    "chequamegon":  GravelInfo("Chequamegon MTB Festival", "CQ", "United States", 32709, "mtb"),
+    "little-sugar": GravelInfo("Little Sugar MTB", "LS", "United States", 381583, "mtb"),
+    "big-sugar":    GravelInfo("Big Sugar Gravel", "BS", "United States", 359937, "gravel"),
+}
+
+
+def gravel_route_type(discipline):
+    """'G' (gravel) or 'X' (mountain bike) for an off-road race.
+
+    The Grand Tours and classics carry F/H/M here — a climbing grade derived
+    from PCS's ProfileScore. Athlinks publishes no elevation at all and PCS
+    does not cover these races (verified: searching PCS for "unbound" returns
+    nothing while "gravel" returns plenty), so there is no honest way to grade
+    them by climbing. Surface is the property that actually distinguishes
+    these races from everything else in the app, and the Race Overview colours
+    its bars off this field — leaving it NULL would paint Unbound flat green,
+    which is a claim, not a gap. Two new codes, no pretend gradient.
+    """
+    return {"gravel": "G", "mtb": "X"}.get(discipline)
+
+
 def classic_route_type(profile_score):
     """F/H/M for a one-day race, from PCS's own ProfileScore.
 
@@ -501,13 +547,16 @@ SOURCE_WIKIPEDIA = "wikipedia"  # from a Wikipedia route/results table
 SOURCE_BIKERACEINFO = "bikeraceinfo"  # from bikeraceinfo.com (patch_bri_distances.py)
 SOURCE_CYCLINGFLASH = "cyclingflash"  # from cyclingflash.com; relayed by the repo
                                 # owner, since Cloudflare blocks automated fetches
+SOURCE_ATHLINKS = "athlinks"    # from the public Athlinks results API; Life Time
+                                # owns Athlinks, so for its own off-road races
+                                # this is the timer's own data, not an aggregator
 SOURCE_MANUAL = "manual"        # hand-entered or hand-corrected
 SOURCE_DERIVED = "derived"      # computed from other DB values, not fetched
 SOURCE_UNKNOWN = "unknown"      # predates provenance tracking; origin unproven
 
 VALID_SOURCES = frozenset({
     SOURCE_PCS, SOURCE_WIKIPEDIA, SOURCE_BIKERACEINFO, SOURCE_CYCLINGFLASH,
-    SOURCE_MANUAL, SOURCE_DERIVED, SOURCE_UNKNOWN,
+    SOURCE_ATHLINKS, SOURCE_MANUAL, SOURCE_DERIVED, SOURCE_UNKNOWN,
 })
 
 
