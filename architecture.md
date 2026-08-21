@@ -144,7 +144,7 @@ flowchart TD
   season). See ai-context.md's "One-day classics" for the rules, including why
   `finalRank` is a best-of-season aggregate and why cancelled races are kept.
 
-- **Gravel & MTB** (`resolve_gravel_courses.py`, `scrape_athlinks.py`,
+- **Gravel** (`resolve_gravel_courses.py`, `scrape_athlinks.py`,
   `link_gravel_riders.py`, `ingest_gravel.py`, `export_gravel.py`) — the same aggregate
   shape as the classics: 6 independent `race_type='gravel'` races combined at export
   time. Three things make it a genuinely different path rather than a copy. The source
@@ -154,7 +154,7 @@ flowchart TD
   yields a plausible fictional race rather than an error. And rider identity has no id
   to join on, so `link_gravel_riders.py` decides by name — under a strict rule, with its
   evidence written down — which is what puts Peter Stetina's gravel results on the same
-  page as his Tours. See ai-context.md's "Gravel & MTB".
+  page as his Tours. See ai-context.md's "Gravel".
 
 - **Vite build** — compiles `main.ts` (TypeScript) and bundles it with the JSON data files
   into a static site. Per-year `gc_by_stage_*.json` files are emitted as separate lazily

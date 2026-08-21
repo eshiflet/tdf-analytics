@@ -28,7 +28,7 @@ CARDS=(
   "og-giro|#giro/2026/stage/gc|Giro d'Italia|Stage-by-stage GC, sprint and KOM · 1909–2026|2026 general classification"
   "og-vuelta|#vuelta/2025/stage/gc|Vuelta a España|Stage-by-stage GC, sprint and KOM · 1935–2025|2025 general classification"
   "og-classics|#classics/2026/stage/gc|One-Day Classics|Monuments and classics · 11 races · 1892–2026|2026 season"
-  "og-gravel|#gravel/2025/stage/gc|Gravel & MTB|Unbound · Leadville · Chequamegon · Sea Otter · 1994–2026|2025 season"
+  "og-gravel|#gravel/2025/stage/gc|Gravel|Unbound · Leadville · Chequamegon · Sea Otter · 1994–2026|2025 season"
 )
 
 urlenc() { python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"; }

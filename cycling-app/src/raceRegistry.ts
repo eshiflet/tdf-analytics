@@ -157,7 +157,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
   // race (Leadville), 2001 holds two, and 2026 holds six. That is a fact about
   // the sport, and the date ordering renders it without special-casing.
   gravel: {
-    name: "Gravel & MTB",
+    name: "Gravel",
     // Brown — dirt. Chosen the same way the classics' gray was: every
     // race-identifying hue in the app is spoken for (Tour yellow, Giro pink,
     // Vuelta red, classics gray) as is every classification colour, and these
@@ -185,7 +185,7 @@ export const RACES: Record<RaceId, RaceConfig> = {
 };
 
 export const RACE_IDS = Object.keys(RACES) as RaceId[];
-export const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España", classics: "One-day Classics", gravel: "Gravel & MTB" };
+export const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España", classics: "One-day Classics", gravel: "Gravel" };
 export const RACE_SHORT_LABEL: Record<RaceId, string> = { tour: "Tour", giro: "Giro", vuelta: "Vuelta", classics: "Classics", gravel: "Gravel" };
 
 export function isRaceId(s: string | undefined): s is RaceId {

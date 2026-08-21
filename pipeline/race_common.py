@@ -218,9 +218,13 @@ class GravelInfo:
 # The six Life Time off-road races, keyed by a slug of our own (Athlinks has no
 # stable text slug — it addresses everything by numeric id). These are six
 # INDEPENDENT races in the DB (races.race_type = 'gravel', one stage per
-# edition); the frontend's single "Gravel & MTB" race is an aggregation built
+# edition); the frontend's single "Gravel" race is an aggregation built
 # at export time by export_gravel.py, ordered by each race's actual date. Same
 # shape as the one-day classics, for the same reason.
+#
+# Displayed as "Gravel" — three of the six are mountain-bike races and say so
+# in their own names (Leadville Trail 100 MTB, Chequamegon MTB Festival, Little
+# Sugar MTB), so the set label does not need to.
 #
 # The six are today's Life Time Grand Prix line-up, but the archive here is
 # deliberately WIDER than that series: Leadville has run since 1994 and

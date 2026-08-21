@@ -599,11 +599,11 @@ silently corrupted:
 
 ---
 
-## Gravel & MTB — the Life Time off-road races (August 2026)
+## Gravel — the Life Time off-road races (August 2026)
 
 Six American gravel and mountain-bike races, **1994–2026**, added 2026-08-21. In the
 DB they are **6 independent races** (`races.race_type='gravel'`, one stage per
-edition); the frontend shows **one** race, `gravel` — "Gravel & MTB" — whose
+edition); the frontend shows **one** race, `gravel` — "Gravel" — whose
 "stages" are those races. Same aggregation as the classics, done at export time
 by `export_gravel.py`.
 
@@ -863,6 +863,20 @@ between two sources rather than a wrong course:
 | Unbound 2026 | 7 | 33 places, median +3 — the two sources count a different field |
 | Leadville 2024 | 9 | one rider (Vermeulen: Life Time says 113th, we say 57th — overall place vs place among pros) |
 
+**None of those place gaps is an error — all three are Life Time answering a
+different question**, and it is worth writing down which, because the next
+person to read that table will assume the worst:
+
+| gap | why |
+|---|---|
+| Leadville 2022, Roberge 54 vs 59 | The "LT100 Pro" course is MIXED — 79 men, 35 women. We rank among men; Life Time ranks the mixed field. Five women finished ahead of him, and **54 + 5 = 59** exactly. Only one rider of the twelve checked differs because the rest are far enough forward that no woman is ahead of them. |
+| Leadville 2024, Vermeulen 57 vs 113 | 57th of the 70 in the Pro Male division; 113th in the whole 1,738-rider mass start. |
+| Unbound 2026, median +3 | We classify 91 finishers of 117 elite men, having downgraded 18 rows Athlinks flagged CONF with checkpoint times. Life Time evidently excludes a few more of the same, so its numbers run ~3 lower. |
+
+The archive's rank always means **position among men in the top-level field**,
+applied identically to all 89 editions. For a men-only elite course — most of
+them — that is the same number the source publishes.
+
 ### Adding a new season, or a new race
 
 ```bash
@@ -889,8 +903,10 @@ is what the cache is for.
 
 ### Open questions for Eric (2026-08-21)
 
-1. **The name.** "Gravel & MTB" (slug `gravel`). Not "Life Time Grand Prix" —
-   the archive starts in 1994 and that series began in 2022.
+1. ~~**The name.**~~ **Settled 2026-08-21: "Gravel"** (slug `gravel`). Not
+   "Life Time Grand Prix" — the archive starts in 1994 and that series began in
+   2022 — and not "Gravel": three of the six are mountain-bike races and
+   say so in their own names, so the set label does not need to.
 2. **Six races, not eight.** Crusher in the Tushar (Grand Prix 2022–2024) and
    The Rad (2023–2024) are out because they are not in your list. Each would be
    one `GRAVEL` entry plus a `HEADLINE` pattern.
@@ -900,8 +916,10 @@ is what the cache is for.
 4. **Sea Otter starts in 2022.** Its pro XC race goes back further but is a
    different race from the endurance round, and Athlinks has it only as
    category-by-category results with no distances and no pro class.
-5. **Leadville 2022 runs 60s slow** against Life Time's own published times,
-   uniformly. Ours is Athlinks'. Worth a decision about which source wins.
+5. ~~**Leadville 2022 runs 60s slow**~~ **Settled 2026-08-21: keep Athlinks.**
+   Every 2022 Leadville time is uniformly 60s later than Life Time's published
+   figure. Eric's call, conditional on the finishing ORDER being unaffected —
+   it is: a constant offset applied to every rider cannot reorder them.
 
 
 ---
