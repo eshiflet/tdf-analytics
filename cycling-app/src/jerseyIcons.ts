@@ -203,32 +203,3 @@ export function jerseyIconsElMultiRace(
   return out;
 }
 
-/** Jersey icons + a "(year, year, ...)" label after each — rider detail page
- *  only; the Riders grid uses the plain icons from jerseyIconsEl(). */
-export function jerseyIconsWithYearsEl(entry: RiderEntry): HTMLSpanElement[] {
-  const years = jerseyYearsWon(entry);
-  const out: HTMLSpanElement[] = [];
-  for (const category of Object.keys(JERSEY_LABELS) as JerseyCategory[]) {
-    if (years[category].length === 0) continue;
-    const icon = document.createElement("span");
-    icon.className = "jersey-icon";
-    icon.innerHTML = jerseyIconSvg(category);
-    icon.addEventListener("mouseenter", (e) => {
-      tooltipEl.innerHTML = `<div class="t-name">${jerseyTooltipLabel(category)}</div>`;
-      positionTooltip(e as MouseEvent);
-    });
-    icon.addEventListener("mouseleave", () => { tooltipEl.hidden = true; });
-    out.push(icon);
-    const yearsEl = document.createElement("span");
-    yearsEl.className = "jersey-years";
-    yearsEl.textContent = `(${years[category].join(", ")})`;
-    out.push(yearsEl);
-    if (category === "gc" && DOPING_GC_NOTES[entry.id]) {
-      const noteEl = document.createElement("span");
-      noteEl.className = "jersey-stripped-note";
-      noteEl.textContent = DOPING_GC_NOTES[entry.id];
-      out.push(noteEl);
-    }
-  }
-  return out;
-}

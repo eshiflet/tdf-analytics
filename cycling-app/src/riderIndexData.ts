@@ -41,10 +41,10 @@ export const riderIndexByRace = emptyPerRace<Map<string, RiderEntry>>(() => new 
 export const allTeamsSortedByRace = emptyPerRace<string[]>(() => []);
 export const allNationalitiesSortedByRace = emptyPerRace<string[]>(() => []);
 
-// Convenience accessors for the current race
+// Convenience accessor for the current race. The team and nationality lists
+// have no equivalent: every caller reads the *ByRace maps directly, because the
+// Riders grid merges them across the selected races rather than showing one.
 export function riderIndex() { return riderIndexByRace[state.currentRace]; }
-export function allTeamsSorted() { return allTeamsSortedByRace[state.currentRace]; }
-export function allNationalitiesSorted() { return allNationalitiesSortedByRace[state.currentRace]; }
 
 // URL-only glob (see raceRegistry's year-data comment for why we fetch
 // instead of importing the JSON as a module).
