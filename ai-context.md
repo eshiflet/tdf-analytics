@@ -330,20 +330,16 @@ change to rendered chart, cold document:
 
 **It is CPU-bound, not network-bound.** 4,560 KB decoded, but the five fetches
 overlap and finish in 48 ms; the other 387 ms is `JSON.parse` plus building
-30,122 `RiderEntry` objects with their Maps and Sets. Timed per race through the
-app's own `ensureRiderIndexFor`:
+30,122 `RiderEntry` objects with their Maps and Sets. Sequential total 457.7 ms
+against 438 ms measured in parallel — **parallelism buys ~4%**, which is the
+clearest proof it is CPU-bound.
 
-| race | build | riders |
-|---|---|---|
-| **classics** | **208.5 ms** | 11,934 |
-| vuelta | 78.6 ms | 4,430 |
-| giro | 68.7 ms | 4,718 |
-| tour | 67.5 ms | 5,471 |
-| gravel | 34.4 ms | 3,569 |
-
-Sequential total 457.7 ms against 438 ms measured in parallel — **parallelism
-buys ~4%**, which is the clearest proof it is CPU-bound. `classics` alone is
-46% of it.
+> **Per-race timings measured in a sequential loop are worthless — see
+> "Where the index build time actually goes" below.** An earlier version of
+> this section reported classics at 208.5 ms and 46% of the cost. That was an
+> artefact of measuring it fourth: whichever race runs last carries the GC cost
+> of every entry already on the heap. Measured alone on a fresh page, classics
+> is 69 ms and tour is 83 ms.
 
 ### The bitmask manifest does not pay off — drop it
 
@@ -425,15 +421,94 @@ Seven mutations, all caught.
 
 ### Still worth looking at
 
-- **The classics index at 208 ms**, which is 46% of the cost and is loaded on
-  every entry into the section, grid included. Halving it beats anything the
-  fan-out could have offered.
 - **Build order.** The builds run in fetch-completion order, which measured as
   tour, giro, vuelta, gravel, classics — near enough to cheapest-first by luck.
   Forcing true cheapest-first (gravel, tour, giro, vuelta, classics) would take
   the mean from 238 to 213 ms and the MEDIAN from 215 to 102, because a rider in
   a cheap index would stop waiting behind expensive ones. It needs fetch split
   from build in `riderIndexData.ts`, since fetches must stay parallel.
+
+---
+
+## Where the index build time actually goes (2026-08-22)
+
+Investigated because the section above blamed the classics index. **It was
+wrong, and the way it was wrong is the lesson.**
+
+### Per-race timings from a sequential loop are an artefact
+
+Timing `ensureRiderIndexFor` for each race in turn produced classics 208.5 ms
+against tour 67.5 ms, and I reported classics as 46% of the cost. Measured
+ALONE on a fresh page, the same two are:
+
+| race | alone, fresh page | when run 5th | riders | year-entries |
+|---|---|---|---|---|
+| classics | **69 ms** | 246 ms | 11,934 | 44,105 |
+| tour | **83 ms** | 59 ms | 5,471 | 16,380 |
+
+Classics is 2.2x tour's riders and 2.7x its year-entries, and is **faster per
+rider than tour** — it is the biggest, not the worst. Whichever race runs last
+pays the GC cost of every entry already on the heap, and whichever runs first
+pays the JIT warm-up for `buildRiderIndexFor`. Neither is a property of the
+race.
+
+**The cost is allocation volume, not any one index.** All five together
+materialise 30,122 `RiderEntry` objects, 30,122 `Map`s, 30,122 `Set`s and
+91,455 per-year objects — roughly 180,000 allocations. Classics is 40% of the
+year-entries, which is exactly its share of the data.
+
+### The obvious win is not safe: `teams` cannot be derived
+
+`RiderEntry.teams` is a `Set<string>` built for all 30,122 riders on every
+load, for a filter most sessions never touch, and every year already carries
+its team. Removing it and deriving from `years` measured **565 -> 461 ms
+(-18%)**.
+
+**It is wrong, and the team filter caught it: 8 riders became 2.**
+
+`mergedRidersForSelectedRaces()` keeps the FIRST entry for each (rider, year)
+in `RACE_IDS` order. A rider who rode the Tour AND a classic in 1933 keeps the
+Tour's 1933 entry, so the classics team for that year is unreachable from the
+merged `years` map — the per-rider `Set` is the only thing that carries it.
+Measured on the real data: 40 riders carry "Alcyon - Dunlop" only through that
+Set, and 6 of the 8 for "La Française-Dunlop" are shadowed by a Tour entry in
+the same season.
+
+**This is a design constraint, not a latent bug.** The merged `years` is read
+only for PRESENCE (`e.years.has(year)`, the year filter); the jersey filter and
+the rider detail both read `riderIndexByRace[race]` per race, so nothing
+displayed depends on which race won a shadowed year. `teams` being a separate
+union is the deliberate compensation for a map that can hold one team per year.
+
+So: reverted. If the ~18% is ever wanted, the shape that works is keying the
+merged map on (race, year) rather than year — a much larger change.
+
+### What the test suite gained
+
+The team filter had never been APPLIED by a test — only "the dropdown is
+populated" was checked, which is why an 8-to-2 regression could pass. It is now
+checked against an **independent oracle**: the source `riders_index.json` files
+are decoded directly, by hand, and the grid's count compared against them.
+Checking the grid against the filter's own logic would only restate it.
+
+Two teams are exercised, chosen from the data rather than hardcoded (a name can
+be renamed by a re-ingest, a fixed index can land on an empty roster):
+
+- the team with the most riders reachable ONLY through the per-rider set, which
+  is what makes the derivation shortcut fail
+- the team with the largest roster, which is Grand-Tour-heavy and covers the
+  `y` branch of the build — dropping `teams.add()` there survived an otherwise
+  passing suite when only the first team was tested
+
+> **Two tooling traps, both of which produced false results before being
+> noticed.** `verify-views.mjs` boots the BUILT bundle, so a mutation test must
+> `npm run build` after editing source AND after restoring it — restoring
+> without rebuilding leaves the previous mutant in `build/` and the next run
+> tests the wrong code. And a mutation script writing to one shared backup path
+> is not safe against a second sweep running in the background: two of them
+> overlapped here and restored `riders.ts`'s contents into `riderIndexData.ts`.
+> Use a unique backup path per invocation, and do not start a sweep while
+> another is running.
 
 ---
 

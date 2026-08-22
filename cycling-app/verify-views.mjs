@@ -154,6 +154,109 @@ function check(name, cond, detail) {
   // Years and races are both checkbox panels now; every year plus 4 races.
   check("year filter offers a checkbox per year", filterBoxes > 100,
     `${filterBoxes} year+race checkboxes`);
+
+  // Actually APPLY the team filter. The dropdown being populated was checked
+  // above and proves nothing about the matching, which no longer reads a
+  // precomputed per-rider Set (30,122 of them, ~15% of the index build) but
+  // scans each rider's years — see rodeForTeam(). Pick a real team off the
+  // dropdown rather than hardcoding a name that a re-ingest could rename.
+  const teamSel = doc.querySelector("#riders-team-filter");
+  const setTeam = async (v) => {
+    teamSel.value = v;
+    teamSel.dispatchEvent(new (globalThis.window.Event)("change", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 50));   // the redraw is async
+    return doc.querySelectorAll(".rider-name-btn").length;
+  };
+
+  // Independent oracle: count the riders carrying a team in the SOURCE index
+  // files, decoding the team-index tables by hand. Checking the grid against
+  // the filter's own logic would only restate it — and this caught a real
+  // regression that "the dropdown is populated" never could: deriving the team
+  // set from each rider's years instead of storing it returned 2 riders where
+  // the data has 8, because mergedRidersForSelectedRaces() drops a rider's
+  // year when an earlier race already claimed it (see the note there).
+  const sourceIndexes = ["tour", "giro", "vuelta", "classics", "gravel"].map((race) =>
+    JSON.parse(fs.readFileSync(
+      new URL(`src/data/${race}/riders_index.json`, import.meta.url), "utf-8")));
+  // Simulate mergedRidersForSelectedRaces() exactly: walk the races in
+  // RACE_IDS order and keep the FIRST entry for each (rider, year). That is
+  // what makes the per-rider team Set load-bearing — a rider's classics team
+  // for 1933 is unreachable from the merged years if they also rode the Tour
+  // that year, because the Tour's 1933 entry wins and carries the Tour team.
+  // Simulate mergedRidersForSelectedRaces() exactly: walk the races in
+  // RACE_IDS order and keep the FIRST entry for each (rider, year). That is
+  // what makes the per-rider team Set load-bearing — a rider's classics team
+  // for 1933 is unreachable from the merged years if they also rode the Tour
+  // that year, because the Tour's 1933 entry wins and carries the Tour team.
+  //
+  // Built as ONE pass over the riders, bucketed by team. Asking the question
+  // per team instead was O(teams x riders) and took the suite past two minutes.
+  const rosterByTeam = new Map();          // team -> { found:Set, viaYears:Set }
+  const bucket = (t) => {
+    let b = rosterByTeam.get(t);
+    if (!b) rosterByTeam.set(t, b = { found: new Set(), viaYears: new Set() });
+    return b;
+  };
+  {
+    const allSlugs = new Set(sourceIndexes.flatMap((raw) => Object.keys(raw.riders)));
+    for (const slug of allSlugs) {
+      const mergedTeamByYear = new Map();
+      const carried = new Set();
+      for (const raw of sourceIndexes) {
+        const rec = raw.riders[slug];
+        if (!rec) continue;
+        // Grand Tours: y[year] = [finalRank, teamIdx, …]. Aggregates:
+        // ym[year] = [teamIdx, raceIdx, rank, …]. Team index sits at 1 and 0.
+        for (const [y, t] of Object.entries(rec.y ?? {})) {
+          const name = t[1] >= 0 ? raw.teams[t[1]] : null;
+          if (name) carried.add(name);
+          if (!mergedTeamByYear.has(y)) mergedTeamByYear.set(y, name);
+        }
+        for (const [y, t] of Object.entries(rec.ym ?? {})) {
+          const name = t[0] >= 0 ? raw.teams[t[0]] : null;
+          if (name) carried.add(name);
+          if (!mergedTeamByYear.has(y)) mergedTeamByYear.set(y, name);
+        }
+      }
+      const reachable = new Set([...mergedTeamByYear.values()].filter(Boolean));
+      for (const t of carried) {
+        bucket(t).found.add(slug);
+        if (reachable.has(t)) bucket(t).viaYears.add(slug);
+      }
+    }
+  }
+
+  // TWO teams, because one cannot cover both paths. The cross-race team proves
+  // the per-rider set is doing work the merged years cannot; the biggest team
+  // is Grand-Tour-heavy and covers the `y` branch of the index build, which the
+  // cross-race team leaves untested (dropping teams.add() there survived an
+  // otherwise-passing suite).
+  let team = null, expected = new Set(), best = -1;
+  let bigTeam = null, bigExpected = new Set();
+  for (const [name, { found, viaYears }] of rosterByTeam) {
+    const missed = found.size - viaYears.size;
+    if (missed > best) { best = missed; team = name; expected = found; }
+    if (found.size > bigExpected.size) { bigTeam = name; bigExpected = found; }
+  }
+  check("the team chosen actually exercises cross-race attribution",
+    best > 0, `${JSON.stringify(team)}: ${best} rider(s) unreachable from merged years alone`);
+
+  const filteredCount = await setTeam(team);
+  check("selecting a team narrows the grid",
+    filteredCount > 0 && filteredCount < btns,
+    `${filteredCount} of ${btns} for ${JSON.stringify(team)}`);
+  check("team filter matches the riders the source data assigns to that team",
+    filteredCount === expected.size,
+    `grid ${filteredCount} vs source ${expected.size} for ${JSON.stringify(team)}`);
+
+  const bigCount = await setTeam(bigTeam);
+  check("the biggest team's roster matches the source too",
+    bigCount === bigExpected.size,
+    `grid ${bigCount} vs source ${bigExpected.size} for ${JSON.stringify(bigTeam)}`);
+
+  check("clearing the team filter restores the whole grid",
+    (await setTeam("")) === btns,
+    `${doc.querySelectorAll(".rider-name-btn").length} vs ${btns}`);
 }
 
 // 4. Rider detail deep link (career chart, teams resolved from string table).
