@@ -37,7 +37,14 @@ import sqlite3
 import sys
 
 from link_gravel_riders import fold
-from race_set_ingest import replace_edition, upsert_country, upsert_race
+from race_set_ingest import (
+    capture_patches,
+    replace_edition,
+    report_patches,
+    restore_patches,
+    upsert_country,
+    upsert_race,
+)
 from race_common import (
     GRAVEL,
     SOURCE_ATHLINKS,
@@ -97,6 +104,8 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
         return (slug, year, len(data["rows"]), data["cancelled"], info.get("rule"))
 
     race_id = upsert_race(cur, meta.name, meta.country, "gravel")
+    # Read the patches out BEFORE the rebuild destroys them; put them back after.
+    patched = capture_patches(cur, race_id, year)
     # Atomic: clears this edition's stages, results and provenance first.
     edition_id = replace_edition(cur, race_id, year, info.get("event_name"))
 
@@ -159,6 +168,7 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
         )
         inserted += 1
 
+    report_patches(f"{slug} {year}", *restore_patches(cur, edition_id, patched))
     if collisions:
         for name, first_rank, second_rank in collisions:
             print(f"    ! {slug} {year}: two riders named {name!r} "

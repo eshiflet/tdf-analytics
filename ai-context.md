@@ -221,7 +221,28 @@ counts stay identical (102,261 results either way), and the loss shows only if
 you go looking at a specific value. It was caught here by checksumming the
 results table before and after, then diffing against a backup.
 
-**Guarded since 2026-08-21.** `validate_db.py` now fails loudly on exactly this:
+**PREVENTED since 2026-08-21 (B2).** The ingests now carry patches across the
+rebuild themselves. `capture_patches()` reads every patched value out of
+`data_provenance` before the edition is deleted and `restore_patches()` hands it
+back afterwards, keyed on stage_number and rider_id — never on stage_id or
+result_id, both of which the rebuild re-issues. It is generic: anything that
+recorded provenance travels, so no registry of patch scripts needs maintaining.
+Wired into all three ingests (`ingest_classics.py`, `ingest_gravel.py`,
+`ingest_race.py`). A full classics re-ingest is now byte-identical in its
+exports, carrying 841 values.
+
+Each carry is REPORTED, never silent, and a patch whose source has since caught
+up is called out as retirable. A patch with nowhere to land — its stage or rider
+gone from the rebuilt edition — is reported too rather than dropped.
+
+The rule this depends on: **a patch must call `record_provenance()` for EVERY
+column it writes.** `patch_classics_times.py` wrote `finish_time_seconds` and
+`gap_seconds` but recorded only the first, so the carry-over restored half of it
+and left 79 Gent-Wevelgem 2005 riders with a time and a NULL gap. Fixed, and the
+missing rows backfilled.
+
+**Still guarded too**, as a backstop for anything the carry-over cannot reach:
+`validate_db.py` fails loudly on
 a `patched_values.json` manifest of the 25 stage-field patches, value-count
 invariants for the team/time patches, and a contradiction check. Replaying the
 damaged DB through it produced three errors naming each loss. So the rule below

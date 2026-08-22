@@ -152,10 +152,36 @@ provenance, bikeraceinfo team count above a floor, etc. Driven off
 should still not be `pcs` after a re-ingest."* Doesn't fix the architecture,
 but converts a silent revert into a loud failure.
 
-**B2 — Re-apply automatically (~half a day).** A `reapply_patches.py` that runs
-every guarded patch script in order, invoked at the end of any full ingest. The
-patches are already idempotent and guarded. Turns a remembered step into an
-enforced one.
+**B2 — Re-apply automatically. DONE 2026-08-21, and better than proposed.**
+
+The proposal was a `reapply_patches.py` running every patch script in order.
+Built instead as a carry-over inside the ingest, which is strictly better: no
+registry to maintain, no ordering to get right, no subprocesses, and it covers
+any patch that recorded provenance rather than only the registered ones.
+
+`capture_patches()` reads the patched values out of `data_provenance` before the
+edition is deleted; `restore_patches()` hands them back after the rebuild, keyed
+on stage_number and rider_id because stage_id and result_id are both re-issued.
+Wired into all three ingests.
+
+Result: **a full classics re-ingest is now lossless** — 841 values carried, zero
+export diffs, MSR 2013 still 246 km / `wikipedia`. Verified on the Grand Tour
+path too (Giro 1919: stage 9 restored 277.0 -> 248.0, stage 10 reported as a
+patch the source has caught up with).
+
+Two real defects surfaced while building it:
+
+- skipping `record_provenance()` for a *redundant* patch left Giro 1919 stage 10
+  with no attribution at all — value unchanged, provenance gone
+- `patch_classics_times.py` wrote two columns but recorded one, so the carry-over
+  restored the finish time and not the gap, nulling `gcGapSeconds` for 79
+  Gent-Wevelgem 2005 riders. Fixed, 81 provenance rows backfilled
+
+Both are covered by `test_patch_carry.py` (8 tests).
+
+**The rule B2 depends on:** a patch must call `record_provenance()` for every
+column it writes. That was already the repo's stated convention; it is now
+load-bearing.
 
 **B3 — Patches write to the scrape files (~2 days).** The real fix: a patch
 edits the scrape JSON and records provenance there, so ingest reproduces it and

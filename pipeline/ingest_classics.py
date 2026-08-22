@@ -32,7 +32,14 @@ from race_common import (
     parse_time_to_seconds,
     record_provenance,
 )
-from race_set_ingest import replace_edition, upsert_country, upsert_race
+from race_set_ingest import (
+    capture_patches,
+    replace_edition,
+    report_patches,
+    restore_patches,
+    upsert_country,
+    upsert_race,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -89,6 +96,8 @@ def ingest_one(cur, path, dry_run=False):
         return (slug, year, len(data["rows"]), data["cancelled"])
 
     race_id = upsert_race(cur, meta.name, meta.country, "one_day")
+    # Read the patches out BEFORE the rebuild destroys them; put them back after.
+    patched = capture_patches(cur, race_id, year)
     # Atomic: clears this edition's stages, results and provenance first.
     edition_id = replace_edition(cur, race_id, year, info.get("edition_name"))
 
@@ -167,6 +176,7 @@ def ingest_one(cur, path, dry_run=False):
         )
         inserted += 1
 
+    report_patches(f"{slug} {year}", *restore_patches(cur, edition_id, patched))
     return (slug, year, inserted, data["cancelled"])
 
 
