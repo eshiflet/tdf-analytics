@@ -419,14 +419,48 @@ by design, so the scenario has to stagger two arrivals before it clicks.
 
 Seven mutations, all caught.
 
-### Still worth looking at
+### Build scheduling — DONE 2026-08-22, and the predicted win was the wrong one
 
-- **Build order.** The builds run in fetch-completion order, which measured as
-  tour, giro, vuelta, gravel, classics — near enough to cheapest-first by luck.
-  Forcing true cheapest-first (gravel, tour, giro, vuelta, classics) would take
-  the mean from 238 to 213 ms and the MEDIAN from 215 to 102, because a rider in
-  a cheap index would stop waiting behind expensive ones. It needs fetch split
-  from build in `riderIndexData.ts`, since fetches must stay parallel.
+Fetches still run in parallel; the BUILDS now go through a queue in
+`riderIndexData.ts`. Clean A/B on an idle machine, cold document, 5-race rider:
+
+| | before | after |
+|---|---|---|
+| name, meta, toggles | 110 ms | **48 ms** |
+| **first chart** | **462 ms** | **60 ms** |
+| chart appears in | 1 step, at the end | 5 steps (60/113/184/268/483 ms) |
+| fully settled | 462 ms | 483 ms |
+
+**Cheapest-first ordering, the thing this was proposed for, contributed almost
+none of that: -5% mean and -0% median.** The prediction (238 -> 213 mean,
+215 -> 102 median) assumed the queue picks the first build. It does not — the
+first build is whichever fetch lands first, because nothing can be ordered
+before there is more than one thing to order. Ordering only governs builds two
+through five, which is worth little.
+
+Two other parts of the same change did all the work:
+
+1. **The parse moved inside the scheduled slot.** `fetchJson()` calls
+   `res.json()`, so ~100 ms of `JSON.parse` — half an index's cost, and 52 ms
+   for classics alone — ran eagerly for all five before any build started. The
+   loader now fetches TEXT and parses in the slot, which also keeps peak heap
+   to one parsed index instead of five.
+2. **The yield between builds is a MessageChannel, not a timer.**
+   `setTimeout(0)` is clamped to 4 ms once nested and throttled hard in a
+   background tab — measured here returning after 318 ms and 1000 ms. Chaining
+   five builds through it makes load time depend on whether the tab is focused.
+   MessageChannel hops measured 0.1 ms.
+
+Together those are why the chart draws five times instead of once: the
+progressive rider detail could always update its header early, but its chart
+draw is deferred a tick and five synchronous builds never let that tick happen.
+
+Settling is ~20 ms later, which is the yielding paid for honestly.
+
+> **Do not benchmark this on a busy machine.** The same all-five load measured
+> 263 ms and 486 ms in consecutive runs while a 5,000-rider PCS scrape was
+> running in the background. Pause the other work first — the scrape is
+> cache-resumable, so pausing costs nothing.
 
 ---
 
