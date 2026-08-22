@@ -96,10 +96,26 @@ HEADLINE = {
 #   2025  Sea Otter Gravel Men Elite/Pro (the round moved off-road-to-gravel)
 #   2026  Sea Otter Gravel Men Elite
 #
-# Earlier Sea Otters are deliberately absent: before 2022 Athlinks holds only
-# category-by-category XC results (Cat 1/2/3, no pro class) with no distances,
-# and no endurance race of this lineage existed. Picking the Cat 1 XC race and
-# calling it the same event would be a fabricated continuity.
+# Earlier Sea Otters are deliberately absent, decided 2026-08-21 after checking
+# all 180 Sea Otter events in the master rather than assuming (an earlier
+# version of this comment claimed there was no pro class before 2022, which is
+# wrong):
+#
+#   * the Fuego XL does not exist before 2022 in any form, so there is nothing
+#     to extend back to. 2022's round was the Fuego XC 80k; the XL name starts
+#     in 2023.
+#   * a pro XC class DOES exist in ~8 scattered years (2007, 2008, 2010-2012,
+#     2015, 2017, 2019) — but not in 2009, 2013, 2014, 2016 or 2018, and not at
+#     all in 2020-2021.
+#   * every pre-2022 XC course carries distance 0.0, so those editions could
+#     carry neither a distance nor a winning speed.
+#   * and it is a ~90-minute Olympic-format lap race, not a 3-4 hour endurance
+#     event. Splicing it onto this lineage would make one series mean two
+#     incompatible things and put a step change in its speed trend that means
+#     only "we changed which race we are measuring".
+#
+# If the XC race is ever wanted, it belongs as a SEVENTH race with its own
+# identity, not as more years of this one. See ai-context.md's "Gravel".
 SEA_OTTER = {
     2026: (1122437, 2675068),
     2025: (1090879, 2564948),

@@ -901,11 +901,11 @@ by glob.
 Every selection rule in this pipeline has needed correcting after the fact; that
 is what the cache is for.
 
-### Decisions taken, and the one still open (2026-08-21)
+### Decisions taken (2026-08-21) — all five closed
 
-Four of the five judgement calls this build had to make are now Eric's, not
-mine. They are kept here rather than deleted because each one is a live knob:
-the reasoning is what a future change has to argue against.
+Every judgement call this build had to make is now Eric's, not mine. They are
+kept here rather than deleted because each one is a live knob: the reasoning is
+what a future change has to argue against.
 
 1. **Name: "Gravel"** (slug `gravel`). Not "Life Time Grand Prix" — the archive
    starts in 1994 and that series began in 2022 — and not "Gravel & MTB":
@@ -931,12 +931,56 @@ the reasoning is what a future change has to argue against.
    apparent counter-example (Roberge 54 vs 59) is the mixed-field arithmetic in
    the table above, not the clock.
 
-**STILL OPEN — Sea Otter starts in 2022.** Its pro XC race goes back much
-further, but it is a different race from the endurance round that became the
-Grand Prix opener, and Athlinks holds it only as category-by-category results
-(Cat 1/2/3, no pro class) with no distances. Extending it means either
-accepting a race whose identity changes mid-history, or carrying the XC lineage
-as a seventh race.
+5. **Sea Otter starts in 2022, and stays there.** Closed 2026-08-21 after
+   actually checking, which corrected an earlier claim in this file: the
+   pre-2022 data is *not* simply "Cat 1/2/3 with no pro class".
+
+   What the check of all 180 Sea Otter events in the Athlinks master found:
+
+   - **The Fuego XL does not exist before 2022 in any form.** There is nothing
+     to extend back to under that name. The 2022 Grand Prix round was the
+     *Fuego XC 80k*; "Fuego XL" first appears in 2023.
+   - A pro XC class **does** exist in about eight scattered years — 2007, 2008,
+     2010, 2011, 2012, 2015, 2017, 2019 — under names like "XC Men Pro",
+     "XC Men ProXCT Pro", "Men Elite - Cross-country Olympic". So the earlier
+     "no pro class" note here was wrong.
+   - But 2009, 2013, 2014, 2016 and 2018 have no identifiable pro class, and
+     2020–2021 have no XC endurance event at all.
+   - **Every pre-2022 XC course carries distance 0.0.** No distances anywhere,
+     which removes both winning speed and the distance bar — the two metrics
+     that make Leadville's thirty years worth looking at. It would plot as a
+     row of dots with no y-value.
+   - It is a ~90-minute Olympic-format lap race, not a 3–4 hour endurance
+     event. Splicing it onto the Fuego XL lineage would make one series mean
+     two incompatible things, and its speed trend would show a step change
+     meaning only "we changed which race we are measuring".
+
+   Eric's point that the Fuego XL was ridden by gravel racers despite being an
+   officially MTB race is correct, and is already the organising principle of
+   the whole set: these six are grouped by FIELD, not by surface, which is the
+   same reason Leadville and Chequamegon sit in a race called "Gravel".
+   `route_type` carries the surface per edition (Sea Otter is `X` for 2022–2024
+   and `G` from 2025) so the set can say "this is the gravel scene" while the
+   data still says what each race was ridden on.
+
+   **One alternative was considered and rejected.** The Fuego XL still runs
+   under its own name — 106.22 km with a Men Elite division, 39 riders in both
+   2025 and 2026 — so "the Fuego XL, 2023–2026" would be a cleaner single
+   identity than the round-following lineage that changes race in 2025. But
+   from 2025 the top-level men's field moved to the Gravel 90; the Fuego XL's
+   39 is now the second-tier race (Alex Wild won it in 2025, not Swenson).
+   Since this archive is defined as *the top-level men's field*, following the
+   round is the consistent choice and following the Fuego XL would mean
+   deliberately tracking the weaker race for the two most recent years.
+
+   Worth stating plainly so it is not re-investigated: **Sea Otter is the one
+   race in this set with no deep history to find.** Leadville reaches 1994,
+   Chequamegon 1999, Unbound 2007 — but Sea Otter's endurance race is simply
+   new. That is a fact about the race, not a gap in the archive.
+
+   If it is ever wanted anyway, the clean shape is a SEVENTH race, "Sea Otter
+   XC", kept separate so its identity never collides with the endurance round —
+   and it would land with no speeds and no distances.
 
 
 ---
