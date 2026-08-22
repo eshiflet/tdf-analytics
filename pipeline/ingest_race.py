@@ -41,6 +41,7 @@ from race_common import (
     COUNTRY_NAMES,
     FLAT_FALLBACK_YEAR,
 )
+from race_set_ingest import capture_patches, report_patches, restore_patches
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DRY_RUN = "--dry-run" in sys.argv
@@ -129,6 +130,9 @@ def check_swaps(race: str, year: int, stage_files: list[str]) -> list[dict]:
 def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int, stage_files: list[str]) -> int:
     """Ingest one year's stage files. Returns total results inserted."""
     cur = conn.cursor()
+    # Empty unless this edition already exists; capture_patches() fills it in
+    # the replace branch below, before anything is deleted.
+    patched = {"stages": [], "results": []}
 
     existing = cur.execute(
         "SELECT edition_id FROM race_editions WHERE race_id=? AND year=?",
@@ -202,6 +206,14 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                   f"scrape file; re-ingesting would delete them. Re-run with "
                   f"--allow-drop only if that is what you want.")
             return 0
+
+        # Corrections that live only in the DB — the Wikipedia Paris-finale
+        # distances, the two cyclingflash elevations relayed by hand, the
+        # manual Vuelta values — are about to be destroyed with the edition.
+        # Read them out now and hand them back at the end of this function.
+        # 24 of the archive's 25 patched stage-fields are Grand Tour values, so
+        # this path carries the most exposure of the three ingests.
+        patched = capture_patches(cur, race_id, year)
 
         cur.execute("DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
         # Provenance is keyed by stage_id, and re-inserting an edition mints new
@@ -509,6 +521,9 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     filled = backfill_edition_slugs(cur, edition_id)
     if filled:
         print(f"  derived source_slug for {filled} stage(s) from stage dates")
+
+    report_patches(f"{race_name} {year}",
+                   *restore_patches(cur, edition_id, patched))
 
     conn.commit()
     return total_results

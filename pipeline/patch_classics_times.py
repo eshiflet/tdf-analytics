@@ -162,8 +162,13 @@ def patch_one(cur, race_slug, year, entry, dry_run):
                 """UPDATE stage_results SET finish_time_seconds = ?, gap_seconds = ?
                    WHERE stage_id = ? AND rider_id = ?""",
                 (finish, gap, stage_id, db[4]))
-            record_provenance(cur, "stage_results", stage_id,
-                              f"finish_time_seconds:{db[4]}", SOURCE, source_ref=url)
+            # BOTH columns this UPDATE writes. Recording only the time meant a
+            # re-ingest's patch carry-over (race_set_ingest.capture_patches)
+            # could restore the finish time and not the gap, leaving 79 riders
+            # in Gent-Wevelgem 2005 with a time and a NULL gap.
+            for col in ("finish_time_seconds", "gap_seconds"):
+                record_provenance(cur, "stage_results", stage_id,
+                                  f"{col}:{db[4]}", SOURCE, source_ref=url)
         updated += 1
 
     if not dry_run and entry.get("distance_km"):
@@ -220,6 +225,8 @@ def apply_overrides(cur, overrides, dry_run):
                 cur.execute("""UPDATE stage_results SET finish_time_seconds = ?, gap_seconds = 0
                                WHERE stage_id = ? AND rider_id = ?""",
                             (secs, stage_id, hit[0]))
+                record_provenance(cur, "stage_results", stage_id,
+                                  f"gap_seconds:{hit[0]}", SOURCE, source_ref=url)
                 record_provenance(cur, "stage_results", stage_id,
                                   f"finish_time_seconds:{hit[0]}", SOURCE,
                                   source_ref=o["source_ref"])
