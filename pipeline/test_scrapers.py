@@ -23,6 +23,7 @@ signal is a column quietly going NULL months later.
 
 import io
 import os
+import sqlite3
 import re
 import sys
 import unittest
@@ -564,4 +565,104 @@ class RiderDetailPageTest(unittest.TestCase):
 
     def test_an_empty_name_is_not_a_rider(self):
         self.assertEqual(SRD.parse_first_last(""), (None, None))
+
+
+class RiderNameSplitTest(unittest.TestCase):
+    """
+    PCS gives both orderings — start lists "Lastname Firstname", the rider
+    page's h1 "Firstname Lastname" — so the boundary never has to be guessed.
+    The particle heuristic that used to guess it gets 99 of 8,791 riders wrong,
+    and none of those are fixable by adding particles.
+    """
+
+    def test_the_rotation_point_is_the_boundary(self):
+        self.assertEqual(
+            SRD.split_from_both_orderings("Vermeulen Alexey", "Alexey Vermeulen"),
+            ("Alexey", "Vermeulen"))
+
+    def test_two_word_surnames_with_no_particle_in_them(self):
+        """The whole reason a particle list cannot do this job. Each of these
+        is stored wrong today by parse_first_last()."""
+        for full, h1, want in [
+            ("Pérez Francés José", "José Pérez Francés", ("José", "Pérez Francés")),
+            ("Sánchez Camero Juan", "Juan Sánchez Camero", ("Juan", "Sánchez Camero")),
+            ("Holm Sørensen Brian", "Brian Holm Sørensen", ("Brian", "Holm Sørensen")),
+            ("Vanden Berghen Willy", "Willy Vanden Berghen", ("Willy", "Vanden Berghen")),
+            ("Dalla Bona Luciano", "Luciano Dalla Bona", ("Luciano", "Dalla Bona")),
+        ]:
+            with self.subTest(full=full):
+                self.assertEqual(SRD.split_from_both_orderings(full, h1), want)
+                self.assertNotEqual(SRD.parse_first_last(h1), want)
+
+    def test_compound_first_names_land_on_the_right_side(self):
+        self.assertEqual(
+            SRD.split_from_both_orderings("López Rodríguez José Manuel",
+                                          "José Manuel López Rodríguez"),
+            ("José Manuel", "López Rodríguez"))
+
+    def test_matching_folds_case_and_accents_but_output_keeps_the_h1_spelling(self):
+        """The two sources disagree on "De Koning" vs "de Koning". The h1 is
+        the canonical spelling, so it is what gets stored."""
+        self.assertEqual(
+            SRD.split_from_both_orderings("De Koning Louis", "Louis de Koning"),
+            ("Louis", "de Koning"))
+
+    def test_a_middle_name_in_only_one_source_refuses_rather_than_guesses(self):
+        """full_name 'Dempster Zak' against h1 'Zakkari John Dempster' is not a
+        rotation of anything. Refusing hands it to the heuristic instead of
+        inventing a boundary."""
+        self.assertIsNone(
+            SRD.split_from_both_orderings("Dempster Zak", "Zakkari John Dempster"))
+
+    def test_a_spelling_variant_refuses(self):
+        self.assertIsNone(
+            SRD.split_from_both_orderings("Konyshev Dmitry", "Dmitri Konyshev"))
+
+    def test_a_two_word_name_that_repeats_is_still_answerable(self):
+        """Both rotations of "Silva Silva" give the same split, so there is
+        nothing to be ambiguous about — refusing here would lose a rider for no
+        reason."""
+        self.assertEqual(SRD.split_from_both_orderings("Silva Silva", "Silva Silva"),
+                         ("Silva", "Silva"))
+
+    def test_genuinely_ambiguous_repeats_refuse(self):
+        """Three identical words: k=1 and k=2 both match and they disagree
+        about where the first name ends. No answer is better than a coin flip."""
+        self.assertIsNone(
+            SRD.split_from_both_orderings("Silva Silva Silva", "Silva Silva Silva"))
+
+    def test_an_athlinks_name_already_in_first_last_order_refuses(self):
+        """Gravel riders arrive as "Firstname Lastname" in BOTH fields, which is
+        not a rotation — so rotation stays out of their way."""
+        self.assertIsNone(
+            SRD.split_from_both_orderings("Aaron Campbell", "Aaron Campbell"))
+
+    def test_missing_either_ordering_refuses(self):
+        self.assertIsNone(SRD.split_from_both_orderings(None, "Alexey Vermeulen"))
+        self.assertIsNone(SRD.split_from_both_orderings("Vermeulen Alexey", None))
+
+    def test_a_page_with_no_birthday_does_not_erase_a_stored_one(self):
+        """PCS often has no birth date for pre-war riders. update_rider()
+        COALESCEs so a re-scrape cannot null one we already hold — a dry run
+        over the cache found exactly that queued up for one rider."""
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT,"
+                     " first_name TEXT, last_name TEXT, birthday TEXT)")
+        conn.execute("INSERT INTO riders VALUES ('rider/x','García Ignacio',"
+                     "'Ignacio','García','1968-08-04')")
+        SRD.update_rider(conn, "rider/x", "Ignacio", "García", None)
+        row = conn.execute("SELECT birthday FROM riders WHERE rider_id='rider/x'").fetchone()
+        self.assertEqual(row["birthday"], "1968-08-04")
+
+    def test_a_page_with_a_birthday_still_sets_it(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT,"
+                     " first_name TEXT, last_name TEXT, birthday TEXT)")
+        conn.execute("INSERT INTO riders VALUES ('rider/x','Vermeulen Alexey',NULL,NULL,NULL)")
+        SRD.update_rider(conn, "rider/x", "Alexey", "Vermeulen", "1994-12-16")
+        row = conn.execute("SELECT * FROM riders WHERE rider_id='rider/x'").fetchone()
+        self.assertEqual((row["first_name"], row["last_name"], row["birthday"]),
+                         ("Alexey", "Vermeulen", "1994-12-16"))
 

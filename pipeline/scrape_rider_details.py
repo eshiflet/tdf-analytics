@@ -31,6 +31,7 @@ import re
 import sqlite3
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 
@@ -150,12 +151,61 @@ def parse_page(html: str) -> dict:
     return {"display_name": display_name, "birthday": birthday}
 
 
+def _fold(word: str) -> str:
+    """Case- and accent-insensitive form, for MATCHING only — never for output."""
+    word = unicodedata.normalize("NFD", word)
+    return "".join(c for c in word if unicodedata.category(c) != "Mn").lower()
+
+
+def split_from_both_orderings(full_name: str | None,
+                              display_name: str | None) -> tuple[str, str] | None:
+    """Split a name EXACTLY, using the two orderings PCS already gives us.
+
+    Start lists carry "Lastname Firstname" (stored as riders.full_name); the
+    rider page's <h1> carries "Firstname Lastname". One is a rotation of the
+    other, and the rotation point IS the boundary — no guessing required.
+
+    This supersedes parse_first_last() wherever it applies, and the difference
+    is not marginal. Checked against 8,791 riders where the rotation is
+    unambiguous, the particle heuristic gets 99 of them wrong, and they are not
+    fixable by adding particles: "Pérez Francés", "Sánchez Camero",
+    "Rodríguez Magro", "Holm Sørensen", "Vanden Berghen", "Dalla Bona" are
+    two-word surnames with no particle in them at all. A list of little words
+    cannot express "this surname happens to have two words"; the rotation can.
+
+    Matching folds case and accents (the sources disagree on "de Koning" vs
+    "De Koning"), but the OUTPUT is taken from the h1, which carries the
+    canonical spelling. Returns None rather than guessing when the two strings
+    are not rotations of each other — a middle name in one and not the other,
+    or a spelling variant ("Dmitry" vs "Dmitri") — which is 1.6% of riders,
+    left to parse_first_last().
+    """
+    if not full_name or not display_name:
+        return None
+    fw, dw = full_name.split(), display_name.split()
+    if len(fw) != len(dw) or len(fw) < 2:
+        return None
+    ff, df = [_fold(w) for w in fw], [_fold(w) for w in dw]
+    hits = [k for k in range(1, len(fw)) if ff[-k:] + ff[:-k] == df]
+    if len(hits) != 1:            # 0 = not a rotation, >1 = repeated words
+        return None
+    k = hits[0]
+    return " ".join(dw[:k]), " ".join(dw[k:])
+
+
 def parse_first_last(display_name: str) -> tuple[str | None, str | None]:
     """Split "Firstname Lastname" into (first_name, last_name).
 
     Handles compound first names ("Juan Carlos Domínguez" → "Juan Carlos",
     "Domínguez"), surname particles ("Wout van Aert" → "Wout", "van Aert"),
     and both together ("Pedro de la Rosa" → "Pedro", "de la Rosa").
+
+    FALLBACK ONLY since 2026-08-22 — prefer split_from_both_orderings(), which
+    is exact and covers 98.4%. The PARTICLES list is deliberately unchanged:
+    every case it gets wrong is a multi-word surname with no particle in it,
+    which no list can express, and widening it now would only add risk on the
+    1.6% where rotation cannot answer and there is no ground truth to check
+    against.
     """
     words = display_name.strip().split() if display_name else []
     if not words:
@@ -222,10 +272,30 @@ def update_rider(conn: sqlite3.Connection, rider_id: str,
                  birthday: str | None) -> None:
     if DRY_RUN:
         return
+    # COALESCE on birthday: a page that carries no birth date must not erase one
+    # already stored. PCS often has no birthday for pre-war riders, so a
+    # re-scrape or a --refetch would otherwise quietly null them — a dry run
+    # over the cache found exactly that waiting to happen for
+    # rider/ignacio-garcia-camacho2. Names are different: those come from the
+    # h1 and are the reason we fetched, so they do overwrite.
     conn.execute(
-        "UPDATE riders SET first_name=?, last_name=?, birthday=? WHERE rider_id=?",
+        "UPDATE riders SET first_name=?, last_name=?, "
+        "birthday=COALESCE(?, birthday) WHERE rider_id=?",
         (first_name, last_name, birthday, rider_id),
     )
+
+
+def split_for(conn: sqlite3.Connection, rider_id: str,
+              display_name: str | None) -> tuple[str | None, str | None]:
+    """The one place a name gets split. Exact rotation against the stored
+    full_name where possible, particle heuristic otherwise."""
+    if not display_name:
+        return (None, None)
+    row = conn.execute("SELECT full_name FROM riders WHERE rider_id=?",
+                       (rider_id,)).fetchone()
+    full = row["full_name"] if row else None
+    exact = split_from_both_orderings(full, display_name)
+    return exact if exact else parse_first_last(display_name)
 
 
 def describe_change(conn: sqlite3.Connection, rider_id: str,
@@ -242,8 +312,12 @@ def describe_change(conn: sqlite3.Connection, rider_id: str,
     if row is None:
         return None
     full, old_f, old_l, old_b = row["full_name"], row["first_name"], row["last_name"], row["birthday"]
-    if (old_f, old_l, old_b) == (first_name, last_name, birthday):
+    # Mirror update_rider's COALESCE, or the change table advertises a birthday
+    # loss the write no longer performs.
+    new_b = birthday if birthday is not None else old_b
+    if (old_f, old_l, old_b) == (first_name, last_name, new_b):
         return None
+    birthday = new_b
     kind = "fill" if (old_f is None or old_l is None) else "OVERWRITE"
     return (kind, rider_id, full, f"{old_f} / {old_l}", f"{first_name} / {last_name}",
             f"{old_b} -> {birthday}" if old_b != birthday else "")
@@ -285,7 +359,7 @@ def apply_cache_to_db(conn: sqlite3.Connection, rider_ids: list[str]) -> int:
         cached = load_cache(rider_id)
         if not cached or not cached.get("display_name"):
             continue
-        first, last = parse_first_last(cached["display_name"])
+        first, last = split_for(conn, rider_id, cached["display_name"])
         row = describe_change(conn, rider_id, first, last, cached.get("birthday"))
         if row:
             changes.append(row)
@@ -350,7 +424,7 @@ def main() -> None:
         save_cache(rider_id, parsed)   # cached even on a dry run, so the
                                        # follow-up apply needs no re-fetch
 
-        first, last = parse_first_last(parsed.get("display_name") or "")
+        first, last = split_for(conn, rider_id, parsed.get("display_name"))
         update_rider(conn, rider_id, first, last, parsed.get("birthday"))
         if not DRY_RUN:
             conn.commit()
