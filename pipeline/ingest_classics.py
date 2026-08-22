@@ -28,11 +28,11 @@ import sys
 
 from race_common import (
     CLASSICS,
-    COUNTRY_NAMES,
     classic_route_type,
     parse_time_to_seconds,
     record_provenance,
 )
+from race_set_ingest import replace_edition, upsert_country, upsert_race
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -44,28 +44,6 @@ SOURCE_DERIVED = "derived"
 
 # Non-numeric values PCS puts in the Rnk column.
 STATUS_MAP = {"DNF": "DNF", "DNS": "DNS", "DSQ": "DSQ", "OTL": "OTL", "DF": "DNF"}
-
-
-def upsert_race(cur, slug):
-    info = CLASSICS[slug]
-    cur.execute("SELECT race_id FROM races WHERE name = ?", (info.name,))
-    row = cur.fetchone()
-    if row:
-        return row[0]
-    cur.execute(
-        "INSERT INTO races (name, country, race_type) VALUES (?,?,'one_day')",
-        (info.name, info.country),
-    )
-    return cur.lastrowid
-
-
-def upsert_country(cur, code):
-    if not code:
-        return None
-    code = code.lower()
-    cur.execute("INSERT OR IGNORE INTO countries (code, name) VALUES (?,?)",
-                (code, COUNTRY_NAMES.get(code, code.upper())))
-    return code
 
 
 def upsert_rider(cur, slug, name, nat):
@@ -110,27 +88,9 @@ def ingest_one(cur, path, dry_run=False):
     if dry_run:
         return (slug, year, len(data["rows"]), data["cancelled"])
 
-    race_id = upsert_race(cur, slug)
-
-    cur.execute("SELECT edition_id FROM race_editions WHERE race_id=? AND year=?",
-                (race_id, year))
-    row = cur.fetchone()
-    if row:
-        edition_id = row[0]
-        # Atomic re-ingest: drop this edition's stage(s) + results first.
-        cur.execute("SELECT stage_id FROM stages WHERE edition_id=?", (edition_id,))
-        for (sid,) in cur.fetchall():
-            cur.execute("DELETE FROM stage_results WHERE stage_id=?", (sid,))
-            cur.execute("DELETE FROM data_provenance WHERE entity='stages' AND entity_id=?", (sid,))
-            cur.execute("DELETE FROM stages WHERE stage_id=?", (sid,))
-        cur.execute("UPDATE race_editions SET edition_name=? WHERE edition_id=?",
-                    (info.get("edition_name"), edition_id))
-    else:
-        cur.execute(
-            "INSERT INTO race_editions (race_id, year, edition_name) VALUES (?,?,?)",
-            (race_id, year, info.get("edition_name")),
-        )
-        edition_id = cur.lastrowid
+    race_id = upsert_race(cur, meta.name, meta.country, "one_day")
+    # Atomic: clears this edition's stages, results and provenance first.
+    edition_id = replace_edition(cur, race_id, year, info.get("edition_name"))
 
     vm = info.get("vertical_meters")
     ps = info.get("profile_score")

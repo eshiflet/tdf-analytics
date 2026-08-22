@@ -203,6 +203,39 @@ original bug back and confirm the test fails; that caught two blind spots in thi
 
 ---
 
+## DANGER: re-running ingest_classics.py reverts every DB-only patch (2026-08-21)
+
+Found the hard way while refactoring. `ingest_classics.py` rebuilds each
+race-year from `classics_scrapes/`, and **several corrections live only in the
+database, never in those scrape files**. A full re-ingest silently discards
+them and leaves no error behind:
+
+| what is lost | restored by |
+|---|---|
+| Milan-San Remo 2013 distance (246 km, `wikipedia`) reverts to PCS's wrong 121.0 | `patch_msr_2013_distance.py` |
+| ~1,900 team attributions filled from bikeraceinfo (84,800 -> 82,916) | `patch_classics_teams.py` |
+| anything else patched post-ingest | its own `patch_*.py` |
+
+The re-ingest itself is atomic and correct — that is the trap. Nothing fails,
+counts stay identical (102,261 results either way), and the loss shows only if
+you go looking at a specific value. It was caught here by checksumming the
+results table before and after, then diffing against a backup.
+
+**Before any full `ingest_classics.py` run: back the DB up, and afterwards
+re-run the patch scripts.** They are guarded — `patch_msr_2013_distance.py`
+refuses to run unless it finds exactly the broken 121.0 — so re-applying is
+safe and a no-op when unnecessary.
+
+The same applies in principle to `ingest_race.py` for the Grand Tours, which
+have far more patch scripts behind them.
+
+`ingest_gravel.py` is currently exempt: every correction it makes lives in the
+scrape files or `_course_map.json`, so a rebuild reproduces them. Keep it that
+way — the moment a gravel value is patched into the DB alone, it joins this
+table.
+
+---
+
 ## One-day classics (August 2026)
 
 Eleven monuments/classics, **1892–2026**, added 2026-08-13. In the DB they are
