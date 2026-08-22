@@ -37,8 +37,8 @@ import sqlite3
 import sys
 
 from link_gravel_riders import fold
+from race_set_ingest import replace_edition, upsert_country, upsert_race
 from race_common import (
-    COUNTRY_NAMES,
     GRAVEL,
     SOURCE_ATHLINKS,
     SOURCE_DERIVED,
@@ -50,28 +50,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 SCRAPES = os.path.join(HERE, "gravel_scrapes")
 RIDER_IDS = os.path.join(SCRAPES, "_rider_ids.json")
-
-
-def upsert_race(cur, slug):
-    info = GRAVEL[slug]
-    cur.execute("SELECT race_id FROM races WHERE name = ?", (info.name,))
-    row = cur.fetchone()
-    if row:
-        return row[0]
-    cur.execute("INSERT INTO races (name, country, race_type) VALUES (?,?,'gravel')",
-                (info.name, info.country))
-    return cur.lastrowid
-
-
-def upsert_country(cur, code):
-    if not code:
-        return None
-    code = code.lower()
-    if not code.isalpha() or len(code) != 2:
-        return None
-    cur.execute("INSERT OR IGNORE INTO countries (code, name) VALUES (?,?)",
-                (code, COUNTRY_NAMES.get(code, code.upper())))
-    return code
 
 
 def upsert_rider(cur, ident):
@@ -118,21 +96,9 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     if dry_run:
         return (slug, year, len(data["rows"]), data["cancelled"], info.get("rule"))
 
-    race_id = upsert_race(cur, slug)
-    cur.execute("SELECT edition_id FROM race_editions WHERE race_id=? AND year=?",
-                (race_id, year))
-    row = cur.fetchone()
-    if row:
-        edition_id = row[0]
-        cur.execute("SELECT stage_id FROM stages WHERE edition_id=?", (edition_id,))
-        for (sid,) in cur.fetchall():
-            cur.execute("DELETE FROM stage_results WHERE stage_id=?", (sid,))
-            cur.execute("DELETE FROM data_provenance WHERE entity='stages' AND entity_id=?", (sid,))
-            cur.execute("DELETE FROM stages WHERE stage_id=?", (sid,))
-    else:
-        cur.execute("INSERT INTO race_editions (race_id, year, edition_name) VALUES (?,?,?)",
-                    (race_id, year, info.get("event_name")))
-        edition_id = cur.lastrowid
+    race_id = upsert_race(cur, meta.name, meta.country, "gravel")
+    # Atomic: clears this edition's stages, results and provenance first.
+    edition_id = replace_edition(cur, race_id, year, info.get("event_name"))
 
     # The resolved Athlinks address, stored so nothing ever re-finds this race
     # by searching course names again — the same discipline as source_slug for
