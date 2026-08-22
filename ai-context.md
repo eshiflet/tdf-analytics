@@ -901,25 +901,42 @@ by glob.
 Every selection rule in this pipeline has needed correcting after the fact; that
 is what the cache is for.
 
-### Open questions for Eric (2026-08-21)
+### Decisions taken, and the one still open (2026-08-21)
 
-1. ~~**The name.**~~ **Settled 2026-08-21: "Gravel"** (slug `gravel`). Not
-   "Life Time Grand Prix" — the archive starts in 1994 and that series began in
-   2022 — and not "Gravel": three of the six are mountain-bike races and
-   say so in their own names, so the set label does not need to.
+Four of the five judgement calls this build had to make are now Eric's, not
+mine. They are kept here rather than deleted because each one is a live knob:
+the reasoning is what a future change has to argue against.
+
+1. **Name: "Gravel"** (slug `gravel`). Not "Life Time Grand Prix" — the archive
+   starts in 1994 and that series began in 2022 — and not "Gravel & MTB":
+   three of the six are mountain-bike races and say so in their own names
+   (Leadville Trail 100 MTB, Chequamegon MTB Festival, Little Sugar MTB), so
+   the set label does not need to.
 2. **Six races, not eight.** Crusher in the Tushar (Grand Prix 2022–2024) and
-   The Rad (2023–2024) are out because they are not in your list. Each would be
-   one `GRAVEL` entry plus a `HEADLINE` pattern.
-3. **`FIELD_CAP = 100`** is the only invented number here. It decides how much
-   of a pre-2016 mass-start field the archive keeps. Change the constant and
-   re-run `--force`; the cache makes it cheap.
-4. **Sea Otter starts in 2022.** Its pro XC race goes back further but is a
-   different race from the endurance round, and Athlinks has it only as
-   category-by-category results with no distances and no pro class.
-5. ~~**Leadville 2022 runs 60s slow**~~ **Settled 2026-08-21: keep Athlinks.**
-   Every 2022 Leadville time is uniformly 60s later than Life Time's published
-   figure. Eric's call, conditional on the finishing ORDER being unaffected —
-   it is: a constant offset applied to every rider cannot reorder them.
+   The Rad (2023–2024) stay out. Consequence to remember: the Grand Prix's own
+   2022–2024 standings cannot be reconciled against this archive, because two
+   of those seasons' rounds are missing by choice. Adding one later is a
+   `GRAVEL` entry plus a `HEADLINE` pattern and nothing else.
+3. **`FIELD_CAP = 100` stands.** The only invented number here — it decides how
+   much of a pre-2016 mass-start field the archive keeps, and any cutoff is
+   ours rather than the sport's, because those races had no pro class to draw
+   the line at. Change the constant and re-run `scrape_athlinks.py --force`;
+   the raw cache makes that seconds, and every scrape file records
+   `field_size_men` beside `field_size_selected` so the window stays visible as
+   a window.
+4. **Leadville 2022 keeps Athlinks' clock.** Every 2022 Leadville time is
+   uniformly 60s later than Life Time's published figure. Eric's call was
+   conditional on the finishing ORDER being unaffected — it is, since a
+   constant offset applied to every rider cannot reorder them, and the one
+   apparent counter-example (Roberge 54 vs 59) is the mixed-field arithmetic in
+   the table above, not the clock.
+
+**STILL OPEN — Sea Otter starts in 2022.** Its pro XC race goes back much
+further, but it is a different race from the endurance round that became the
+Grand Prix opener, and Athlinks holds it only as category-by-category results
+(Cat 1/2/3, no pro class) with no distances. Extending it means either
+accepting a race whose identity changes mid-history, or carrying the XC lineage
+as a seventh race.
 
 
 ---
