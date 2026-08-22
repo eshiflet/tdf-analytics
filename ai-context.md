@@ -72,18 +72,46 @@ intended behavior.
 - ~~**`classics/riders_index.json` is 2.93 MB / 719 KB gzipped**~~ — **addressed 2026-08-22**: re-encoded to 2.08 MB / 547 KB gzipped (-22%) and 24% faster to load. See "riders_index.json re-encoded" under Frontend performance. Still the largest single asset, so still the first thing to look at if coverage grows again.
 - **`export_gc.py --race tdf`** while everything else says `tour` — a real trip hazard, hit during the 2026-08-15 session. See "Renaming the project" §B.
 - **Social cards are ~1.8 MB committed** across 6 PNGs (gravel added a sixth). Fine for every platform's limit; `pngquant` would roughly halve them.
-- **`gc_by_stage_*.json` is 131.9 MB raw across 469 files, and most of it is key
-  names.** Each rider's `byStage` is an array of 8-key objects, one per stage —
-  Tour 1987 alone materialises 5,382 of them (207 riders x 26 stages). Flattening
-  to numeric arrays, the same move PR #10 made on `riders_index`, measures
-  **131.9 MB -> 41.0 MB raw (-68.9%)**; gzipped it is only 9.9 -> 7.7 MB (-22.9%),
-  so **this is a parse-time and memory win, not a download win.** Two shortcuts do
-  NOT work and were measured before being ruled out: `stage` cannot be dropped and
-  inferred positionally (67,829 of 91,455 riders have a sparse `byStage`), and
-  `name` cannot be dropped and rebuilt from `firstName`/`lastName` (10.2% of riders
-  have neither, and `displayName()` falls back to `name`). Touches ~20 call sites
-  in `stageChart.ts` / `stageTable.ts`. Gate it on a browser A/B forcing layout,
-  per "Measure before claiming a perf win".
+- ~~**Flatten `byStage` in `gc_by_stage_*.json`**~~ — **measured and REJECTED
+  2026-08-22. Do not re-propose without reading this.** Each rider's `byStage`
+  is an array of 8-key objects, one per stage (Tour 1987 materialises 5,382 of
+  them), and flattening to numeric arrays shrinks the corpus from **131.9 MB to
+  41.0 MB raw (-68.9%)**. The size win is real. The runtime win is not worth
+  having. Measured in the browser, median of 9 batches of 25, layout forced
+  before every batch:
+
+  | | Tour 1987 (692 KB) | classics 2021 (408 KB) |
+  |---|---|---|
+  | `JSON.parse` | 3.95 -> 1.30 ms (-67%) | 2.17 -> 1.20 ms (-45%) |
+  | stageTable pass | 0.57 -> 0.52 ms | 0.44 -> 0.44 ms |
+  | stageChart pass | 0.26 -> 0.06 ms | 0.07 -> 0.06 ms |
+  | **total** | **4.78 -> 1.88 ms** | **2.69 -> 1.70 ms** |
+
+  **A 3 ms saving on the worst file.** The percentages look excellent and the
+  absolute number is imperceptible — for scale, the `riders_index` re-encode
+  (PR #10) saved 60 ms, twenty times more. Against that: ~20 call sites in
+  `stageChart.ts` and `stageTable.ts`, 469 regenerated files, and a permanent
+  readability tax (`f[i+3]` where `sp.status` used to be).
+
+  **The repo-size argument fails too, and fails backwards.** Git keeps the old
+  blobs in history, so re-encoding would ADD ~41 MB of new objects to a 151 MB
+  `.git` rather than removing 131 MB. It makes the repository bigger.
+
+  Two shortcuts that would have improved the ratio were measured and do not
+  work: `stage` cannot be dropped and inferred positionally (67,829 of 91,455
+  riders have a sparse `byStage`), and `name` cannot be rebuilt from
+  `firstName`/`lastName` (10.2% of riders have neither, and `displayName()`
+  falls back to `name`).
+
+  Two measurement traps worth keeping: `performance.now()` is clamped to 0.1 ms,
+  so a single pass is 1-9 ticks of noise and the first attempt reported
+  meaningless sub-millisecond figures until the work was batched; and
+  `performance.memory` could NOT produce a trustworthy retained-size number here
+  at any copy count -- 30 copies left the flat encoding below the counter's
+  update resolution, 200 copies triggered GC mid-measurement and returned
+  negative deltas. The only stable reading was the current encoding at
+  359 KB/copy for Tour 1987, with the flat one too small to register.
+
 - **Rider-detail loads all five rider indexes** — see the fan-out note under
   "Known-open" in the classics section. -47% available, mechanism undesigned.
 - **2026 Vuelta** has not been run yet (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
