@@ -504,11 +504,12 @@ touched**; all progress lives in `pipeline/rider_scrapes/` as one JSON per
 rider, and the run skips whatever is already there. Interrupting it costs only
 the request in flight.
 
-State when the machine went down:
+State at the deliberate pause (verified: 13,034 cache entries, 0 corrupt,
+0 stray temp files, DB untouched at 5,264 un-split riders):
 
 | set | cached | outstanding |
 |---|---|---|
-| classics | 3,959 / 5,250 | ~1,291 |
+| classics | 4,049 / 5,250 | 1,201 (~25 min) |
 | stage races | 11 / 26 | 15 |
 | gravel | 1 / 1 | 0 (done) |
 
