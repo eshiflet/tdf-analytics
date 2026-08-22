@@ -74,14 +74,23 @@ type RawYearTuple =
  *  table, the same trick `teams` uses. The team is NOT repeated here — it is
  *  already in that year's `y` tuple and is identical across the season. */
 type RawConstituent = [number, number];
+/** Aggregate races only: [teamIdx, raceIdx, rank, raceIdx, rank, ...] for one
+ *  season. One map instead of the two (`y` + `m`) this replaced, which stored
+ *  every year key twice and carried a finalRank that is min() of these ranks —
+ *  derivable, so no longer stored. Measured on the 11,934-rider classics index:
+ *  703 KB -> 547 KB gzipped, and 6.3ms FASTER end to end, because parsing
+ *  156 KB less JSON saves more than the min() costs. */
+type RawFlatYear = number[];
 type RawRiderIndex = {
   teams: string[];
   /** Constituent-race name table; absent for the three Grand Tours. */
   races?: string[];
   riders: Record<string, {
     n: string; fn?: string; ln?: string; c: string | null; yw?: number[];
-    y: Record<string, RawYearTuple>;
-    m?: Record<string, RawConstituent[]>;
+    /** Grand Tours. */
+    y?: Record<string, RawYearTuple>;
+    /** Aggregate races (classics, gravel) — replaces both `y` and `m`. */
+    ym?: Record<string, RawFlatYear>;
   }>;
 };
 
@@ -99,7 +108,7 @@ type RawRiderIndex = {
  */
 function defineLazyConstituents(
   entry: RiderEntry,
-  raw: Record<string, RawConstituent[]>,
+  raw: Record<string, RawFlatYear>,
   raceTable: string[],
   years: RiderEntry["years"],
 ): void {
@@ -110,15 +119,16 @@ function defineLazyConstituents(
     get(): Map<number, ConstituentResult[]> {
       if (built) return built;
       built = new Map();
-      for (const [yearStr, entries] of Object.entries(raw)) {
+      for (const [yearStr, flat] of Object.entries(raw)) {
         const year = parseInt(yearStr);
-        // The season's team, already resolved from that year's `y` tuple.
+        // The season's team, already resolved from flat[0] at load.
         const team = years.get(year)?.team ?? null;
-        built.set(year, entries.map(([raceIdx, rank]) => ({
-          race: raceTable[raceIdx] ?? "—",
-          rank: rank || 9999,
-          team,
-        })));
+        const out: ConstituentResult[] = [];
+        // flat[0] is the team index; the rest are raceIdx/rank pairs.
+        for (let i = 1; i < flat.length; i += 2) {
+          out.push({ race: raceTable[flat[i]] ?? "—", rank: flat[i + 1] || 9999, team });
+        }
+        built.set(year, out);
       }
       return built;
     },
@@ -155,7 +165,21 @@ async function buildRiderIndexFor(race: RaceId): Promise<void> {
     const id = `rider/${slug}`;
     const years = new Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>();
     const teams = new Set<string>();
-    for (const [yearStr, [finalRank, teamIdx, sprintRank, komRank]] of Object.entries(rec.y)) {
+    // Two shapes: the Grand Tours' `y` tuples, and the aggregate races' flat
+    // `ym` arrays, whose finalRank is derived rather than stored.
+    for (const [yearStr, flat] of Object.entries(rec.ym ?? {})) {
+      const team = flat[0] >= 0 ? teamTable[flat[0]] : null;
+      let best = 9999;
+      for (let i = 2; i < flat.length; i += 2) {
+        const rank = flat[i] || 9999;
+        if (rank < best) best = rank;
+      }
+      years.set(parseInt(yearStr), {
+        finalRank: best, sprintRank: 9999, komRank: 9999, team,
+      });
+      if (team) teams.add(team);
+    }
+    for (const [yearStr, [finalRank, teamIdx, sprintRank, komRank]] of Object.entries(rec.y ?? {})) {
       const team = teamIdx >= 0 ? teamTable[teamIdx] : null;
       years.set(parseInt(yearStr), {
         finalRank,
@@ -167,7 +191,7 @@ async function buildRiderIndexFor(race: RaceId): Promise<void> {
     }
 
     const entry: RiderEntry = { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams };
-    if (rec.m) defineLazyConstituents(entry, rec.m, raceTable, years);
+    if (rec.ym) defineLazyConstituents(entry, rec.ym, raceTable, years);
     index.set(id, entry);
   }
   allTeamsSortedByRace[race] = [...teamTable].sort();

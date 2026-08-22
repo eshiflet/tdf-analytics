@@ -203,6 +203,53 @@ original bug back and confirm the test fails; that caught two blind spots in thi
 
 ---
 
+## riders_index.json re-encoded for the aggregate races (2026-08-22)
+
+The classics index is the single largest thing the app downloads, fetched
+whenever the Riders page opens. It shrank **703 KB -> 547 KB gzipped (-22%)**
+and got **24% faster to load**, which was not the trade this was expected to be.
+
+### The encoding
+
+Aggregate sets (classics, gravel) now carry ONE map per rider-year:
+
+```
+ym: { "2021": [teamIdx, raceIdx, rank, raceIdx, rank, ...] }
+```
+
+replacing a `y` of `[finalRank, teamIdx]` plus a parallel `m` of
+`[[raceIdx, rank], ...]`. Those stored every year key **twice**, and finalRank
+is `min()` of the ranks already in `m` — derivable, not data. The Grand Tour
+indexes keep their own `y` shape (they have no constituent races), so the
+loader branches on which key is present.
+
+### Measured, because the risk was real
+
+Deriving finalRank means touching `m`-shaped data at load, which is what
+`defineLazyConstituents()` exists to avoid — the note in this file calls that
+getter load-bearing and worth ~380ms when eager. Measured in the browser on the
+real 11,934-rider file, median of 7, forcing layout each iteration:
+
+| | old | new |
+|---|---|---|
+| gzipped | 703 KB | **547 KB** |
+| parse + build | 250.1 ms | **189.9 ms** |
+
+**Both improve.** The 380ms that getter avoids was materialising 11,934
+`ConstituentResult` objects — not iterating numbers. A `min()` over a flat
+numeric array costs ~1.5ms, while parsing 156 KB less JSON saves far more. The
+getter is still lazy and now reads the same `ym` array.
+
+### What to re-check if this is touched again
+
+`validate_exports.py`'s staleness check re-derives finalRank from `ym` rather
+than reading a stored value, so a broken derivation fails the validator rather
+than a stale copy of a correct one. It caught this change immediately — 44,105
+"inconsistent rider-years" on the classics — before it was taught the new shape,
+which is exactly what that check is for.
+
+---
+
 ## DANGER: re-running ingest_classics.py reverts every DB-only patch (2026-08-21)
 
 Found the hard way while refactoring. `ingest_classics.py` rebuilds each

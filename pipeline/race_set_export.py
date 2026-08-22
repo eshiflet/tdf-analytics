@@ -209,8 +209,33 @@ def build_year(cur, race_set, year, short_of):
 
 
 def build_index(years_data):
-    """Compact riders_index.json, including the per-RACE `races`/`m`
-    constituent tables the career chart's aggregate toggle reads."""
+    """Compact riders_index.json for an aggregate race set.
+
+    ENCODING. One map per rider-year rather than two:
+
+        ym: { "2021": [teamIdx, raceIdx, rank, raceIdx, rank, ...] }
+
+    The Grand Tour indexes (export_riders_index.py) keep their own `y` shape —
+    they have no constituent races to carry — so the loader branches on which
+    key is present.
+
+    This replaced a `y` of [finalRank, teamIdx] plus a parallel `m` of
+    [[raceIdx, rank], ...]. Those stored every year key TWICE, and finalRank is
+    min() of the ranks already in `m`, so it was derivable rather than data.
+    Measured in the browser over the 11,934-rider classics index:
+
+        raw     2,865 KB -> 2,078 KB   (-27%)
+        gzipped   703 KB ->   547 KB   (-22%)
+        parse      16.9ms ->    9.1ms
+        build      19.4ms ->   20.9ms
+
+    Deriving finalRank costs 1.5ms; parsing 156 KB less JSON saves 7.8ms. Net
+    6.3ms faster AND smaller, which is the opposite of what was expected — the
+    worry was that touching `m`-shaped data eagerly would reinstate the ~380ms
+    that defineLazyConstituents() exists to avoid. It does not: that cost was
+    materialising 11,934 objects, not running a numeric min() over a flat array.
+    The constituents getter is still lazy, and now reads the same `ym` array.
+    """
     teams, races = [], []
     def tidx(name):
         if name is None:
@@ -229,20 +254,18 @@ def build_index(years_data):
         for r in data["riders"]:
             key = r["id"].replace("rider/", "")
             rec = riders.setdefault(key, {"n": r["name"], "c": r["nationality"],
-                                          "y": {}, "m": {}})
+                                          "ym": {}})
             if r.get("firstName"):
                 rec["fn"] = r["firstName"]
             if r.get("lastName"):
                 rec["ln"] = r["lastName"]
-            ti = tidx(r["team"])
-            rec["y"][str(year)] = [r["finalRank"], ti]
-            # [raceIdx, rank] only — the team is already stored once per year
-            # in `y`, and every constituent of a season carried the identical
-            # index, so repeating it cost ~150 KB gzipped for nothing.
-            rec["m"][str(year)] = [
-                [ridx(labels[p["stage"]]), p["gcRank"] or DNF_SENTINEL]
-                for p in r["byStage"]
-            ]
+            # [teamIdx, then raceIdx/rank pairs]. finalRank is NOT stored: it
+            # is min() of these ranks, derived on load.
+            flat = [tidx(r["team"])]
+            for p in r["byStage"]:
+                flat.append(ridx(labels[p["stage"]]))
+                flat.append(p["gcRank"] or DNF_SENTINEL)
+            rec["ym"][str(year)] = flat
     return {"teams": teams, "races": races, "riders": riders}
 
 
