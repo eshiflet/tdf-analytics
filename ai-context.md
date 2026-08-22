@@ -66,7 +66,7 @@ intended behavior.
 - **Giro 1946 winner time** — PCS's figure implies 46.5 km/h over 3,050 km. Either the time or the distance is wrong and there's no way to tell which; storing nothing beats storing a number that fails its own check.
 - **Tour 1904–1912, Giro 1909–13** — points-classification era, no time GC ever existed.
 - **19 editions diverge >3% from Wikipedia on distance** — all investigated, none is a missing stage. See "Distance reconciliation".
-- **8 of 18 cancelled stages have no recorded reason.** `validate_db.py` names them under `note` lines. Add a *sourced* reason or leave them; never invent a cause.
+- **8 of 19 cancelled stages have no recorded reason.** `validate_db.py` names them under `note` lines. Add a *sourced* reason or leave them; never invent a cause.
 
 **Cost/quality items worth revisiting:**
 - ~~**`classics/riders_index.json` is 2.93 MB / 719 KB gzipped**~~ — **addressed 2026-08-22**: re-encoded to 2.08 MB / 547 KB gzipped (-22%) and 24% faster to load. See "riders_index.json re-encoded" under Frontend performance. Still the largest single asset, so still the first thing to look at if coverage grows again.
@@ -201,6 +201,7 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 
 `validate_db` 0 errors / 3 warnings · `validate_exports` 302 files, 0 errors ·
 **142 tests** passing (`python3 -m unittest discover -p 'test_*.py'`, runs in CI).
+(**342 as of 2026-08-22**, after the gravel, patch-carry, export and validator suites.)
 Every stage has a route, a date, a distance and a confirmed `source_slug`; 0 derived
 slugs remain. Every Tour TTT has per-rider results. Elevation was the one field with a
 real remaining gap; as of **2026-08-19** it is essentially closed — the race *route* page
@@ -283,6 +284,53 @@ and `export_all_races_summary.py`: zero exported files changed.
 fell through to a full run over every year, each one a live PCS fetch. Found by
 doing it. The `scrape_*` scripts still have the older behaviour of treating
 unrecognised args as "no years", so give them real arguments.
+
+---
+
+## The validators have tests now (2026-08-22)
+
+`test_validators.py`, 97 tests over the four `validate_*.py` scripts. They had
+none, which was backwards: **`validate_db.py` cannot run in CI at all** (see the
+pre-push section below), so it is the one guard whose correctness nothing else
+was checking. Its behaviour had been established exactly once, by hand, by
+replaying the damaged 2026-08-21 database through it.
+
+**Fixtures are built from `schema.sql`**, not from a copy of it. An inlined
+`CREATE TABLE` block is how `route_type` once went missing from the schema file
+while the real DB had it. Foreign keys are ON, which caught two fixtures that
+were quietly nonsense.
+
+**What the tests are actually pinning** is the set of distinctions that look
+like clutter and are not. Each of these was written for a specific incident and
+each would be easy to "simplify" into a regression:
+
+| distinction | what collapsing it costs |
+|---|---|
+| count DROP errors, RISE only notes | every run that adds a race-year fails |
+| an exactly equal count says NOTHING | "rose from 1 to 1" on every clean run, and nobody reads the notes any more |
+| orphan provenance: ERROR on `stages`, WARN on `stage_results` | loss vs litter — one is a destroyed value, one is a dead row |
+| no-GC check scoped by INCLUSION (`race_type='stage_race'`) | excluding `'one_day'` stopped covering anything the day `'gravel'` arrived |
+| phantom split day exempts a slug ending in a letter | Giro 1956 st9b and Vuelta 1978 st19b are genuine cancelled halves |
+| phantom split day is scoped to CANCELLED stages | the same rule on every stage produced 33 false errors on correct data |
+| duplicate-stage key includes the slug | Giro 1972's 12a/12b are one circuit twice, not one stage duplicated |
+| carried-distance warning needs all four filters | 38 editions repeat a distance; only six are the Paris-finale bug |
+| `validate_gc.name_match` has a last-name fallback, `validate_kom.name_match` does not | the GC references print initials; the KOM ones print full names, where a lone surname pairs up teammates |
+
+**Verified by mutation** rather than by passing: 34 deliberate breaks were
+introduced one at a time and all 34 failed a test. Six survived the first pass
+and got tests written for them — two of those were real gaps in
+`build_sequential_map`'s slow path, where the 10% distance tolerance and the
+forward-only search could both be deleted with every test still green.
+
+> **Trap when mutation-testing Python.** A mutation that keeps the file the same
+> LENGTH (`>= 5` -> `>= 2`) and is reverted inside the same mtime second leaves a
+> stale `__pycache__` entry that Python reuses, because invalidation keys on
+> (mtime, size). It reads as a surviving mutant, or as a restored file that still
+> fails. `rm -rf __pycache__` between runs.
+
+**Still untested**, deliberately: the network-fetching halves of
+`validate_kom.py` (`fetch_wikipedia_kom`, `fetch_bri_kom`) and
+`validate_gc.load_our_gc`, which want HTML fixtures rather than unit tests.
 
 ---
 
