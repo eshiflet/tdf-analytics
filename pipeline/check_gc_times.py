@@ -171,7 +171,11 @@ def main(argv=None):
     winner_times = {}
     if os.path.exists(winner_times_path):
         with open(winner_times_path) as f:
-            winner_times = {int(k): v for k, v in json.load(f).items()}
+            # Skip "_"-prefixed keys: these files carry a _README block
+            # documenting where their values came from, the same convention
+            # stage_notes.json and patched_values.json use.
+            winner_times = {int(k): v for k, v in json.load(f).items()
+                            if not k.startswith("_")}
 
     discrepancies = {}
     missing = []
