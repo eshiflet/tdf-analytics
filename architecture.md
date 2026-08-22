@@ -144,6 +144,16 @@ flowchart TD
   season). See ai-context.md's "One-day classics" for the rules, including why
   `finalRank` is a best-of-season aggregate and why cancelled races are kept.
 
+- **Grand Tour scrapers** (`scrape_race.py`, `scrape_stage_info.py`,
+  `check_gc_times.py`) — one implementation each, serving both the Giro and the
+  Vuelta, selected with `--race`. These were six files in three 85–95% identical
+  pairs; everything that differed was the PCS URL slug, the output directory and
+  the words printed. `scrape_giro.py` and friends survive as thin wrappers so
+  every recipe keeps working. The win is not line count: the parsing is
+  fixture-tested (`test_scrapers.py`), but only ever through the Vuelta copy, so
+  the Giro's identical 584 lines were untested and a fix applied to one and not
+  the other would have failed nothing.
+
 - **Gravel** (`resolve_gravel_courses.py`, `scrape_athlinks.py`,
   `link_gravel_riders.py`, `ingest_gravel.py`, `export_gravel.py`) — the same aggregate
   shape as the classics: 6 independent `race_type='gravel'` races combined at export
