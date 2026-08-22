@@ -333,19 +333,52 @@ def cache_path(rider_id: str) -> str:
 
 
 def load_cache(rider_id: str) -> dict | None:
+    """Read one cached rider, treating a damaged file as simply absent.
+
+    The cache IS the resumability of a multi-hour run, and the thing most
+    likely to interrupt one — a shutdown, a battery, a kill — is also the thing
+    most likely to leave a half-written file behind. Raising here would let a
+    single truncated byte abort the resume for all 5,000 riders, so a corrupt
+    entry is deleted and re-fetched instead.
+    """
     p = cache_path(rider_id)
-    if os.path.exists(p):
+    if not os.path.exists(p):
+        return None
+    try:
         with open(p, encoding="utf-8") as f:
             return json.load(f)
-    return None
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+        print(f"  discarding damaged cache entry {os.path.basename(p)}", flush=True)
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+        return None
 
 
 def save_cache(rider_id: str, data: dict) -> None:
+    """Write atomically: full file to a temp name, then rename over the target.
+
+    os.replace() is atomic on POSIX and Windows, so an interrupted run leaves
+    either the old entry or the new one, never half of either. Writing in place
+    is what creates the truncated file load_cache() now has to defend against.
+    """
     slug = rider_id.removeprefix("rider/")
     os.makedirs(CACHE_DIR, exist_ok=True)
     p = os.path.join(CACHE_DIR, f"{slug}.json")
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False)
+    tmp = f"{p}.tmp{os.getpid()}"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
 
 
 # ---------------------------------------------------------------------------

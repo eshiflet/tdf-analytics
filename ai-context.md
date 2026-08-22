@@ -497,6 +497,52 @@ against "Rodriguez José Francisco". Guessing there is exactly the thing
 "never fabricate" rules out. The cache simply predates the classics and gravel
 expansions: 5,260 of the 5,265 were never fetched.
 
+### RESUME HERE — the classics scrape was interrupted 2026-08-22
+
+Nothing is half-applied. The run was `--dry-run`, so **the database was never
+touched**; all progress lives in `pipeline/rider_scrapes/` as one JSON per
+rider, and the run skips whatever is already there. Interrupting it costs only
+the request in flight.
+
+State when the machine went down:
+
+| set | cached | outstanding |
+|---|---|---|
+| classics | 3,959 / 5,250 | ~1,291 |
+| stage races | 11 / 26 | 15 |
+| gravel | 1 / 1 | 0 (done) |
+
+Pick it up with the same command — it re-fetches only what is missing, and that
+includes the ~12 riders whose fetch failed on a transient network blip (those
+were never cached, which is the point):
+
+```bash
+cd pipeline
+SCRAPE_DELAY=0.8 python3 scrape_rider_details.py --missing --race classics --dry-run
+SCRAPE_DELAY=0.8 python3 scrape_rider_details.py --missing --dry-run   # sweeps up the rest
+```
+
+Then read the change table it prints, and only then write:
+
+```bash
+python3 db_backup.py
+python3 scrape_rider_details.py --missing --db-only     # applies the cache
+python3 export_classics.py && python3 export_gc.py --race tdf   # + giro, vuelta
+python3 export_riders_index.py --race tdf               # + giro, vuelta
+python3 validate_db.py && python3 validate_exports.py
+```
+
+Expect ~98.8% of splits to come from the exact rotation and ~1.2% to end with a
+last name and no first name — those are riders PCS itself knows only by
+surname (`Borgonovo`, `Forain`, the `bel-*` slugs) and are correct, not gaps.
+
+**The cache is crash-safe as of this session**, which it was not when the run
+started: `save_cache()` writes to a temp file and `os.replace()`s it (atomic),
+and `load_cache()` treats a damaged entry as absent and deletes it rather than
+raising. Before that, a shutdown mid-write could leave a truncated file whose
+`json.load` would abort the entire resume. Verified 0 corrupt entries and 0
+stray temp files across 12,933 cached riders.
+
 ### DANGER: PCS answers an unknown rider with HTTP 200
 
 `https://www.procyclingstats.com/rider/kvalsten` returns **200** and a

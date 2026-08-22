@@ -21,11 +21,14 @@ When PCS changes its markup these will fail. That is the point: today the only
 signal is a column quietly going NULL months later.
 """
 
+import contextlib
 import io
 import os
 import sqlite3
 import re
+import shutil
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -665,4 +668,51 @@ class RiderNameSplitTest(unittest.TestCase):
         row = conn.execute("SELECT * FROM riders WHERE rider_id='rider/x'").fetchone()
         self.assertEqual((row["first_name"], row["last_name"], row["birthday"]),
                          ("Alexey", "Vermeulen", "1994-12-16"))
+
+
+class RiderCacheDurabilityTest(unittest.TestCase):
+    """
+    The cache IS the resumability of a multi-hour scrape, and the events that
+    interrupt one — a shutdown, a kill, a flat battery — are exactly the events
+    that leave a half-written file behind. Both halves of that have to hold:
+    a write must never produce a partial file, and a partial file must never
+    abort the resume for everyone else.
+    """
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self._real = SRD.CACHE_DIR
+        SRD.CACHE_DIR = self.dir
+
+    def tearDown(self):
+        SRD.CACHE_DIR = self._real
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def test_a_saved_entry_reads_back(self):
+        SRD.save_cache("rider/x", {"display_name": "Alexey Vermeulen"})
+        self.assertEqual(SRD.load_cache("rider/x")["display_name"], "Alexey Vermeulen")
+
+    def test_a_truncated_entry_is_discarded_not_raised(self):
+        """A single truncated byte must not abort a 5,000-rider resume."""
+        SRD.save_cache("rider/x", {"display_name": "Alexey Vermeulen"})
+        p = SRD.cache_path("rider/x")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write('{"display_name": "Alexey Verme')      # power cut mid-write
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(SRD.load_cache("rider/x"))
+        self.assertFalse(os.path.exists(p), "damaged entry should be removed so it re-fetches")
+
+    def test_a_missing_entry_is_simply_absent(self):
+        self.assertIsNone(SRD.load_cache("rider/never-fetched"))
+
+    def test_saving_leaves_no_temp_files_behind(self):
+        SRD.save_cache("rider/x", {"display_name": "A B"})
+        leftovers = [f for f in os.listdir(self.dir) if ".tmp" in f]
+        self.assertEqual(leftovers, [], f"temp files left: {leftovers}")
+
+    def test_an_overwrite_never_exposes_a_partial_file(self):
+        """os.replace is atomic, so a reader sees the old entry or the new one."""
+        SRD.save_cache("rider/x", {"display_name": "Old Name"})
+        SRD.save_cache("rider/x", {"display_name": "A Much Longer New Name"})
+        self.assertEqual(SRD.load_cache("rider/x")["display_name"], "A Much Longer New Name")
 
