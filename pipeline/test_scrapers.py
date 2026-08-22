@@ -33,9 +33,16 @@ import insert_cancelled_stages as ICS
 import patch_missing_distances as PMD
 import resolve_source_slugs as RSS
 import scrape_route_overview_elevation as SROE
-import scrape_vuelta as SV
-import scrape_vuelta_stage_info as SVSI
-from race_common import STAGE_ROW_LEN, StageRow
+# The Grand Tour scraper, shared by the Giro and the Vuelta since they were
+# merged (scrape_race.py). These tests used to import scrape_vuelta and so only
+# ever exercised one of two 95%-identical copies — the Giro's 584 lines were
+# untested. Now one suite covers both.
+import scrape_race as SV
+# The Grand Tour stage-info scraper, shared by the Giro and the Vuelta since
+# they were merged (scrape_stage_info.py). Same story as scrape_race.py above:
+# these tests only ever exercised the Vuelta copy of two 94%-identical files.
+import scrape_stage_info as SVSI
+from race_common import RACES, STAGE_ROW_LEN, StageRow
 from record_fixtures import FIXTURES, load, path_for
 
 
@@ -222,7 +229,7 @@ class TestTeamTimeTrial(unittest.TestCase):
         try:
             buf, sys.stdout = sys.stdout, io.StringIO()
             try:
-                rec = SV.scrape_stage(1989, "stage-3a", 3)
+                rec = SV.scrape_stage(RACES["vuelta"], 1989, "stage-3a", 3)
             finally:
                 sys.stdout = buf
         finally:
@@ -427,7 +434,7 @@ class TestScrapeStageEndToEnd(unittest.TestCase):
         SV.fetch, SV.DELAY = self._fetch, self._delay
 
     def test_builds_a_complete_stage_record(self):
-        rec = SV.scrape_stage(2021, "stage-1", 1)
+        rec = SV.scrape_stage(RACES["vuelta"], 2021, "stage-1", 1)
         self.assertIsNotNone(rec)
         self.assertEqual(rec["n"], 1)
         self.assertEqual(rec["slug"], "stage-1")     # provenance, not derivable from n
@@ -439,11 +446,11 @@ class TestScrapeStageEndToEnd(unittest.TestCase):
 
     def test_returns_none_when_the_page_has_no_results(self):
         SV.fetch = lambda url, **kw: load("vuelta_1991_stage_11_cancelled")
-        self.assertIsNone(self._quiet(SV.scrape_stage, 1991, "stage-11", 12))
+        self.assertIsNone(self._quiet(SV.scrape_stage, RACES["vuelta"], 1991, "stage-11", 12))
 
     def test_returns_none_when_the_fetch_fails(self):
         SV.fetch = lambda url, **kw: None
-        self.assertIsNone(self._quiet(SV.scrape_stage, 2021, "stage-1", 1))
+        self.assertIsNone(self._quiet(SV.scrape_stage, RACES["vuelta"], 2021, "stage-1", 1))
 
     @staticmethod
     def _quiet(fn, *a):
@@ -457,3 +464,45 @@ class TestScrapeStageEndToEnd(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestBothRacesShareOneImplementation(unittest.TestCase):
+    """The Giro and the Vuelta were 95%-identical scrapers, and only the Vuelta
+    copy was ever tested. Everything above now exercises the shared module; this
+    pins the one thing that genuinely differs between them."""
+
+    def test_each_race_builds_its_own_pcs_url(self):
+        seen = []
+        original = SV.fetch
+        SV.fetch = lambda url, **kw: seen.append(url) or None
+        try:
+            for key in ("giro", "vuelta"):
+                SV.scrape_stage(RACES[key], 2020, "stage-5", 5)
+        finally:
+            SV.fetch = original
+        self.assertIn("/race/giro-d-italia/2020/stage-5", seen[0])
+        self.assertIn("/race/vuelta-a-espana/2020/stage-5", seen[1])
+
+    def test_each_race_writes_to_its_own_scrapes_dir(self):
+        self.assertEqual(RACES["giro"].scrapes_dirname, "giro_scrapes")
+        self.assertEqual(RACES["vuelta"].scrapes_dirname, "vuelta_scrapes")
+
+    def test_the_wrappers_delegate_with_their_race_preset(self):
+        import scrape_giro, scrape_giro_stage_info
+        import scrape_vuelta, scrape_vuelta_stage_info
+        for mod in (scrape_giro, scrape_vuelta,
+                    scrape_giro_stage_info, scrape_vuelta_stage_info):
+            self.assertTrue(callable(mod.main))
+
+    def test_stage_info_builds_each_race_own_url(self):
+        seen = []
+        original = SVSI.fetch
+        SVSI.fetch = lambda url: seen.append(url) or None
+        try:
+            for key in ("giro", "vuelta"):
+                SVSI.fetch(f"https://www.procyclingstats.com/race/"
+                           f"{RACES[key].pcs_slug}/2020/stage-5/result/result")
+        finally:
+            SVSI.fetch = original
+        self.assertIn("/race/giro-d-italia/", seen[0])
+        self.assertIn("/race/vuelta-a-espana/", seen[1])

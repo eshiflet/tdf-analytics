@@ -203,6 +203,54 @@ original bug back and confirm the test fails; that caught two blind spots in thi
 
 ---
 
+## The Giro and the Vuelta share one scraper now (2026-08-22)
+
+Three pairs of 85–95% identical files became three shared implementations plus
+six thin wrappers, 2,006 lines down to 1,259:
+
+| shared | was | overlap |
+|---|---|---|
+| `scrape_race.py` | `scrape_giro.py` + `scrape_vuelta.py` | 95%, 422 lines |
+| `scrape_stage_info.py` | `scrape_{giro,vuelta}_stage_info.py` | 94%, 148 lines |
+| `check_gc_times.py` | `check_{giro,vuelta}_gc_times.py` | 85%, 139 lines |
+
+Everything that differed was the PCS URL slug, the output directory and the
+words printed. `RaceInfo` gained `pcs_slug` and `cli` to carry the first two.
+
+**The old names still work** — they are wrappers that call the shared module
+with `--race` preset, so every recipe in this file is unchanged.
+
+**The real win is test coverage, not line count.** The parsing is fixture-tested
+(`test_scrapers.py` against `test_fixtures/`), but the tests imported
+`scrape_vuelta`, so the Giro's identical 584 lines were untested and a fix
+applied to one copy and not the other would have failed nothing. One
+implementation means one suite covers both.
+
+### One inconsistency preserved rather than silently resolved
+
+`check_vuelta_gc_times.py` wrote `vuelta_gc_winner_times.json`; the Giro's
+equivalent did not. Merging had to pick one, and either choice changes a
+behaviour, so the write is now behind `--write-winner-times`, which the Vuelta
+wrapper passes and the Giro's does not. Same behaviour as before, but the
+difference is one visible line instead of a divergence buried in 139 duplicated
+ones.
+
+**Worth resolving, and here is the fact that decides it: nothing in this repo
+writes `giro_gc_winner_times.json`.** `export_gc.py` reads it through an
+f-string and the file exists on disk, but no script produces it —
+`scrape_gc_winner_times.py` is Tour-only. Whatever made it is gone. Turning the
+flag on for the Giro would give it a writer again, at the cost of overwriting a
+file of unknown provenance. That is a judgement call, not a refactor.
+
+### Careful with `--help` on the check scripts
+
+`check_gc_times.py` now handles `-h/--help`. It did not before, and `--help`
+fell through to a full run over every year, each one a live PCS fetch. Found by
+doing it. The `scrape_*` scripts still have the older behaviour of treating
+unrecognised args as "no years", so give them real arguments.
+
+---
+
 ## DANGER: re-running ingest_classics.py reverts every DB-only patch (2026-08-21)
 
 Found the hard way while refactoring. `ingest_classics.py` rebuilds each

@@ -160,16 +160,20 @@ class RaceInfo:
     country: str
     scrapes_dirname: str    # pipeline/<scrapes_dirname>/YEAR/stage_N.json
     flat_2026_fallback: bool  # legacy flat-layout fallback for FLAT_FALLBACK_YEAR
+    pcs_slug: str           # PCS URL segment: /race/<pcs_slug>/<year>/<stage>
+    cli: str                # --race value, and the suffix of its helper scripts
 
 
 RACES: dict[str, RaceInfo] = {
     "giro": RaceInfo(
         name="Giro d'Italia", country="Italy",
         scrapes_dirname="giro_scrapes", flat_2026_fallback=True,
+        pcs_slug="giro-d-italia", cli="giro",
     ),
     "vuelta": RaceInfo(
         name="Vuelta a España", country="Spain",
         scrapes_dirname="vuelta_scrapes", flat_2026_fallback=False,
+        pcs_slug="vuelta-a-espana", cli="vuelta",
     ),
 }
 
