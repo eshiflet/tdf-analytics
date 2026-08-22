@@ -22,13 +22,6 @@ export function stageLabel(stageNum: number): string {
   return state.dataset?.stages.find((s) => s.stage_number === stageNum)?.stage_label ?? String(stageNum);
 }
 
-/** Compact form for axis ticks and column headers. Falls back to the full
- *  label when a race defines no abbreviation. */
-export function stageShortLabel(stageNum: number): string {
-  const s = state.dataset?.stages.find((st) => st.stage_number === stageNum);
-  return s?.stage_short_label ?? s?.stage_label ?? String(stageNum);
-}
-
 /** A stage's name in prose. Grand Tours read "Stage 12"; the classics read
  *  just "Paris-Roubaix", since each of their "stages" IS a race and prefixing
  *  it would give "Stage Paris-Roubaix". stage_label already carries the right
