@@ -223,15 +223,34 @@ def check_riders_index(data_dir, subdir):
             ds = json.load(f)
         for r in ds.get("riders", []):
             slug = r["id"].removeprefix("rider/")
-            entry = riders.get(slug, {}).get("y", {}).get(year)
-            if entry is None:
-                stale.append(f"{year}: {slug} missing from riders_index")
-            elif entry[0] != r["finalRank"]:
-                stale.append(f"{year}: {slug} finalRank {entry[0]} != {r['finalRank']}")
+            rec = riders.get(slug, {})
+            # Two encodings. The Grand Tours store `y` as [finalRank, teamIdx];
+            # the aggregate sets store `ym` as [teamIdx, raceIdx, rank, ...]
+            # with finalRank DERIVED as min() of those ranks. Re-deriving it
+            # here is the stronger check: it repeats on the index exactly what
+            # the browser does, so a bad derivation fails rather than a bad
+            # stored copy of a right one.
+            if "ym" in rec:
+                flat = rec["ym"].get(year)
+                if flat is None:
+                    stale.append(f"{year}: {slug} missing from riders_index")
+                    continue
+                ranks = flat[2::2]
+                final_rank = min(ranks) if ranks else 9999
+                team_idx = flat[0]
             else:
-                name = teams[entry[1]] if 0 <= entry[1] < len(teams) else None
-                if name != r.get("team"):
-                    stale.append(f"{year}: {slug} team {name!r} != {r.get('team')!r}")
+                entry = rec.get("y", {}).get(year)
+                if entry is None:
+                    stale.append(f"{year}: {slug} missing from riders_index")
+                    continue
+                final_rank, team_idx = entry[0], entry[1]
+
+            if final_rank != r["finalRank"]:
+                stale.append(f"{year}: {slug} finalRank {final_rank} != {r['finalRank']}")
+                continue
+            name = teams[team_idx] if 0 <= team_idx < len(teams) else None
+            if name != r.get("team"):
+                stale.append(f"{year}: {slug} team {name!r} != {r.get('team')!r}")
     return stale
 
 
