@@ -1,0 +1,14 @@
+{
+ "info": {
+  "race_slug": "unbound",
+  "year": 2020,
+  "date": "2020-05-30",
+  "event_id": 839332,
+  "event_name": "Dirty Kanza 2020",
+  "discipline": "gravel",
+  "rule": "cancelled",
+  "fetched_at": "2026-08-21T17:29:23+00:00"
+ },
+ "cancelled": true,
+ "rows": []
+}

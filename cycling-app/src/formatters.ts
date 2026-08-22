@@ -82,15 +82,27 @@ export const ROUTE_COLOR: Record<string, string> = {
   F:   "#27ae60",  // flat — green
   H:   "#e67e22",  // hilly — orange
   M:   "#e74c3c",  // mountain — red
+  // Off-road. These two are not points on the F/H/M climbing scale — the
+  // Athlinks data behind them carries no elevation at all, and PCS (which is
+  // where ProfileScore comes from) does not cover these races. They encode
+  // SURFACE, which is the property that actually separates an off-road race
+  // from everything else here. Two earth tones, so the pair reads as one
+  // family against the road palette.
+  G:   "#c08457",  // gravel — dust
+  X:   "#7a5230",  // mountain bike — dirt
 };
 
 export const ROUTE_LABEL: Record<string, string> = {
   P: "Prologue", TT: "Time Trial", TTT: "Team TT",
   F: "Flat", H: "Hilly", M: "Mountain",
+  G: "Gravel", X: "Mountain Bike",
 };
 
 export const ROUTE_MULTIPLIER: Record<string, number> = {
   P: 0.3, TT: 0.5, TTT: 0.6, F: 1.0, H: 1.3, M: 1.8,
+  // Only reachable once these races carry elevation — difficultyScore returns
+  // 0 while vertical_meters is NULL, whatever the multiplier.
+  G: 1.4, X: 1.8,
 };
 
 export function difficultyScore(stage: StageInfo): number {

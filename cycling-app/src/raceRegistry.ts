@@ -5,7 +5,7 @@
 // wildcard globs below pick them up automatically. The slug is used in the
 // data path, the race dropdown, and the URL hash.
 
-export type RaceId = "tour" | "giro" | "vuelta" | "classics";
+export type RaceId = "tour" | "giro" | "vuelta" | "classics" | "gravel";
 export type JerseyCategoryId = "gc" | "sprint" | "kom" | "youth";
 
 export interface RaceConfig {
@@ -147,11 +147,46 @@ export const RACES: Record<RaceId, RaceConfig> = {
     hasAllYears: false,
     stagesAreRaces: true,
   },
+  // The Life Time off-road races are an AGGREGATE on the same pattern as the
+  // classics: an "edition" is a season, each "stage" is a separate race
+  // ordered by the date it ran. In the DB they are six independent races with
+  // race_type='gravel'; export_gravel.py combines them.
+  //
+  // Unlike the classics, a season here is not a fixed set. These races were
+  // founded decades apart and only became a series in 2022, so 1994 holds one
+  // race (Leadville), 2001 holds two, and 2026 holds six. That is a fact about
+  // the sport, and the date ordering renders it without special-casing.
+  gravel: {
+    name: "Gravel",
+    // Brown — dirt. Chosen the same way the classics' gray was: every
+    // race-identifying hue in the app is spoken for (Tour yellow, Giro pink,
+    // Vuelta red, classics gray) as is every classification colour, and these
+    // six races need ONE shared identity rather than six more hues. Brown is
+    // the surface they all share and stays legible on the dark background.
+    chart: { gc: "#b4794a", sprint: "#b4794a", kom: "#b4794a" },
+    jersey: { gc: "#b4794a", sprint: "#b4794a", kom: { solid: "#b4794a" } },
+    jerseyTooltips: {
+      gc: "Off-road win", sprint: "Off-road win",
+      kom: "Off-road win", youth: "Off-road win",
+    },
+    // No war bands: the archive starts in 1994.
+    warBands: [],
+    hasYouth: false,
+    hasCumulativeGc: false,
+    hasSprintKom: false,
+    // Unlike the classics: these races award no points anyone records across
+    // the set, so there is no season standing to accumulate. See
+    // export_gravel.py.
+    hasSeasonPoints: false,
+    hasRaceHistory: true,
+    hasAllYears: false,
+    stagesAreRaces: true,
+  },
 };
 
 export const RACE_IDS = Object.keys(RACES) as RaceId[];
-export const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España", classics: "One-day Classics" };
-export const RACE_SHORT_LABEL: Record<RaceId, string> = { tour: "Tour", giro: "Giro", vuelta: "Vuelta", classics: "Classics" };
+export const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro: "Giro d'Italia", vuelta: "Vuelta a España", classics: "One-day Classics", gravel: "Gravel" };
+export const RACE_SHORT_LABEL: Record<RaceId, string> = { tour: "Tour", giro: "Giro", vuelta: "Vuelta", classics: "Classics", gravel: "Gravel" };
 
 export function isRaceId(s: string | undefined): s is RaceId {
   return s !== undefined && s in RACES;

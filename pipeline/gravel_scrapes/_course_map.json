@@ -1,0 +1,2231 @@
+{
+ "leadville": {
+  "2026": {
+   "event_id": 1135704,
+   "event_name": "2026 Life Time Leadville Trail 100 MTB",
+   "date": "2026-08-15",
+   "course_id": 2701746,
+   "course_name": "Leadville 100 MTB - Elite Men",
+   "distance_km": 163.03,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 67,
+   "candidates": [
+    {
+     "id": 2701746,
+     "name": "Leadville 100 MTB - Elite Men",
+     "km": 163.03,
+     "empty": false
+    },
+    {
+     "id": 2701747,
+     "name": "Leadville 100 MTB - Elite Women",
+     "km": 163.03,
+     "empty": false
+    },
+    {
+     "id": 2675689,
+     "name": "Leadville Trail 100 MTB",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2025": {
+   "event_id": 1067373,
+   "event_name": "2025 Life Time Leadville Trail 100 MTB",
+   "date": "2025-08-09",
+   "course_id": 2422406,
+   "course_name": "Leadville Trail 100 MTB",
+   "distance_km": 169.43,
+   "divisions": [
+    {
+     "id": 2609313,
+     "name": "Pro/Elite Men"
+    },
+    {
+     "id": 2609315,
+     "name": "Grand Prix Men"
+    }
+   ],
+   "division_id": 2609313,
+   "division_name": "Pro/Elite Men, Grand Prix Men",
+   "rule": "elite_division",
+   "course_athletes": 1777,
+   "candidates": [
+    {
+     "id": 2631484,
+     "name": "Leadville 100 MTB - Elite Men",
+     "km": 169.46,
+     "empty": true
+    },
+    {
+     "id": 2631485,
+     "name": "Leadville 100 MTB - Elite Women",
+     "km": 169.46,
+     "empty": false
+    },
+    {
+     "id": 2422406,
+     "name": "Leadville Trail 100 MTB",
+     "km": 169.43,
+     "empty": false
+    }
+   ]
+  },
+  "2024": {
+   "event_id": 1064637,
+   "event_name": "2024 Life Time Leadville Trail 100 MTB",
+   "date": "2024-08-10",
+   "course_id": 2413780,
+   "course_name": "Leadville Trail 100 MTB",
+   "distance_km": 168.98,
+   "divisions": [
+    {
+     "id": 2396449,
+     "name": "Pro Male"
+    },
+    {
+     "id": 2403539,
+     "name": "Grand Prix Male"
+    }
+   ],
+   "division_id": 2396449,
+   "division_name": "Pro Male, Grand Prix Male",
+   "rule": "elite_division",
+   "course_athletes": 1738,
+   "candidates": [
+    {
+     "id": 2413780,
+     "name": "Leadville Trail 100 MTB",
+     "km": 168.98,
+     "empty": false
+    }
+   ]
+  },
+  "2023": {
+   "event_id": 1022514,
+   "event_name": "2023 Stages Cycling Leadville Trail 100 MTB",
+   "date": "2023-08-12",
+   "course_id": 2263113,
+   "course_name": "Leadville Trail 100 MTB",
+   "distance_km": 160.93,
+   "divisions": [
+    {
+     "id": 2194112,
+     "name": "Pro Male"
+    },
+    {
+     "id": 2194113,
+     "name": "Grand Prix Male"
+    }
+   ],
+   "division_id": 2194112,
+   "division_name": "Pro Male, Grand Prix Male",
+   "rule": "elite_division",
+   "course_athletes": 1789,
+   "candidates": [
+    {
+     "id": 2263113,
+     "name": "Leadville Trail 100 MTB",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2022": {
+   "event_id": 1018674,
+   "event_name": "Stages Cycling Leadville Trail 100 MTB",
+   "date": "2022-08-13",
+   "course_id": 2282027,
+   "course_name": "LT100 Pro",
+   "distance_km": 160.93,
+   "divisions": [
+    {
+     "id": 1979237,
+     "name": "Pro Male"
+    },
+    {
+     "id": 1979235,
+     "name": "Grand Prix Male"
+    }
+   ],
+   "division_id": 1979237,
+   "division_name": "Pro Male, Grand Prix Male",
+   "rule": "elite_course",
+   "course_athletes": 114,
+   "candidates": [
+    {
+     "id": 2282027,
+     "name": "LT100 Pro",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2021": {
+   "event_id": 982379,
+   "event_name": "2021 Leadville Trail 100 MTB",
+   "date": "2021-08-14",
+   "course_id": 2089959,
+   "course_name": "LT100 MTB",
+   "distance_km": 160.93,
+   "divisions": [
+    {
+     "id": 1749261,
+     "name": "Pro Male"
+    }
+   ],
+   "division_id": 1749261,
+   "division_name": "Pro Male",
+   "rule": "elite_division",
+   "course_athletes": 1418,
+   "candidates": [
+    {
+     "id": 2089959,
+     "name": "LT100 MTB",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2019": {
+   "event_id": 717068,
+   "event_name": "2019 Leadville Trail 100 MTB",
+   "date": "2019-08-10",
+   "course_id": 1658617,
+   "course_name": "Leadville Trail 100",
+   "distance_km": 160.93,
+   "divisions": [
+    {
+     "id": 1253237,
+     "name": "Pro Male"
+    }
+   ],
+   "division_id": 1253237,
+   "division_name": "Pro Male",
+   "rule": "elite_division",
+   "course_athletes": 1643,
+   "candidates": [
+    {
+     "id": 1658617,
+     "name": "Leadville Trail 100",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2018": {
+   "event_id": 680196,
+   "event_name": "2018 CenturyLink Leadville Trail 100 MTB",
+   "date": "2018-08-11",
+   "course_id": 1090830,
+   "course_name": "Leadville 100 MTB",
+   "distance_km": 160.93,
+   "divisions": [
+    {
+     "id": 1168599,
+     "name": "Pro Male"
+    }
+   ],
+   "division_id": 1168599,
+   "division_name": "Pro Male",
+   "rule": "elite_division",
+   "course_athletes": 1538,
+   "candidates": [
+    {
+     "id": 1090830,
+     "name": "Leadville 100 MTB",
+     "km": 160.93,
+     "empty": false
+    },
+    {
+     "id": 1284120,
+     "name": "2018 Leadville 100 MTB Individual",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2017": {
+   "event_id": 593620,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2017-08-12",
+   "course_id": 893256,
+   "course_name": "LT100 MTB Individual",
+   "distance_km": 160.93,
+   "divisions": [
+    {
+     "id": 864728,
+     "name": "ProM"
+    }
+   ],
+   "division_id": 864728,
+   "division_name": "ProM",
+   "rule": "elite_division",
+   "course_athletes": 1484,
+   "candidates": [
+    {
+     "id": 893256,
+     "name": "LT100 MTB Individual",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2016": {
+   "event_id": 597302,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2016-08-13",
+   "course_id": 901785,
+   "course_name": "LT100 MTB Individual",
+   "distance_km": 160.93,
+   "divisions": [
+    {
+     "id": 607510,
+     "name": "ProM"
+    }
+   ],
+   "division_id": 607510,
+   "division_name": "ProM",
+   "rule": "elite_division",
+   "course_athletes": 1403,
+   "candidates": [
+    {
+     "id": 901785,
+     "name": "LT100 MTB Individual",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2015": {
+   "event_id": 470827,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2015-08-15",
+   "course_id": 701199,
+   "course_name": "100 Mile MTB",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1434,
+   "candidates": [
+    {
+     "id": 701199,
+     "name": "100 Mile MTB",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2014": {
+   "event_id": 391617,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2014-08-09",
+   "course_id": 586004,
+   "course_name": "100 Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1272,
+   "candidates": [
+    {
+     "id": 586004,
+     "name": "100 Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2013": {
+   "event_id": 242086,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2013-08-10",
+   "course_id": 339129,
+   "course_name": "100Mi Trail MTB",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1348,
+   "candidates": [
+    {
+     "id": 339129,
+     "name": "100Mi Trail MTB",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2012": {
+   "event_id": 193403,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2012-08-11",
+   "course_id": 268301,
+   "course_name": "Mountain Bike-100Mi",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1447,
+   "candidates": [
+    {
+     "id": 268301,
+     "name": "Mountain Bike-100Mi",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2011": {
+   "event_id": 175638,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2011-08-13",
+   "course_id": 241761,
+   "course_name": "Mountain Bike 100 Miles",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1280,
+   "candidates": [
+    {
+     "id": 241761,
+     "name": "Mountain Bike 100 Miles",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2010": {
+   "event_id": 116753,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2010-08-14",
+   "course_id": 160412,
+   "course_name": "Mountain Bike-100 Mile ",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1022,
+   "candidates": [
+    {
+     "id": 160412,
+     "name": "Mountain Bike-100 Mile ",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2009": {
+   "event_id": 106519,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2009-08-15",
+   "course_id": 146434,
+   "course_name": "Mountain Bike- 100Mi",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 971,
+   "candidates": [
+    {
+     "id": 146434,
+     "name": "Mountain Bike- 100Mi",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2008": {
+   "event_id": 66048,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2008-08-09",
+   "course_id": 98487,
+   "course_name": "Mt. Bike-100Mi",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 705,
+   "candidates": [
+    {
+     "id": 98487,
+     "name": "Mt. Bike-100Mi",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2007": {
+   "event_id": 31850,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2007-08-11",
+   "course_id": 48362,
+   "course_name": "MOUNTAIN-BIKE-100Miles",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 663,
+   "candidates": [
+    {
+     "id": 48362,
+     "name": "MOUNTAIN-BIKE-100Miles",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2006": {
+   "event_id": 16028,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2006-08-12",
+   "course_id": 23674,
+   "course_name": "100Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 477,
+   "candidates": [
+    {
+     "id": 23674,
+     "name": "100Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2005": {
+   "event_id": 12956,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2005-08-13",
+   "course_id": 19128,
+   "course_name": "100Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 512,
+   "candidates": [
+    {
+     "id": 19128,
+     "name": "100Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2004": {
+   "event_id": 12954,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2004-08-14",
+   "course_id": 19126,
+   "course_name": "100Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 423,
+   "candidates": [
+    {
+     "id": 19126,
+     "name": "100Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2003": {
+   "event_id": 16981,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2003-08-16",
+   "course_id": 25064,
+   "course_name": "100Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 543,
+   "candidates": [
+    {
+     "id": 25064,
+     "name": "100Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2002": {
+   "event_id": 16984,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2002-08-15",
+   "course_id": 25067,
+   "course_name": "100Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 472,
+   "candidates": [
+    {
+     "id": 25067,
+     "name": "100Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2001": {
+   "event_id": 164096,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2001-08-10",
+   "course_id": 225351,
+   "course_name": "100 Mi MTB",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 423,
+   "candidates": [
+    {
+     "id": 225351,
+     "name": "100 Mi MTB",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "2000": {
+   "event_id": 532540,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "2000-08-08",
+   "course_id": 791407,
+   "course_name": "100 Mi MTB",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 365,
+   "candidates": [
+    {
+     "id": 791407,
+     "name": "100 Mi MTB",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "1999": {
+   "event_id": 164094,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "1999-08-14",
+   "course_id": 225349,
+   "course_name": "Mountain Bike 100 Mile",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 439,
+   "candidates": [
+    {
+     "id": 225349,
+     "name": "Mountain Bike 100 Mile",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "1998": {
+   "event_id": 532537,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "1998-08-06",
+   "course_id": 791401,
+   "course_name": "100 Mi MTB",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 359,
+   "candidates": [
+    {
+     "id": 791401,
+     "name": "100 Mi MTB",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "1997": {
+   "event_id": 174684,
+   "event_name": "Leadville  Trail 100 MTB",
+   "date": "1997-08-09",
+   "course_id": 240340,
+   "course_name": "Mountain Bike-100Mi",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 337,
+   "candidates": [
+    {
+     "id": 240340,
+     "name": "Mountain Bike-100Mi",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "1996": {
+   "event_id": 697173,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "1996-08-10",
+   "course_id": 1131807,
+   "course_name": "100 Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 286,
+   "candidates": [
+    {
+     "id": 1131807,
+     "name": "100 Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "1995": {
+   "event_id": 697175,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "1995-08-12",
+   "course_id": 1131810,
+   "course_name": "100 Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 258,
+   "candidates": [
+    {
+     "id": 1131810,
+     "name": "100 Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  },
+  "1994": {
+   "event_id": 697176,
+   "event_name": "Leadville Trail 100 MTB",
+   "date": "1994-08-13",
+   "course_id": 1131811,
+   "course_name": "100 Mi Mountain Bike",
+   "distance_km": 160.93,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 113,
+   "candidates": [
+    {
+     "id": 1131811,
+     "name": "100 Mi Mountain Bike",
+     "km": 160.93,
+     "empty": false
+    }
+   ]
+  }
+ },
+ "chequamegon": {
+  "2025": {
+   "event_id": 1092493,
+   "event_name": "2025 Life Time Chequamegon MTB Festival",
+   "date": "2025-09-13",
+   "course_id": 2522142,
+   "course_name": "Pro/Elite Chequamegon 40",
+   "distance_km": 61.64,
+   "divisions": [
+    {
+     "id": 2620333,
+     "name": "Elite Male"
+    }
+   ],
+   "division_id": 2620333,
+   "division_name": "Elite Male",
+   "rule": "elite_course",
+   "course_athletes": 104,
+   "candidates": [
+    {
+     "id": 2522143,
+     "name": "Chequamegon 40",
+     "km": 67.11,
+     "empty": false
+    },
+    {
+     "id": 2522142,
+     "name": "Pro/Elite Chequamegon 40",
+     "km": 61.64,
+     "empty": false
+    }
+   ]
+  },
+  "2024": {
+   "event_id": 1055648,
+   "event_name": "2024 Life Time Chequamegon MTB Festival presented by Trek",
+   "date": "2024-09-14",
+   "course_id": 2381353,
+   "course_name": "Pro/Elite Chequamegon 40",
+   "distance_km": 62.92,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 98,
+   "candidates": [
+    {
+     "id": 2381354,
+     "name": "Chequamegon 40",
+     "km": 67.11,
+     "empty": false
+    },
+    {
+     "id": 2381353,
+     "name": "Pro/Elite Chequamegon 40",
+     "km": 62.92,
+     "empty": false
+    }
+   ]
+  },
+  "2023": {
+   "event_id": 1038355,
+   "event_name": "Life Time Chequamegon MTB Festival presented by Trek",
+   "date": "2023-09-16",
+   "course_id": 2314501,
+   "course_name": "Pro/Elite Chequamegon 40",
+   "distance_km": 62.12,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 100,
+   "candidates": [
+    {
+     "id": 2314499,
+     "name": "Chequamegon 40",
+     "km": 66.31,
+     "empty": false
+    },
+    {
+     "id": 2314501,
+     "name": "Pro/Elite Chequamegon 40",
+     "km": 62.12,
+     "empty": false
+    }
+   ]
+  },
+  "2022": {
+   "event_id": 1028826,
+   "event_name": "2022 Chequamegon MTB Festival",
+   "date": "2022-09-17",
+   "course_id": 2285623,
+   "course_name": "Pro/Elite Chequamegon 40",
+   "distance_km": 62.72,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 99,
+   "candidates": [
+    {
+     "id": 2285624,
+     "name": "Chequamegon 40",
+     "km": 65.47,
+     "empty": false
+    },
+    {
+     "id": 2285623,
+     "name": "Pro/Elite Chequamegon 40",
+     "km": 62.72,
+     "empty": false
+    }
+   ]
+  },
+  "2021": {
+   "event_id": 978943,
+   "event_name": "2021 Chequamegon MTB Festival",
+   "date": "2021-09-18",
+   "course_id": 2095759,
+   "course_name": "Pro/Elite Chequamegon 40",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 49,
+   "candidates": [
+    {
+     "id": 2095759,
+     "name": "Pro/Elite Chequamegon 40",
+     "km": 64.37,
+     "empty": false
+    },
+    {
+     "id": 2095760,
+     "name": "Chequamegon 40",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2019": {
+   "event_id": 819021,
+   "event_name": "2019 Chequamegon Fat Tire Festival",
+   "date": "2019-09-14",
+   "course_id": 1685889,
+   "course_name": "Pro/Elite Chequamegon 40",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 46,
+   "candidates": [
+    {
+     "id": 1434508,
+     "name": "Chequamegon 40",
+     "km": 64.37,
+     "empty": false
+    },
+    {
+     "id": 1685889,
+     "name": "Pro/Elite Chequamegon 40",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2018": {
+   "event_id": 611524,
+   "event_name": "2018 Chequamegon Fat Tire Festival",
+   "date": "2018-09-15",
+   "course_id": 929305,
+   "course_name": "Chequamegon 40",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1863,
+   "candidates": [
+    {
+     "id": 929305,
+     "name": "Chequamegon 40",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2017": {
+   "event_id": 577110,
+   "event_name": "2017 Chequamegon Fat Tire Festival",
+   "date": "2017-09-16",
+   "course_id": 865984,
+   "course_name": "Chequamegon 40",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1829,
+   "candidates": [
+    {
+     "id": 865984,
+     "name": "Chequamegon 40",
+     "km": 64.37,
+     "empty": false
+    },
+    {
+     "id": 1029291,
+     "name": "40 Mi Mountain Bike",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2016": {
+   "event_id": 536831,
+   "event_name": "2016 Chequamegon Fat Tire Festival",
+   "date": "2016-09-17",
+   "course_id": 797664,
+   "course_name": "40 Mi Mountain Bike",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1810,
+   "candidates": [
+    {
+     "id": 797664,
+     "name": "40 Mi Mountain Bike",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2015": {
+   "event_id": 479748,
+   "event_name": "Chequamegon Fat Tire Festival",
+   "date": "2015-09-19",
+   "course_id": 713810,
+   "course_name": "40 Mile Mountain Bike",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1755,
+   "candidates": [
+    {
+     "id": 713810,
+     "name": "40 Mile Mountain Bike",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2014": {
+   "event_id": 325206,
+   "event_name": "Chequamegon Fat Tire Festival",
+   "date": "2014-09-12",
+   "course_id": 470948,
+   "course_name": "Chequamegon 40 Miles",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1739,
+   "candidates": [
+    {
+     "id": 470948,
+     "name": "Chequamegon 40 Miles",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2013": {
+   "event_id": 294996,
+   "event_name": "Chequamegon Fat Tire Festival (Merged DBF)",
+   "date": "2013-09-14",
+   "course_id": 421781,
+   "course_name": "Chequamegon 40 Mile",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 3906,
+   "candidates": [
+    {
+     "id": 421781,
+     "name": "Chequamegon 40 Mile",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2012": {
+   "event_id": 221847,
+   "event_name": "Chequamegon Fat Tire Festival",
+   "date": "2012-09-15",
+   "course_id": 307453,
+   "course_name": "Chequamegon 40 Miles",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1655,
+   "candidates": [
+    {
+     "id": 307453,
+     "name": "Chequamegon 40 Miles",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2011": {
+   "event_id": 162868,
+   "event_name": "Chequamegon Fat Tire Festival 2011",
+   "date": "2011-09-17",
+   "course_id": 223782,
+   "course_name": "Mountain Bike-40Mi",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1922,
+   "candidates": [
+    {
+     "id": 223782,
+     "name": "Mountain Bike-40Mi",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2010": {
+   "event_id": 141839,
+   "event_name": "Chequamegon Fat Tire Festival 2010",
+   "date": "2010-09-18",
+   "course_id": 193514,
+   "course_name": "Mountain Bike 40 Miles",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": null,
+   "candidates": [
+    {
+     "id": 193514,
+     "name": "Mountain Bike 40 Miles",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2009": {
+   "event_id": 134343,
+   "event_name": "2009 Chequamegon Fat Tire Festival",
+   "date": "2009-09-17",
+   "course_id": 120191,
+   "course_name": "Mountain Bike-40Mi ",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1779,
+   "candidates": [
+    {
+     "id": 120191,
+     "name": "Mountain Bike-40Mi ",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2008": {
+   "event_id": 67271,
+   "event_name": "Chequamegon Fat Tire Festival 2008",
+   "date": "2008-09-13",
+   "course_id": 100075,
+   "course_name": "40Mi Cycle",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1647,
+   "candidates": [
+    {
+     "id": 100075,
+     "name": "40Mi Cycle",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2007": {
+   "event_id": 34889,
+   "event_name": "Chequamegon Fat Tire Festival - Chequamegon 40Mi  2007",
+   "date": "2007-09-15",
+   "course_id": 52426,
+   "course_name": "Mountain Bike-40Mi",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1766,
+   "candidates": [
+    {
+     "id": 52426,
+     "name": "Mountain Bike-40Mi",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2006": {
+   "event_id": 61326,
+   "event_name": "Chequamegon Fat Tire 40 Mile 2006",
+   "date": "2006-09-15",
+   "course_id": 92238,
+   "course_name": "Mountain Bike - 40Mi",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1703,
+   "candidates": [
+    {
+     "id": 92238,
+     "name": "Mountain Bike - 40Mi",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2003": {
+   "event_id": 131282,
+   "event_name": "Chequamegon Fat Tire 40 - 2003",
+   "date": "2003-09-13",
+   "course_id": 179303,
+   "course_name": "Mountain Bike- 40Mi",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1645,
+   "candidates": [
+    {
+     "id": 179303,
+     "name": "Mountain Bike- 40Mi",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2002": {
+   "event_id": 131280,
+   "event_name": "Chequamegon Fat Tire 40 - 2002",
+   "date": "2002-09-14",
+   "course_id": 179302,
+   "course_name": "Mountain Bike- 40Mi",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1606,
+   "candidates": [
+    {
+     "id": 179302,
+     "name": "Mountain Bike- 40Mi",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2001": {
+   "event_id": 187733,
+   "event_name": "Chequamegon Fat Tire 40 2001",
+   "date": "2001-09-14",
+   "course_id": 260175,
+   "course_name": "Mountain Bike-40Mi",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1621,
+   "candidates": [
+    {
+     "id": 260175,
+     "name": "Mountain Bike-40Mi",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "2000": {
+   "event_id": 89355,
+   "event_name": "Chequamegon Fat Tire Festival",
+   "date": "2000-09-16",
+   "course_id": 126248,
+   "course_name": "40Mi Mountain Bike",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1661,
+   "candidates": [
+    {
+     "id": 126248,
+     "name": "40Mi Mountain Bike",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  },
+  "1999": {
+   "event_id": 205431,
+   "event_name": "Chequamegon Fat Tire Festival Forty 1999",
+   "date": "1999-09-18",
+   "course_id": 283868,
+   "course_name": "Mountain Bike-40Mi",
+   "distance_km": 64.37,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1652,
+   "candidates": [
+    {
+     "id": 283868,
+     "name": "Mountain Bike-40Mi",
+     "km": 64.37,
+     "empty": false
+    }
+   ]
+  }
+ },
+ "unbound": {
+  "2026": {
+   "event_id": 1127636,
+   "event_name": "2026 Life Time UNBOUND Gravel Presented by Shimano",
+   "date": "2026-05-29",
+   "course_id": 2652766,
+   "course_name": "Elite Men - 200 MILE",
+   "distance_km": 326.38,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 117,
+   "candidates": [
+    {
+     "id": 2652766,
+     "name": "Elite Men - 200 MILE",
+     "km": 326.38,
+     "empty": false
+    },
+    {
+     "id": 2652767,
+     "name": "200 MILE",
+     "km": 326.38,
+     "empty": false
+    },
+    {
+     "id": 2652773,
+     "name": "Elite Women - 200 MILE",
+     "km": 326.38,
+     "empty": false
+    }
+   ]
+  },
+  "2025": {
+   "event_id": 1094398,
+   "event_name": "2025 Life Time UNBOUND Gravel",
+   "date": "2025-05-30",
+   "course_id": 2530140,
+   "course_name": "Elite Men - 200 MILE",
+   "distance_km": 325.89,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 143,
+   "candidates": [
+    {
+     "id": 2530140,
+     "name": "Elite Men - 200 MILE",
+     "km": 325.89,
+     "empty": false
+    },
+    {
+     "id": 2530141,
+     "name": "Elite Women - 200 MILE",
+     "km": 325.89,
+     "empty": false
+    },
+    {
+     "id": 2530142,
+     "name": "200 MILE",
+     "km": 325.89,
+     "empty": false
+    }
+   ]
+  },
+  "2024": {
+   "event_id": 1064213,
+   "event_name": "2024 Garmin UNBOUND Gravel presented by Craft Sportswear",
+   "date": "2024-05-31",
+   "course_id": 2412548,
+   "course_name": "Elite Men - 200 MILE",
+   "distance_km": 326.38,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 133,
+   "candidates": [
+    {
+     "id": 2412548,
+     "name": "Elite Men - 200 MILE",
+     "km": 326.38,
+     "empty": false
+    },
+    {
+     "id": 2412549,
+     "name": "Elite Women - 200 MILE",
+     "km": 326.38,
+     "empty": false
+    },
+    {
+     "id": 2412550,
+     "name": "200 MILE",
+     "km": 326.38,
+     "empty": false
+    }
+   ]
+  },
+  "2023": {
+   "event_id": 1034618,
+   "event_name": "Garmin UNBOUND Gravel presented by Craft Sportswear",
+   "date": "2023-06-02",
+   "course_id": 2370824,
+   "course_name": "Elite Men - 200 Mile",
+   "distance_km": 330.4,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 116,
+   "candidates": [
+    {
+     "id": 2303295,
+     "name": "200 MILE",
+     "km": 330.4,
+     "empty": false
+    },
+    {
+     "id": 2370825,
+     "name": "Elite Women - 200 Mile",
+     "km": 330.4,
+     "empty": false
+    },
+    {
+     "id": 2370824,
+     "name": "Elite Men - 200 Mile",
+     "km": 330.4,
+     "empty": false
+    }
+   ]
+  },
+  "2022": {
+   "event_id": 1011764,
+   "event_name": "Garmin UNBOUND Gravel presented by Craft Sportswear",
+   "date": "2022-06-04",
+   "course_id": 2222598,
+   "course_name": "UNBOUND 200",
+   "distance_km": 322.19,
+   "divisions": [
+    {
+     "id": 1932844,
+     "name": "Pro Open Men"
+    }
+   ],
+   "division_id": 1932844,
+   "division_name": "Pro Open Men",
+   "rule": "elite_division",
+   "course_athletes": 1233,
+   "candidates": [
+    {
+     "id": 2222598,
+     "name": "UNBOUND 200",
+     "km": 322.19,
+     "empty": false
+    }
+   ]
+  },
+  "2021": {
+   "event_id": 971897,
+   "event_name": "Garmin UNBOUND Gravel presented by Craft Sportswear",
+   "date": "2021-06-04",
+   "course_id": 2067688,
+   "course_name": "UNBOUND 200",
+   "distance_km": 331.85,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 920,
+   "candidates": [
+    {
+     "id": 2067688,
+     "name": "UNBOUND 200",
+     "km": 331.85,
+     "empty": false
+    }
+   ]
+  },
+  "2020": {
+   "event_id": 839332,
+   "date": "2020-05-30",
+   "event_name": "Dirty Kanza 2020",
+   "rule": "cancelled",
+   "course_id": null,
+   "division_id": null
+  },
+  "2019": {
+   "event_id": 824572,
+   "event_name": "2019 Dirty Kanza",
+   "date": "2019-05-31",
+   "course_id": 1456257,
+   "course_name": "DK 200",
+   "distance_km": 324.28,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1189,
+   "candidates": [
+    {
+     "id": 1456257,
+     "name": "DK 200",
+     "km": 324.28,
+     "empty": false
+    }
+   ]
+  },
+  "2018": {
+   "event_id": 656425,
+   "event_name": "2018 Dirty Kanza 200",
+   "date": "2018-06-02",
+   "course_id": 1047707,
+   "course_name": "DK 200",
+   "distance_km": 331.85,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 1017,
+   "candidates": [
+    {
+     "id": 1047707,
+     "name": "DK 200",
+     "km": 331.85,
+     "empty": false
+    }
+   ]
+  },
+  "2017": {
+   "event_id": 612513,
+   "event_name": "Dirty Kanza 200",
+   "date": "2017-06-03",
+   "course_id": 946300,
+   "course_name": "DK 200",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 988,
+   "candidates": [
+    {
+     "id": 946300,
+     "name": "DK 200",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  },
+  "2016": {
+   "event_id": 563425,
+   "event_name": "Dirty Kanza 200",
+   "date": "2016-06-04",
+   "course_id": 840642,
+   "course_name": "OVERRIDE -> course 840642",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 529,
+   "candidates": [
+    {
+     "id": 851902,
+     "name": "200 Mile Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ],
+   "override_note": "Athlinks has the 100/200 course labels swapped for this edition; distance taken from every other Dirty Kanza edition"
+  },
+  "2015": {
+   "event_id": 491185,
+   "event_name": "Dirty Kanza 200",
+   "date": "2015-05-30",
+   "course_id": 730509,
+   "course_name": "DK 200 Cycling",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 607,
+   "candidates": [
+    {
+     "id": 730509,
+     "name": "DK 200 Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  },
+  "2014": {
+   "event_id": 742043,
+   "event_name": "Dirty Kanza 200",
+   "date": "2014-05-31",
+   "course_id": 1237006,
+   "course_name": "DK 200",
+   "distance_km": 326.54,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 605,
+   "candidates": [
+    {
+     "id": 1237006,
+     "name": "DK 200",
+     "km": 326.54,
+     "empty": false
+    }
+   ]
+  },
+  "2013": {
+   "event_id": 835335,
+   "event_name": "Dirty Kanza 200",
+   "date": "2013-06-01",
+   "course_id": 1499513,
+   "course_name": "200 Mile Cycling",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 328,
+   "candidates": [
+    {
+     "id": 1499513,
+     "name": "200 Mile Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  },
+  "2012": {
+   "event_id": 834845,
+   "event_name": "Dirty Kanza 200",
+   "date": "2012-06-11",
+   "course_id": 1498093,
+   "course_name": "200 Mile Cycling",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 258,
+   "candidates": [
+    {
+     "id": 1498093,
+     "name": "200 Mile Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  },
+  "2011": {
+   "event_id": 834835,
+   "event_name": "Dirty Kanza 200",
+   "date": "2011-06-08",
+   "course_id": 1498014,
+   "course_name": "200 Mi Cycling",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 64,
+   "candidates": [
+    {
+     "id": 1498014,
+     "name": "200 Mi Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  },
+  "2010": {
+   "event_id": 835217,
+   "event_name": "dirty kanza200",
+   "date": "2010-06-11",
+   "course_id": 1499192,
+   "course_name": "DK200K Cycling",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 65,
+   "candidates": [
+    {
+     "id": 1499192,
+     "name": "DK200K Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  },
+  "2009": {
+   "event_id": 834851,
+   "event_name": "Dirty Kanza 200",
+   "date": "2009-05-30",
+   "course_id": 1498129,
+   "course_name": "200 Mile Cycling",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 15,
+   "candidates": [
+    {
+     "id": 1498129,
+     "name": "200 Mile Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  },
+  "2008": {
+   "event_id": 835194,
+   "event_name": "Dirty Kanza 200",
+   "date": "2008-06-01",
+   "course_id": 1499160,
+   "course_name": "DK 200 Cycling",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 42,
+   "candidates": [
+    {
+     "id": 1499160,
+     "name": "DK 200 Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  },
+  "2007": {
+   "event_id": 834960,
+   "event_name": "Dirty Kanza 200",
+   "date": "2007-06-01",
+   "course_id": 1498545,
+   "course_name": "DK 200 Cycling",
+   "distance_km": 321.87,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 19,
+   "candidates": [
+    {
+     "id": 1498545,
+     "name": "DK 200 Cycling",
+     "km": 321.87,
+     "empty": false
+    }
+   ]
+  }
+ },
+ "big-sugar": {
+  "2026": {
+   "event_id": 1144157,
+   "date": "2026-10-17",
+   "event_name": "2026 Life Time Big Sugar Gravel",
+   "rule": "not_yet_run",
+   "course_id": null,
+   "division_id": null
+  },
+  "2025": {
+   "event_id": 1104303,
+   "event_name": "2025 Life Time Big Sugar Gravel",
+   "date": "2025-10-18",
+   "course_id": 2572513,
+   "course_name": "BIG SUGAR 50 MILE ELITE MEN",
+   "distance_km": 86.91,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 102,
+   "candidates": [
+    {
+     "id": 2572511,
+     "name": "BIG SUGAR 50 MILE",
+     "km": 86.91,
+     "empty": false
+    },
+    {
+     "id": 2572512,
+     "name": "BIG SUGAR 50 MILE (Formerly 100)",
+     "km": 86.91,
+     "empty": false
+    },
+    {
+     "id": 2572513,
+     "name": "BIG SUGAR 50 MILE ELITE MEN",
+     "km": 86.91,
+     "empty": false
+    },
+    {
+     "id": 2572514,
+     "name": "BIG SUGAR 50 MILE ELITE WOMEN",
+     "km": 86.91,
+     "empty": false
+    }
+   ]
+  },
+  "2024": {
+   "event_id": 1072149,
+   "event_name": "2024 Life Time Big Sugar Gravel",
+   "date": "2024-10-19",
+   "course_id": 2438447,
+   "course_name": "BIG SUGAR 100 MILE ELITE MEN",
+   "distance_km": 169.46,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 93,
+   "candidates": [
+    {
+     "id": 2438447,
+     "name": "BIG SUGAR 100 MILE ELITE MEN",
+     "km": 169.46,
+     "empty": false
+    },
+    {
+     "id": 2438448,
+     "name": "BIG SUGAR 100 MILE ELITE WOMEN",
+     "km": 169.46,
+     "empty": false
+    },
+    {
+     "id": 2438449,
+     "name": "BIG SUGAR 100 MILE",
+     "km": 169.46,
+     "empty": false
+    },
+    {
+     "id": 2438450,
+     "name": "BIG SUGAR 50 MILE",
+     "km": 86.42,
+     "empty": false
+    }
+   ]
+  },
+  "2023": {
+   "event_id": 1038969,
+   "event_name": "2023 Life Time Big Sugar Gravel Presented by Mazda",
+   "date": "2023-10-21",
+   "course_id": 2412213,
+   "course_name": "BIG SUGAR PRO MEN",
+   "distance_km": 167.69,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 80,
+   "candidates": [
+    {
+     "id": 2318244,
+     "name": "BIG SUGAR 100 MILE",
+     "km": 167.69,
+     "empty": false
+    },
+    {
+     "id": 2412213,
+     "name": "BIG SUGAR PRO MEN",
+     "km": 167.69,
+     "empty": false
+    },
+    {
+     "id": 2412214,
+     "name": "BIG SUGAR PRO WOMEN",
+     "km": 167.69,
+     "empty": false
+    },
+    {
+     "id": 2318245,
+     "name": "BIG SUGAR 50 MILE",
+     "km": 84.97,
+     "empty": false
+    }
+   ]
+  },
+  "2022": {
+   "event_id": 1008006,
+   "event_name": "Big Sugar Gravel",
+   "date": "2022-10-22",
+   "course_id": 2206949,
+   "course_name": "Big Sugar (104.2 Miles)",
+   "distance_km": 167.69,
+   "divisions": [
+    {
+     "id": 2029660,
+     "name": "Pro Men"
+    }
+   ],
+   "division_id": 2029660,
+   "division_name": "Pro Men",
+   "rule": "elite_division",
+   "course_athletes": 660,
+   "candidates": [
+    {
+     "id": 2206949,
+     "name": "Big Sugar (104.2 Miles)",
+     "km": 167.69,
+     "empty": false
+    }
+   ]
+  },
+  "2021": {
+   "event_id": 989815,
+   "event_name": "Big Sugar Gravel",
+   "date": "2021-10-23",
+   "course_id": 2135134,
+   "course_name": "Big Sugar (103.8 Miles)",
+   "distance_km": 167.05,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "open_field",
+   "course_athletes": 455,
+   "candidates": [
+    {
+     "id": 2135134,
+     "name": "Big Sugar (103.8 Miles)",
+     "km": 167.05,
+     "empty": false
+    }
+   ]
+  }
+ },
+ "little-sugar": {
+  "2026": {
+   "event_id": 1144159,
+   "date": "2026-10-11",
+   "event_name": "2026 Life Time Little Sugar MTB",
+   "rule": "not_yet_run",
+   "course_id": null,
+   "division_id": null
+  },
+  "2025": {
+   "event_id": 1104591,
+   "event_name": "2025 Life Time Little Sugar MTB",
+   "date": "2025-10-12",
+   "course_id": 2573782,
+   "course_name": "LITTLE SUGAR 100K ELITE MEN",
+   "distance_km": 98.17,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 71,
+   "candidates": [
+    {
+     "id": 2573782,
+     "name": "LITTLE SUGAR 100K ELITE MEN",
+     "km": 98.17,
+     "empty": false
+    },
+    {
+     "id": 2573783,
+     "name": "LITTLE SUGAR 100K ELITE WOMEN",
+     "km": 98.17,
+     "empty": false
+    },
+    {
+     "id": 2573784,
+     "name": "LITTLE SUGAR 100K",
+     "km": 98.17,
+     "empty": false
+    }
+   ]
+  },
+  "2024": {
+   "event_id": 1072158,
+   "event_name": "2024 Life Time Little Sugar MTB",
+   "date": "2024-10-13",
+   "course_id": 2438467,
+   "course_name": "LITTLE SUGAR 100K ELITE MEN",
+   "distance_km": 98.17,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 54,
+   "candidates": [
+    {
+     "id": 2438467,
+     "name": "LITTLE SUGAR 100K ELITE MEN",
+     "km": 98.17,
+     "empty": false
+    },
+    {
+     "id": 2438468,
+     "name": "LITTLE SUGAR 100K ELITE WOMEN",
+     "km": 98.17,
+     "empty": false
+    },
+    {
+     "id": 2438469,
+     "name": "LITTLE SUGAR 100K",
+     "km": 98.17,
+     "empty": false
+    }
+   ]
+  },
+  "2023": {
+   "event_id": 1061271,
+   "event_name": "2023 Life Time Little Sugar Classic Presented by Mazda",
+   "date": "2023-10-15",
+   "course_id": 2410350,
+   "course_name": "100K Pro Men",
+   "distance_km": 99.14,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 36,
+   "candidates": [
+    {
+     "id": 2402088,
+     "name": "100K",
+     "km": 99.14,
+     "empty": false
+    },
+    {
+     "id": 2410350,
+     "name": "100K Pro Men",
+     "km": 99.14,
+     "empty": false
+    },
+    {
+     "id": 2410352,
+     "name": "100K Pro Women",
+     "km": 99.14,
+     "empty": false
+    }
+   ]
+  }
+ },
+ "sea-otter": {
+  "2026": {
+   "event_id": 1122437,
+   "event_name": "2026 Life Time Sea Otter Classic",
+   "date": "2026-04-16",
+   "course_id": 2675068,
+   "course_name": "Sea Otter Gravel Men Elite",
+   "distance_km": 142.91,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 137,
+   "candidates": [
+    {
+     "id": 2675068,
+     "name": "Sea Otter Gravel Men Elite",
+     "km": 142.91,
+     "empty": false
+    }
+   ]
+  },
+  "2025": {
+   "event_id": 1090879,
+   "event_name": "2025 Life Time Sea Otter Classic",
+   "date": "2025-04-10",
+   "course_id": 2564948,
+   "course_name": "Sea Otter Gravel Men Elite/Pro",
+   "distance_km": 142.91,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 129,
+   "candidates": [
+    {
+     "id": 2564948,
+     "name": "Sea Otter Gravel Men Elite/Pro",
+     "km": 142.91,
+     "empty": false
+    }
+   ]
+  },
+  "2024": {
+   "event_id": 1062752,
+   "event_name": "Life Time Sea Otter Classic",
+   "date": "2024-04-18",
+   "course_id": 2407488,
+   "course_name": "Fuego XL",
+   "distance_km": 108.0,
+   "divisions": [
+    {
+     "id": 2328081,
+     "name": "Men Elite"
+    }
+   ],
+   "division_id": 2328081,
+   "division_name": "Men Elite",
+   "rule": "elite_division",
+   "course_athletes": 623,
+   "candidates": [
+    {
+     "id": 2407488,
+     "name": "Fuego XL",
+     "km": 108.0,
+     "empty": false
+    }
+   ]
+  },
+  "2023": {
+   "event_id": 1023337,
+   "event_name": "2023 Life Time Sea Otter Classic",
+   "date": "2023-04-20",
+   "course_id": 2309089,
+   "course_name": "MTB Endurance - Fuego XL 67M",
+   "distance_km": 103.0,
+   "divisions": [
+    {
+     "id": 2069955,
+     "name": "Elite Men"
+    }
+   ],
+   "division_id": 2069955,
+   "division_name": "Elite Men",
+   "rule": "elite_division",
+   "course_athletes": 563,
+   "candidates": [
+    {
+     "id": 2309089,
+     "name": "MTB Endurance - Fuego XL 67M",
+     "km": 103.0,
+     "empty": false
+    }
+   ]
+  },
+  "2022": {
+   "event_id": 1037852,
+   "event_name": "Life Time Sea Otter Classic - Fuego XC 80k",
+   "date": "2022-04-09",
+   "course_id": 2313882,
+   "course_name": "MEN OPEN",
+   "distance_km": 80.0,
+   "divisions": [],
+   "division_id": null,
+   "division_name": null,
+   "rule": "elite_course",
+   "course_athletes": 71,
+   "candidates": [
+    {
+     "id": 2313882,
+     "name": "MEN OPEN",
+     "km": 80.0,
+     "empty": false
+    }
+   ]
+  },
+  "2021": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2019": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2018": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2017": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2016": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2015": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2014": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2013": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2012": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2011": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2010": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2009": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2008": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2007": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2006": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  },
+  "2005": {
+   "skip": "not the endurance-race lineage (see SEA_OTTER)"
+  }
+ }
+}

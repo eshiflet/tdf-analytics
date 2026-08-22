@@ -28,9 +28,15 @@ export function drawOverview() {
   const distDisplay = imperial
     ? `${Math.round(totalDistKm * KM_TO_MI).toLocaleString()} mi`
     : `${Math.round(totalDistKm).toLocaleString()} km`;
-  const elevDisplay = imperial
-    ? `${Math.round(totalElevM * M_TO_FT).toLocaleString()} ft`
-    : `${totalElevM.toLocaleString()} m`;
+  // A season with no elevation data anywhere sums to zero, and printing
+  // "0 m" claims these races are flat. The off-road set carries no elevation
+  // at all (Athlinks publishes none), so it would say that about Leadville.
+  const anyElev = ridden.some((st) => (st.vertical_meters ?? 0) > 0);
+  const elevDisplay = !anyElev
+    ? "—"
+    : imperial
+      ? `${Math.round(totalElevM * M_TO_FT).toLocaleString()} ft`
+      : `${totalElevM.toLocaleString()} m`;
   overviewSummaryEl.innerHTML = `
     <span class="overview-summary-item"><span class="overview-summary-label">Total Distance</span> <span class="overview-summary-value">${distDisplay}</span></span>
     <span class="overview-summary-sep">·</span>

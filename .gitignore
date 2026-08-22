@@ -10,6 +10,7 @@ cycling-app/tour/
 cycling-app/giro/
 cycling-app/vuelta/
 cycling-app/classics/
+cycling-app/gravel/
 
 # Vite dev-server temp files
 cycling-app/vite.config.ts.timestamp-*.mjs
@@ -43,3 +44,15 @@ __pycache__/
 # bikeraceinfo raw page cache (regenerable: scrape_bikeraceinfo_teams.py re-fetches;
 # the parsed per-race JSON beside it IS tracked)
 pipeline/bikeraceinfo_teams/_pages/
+
+# Athlinks raw API responses (regenerable: scrape_athlinks.py re-fetches; the
+# selected per-race-year JSON beside it IS tracked). A local fetch cache, kept
+# because the field-selection logic has needed correcting after the fetch more
+# than once and re-deriving from cache takes seconds instead of half an hour.
+pipeline/gravel_scrapes/_raw/
+
+# Run log, and the machine-readable half of the one-off Athlinks reconnaissance.
+# _survey.txt IS tracked — it is the readable record of what every edition of
+# every race publishes, and re-deriving it costs ten minutes of network.
+pipeline/gravel_scrapes/_scrape.log
+pipeline/gravel_scrapes/_survey.json

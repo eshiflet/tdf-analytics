@@ -129,12 +129,12 @@ flowchart TD
   that list confirms. Run both around any data change; they exist because a day of
   corruption was once invisible until someone eyeballed a chart.
 
-- **Per-race JSON** (`cycling-app/src/data/{tour,giro,vuelta,classics}/*.json`) — the
+- **Per-race JSON** (`cycling-app/src/data/{tour,giro,vuelta,classics,gravel}/*.json`) — the
   frontend's only input. Vite discovers these via wildcard globs
   (`./data/*/gc_by_stage_*.json` etc.), so adding a new race is just a new `RACES`
   registry entry + a new `src/data/<slug>/` directory — no code changes to the loading
-  logic. `classics/` has no `all_races_summary.json`; its `RaceConfig.hasAllYears`
-  flag hides that view rather than rendering an empty chart.
+  logic. Neither `classics/` nor `gravel/` has an `all_races_summary.json`; their
+  `RaceConfig.hasAllYears` flag hides that view rather than rendering an empty chart.
 
 - **One-day classics** (`ingest_classics.py`, `export_classics.py`) — 11 independent
   `race_type='one_day'` races in the DB, aggregated at export time into a single
@@ -143,6 +143,18 @@ flowchart TD
   race with N stages, and the classics invert it (N editions of N races = one displayed
   season). See ai-context.md's "One-day classics" for the rules, including why
   `finalRank` is a best-of-season aggregate and why cancelled races are kept.
+
+- **Gravel** (`resolve_gravel_courses.py`, `scrape_athlinks.py`,
+  `link_gravel_riders.py`, `ingest_gravel.py`, `export_gravel.py`) — the same aggregate
+  shape as the classics: 6 independent `race_type='gravel'` races combined at export
+  time. Three things make it a genuinely different path rather than a copy. The source
+  is the Athlinks results API, not PCS, which does not cover these races at all. Which
+  Athlinks *course* holds each edition's top-level men's field is resolved once into a
+  reviewed `_course_map.json`, because Athlinks renames courses yearly and a wrong pick
+  yields a plausible fictional race rather than an error. And rider identity has no id
+  to join on, so `link_gravel_riders.py` decides by name — under a strict rule, with its
+  evidence written down — which is what puts Peter Stetina's gravel results on the same
+  page as his Tours. See ai-context.md's "Gravel".
 
 - **Vite build** — compiles `main.ts` (TypeScript) and bundles it with the JSON data files
   into a static site. Per-year `gc_by_stage_*.json` files are emitted as separate lazily
@@ -180,7 +192,7 @@ flowchart TD
   | `views/stageTable.ts` | By Stage spreadsheet grid (riders x stages), its per-column colour ramp, and — for aggregate races only — the Top 10 / Top 20 / All / Nation row filters in the column to its left |
   | `views/riders.ts` | Riders grid: search/filter and the merged-index cache |
   | `views/riderDetail.ts` | Cross-race rider career chart (446 lines — was the single largest function in the old `main.ts`) |
-  | `views/classicsHistory.ts` | Race History small multiples for the one-day classics (one panel per race across its own lifetime) |
+  | `views/classicsHistory.ts` | Race History small multiples for either aggregate race set — classics or gravel (one panel per race across its own lifetime) |
   | `main.ts` | Orchestration only: `init()`, `wireControls()`, `setRace()`, `switchView()`, `loadDataset()`, `applyHash()` — the last two stay here rather than in `dataLoading.ts`/`hashRouting.ts` because both call into nearly every view module to trigger redraws |
 
   **Shared mutable state:** ES modules can't reassign an imported `let` binding from outside
@@ -227,7 +239,9 @@ flowchart TD
 
 `cycling.db` is one SQLite database shared by every race, distinguished by
 `races.race_id` — the three Grand Tours (`race_type='stage_race'`, race_id 1–3) plus
-the 11 one-day classics (`race_type='one_day'`, race_id 4–14, one stage per edition). Every table below actually exists in the live DB. `riders` has three
+the 11 one-day classics (`race_type='one_day'`, race_id 4–14, one stage per edition)
+and the 6 Life Time off-road races (`race_type='gravel'`, race_id 15–20, likewise one
+stage per edition). Every table below actually exists in the live DB. `riders` has three
 extra columns (`first_name`, `last_name`, `birthday`) that were added via `ALTER TABLE`
 by `scrape_rider_details.py` — `schema.sql` has been updated to reflect them.
 
@@ -452,7 +466,7 @@ flowchart TD
    TypeScript compiles and the app renders.
 6. **`npm run build`** — three things, in order. Its `prebuild` hook runs
    `generate-race-pages.mjs`, which writes the per-race landing pages
-   (`tour/`, `giro/`, `vuelta/`, `classics/index.html`) plus `public/sitemap.xml` and
+   (`tour/`, `giro/`, `vuelta/`, `classics/`, `gravel/index.html`) plus `public/sitemap.xml` and
    `public/robots.txt` from `race-page-meta.mjs`; **it throws if any metadata rewrite
    matched nothing**, so a renamed `<meta>` tag in `index.html` fails CI instead of
    silently shipping stale pages. Then `tsc -b` type-checks the whole frontend (a type

@@ -6,7 +6,12 @@ is meaningless for the classics — a season is eleven unrelated races, so its
 "total distance" is an arbitrary sum. What IS meaningful is the opposite pivot:
 one series per RACE, tracked across its own history.
 
-Output: cycling-app/src/data/classics/race_history.json
+Serves BOTH aggregate race sets — the one-day classics and the Life Time
+off-road races — because the pivot is identical and only the filter differs.
+Pass --set gravel for the latter; the default stays `classics` so existing
+invocations are unchanged.
+
+Output: cycling-app/src/data/<set>/race_history.json
 
   {"races": [{"name": ..., "short": ..., "first": 1896, "last": 2026,
               "years": [{"y": 1896, "km": 280.0, "kmh": 30.2, "n": 28}, ...]}]}
@@ -25,15 +30,36 @@ import os
 import sqlite3
 import sys
 
-from race_common import CLASSICS
+from race_common import CLASSICS, GRAVEL
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
-OUT = os.path.join(HERE, "..", "cycling-app", "src", "data", "classics",
-                   "race_history.json")
+DATA_ROOT = os.path.join(HERE, "..", "cycling-app", "src", "data")
+
+# (race_type, info-table, plausible winner-speed band).
+#
+# The speed band is a corruption filter, not a judgement about the race, so it
+# has to fit the discipline. A road classic runs 22.9-48.9 km/h across the
+# whole archive; an off-road race does not — Leadville's winner averages about
+# 28 km/h over 100 miles of Colorado singletrack and Little Sugar's about 23,
+# while Unbound's gravel winner touches 38. Reusing the road band would reject
+# nothing here, but a band that cannot reject is not a filter; these bounds
+# still catch a time that parsed wrong by an order of magnitude.
+RACE_SETS = {
+    "classics": ("one_day", CLASSICS, 15, 60),
+    "gravel":   ("gravel", GRAVEL, 8, 55),
+}
 
 
-def main():
+def main(argv=None):
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--set", dest="race_set", default="classics",
+                    choices=sorted(RACE_SETS), help="which aggregate race set")
+    args = ap.parse_args(argv)
+    race_type, info_table, kmh_lo, kmh_hi = RACE_SETS[args.race_set]
+    out_path = os.path.join(DATA_ROOT, args.race_set, "race_history.json")
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -49,10 +75,10 @@ def main():
         FROM stages s
         JOIN race_editions e USING(edition_id)
         JOIN races r USING(race_id)
-        WHERE r.race_type = 'one_day'
-        ORDER BY r.name, e.year""")
+        WHERE r.race_type = ?
+        ORDER BY r.name, e.year""", (race_type,))
 
-    name_to_slug = {info.name: slug for slug, info in CLASSICS.items()}
+    name_to_slug = {info.name: slug for slug, info in info_table.items()}
     by_race = {}
     rejected = []
     for row in cur.fetchall():
@@ -70,7 +96,7 @@ def main():
             # 1915 was the case that proved it: PCS serves '3:18', which parses
             # to 198 seconds and charts at 5254 km/h. REPORTED, never silently
             # dropped — a rejection here means the DB needs fixing.
-            if 15 <= kmh <= 60:
+            if kmh_lo <= kmh <= kmh_hi:
                 pt["kmh"] = round(kmh, 1)
             else:
                 rejected.append(f"{row['race_name']} {row['year']}: "
@@ -87,17 +113,17 @@ def main():
     for name, years in sorted(by_race.items(), key=lambda kv: kv[1][0]["y"]):
         races.append({
             "name": name,
-            "short": CLASSICS[name_to_slug[name]].short,
+            "short": info_table[name_to_slug[name]].short,
             "first": years[0]["y"],
             "last": years[-1]["y"],
             "years": years,
         })
 
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump({"races": races}, f, ensure_ascii=False, separators=(",", ":"))
 
-    print(f"wrote {os.path.relpath(OUT, HERE)}")
+    print(f"wrote {os.path.relpath(out_path, HERE)}")
     for r in races:
         pts = r["years"]
         spd = [p["kmh"] for p in pts if "kmh" in p]
