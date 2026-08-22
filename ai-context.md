@@ -112,8 +112,9 @@ intended behavior.
   negative deltas. The only stable reading was the current encoding at
   359 KB/copy for Tour 1987, with the flat one too small to register.
 
-- **Rider-detail loads all five rider indexes** — see the fan-out note under
-  "Known-open" in the classics section. -47% available, mechanism undesigned.
+- **Entering the Riders section costs 438 ms, once per session** — measured
+  2026-08-22, and the fix is NOT the manifest I proposed. See "The Riders
+  section's 438 ms" below.
 - **2026 Vuelta** has not been run yet (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
 
 ---
@@ -312,6 +313,77 @@ and `export_all_races_summary.py`: zero exported files changed.
 fell through to a full run over every year, each one a live PCS fetch. Found by
 doing it. The `scrape_*` scripts still have the older behaviour of treating
 unrecognised args as "no years", so give them real arguments.
+
+---
+
+## The Riders section's 438 ms (measured 2026-08-22)
+
+Measured in the browser against the real app, MutationObserver-timed from hash
+change to rendered chart, cold document:
+
+| | |
+|---|---|
+| first open of a rider detail | **438 ms** to header, 457 ms to chart |
+| of which network (5 fetches, parallel) | **48 ms** |
+| of which parse + build | **387 ms** |
+| every subsequent rider open | **86 ms** (median of 6) |
+
+**It is CPU-bound, not network-bound.** 4,560 KB decoded, but the five fetches
+overlap and finish in 48 ms; the other 387 ms is `JSON.parse` plus building
+30,122 `RiderEntry` objects with their Maps and Sets. Timed per race through the
+app's own `ensureRiderIndexFor`:
+
+| race | build | riders |
+|---|---|---|
+| **classics** | **208.5 ms** | 11,934 |
+| vuelta | 78.6 ms | 4,430 |
+| giro | 68.7 ms | 4,718 |
+| tour | 67.5 ms | 5,471 |
+| gravel | 34.4 ms | 3,569 |
+
+Sequential total 457.7 ms against 438 ms measured in parallel — **parallelism
+buys ~4%**, which is the clearest proof it is CPU-bound. `classics` alone is
+46% of it.
+
+### The bitmask manifest does not pay off — drop it
+
+A `riderId -> bitmask` manifest (343 KB, measured at **30 ms** to parse and
+build) would let a rider-detail open fetch only the indexes that rider appears
+in. Applying the measured per-race costs to the real membership distribution:
+
+| rider appears in | riders | mean cost |
+|---|---|---|
+| 1 race | 10,793 (60.9%) | 156 ms |
+| 2 races | 3,254 (18.3%) | 301 ms |
+| 3 races | 1,966 (11.1%) | 378 ms |
+| 4 races | 1,692 (9.5%) | 453 ms |
+| 5 races | 31 (0.2%) | 488 ms |
+
+Mean 236 ms against 438 today. Three things kill it:
+
+1. **The grid already needs all five, legitimately.** `selectedRacesForRiders()`
+   returns every race when `state.ridersFilterRaces` is empty, which is the
+   default — so opening the Riders LIST loads all five for the grid itself. The
+   common path (Riders -> click a rider) has already paid the 438 ms before the
+   detail view is reached, and no manifest changes that. It would only help a
+   deep link straight to `#riders/<slug>`.
+2. **The heaviest riders get SLOWER.** Anyone in 4 or 5 races pays 453-488 ms
+   against 438 today, because the manifest is pure addition for them. Those are
+   the riders whose pages are most worth visiting.
+3. **It serialises a round trip.** The manifest must land before the index
+   fetches can start. On localhost that hop is 7 ms; at a 200 ms RTT the mean
+   goes to 436 ms and the entire win is gone.
+
+### What to look at instead
+
+- **The classics index at 208 ms**, which is 46% of the cost and is loaded on
+  every entry into the section. Halving it beats anything the fan-out can offer,
+  and it helps the grid too.
+- **Render progressively.** `drawRiderDetail` (`riderDetail.ts:28`) awaits
+  `Promise.all` over all five before drawing anything, so the slowest index gates
+  first paint. Drawing each race's results as its index resolves would put
+  something on screen at ~34 ms with no manifest, no extra round trip, and no
+  case that gets slower.
 
 ---
 
@@ -851,8 +923,9 @@ silently corrupted:
   Measured 2026-08-22: 10,793 of 17,736 riders (61%) appear in exactly ONE race,
   and an ideal per-rider fetch would average 2,053 KB. A `riderId -> bitmask`
   manifest costs 343 KB raw / 110 KB gzipped and would cut the average to
-  ~2,396 KB (-47%). Not built — the mechanism needs a design pass, since the
-  manifest is itself a download.
+  ~2,396 KB (-47%) on paper. **Measured 2026-08-22 and dropped** — the grid
+  already loads all five legitimately, riders in 4+ races get slower, and the
+  extra round trip erases the mean win. See "The Riders section's 438 ms".
 
 ---
 
