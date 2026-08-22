@@ -168,6 +168,38 @@ source said, so it needs a `source`/`corrected` split inside each file.
 **Recommendation: B1 now, B2 soon, B3 only if a third race set appears.** B1
 alone would have caught what I did, in seconds, automatically.
 
+### B1 — DONE, 2026-08-21
+
+Built and proved against the damaged database. Replaying that DB through the
+new checks produces:
+
+```
+ERROR VALUES LOST: one_day.team_id fell from 84,800 to 82,916 (1,884 gone)
+ERROR VALUES LOST: one_day.finish_time_seconds fell from 72,911 to 72,831 (80 gone)
+ERROR PATCH LOST: Milan-San Remo 2013 stage 1 distance_km was 'wikipedia', now 'pcs'
+```
+
+and 0 errors against the healthy one. Note the second line: **80 lost finishing
+times I never noticed** — the check found more than the incident that prompted
+it.
+
+Three layers, because the failure has three shapes:
+
+1. **`patched_values.json`** — 25 stage-field patches keyed on race/year/stage/
+   field/source, never on stage_id. A re-ingest deletes the provenance along
+   with the patch, so absence cannot be detected from the DB alone.
+2. **Value-count invariants** — `stage_results` with a non-NULL `team_id` /
+   `finish_time_seconds`, per race_type. These patches keep provenance keyed to
+   a stage_id the re-ingest replaces, so after a revert the provenance is merely
+   stale rather than contradicted, and only the COUNT moves.
+3. **Contradiction** — live provenance claiming a value that is now NULL. No
+   baseline needed.
+
+Also fixed two things found on the way: `replace_edition()` was clearing only
+`entity='stages'` provenance, so every re-ingest-then-re-patch cycle left the
+previous cycle's `entity='stage_results'` rows behind — 4,450 had accumulated,
+now purged via `--purge-stale-provenance` and prevented from recurring.
+
 ---
 
 ## Not proposing

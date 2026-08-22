@@ -26,11 +26,20 @@ Usage:
 """
 
 import argparse
+import json
+import os
 import sqlite3
 import sys
 from collections import defaultdict
 
 from race_common import DB_PATH, VALID_SOURCES, load_stage_notes
+
+# Provenance sources that ONLY a patch script ever writes. An ingest writes
+# 'pcs', 'athlinks' and 'derived'; anything below arrived afterwards, by hand or
+# from a second source, and a re-ingest will quietly throw it away.
+PATCH_SOURCES = ("wikipedia", "bikeraceinfo", "cyclingflash", "manual")
+PATCH_MANIFEST = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "patched_values.json")
 
 RACES = ["Tour de France", "Giro d'Italia", "Vuelta a España"]
 
@@ -169,6 +178,18 @@ def check_referential(c):
 
 
 def check_provenance(c):
+    # Orphan check, across EVERY entity rather than just 'stages'.
+    #
+    # It used to look at entity='stages' alone, and that blind spot is exactly
+    # how a re-ingest destroyed 1,884 bikeraceinfo team attributions in silence
+    # on 2026-08-21: those rows are entity='stage_results', keyed by stage_id,
+    # so replace_edition() (which clears only entity='stages') left all 6,254
+    # of them pointing at stage_ids it had just deleted. Counts were unchanged,
+    # every check passed, and the data was gone.
+    # entity_id is a STAGE id for both entities: patch_classics_teams.py and
+    # patch_classics_times.py call record_provenance(cur, "stage_results",
+    # stage_id, "team_id:rider/x", ...), putting the rider in `field` rather
+    # than keying on result_id.
     n = c.execute(
         "SELECT COUNT(*) FROM data_provenance dp WHERE dp.entity='stages' "
         "AND NOT EXISTS (SELECT 1 FROM stages s WHERE s.stage_id=dp.entity_id)"
@@ -176,6 +197,25 @@ def check_provenance(c):
     if n:
         err(f"{n} orphaned data_provenance row(s) — an edition was re-ingested "
             "without clearing them; ingest_race.py should do this")
+
+    # The same check for entity='stage_results', which nothing cleared until
+    # 2026-08-21: replace_edition() and ingest_race.py both delete only
+    # entity='stages' rows, so every re-ingest-then-re-patch cycle left the
+    # previous cycle's rows behind pointing at a deleted stage_id.
+    #
+    # WARN, not ERROR: a stale row is litter, not loss. It describes a stage
+    # that no longer exists, so it makes no claim about any live value. What
+    # WOULD be loss is caught below, by checking live provenance against the
+    # values it claims.
+    stale = c.execute(
+        "SELECT COUNT(*) FROM data_provenance dp WHERE dp.entity='stage_results' "
+        "AND NOT EXISTS (SELECT 1 FROM stages s WHERE s.stage_id=dp.entity_id)"
+    ).fetchone()[0]
+    if stale:
+        warn(f"{stale} data_provenance row(s) for entity='stage_results' point at "
+             "a stage that no longer exists — litter from re-ingest cycles before "
+             "replace_edition() started clearing them. Purge with "
+             "python3 validate_db.py --purge-stale-provenance")
 
     # Driven off race_common.VALID_SOURCES rather than a second hardcoded
     # list: the two silently diverged when 'cyclingflash' was added, and the
@@ -187,6 +227,142 @@ def check_provenance(c):
     ).fetchall()
     for (s,) in bad:
         err(f"data_provenance has unknown source value {s!r}")
+
+
+def check_patched_values(c, update=False):
+    """Assert that every value a patch script produced is still patched.
+
+    THE PROBLEM THIS EXISTS FOR. An ingest rebuilds a race-year from its scrape
+    files, which are a faithful record of what the SOURCE said — not of what we
+    later worked out to be true. Corrections live in a second layer (the
+    patch_*.py scripts) that writes straight to the DB, so a full re-ingest
+    reverts them and nothing notices: on 2026-08-21 a re-ingest put Milan-San
+    Remo 2013 back to PCS's wrong 121.0 km, discarding a researched Wikipedia
+    value, while every count stayed identical and every check stayed green.
+
+    Two complementary tests, because the two failure shapes differ:
+
+      1. The manifest. When a stage is re-ingested its provenance rows are
+         deleted and rewritten as 'pcs', so the evidence of the patch vanishes
+         with the patch. Absence cannot be detected from the DB alone, so the
+         expected set is recorded in patched_values.json — keyed on race, year,
+         stage number and field, never on stage_id, which changes on re-ingest.
+
+      2. Contradiction. A row like 'team_id:rider/x' on entity='stage_results'
+         survives a re-ingest (see check_provenance) but the value it describes
+         does not. Provenance claiming a value that is now NULL is proof of
+         loss, and needs no baseline at all.
+
+    Run with --update-patch-manifest after deliberately adding or removing a
+    patch; that is the only thing that should ever change this file.
+    """
+    rows = c.execute(
+        """SELECT dp.source, dp.field, r.name, e.year, s.stage_number
+           FROM data_provenance dp
+           JOIN stages s ON s.stage_id = dp.entity_id
+           JOIN race_editions e USING(edition_id)
+           JOIN races r USING(race_id)
+           WHERE dp.entity = 'stages' AND dp.source IN (%s)
+           ORDER BY r.name, e.year, s.stage_number, dp.field"""
+        % ",".join("?" * len(PATCH_SOURCES)), PATCH_SOURCES).fetchall()
+    current = sorted([r[2], r[3], r[4], r[1], r[0]] for r in rows)
+
+    # Stage-field patches are only half the exposure. patch_classics_teams.py
+    # and patch_classics_times.py fill values on stage_results, and those keep
+    # their provenance keyed to a stage_id that a re-ingest replaces — so after
+    # a revert the provenance is merely stale, not contradicted, and nothing
+    # above notices. What DOES move, unmistakably, is how many of those values
+    # exist: the 2026-08-21 incident took the classics from 84,800 team
+    # attributions to 82,916 while every other number held still.
+    counts = {}
+    for label, col in (("team_id", "team_id"),
+                       ("finish_time_seconds", "finish_time_seconds")):
+        for (rt, n) in c.execute(
+                f"""SELECT r.race_type, COUNT(*) FROM stage_results sr
+                    JOIN stages s USING(stage_id)
+                    JOIN race_editions e USING(edition_id)
+                    JOIN races r USING(race_id)
+                    WHERE sr.{col} IS NOT NULL GROUP BY r.race_type"""):
+            counts[f"{rt}.{label}"] = n
+
+    if update:
+        with open(PATCH_MANIFEST, "w", encoding="utf-8") as f:
+            json.dump({"_README": (
+                "Values written by a patch script rather than by an ingest. "
+                "validate_db.py fails if any of them reverts to an ingest "
+                "source, which is what a full re-ingest silently does. "
+                "Regenerate ONLY when deliberately changing a patch: "
+                "python3 validate_db.py --update-patch-manifest"),
+                "patched": current, "value_counts": counts},
+                f, indent=1, ensure_ascii=False)
+            f.write("\n")
+        print(f"wrote {os.path.basename(PATCH_MANIFEST)}: {len(current)} patched value(s)")
+        return
+
+    if not os.path.exists(PATCH_MANIFEST):
+        warn("patched_values.json is missing, so a re-ingest that reverted a "
+             "patched value could not be detected. Create it with "
+             "python3 validate_db.py --update-patch-manifest")
+        return
+    with open(PATCH_MANIFEST, encoding="utf-8") as f:
+        manifest = json.load(f)
+    expected = [list(x) for x in manifest["patched"]]
+
+    # A DROP is the alarm. A rise is new data and merely wants the manifest
+    # refreshed, so it is a note rather than a failure.
+    for key, want in (manifest.get("value_counts") or {}).items():
+        have = counts.get(key, 0)
+        if have < want:
+            err(f"VALUES LOST: {key} fell from {want:,} to {have:,} "
+                f"({want - have:,} gone) — a re-ingest reverted a patch that "
+                "fills this column. Restore from a backup and re-run the patch "
+                "scripts (patch_classics_teams.py, patch_classics_times.py).")
+        elif have > want:
+            note(f"{key} rose from {want:,} to {have:,}; refresh the manifest "
+                 "with --update-patch-manifest if that was deliberate")
+
+    missing = [e for e in expected if e not in current]
+    for race, year, stage, field, source in missing[:12]:
+        now = c.execute(
+            """SELECT dp.source FROM data_provenance dp
+               JOIN stages s ON s.stage_id = dp.entity_id
+               JOIN race_editions e USING(edition_id) JOIN races r USING(race_id)
+               WHERE dp.entity='stages' AND dp.field=? AND r.name=? AND e.year=?
+                 AND s.stage_number=?""", (field, race, year, stage)).fetchone()
+        err(f"PATCH LOST: {race} {year} stage {stage} {field} was {source!r}, "
+            f"now {(now[0] if now else 'absent')!r} — a re-ingest reverted it. "
+            "Restore from a backup and re-run that patch script.")
+    if len(missing) > 12:
+        err(f"...and {len(missing)-12} more reverted patched value(s)")
+
+    added = [c for c in current if c not in expected]
+    if added:
+        note(f"{len(added)} patched value(s) not in patched_values.json — if "
+             "deliberate, refresh it with --update-patch-manifest")
+
+    # Contradiction test. These rows record both the result_id and, inside
+    # `field`, the rider the value belongs to — so they can be checked against
+    # reality with no baseline at all. Two ways they can be wrong after a
+    # re-ingest: the row they name now holds a DIFFERENT rider (result_id is
+    # not AUTOINCREMENT, so ids get reused), or it holds the right rider with
+    # the patched value gone.
+    # These rows name both the stage and, inside `field`, the rider — so they
+    # can be checked against reality with no baseline at all. A LIVE row whose
+    # value is NULL means the patch was applied and then thrown away.
+    qmarks = ",".join("?" * len(PATCH_SOURCES))
+    gone = c.execute(
+        f"""SELECT COUNT(*) FROM data_provenance dp
+            JOIN stage_results sr ON sr.stage_id = dp.entity_id
+              AND sr.rider_id = substr(dp.field, instr(dp.field, ':') + 1)
+            WHERE dp.entity='stage_results' AND dp.source IN ({qmarks})
+              AND ((dp.field LIKE 'team_id:%' AND sr.team_id IS NULL)
+                OR (dp.field LIKE 'finish_time_seconds:%'
+                    AND sr.finish_time_seconds IS NULL))""",
+        PATCH_SOURCES).fetchone()[0]
+    if gone:
+        err(f"{gone} result(s) carry patch provenance for a value that is now "
+            "NULL — the patch was reverted, most likely by a re-ingest. "
+            "Restore from a backup and re-run that patch script.")
 
 
 def check_editions(c, races):
@@ -367,6 +543,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--race", choices=["tdf", "giro", "vuelta"], default=None)
     ap.add_argument("--strict", action="store_true")
+    ap.add_argument("--purge-stale-provenance", action="store_true",
+                    help="delete data_provenance rows describing a stage that "
+                         "no longer exists; they make no claim about live data")
+    ap.add_argument("--update-patch-manifest", action="store_true",
+                    help="rewrite patched_values.json from the DB's current "
+                         "state; only after deliberately changing a patch")
     args = ap.parse_args()
 
     races = RACES
@@ -377,8 +559,28 @@ def main():
     conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
     cur = conn.cursor()
 
+    if args.purge_stale_provenance:
+        # Needs write access, so it opens its own connection rather than using
+        # the read-only one every check shares.
+        conn.close()
+        w = sqlite3.connect(DB_PATH)
+        n = w.execute(
+            "DELETE FROM data_provenance WHERE entity IN ('stages','stage_results') "
+            "AND NOT EXISTS (SELECT 1 FROM stages s WHERE s.stage_id=entity_id)"
+        ).rowcount
+        w.commit()
+        w.close()
+        print(f"purged {n} stale data_provenance row(s)")
+        return 0
+
+    if args.update_patch_manifest:
+        check_patched_values(cur, update=True)
+        conn.close()
+        return 0
+
     check_referential(cur)
     check_provenance(cur)
+    check_patched_values(cur)
     check_editions(cur, races)
     check_split_slug_provenance(cur)
     check_results(cur)
