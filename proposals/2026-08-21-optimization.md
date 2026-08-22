@@ -3,6 +3,22 @@
 verified and committed; everything in "Proposals" is untouched code awaiting
 your call.
 
+> ## CLOSED 2026-08-22 — every item resolved
+>
+> | item | outcome |
+> |---|---|
+> | Exporter + ingest dedup | merged (PR #7, #8) |
+> | B1 — detect patch reverts | merged (PR #8) |
+> | B2 — prevent patch reverts | merged (PR #8) |
+> | B3 — patches write to scrape files | **declined**, agreed unnecessary once B2 landed |
+> | Proposal A — riders_index re-encode | PR #10 |
+> | giro/vuelta script dedup | PR #9 |
+> | `race_set_export.py` direct tests | PR #10 |
+> | Unused frontend exports | PR #11 |
+>
+> Kept as written rather than rewritten, so the reasoning that led to each
+> decision stays legible. Outcomes are recorded inline below.
+
 ---
 
 ## The headline finding is a bug I caused, then fixed
@@ -88,6 +104,20 @@ Reporting these so they don't get re-proposed:
 ---
 
 ## Proposal A — re-encode `riders_index.json` (−22% gzipped)
+
+> **DONE 2026-08-22 (PR #10), and the measurement contradicted the prediction.**
+> Measured in the browser on the real 11,934-rider file, median of 7, forcing
+> layout each iteration: **703 KB → 547 KB gzipped (−22%)** and parse+build
+> **250.1 ms → 189.9 ms (−24%)**. Both axes improve.
+>
+> The worry below — that deriving `finalRank` would reinstate the ~380 ms
+> `defineLazyConstituents()` avoids — did not materialise. That cost was
+> materialising 11,934 objects, not iterating numbers: a `min()` over a flat
+> numeric array costs ~1.5 ms, while parsing 156 KB less JSON saves far more.
+> The getter stays lazy and now reads the same `ym` array.
+>
+> Nationality-as-index was measured at −1.0% and **dropped** as not worth the
+> churn, as anticipated below.
 
 **Worth doing. Needs a browser measurement first, which is why I didn't.**
 
@@ -183,7 +213,9 @@ Both are covered by `test_patch_carry.py` (8 tests).
 column it writes. That was already the repo's stated convention; it is now
 load-bearing.
 
-**B3 — Patches write to the scrape files (~2 days).** The real fix: a patch
+**B3 — Patches write to the scrape files (~2 days).** *(Declined 2026-08-22:
+B2 achieves the same guarantee without making the scrape files stop being a
+faithful record of what the source said.)* The real fix: a patch
 edits the scrape JSON and records provenance there, so ingest reproduces it and
 the DB becomes a pure function of the files. This is already how the gravel set
 works — every correction it makes lives in the scrape files or
@@ -235,3 +267,17 @@ now purged via `--purge-stale-provenance` and prevented from recurring.
   at a time. Fine.
 - **Merging the ingest scripts further.** The remaining 42% overlap is the
   rider-identity model, which genuinely differs between the two sets.
+
+## Found after this was written
+
+Two things this pass did not anticipate, both now handled:
+
+- **The giro/vuelta script pairs** — three pairs at 85–95% identical, 2,006
+  lines down to 1,259 (PR #9). The win was coverage rather than line count: the
+  fixture tests imported `scrape_vuelta`, so the Giro's identical 584 lines were
+  untested.
+- **`giro_gc_winner_times.json` had no writer.** Traced through git: it was never
+  a script's output, but three separate PCS-sourced operations. Now documented in
+  a `_README` block, and the reason `check_giro_gc_times.py` must NOT pass
+  `--write-winner-times` is recorded — a sweep would reintroduce Giro 1946's
+  impossible 46.5 km/h value, which was deliberately omitted.
