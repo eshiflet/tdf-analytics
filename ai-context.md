@@ -69,7 +69,7 @@ intended behavior.
 - **8 of 18 cancelled stages have no recorded reason.** `validate_db.py` names them under `note` lines. Add a *sourced* reason or leave them; never invent a cause.
 
 **Cost/quality items worth revisiting:**
-- **`classics/riders_index.json` is 2.93 MB / 719 KB gzipped** — bigger than the three Grand Tour indexes combined, and a rider-detail page pulls all four. The clearest cost of the 1892–2026 coverage, and the first thing to revisit if it grows.
+- ~~**`classics/riders_index.json` is 2.93 MB / 719 KB gzipped**~~ — **addressed 2026-08-22**: re-encoded to 2.08 MB / 547 KB gzipped (-22%) and 24% faster to load. See "riders_index.json re-encoded" under Frontend performance. Still the largest single asset, so still the first thing to look at if coverage grows again.
 - **`export_gc.py --race tdf`** while everything else says `tour` — a real trip hazard, hit during the 2026-08-15 session. See "Renaming the project" §B.
 - **Social cards are ~1.7 MB committed** across 5 PNGs. Fine for every platform's limit; `pngquant` would roughly halve them.
 - **2026 Vuelta** has not been run yet (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
@@ -200,53 +200,6 @@ Eric's call, do not guess); 14 stages with no finishing positions (neutralised o
 abandoned mid-race, plus three 1980s TTTs where PCS's rider tables are empty); 17 editions
 with a sparse final stage. Test new work with **mutation checks** — substitute the
 original bug back and confirm the test fails; that caught two blind spots in this pass.
-
----
-
-## riders_index.json re-encoded for the aggregate races (2026-08-22)
-
-The classics index is the single largest thing the app downloads, fetched
-whenever the Riders page opens. It shrank **703 KB -> 547 KB gzipped (-22%)**
-and got **24% faster to load**, which was not the trade this was expected to be.
-
-### The encoding
-
-Aggregate sets (classics, gravel) now carry ONE map per rider-year:
-
-```
-ym: { "2021": [teamIdx, raceIdx, rank, raceIdx, rank, ...] }
-```
-
-replacing a `y` of `[finalRank, teamIdx]` plus a parallel `m` of
-`[[raceIdx, rank], ...]`. Those stored every year key **twice**, and finalRank
-is `min()` of the ranks already in `m` — derivable, not data. The Grand Tour
-indexes keep their own `y` shape (they have no constituent races), so the
-loader branches on which key is present.
-
-### Measured, because the risk was real
-
-Deriving finalRank means touching `m`-shaped data at load, which is what
-`defineLazyConstituents()` exists to avoid — the note in this file calls that
-getter load-bearing and worth ~380ms when eager. Measured in the browser on the
-real 11,934-rider file, median of 7, forcing layout each iteration:
-
-| | old | new |
-|---|---|---|
-| gzipped | 703 KB | **547 KB** |
-| parse + build | 250.1 ms | **189.9 ms** |
-
-**Both improve.** The 380ms that getter avoids was materialising 11,934
-`ConstituentResult` objects — not iterating numbers. A `min()` over a flat
-numeric array costs ~1.5ms, while parsing 156 KB less JSON saves far more. The
-getter is still lazy and now reads the same `ym` array.
-
-### What to re-check if this is touched again
-
-`validate_exports.py`'s staleness check re-derives finalRank from `ym` rather
-than reading a stored value, so a broken derivation fails the validator rather
-than a stale copy of a correct one. It caught this change immediately — 44,105
-"inconsistent rider-years" on the classics — before it was taught the new shape,
-which is exactly what that check is for.
 
 ---
 
@@ -2426,6 +2379,53 @@ the per-rider helpers and has not been attributed further. The bigger prize is
 the ~2.7s first paint — deferring the classics index until a classics filter is
 touched, or streaming the grid after the first index resolves, is worth more
 than anything left in the rebuild loop.
+
+---
+
+## riders_index.json re-encoded for the aggregate races (2026-08-22)
+
+The classics index is the single largest thing the app downloads, fetched
+whenever the Riders page opens. It shrank **703 KB -> 547 KB gzipped (-22%)**
+and got **24% faster to load**, which was not the trade this was expected to be.
+
+### The encoding
+
+Aggregate sets (classics, gravel) now carry ONE map per rider-year:
+
+```
+ym: { "2021": [teamIdx, raceIdx, rank, raceIdx, rank, ...] }
+```
+
+replacing a `y` of `[finalRank, teamIdx]` plus a parallel `m` of
+`[[raceIdx, rank], ...]`. Those stored every year key **twice**, and finalRank
+is `min()` of the ranks already in `m` — derivable, not data. The Grand Tour
+indexes keep their own `y` shape (they have no constituent races), so the
+loader branches on which key is present.
+
+### Measured, because the risk was real
+
+Deriving finalRank means touching `m`-shaped data at load, which is what
+`defineLazyConstituents()` exists to avoid — the note in this file calls that
+getter load-bearing and worth ~380ms when eager. Measured in the browser on the
+real 11,934-rider file, median of 7, forcing layout each iteration:
+
+| | old | new |
+|---|---|---|
+| gzipped | 703 KB | **547 KB** |
+| parse + build | 250.1 ms | **189.9 ms** |
+
+**Both improve.** The 380ms that getter avoids was materialising 11,934
+`ConstituentResult` objects — not iterating numbers. A `min()` over a flat
+numeric array costs ~1.5ms, while parsing 156 KB less JSON saves far more. The
+getter is still lazy and now reads the same `ym` array.
+
+### What to re-check if this is touched again
+
+`validate_exports.py`'s staleness check re-derives finalRank from `ym` rather
+than reading a stored value, so a broken derivation fails the validator rather
+than a stale copy of a correct one. It caught this change immediately — 44,105
+"inconsistent rider-years" on the classics — before it was taught the new shape,
+which is exactly what that check is for.
 
 ---
 
