@@ -1,0 +1,187 @@
+{
+ "_README": "Values written by a patch script rather than by an ingest. validate_db.py fails if any of them reverts to an ingest source, which is what a full re-ingest silently does. Regenerate ONLY when deliberately changing a patch: python3 validate_db.py --update-patch-manifest",
+ "patched": [
+  [
+   "Giro d'Italia",
+   1919,
+   9,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Giro d'Italia",
+   1919,
+   10,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Milan-San Remo",
+   2013,
+   1,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   1983,
+   22,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   1984,
+   23,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   1986,
+   23,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   1989,
+   21,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   1989,
+   21,
+   "route_type",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   1989,
+   21,
+   "stage_type",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   1991,
+   22,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   1998,
+   21,
+   "distance_km",
+   "wikipedia"
+  ],
+  [
+   "Tour de France",
+   2001,
+   20,
+   "vertical_meters",
+   "cyclingflash"
+  ],
+  [
+   "Tour de France",
+   2006,
+   20,
+   "vertical_meters",
+   "cyclingflash"
+  ],
+  [
+   "Vuelta a España",
+   1941,
+   20,
+   "results",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   1941,
+   22,
+   "results",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   1957,
+   4,
+   "cancelled",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   1968,
+   20,
+   "results",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   2001,
+   21,
+   "profile_score",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   2001,
+   21,
+   "vertical_meters",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   2009,
+   21,
+   "profile_score",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   2009,
+   21,
+   "vertical_meters",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   2016,
+   21,
+   "profile_score",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   2016,
+   21,
+   "vertical_meters",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   2018,
+   21,
+   "profile_score",
+   "manual"
+  ],
+  [
+   "Vuelta a España",
+   2018,
+   21,
+   "vertical_meters",
+   "manual"
+  ]
+ ],
+ "value_counts": {
+  "one_day.team_id": 84800,
+  "stage_race.team_id": 632428,
+  "gravel.finish_time_seconds": 7389,
+  "one_day.finish_time_seconds": 72911,
+  "stage_race.finish_time_seconds": 583353
+ }
+}

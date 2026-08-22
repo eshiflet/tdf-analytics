@@ -64,8 +64,13 @@ def replace_edition(cur, race_id, year, edition_name=None):
         cur.execute("SELECT stage_id FROM stages WHERE edition_id=?", (edition_id,))
         for (sid,) in cur.fetchall():
             cur.execute("DELETE FROM stage_results WHERE stage_id=?", (sid,))
-            cur.execute("DELETE FROM data_provenance WHERE entity='stages' AND entity_id=?",
-                        (sid,))
+            # BOTH entities. patch_classics_teams.py and patch_classics_times.py
+            # record provenance as entity='stage_results' keyed on the STAGE id,
+            # and nothing cleared those until 2026-08-21 — so every
+            # re-ingest-then-re-patch cycle left the previous cycle's rows
+            # behind, 4,450 of them by the time anyone looked.
+            cur.execute("DELETE FROM data_provenance WHERE entity IN "
+                        "('stages','stage_results') AND entity_id=?", (sid,))
             cur.execute("DELETE FROM stages WHERE stage_id=?", (sid,))
         cur.execute("UPDATE race_editions SET edition_name=? WHERE edition_id=?",
                     (edition_name, edition_id))

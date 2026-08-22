@@ -221,6 +221,12 @@ counts stay identical (102,261 results either way), and the loss shows only if
 you go looking at a specific value. It was caught here by checksumming the
 results table before and after, then diffing against a backup.
 
+**Guarded since 2026-08-21.** `validate_db.py` now fails loudly on exactly this:
+a `patched_values.json` manifest of the 25 stage-field patches, value-count
+invariants for the team/time patches, and a contradiction check. Replaying the
+damaged DB through it produced three errors naming each loss. So the rule below
+is still the rule — but forgetting it is now noisy rather than silent.
+
 **Before any full `ingest_classics.py` run: back the DB up, and afterwards
 re-run the patch scripts.** They are guarded — `patch_msr_2013_distance.py`
 refuses to run unless it finds exactly the broken 121.0 — so re-applying is
