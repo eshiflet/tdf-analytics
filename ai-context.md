@@ -430,6 +430,82 @@ Seven mutations, all caught.
 
 ---
 
+## Rider names: "Vermeulen Alexey" and the 5,265 like it (2026-08-22)
+
+**The symptom.** A rider shows as `Lastname Firstname` — Eric spotted
+"Vermeulen Alexey" on the gravel pages. `displayName()` in `riderDisplay.ts`
+returns `firstName + " " + lastName` when BOTH are present and otherwise falls
+back to `full_name`, which for any PCS-sourced rider is stored in PCS's own
+`Lastname Firstname` order. So the bug is never a wrong name — it is a rider
+whose `first_name`/`last_name` are NULL.
+
+**The real scope, measured.** It is not a gravel problem:
+
+| race | riders | missing a split | |
+|---|---|---|---|
+| **classics** | 11,934 | **5,250** | **44%** |
+| stage races | 8,996 | 27 | 0.3% |
+| gravel | 3,569 | 28 -> **1** | fixed |
+
+Gravel was where it was NOTICED because gravel riders are 99% Athlinks-sourced
+and already `Firstname Lastname`, so the 28 PCS crossovers stood out. In the
+classics nearly half are wrong, which reads as consistent rather than broken.
+
+**The fix is a scrape, not a derivation.** `scrape_rider_details.py` reads
+PCS's `<h1>`, which gives `Firstname Lastname` directly. A slug-based
+derivation was tried first (`rider/alexey-vermeulen` + "Vermeulen Alexey" is
+enough to split it) and validated against the 12,444 riders whose split is
+already known: it reproduced 67%, disagreed on 195, and while most of those
+disagreements were cases where the DERIVATION was the better answer ("Pérez
+Francés José" is stored as `José Pérez` / `Francés`), it also fails whenever
+the slug omits a middle name the full name carries — `rider/francisco-rodriguez`
+against "Rodriguez José Francisco". Guessing there is exactly the thing
+"never fabricate" rules out. The cache simply predates the classics and gravel
+expansions: 5,260 of the 5,265 were never fetched.
+
+### DANGER: PCS answers an unknown rider with HTTP 200
+
+`https://www.procyclingstats.com/rider/kvalsten` returns **200** and a
+"Page not found" body. `parse_page()` took its `<h1>` as the rider's name, so a
+dry run over 28 riders produced `first_name='Page not'`, `last_name='found'`.
+Over the 5,260 still to fetch, every dead slug would have written that.
+
+The word "born" appears in the error body too, so the birthday is no help in
+telling them apart — the title/h1 is the only signal. `parse_page()` now
+returns `display_name=None` for it, which makes every downstream step skip the
+rider, and `test_scrapers.py` has eight cases covering it. **This was caught
+only because the run was a `--dry-run` first.**
+
+### The scraper is now scoped, and defaults are still dangerous
+
+A bare `python3 scrape_rider_details.py` walks every rider in the DB — with the
+cache as stale as it is, that is thousands of live PCS requests. Added:
+
+```bash
+python3 scrape_rider_details.py --missing --race gravel --dry-run   # read first
+python3 scrape_rider_details.py --missing --race gravel --db-only   # then apply
+```
+
+`--missing` selects only riders whose first/last is NULL, `--race` narrows to
+one race set (`classics`/`gravel`, or a `races.name`), `--limit N` caps the
+run, and `--dry-run` fetches and caches but writes nothing, printing the change
+table with NULL-fills separated from overwrites. A dry run still populates the
+cache, so the follow-up `--db-only` needs no second fetch.
+
+### Done and not done
+
+- **Gravel: fixed.** 27 riders filled from PCS, 0 overwrites. The 28th,
+  `rider/kvalsten`, has no PCS page at all — it keeps `last_name='Kvalsten'`
+  and no first name, which is what the sources actually support.
+- **Classics: 5,250 riders outstanding**, about 75 minutes at
+  `SCRAPE_DELAY=0.8`. Not started — it is a long live-scrape and Eric's call.
+- **`riders` has no provenance at all** (0 rows in `data_provenance` for
+  `entity='riders'`), and `record_provenance()` expects an INTEGER
+  `entity_id` while `rider_id` is TEXT. Filling that gap needs a decision about
+  the key, so this scrape did not invent one.
+
+---
+
 ## Where the index build time actually goes (2026-08-22)
 
 Investigated because the section above blamed the classics index. **It was

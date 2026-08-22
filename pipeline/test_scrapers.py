@@ -41,6 +41,7 @@ import scrape_race as SV
 # The Grand Tour stage-info scraper, shared by the Giro and the Vuelta since
 # they were merged (scrape_stage_info.py). Same story as scrape_race.py above:
 # these tests only ever exercised the Vuelta copy of two 94%-identical files.
+import scrape_rider_details as SRD
 import scrape_stage_info as SVSI
 from race_common import RACES, STAGE_ROW_LEN, StageRow
 from record_fixtures import FIXTURES, load, path_for
@@ -506,3 +507,61 @@ class TestBothRacesShareOneImplementation(unittest.TestCase):
             SVSI.fetch = original
         self.assertIn("/race/giro-d-italia/", seen[0])
         self.assertIn("/race/vuelta-a-espana/", seen[1])
+
+
+class RiderDetailPageTest(unittest.TestCase):
+    """
+    PCS answers an unknown rider slug with HTTP 200 and a "Page not found"
+    body, so nothing upstream of parse_page() can tell it from a real rider.
+    A dry run over 28 gravel riders produced first_name='Page not',
+    last_name='found' for rider/kvalsten; over the ~5,300 riders still missing
+    a name split, every dead slug would have written that.
+    """
+
+    NOT_FOUND = ("<html><head><title>Page not found</title></head>"
+                 "<body><h1>Page not found</h1><p>born to be missed</p></body></html>")
+    REAL = ("<html><head><title>Alexey Vermeulen</title></head>"
+            "<body><h1>Alexey Vermeulen</h1>"
+            "<meta content='born 1994-12-16'></body></html>")
+
+    def test_the_not_found_page_yields_no_name(self):
+        got = SRD.parse_page(self.NOT_FOUND)
+        self.assertIsNone(got["display_name"])
+        self.assertIsNone(got["birthday"])
+        self.assertTrue(got.get("not_found"))
+
+    def test_born_in_the_error_body_is_not_a_birthday(self):
+        """The word "born" appears in the error page, so the birthday is no
+        help in telling the two apart — the title/h1 is the only signal."""
+        self.assertIn("born", self.NOT_FOUND)
+        self.assertIsNone(SRD.parse_page(self.NOT_FOUND)["birthday"])
+
+    def test_a_real_page_still_parses(self):
+        got = SRD.parse_page(self.REAL)
+        self.assertEqual(got["display_name"], "Alexey Vermeulen")
+        self.assertEqual(got["birthday"], "1994-12-16")
+
+    def test_a_skipped_rider_is_left_alone_rather_than_half_written(self):
+        """display_name=None is what makes every downstream step skip the
+        rider: apply_cache_to_db() and the fetch loop both key off it."""
+        first, last = SRD.parse_first_last(
+            SRD.parse_page(self.NOT_FOUND)["display_name"] or "")
+        self.assertEqual((first, last), (None, None))
+
+    # ── the split itself ────────────────────────────────────────────────────
+    def test_particles_group_into_the_last_name(self):
+        self.assertEqual(SRD.parse_first_last("Aaron Van der Beken"),
+                         ("Aaron", "Van der Beken"))
+
+    def test_compound_first_names_survive(self):
+        self.assertEqual(SRD.parse_first_last("Aldo Ino Ilesic"),
+                         ("Aldo Ino", "Ilesic"))
+
+    def test_a_single_word_is_a_last_name_with_no_first(self):
+        """Riders PCS knows only by surname — 'Monin', 'Legaux', 'Chiesa'.
+        Inventing a first name for them would be fabricating data."""
+        self.assertEqual(SRD.parse_first_last("Monin"), (None, "Monin"))
+
+    def test_an_empty_name_is_not_a_rider(self):
+        self.assertEqual(SRD.parse_first_last(""), (None, None))
+

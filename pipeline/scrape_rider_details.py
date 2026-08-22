@@ -12,10 +12,17 @@ Re-running is safe: already-cached slugs are skipped unless --refetch is passed.
 Use --db-only to apply the cache to the DB without making any network requests.
 
 Usage:
-  python3 scrape_rider_details.py            # scrape all uncached riders
-  python3 scrape_rider_details.py --db-only  # apply cache → DB, no network
-  python3 scrape_rider_details.py --refetch  # re-fetch even cached slugs
-  SCRAPE_DELAY=1.5 python3 scrape_rider_details.py
+  python3 scrape_rider_details.py                      # ALL uncached riders
+  python3 scrape_rider_details.py --missing            # only riders whose
+                                                       #   first/last is NULL
+  python3 scrape_rider_details.py --missing --race gravel --dry-run
+  python3 scrape_rider_details.py --db-only            # apply cache, no network
+  python3 scrape_rider_details.py --refetch            # re-fetch cached slugs
+  SCRAPE_DELAY=1.5 python3 scrape_rider_details.py --missing --limit 50
+
+A bare run walks every rider in the DB. The cache predates the classics and
+gravel expansions, so that is now thousands of live requests — scope it with
+--missing/--race/--limit, and read the change table from --dry-run first.
 """
 
 import json
@@ -51,6 +58,24 @@ PARTICLES = {
 
 DB_ONLY = "--db-only" in sys.argv
 REFETCH = "--refetch" in sys.argv
+# Scope + safety, added 2026-08-22. Without --missing this walks all ~17,700
+# riders; the cache predates the classics and gravel expansions, so a bare run
+# now means thousands of live PCS requests. --dry-run fetches and caches but
+# writes nothing, so the change table can be read before the DB moves.
+MISSING_ONLY = "--missing" in sys.argv
+DRY_RUN = "--dry-run" in sys.argv
+
+
+def _flag_value(name: str, default=None):
+    if name in sys.argv:
+        i = sys.argv.index(name)
+        if i + 1 < len(sys.argv):
+            return sys.argv[i + 1]
+    return default
+
+
+LIMIT = int(_flag_value("--limit", 0) or 0)
+RACE = _flag_value("--race")        # tour|giro|vuelta|classics|gravel
 
 
 # ---------------------------------------------------------------------------
@@ -92,10 +117,32 @@ def fetch(url: str, max_tries: int = 8) -> str | None:
 # Parsing
 # ---------------------------------------------------------------------------
 
+# PCS answers an unknown rider slug with HTTP **200** and a "Page not found"
+# body, so fetch() cannot tell it apart from a real page. Its <h1> is the error
+# text, which parse_page() used to hand back as the rider's name: a dry run over
+# 28 gravel riders produced first_name='Page not', last_name='found' for
+# rider/kvalsten. Over the ~5,300 riders still missing a name split, every dead
+# slug would have written that. The word "born" appears in the error page too,
+# so the birthday is no help either — the title/h1 is the only signal.
+NOT_FOUND_TITLES = {"page not found", "404", "not found"}
+
+
 def parse_page(html: str) -> dict:
-    """Extract display_name and birthday from a PCS rider page."""
+    """Extract display_name and birthday from a PCS rider page.
+
+    Returns display_name=None for the not-found page, which makes every
+    downstream step skip the rider rather than store the error text as a name.
+    """
     h1 = re.search(r"<h1[^>]*>(.*?)</h1>", html)
     display_name = h1.group(1).strip() if h1 else None
+
+    title = re.search(r"<title[^>]*>(.*?)</title>", html)
+    looks_missing = (
+        (display_name or "").strip().lower() in NOT_FOUND_TITLES
+        or (title.group(1).strip().lower() if title else "") in NOT_FOUND_TITLES
+    )
+    if looks_missing:
+        return {"display_name": None, "birthday": None, "not_found": True}
 
     bday = re.search(r"born (\d{4}-\d{2}-\d{2})", html)
     birthday = bday.group(1) if bday else None
@@ -131,19 +178,75 @@ def parse_first_last(display_name: str) -> tuple[str | None, str | None]:
 # DB helpers
 # ---------------------------------------------------------------------------
 
+RACE_TYPE_FOR = {"classics": "one_day", "gravel": "gravel"}
+
+
 def get_all_rider_ids(conn: sqlite3.Connection) -> list[str]:
+    """Riders to consider, narrowed by --missing and --race.
+
+    --missing is the useful default for a top-up run: it asks only for riders
+    whose first_name or last_name is still NULL, which is exactly the set whose
+    display falls back to PCS's "Lastname Firstname" ordering in the app.
+    """
+    where, params = [], []
+    if MISSING_ONLY:
+        where.append("(r.first_name IS NULL OR r.last_name IS NULL)")
+    if RACE:
+        rt = RACE_TYPE_FOR.get(RACE)
+        if rt:
+            where.append("""r.rider_id IN (
+                SELECT sr.rider_id FROM stage_results sr
+                JOIN stages s USING(stage_id)
+                JOIN race_editions e USING(edition_id)
+                JOIN races ra USING(race_id) WHERE ra.race_type = ?)""")
+            params.append(rt)
+        else:
+            where.append("""r.rider_id IN (
+                SELECT sr.rider_id FROM stage_results sr
+                JOIN stages s USING(stage_id)
+                JOIN race_editions e USING(edition_id)
+                JOIN races ra USING(race_id) WHERE ra.name = ?)""")
+            params.append(RACE)
+    sql = "SELECT r.rider_id FROM riders r"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY r.rider_id"
     cur = conn.cursor()
-    cur.execute("SELECT rider_id FROM riders ORDER BY rider_id")
-    return [r[0] for r in cur.fetchall()]
+    cur.execute(sql, params)
+    ids = [r[0] for r in cur.fetchall()]
+    return ids[:LIMIT] if LIMIT else ids
 
 
 def update_rider(conn: sqlite3.Connection, rider_id: str,
                  first_name: str | None, last_name: str | None,
                  birthday: str | None) -> None:
+    if DRY_RUN:
+        return
     conn.execute(
         "UPDATE riders SET first_name=?, last_name=?, birthday=? WHERE rider_id=?",
         (first_name, last_name, birthday, rider_id),
     )
+
+
+def describe_change(conn: sqlite3.Connection, rider_id: str,
+                    first_name, last_name, birthday) -> tuple | None:
+    """One row of the change table: what is stored now vs what PCS says.
+
+    Returns None when nothing would move. Separates a NULL-fill from an
+    overwrite, because they carry very different risk — an overwrite is
+    replacing a value somebody may have checked.
+    """
+    row = conn.execute(
+        "SELECT full_name, first_name, last_name, birthday FROM riders WHERE rider_id=?",
+        (rider_id,)).fetchone()
+    if row is None:
+        return None
+    full, old_f, old_l, old_b = row["full_name"], row["first_name"], row["last_name"], row["birthday"]
+    if (old_f, old_l, old_b) == (first_name, last_name, birthday):
+        return None
+    kind = "fill" if (old_f is None or old_l is None) else "OVERWRITE"
+    return (kind, rider_id, full, f"{old_f} / {old_l}", f"{first_name} / {last_name}",
+            f"{old_b} -> {birthday}" if old_b != birthday else "")
 
 
 # ---------------------------------------------------------------------------
@@ -177,15 +280,41 @@ def save_cache(rider_id: str, data: dict) -> None:
 
 def apply_cache_to_db(conn: sqlite3.Connection, rider_ids: list[str]) -> int:
     updated = 0
+    changes = []
     for rider_id in rider_ids:
         cached = load_cache(rider_id)
         if not cached or not cached.get("display_name"):
             continue
         first, last = parse_first_last(cached["display_name"])
+        row = describe_change(conn, rider_id, first, last, cached.get("birthday"))
+        if row:
+            changes.append(row)
         update_rider(conn, rider_id, first, last, cached.get("birthday"))
         updated += 1
-    conn.commit()
+    if not DRY_RUN:
+        conn.commit()
+    print_changes(changes)
     return updated
+
+
+def print_changes(changes: list[tuple]) -> None:
+    """Every bulk edit here prints what it did, NULL-fills separated from
+    overwrites. A silent 5,000-row update is how a bad parse gets noticed a
+    month later."""
+    if not changes:
+        print("no changes")
+        return
+    fills = [c for c in changes if c[0] == "fill"]
+    over = [c for c in changes if c[0] == "OVERWRITE"]
+    for label, rows in (("NULL-fill", fills), ("OVERWRITE", over)):
+        if not rows:
+            continue
+        print(f"\n{label}: {len(rows)}")
+        print(f"  {'rider_id':38} {'full_name':30} {'stored':28} -> {'from PCS':28}")
+        for _, rid, full, old, new, bday in rows[:60]:
+            print(f"  {rid:38} {full[:30]:30} {old[:28]:28} -> {new[:28]:28} {bday}")
+        if len(rows) > 60:
+            print(f"  ... and {len(rows)-60} more")
 
 
 def main() -> None:
@@ -218,11 +347,13 @@ def main() -> None:
 
         parsed = parse_page(html)
         parsed["rider_id"] = rider_id
-        save_cache(rider_id, parsed)
+        save_cache(rider_id, parsed)   # cached even on a dry run, so the
+                                       # follow-up apply needs no re-fetch
 
         first, last = parse_first_last(parsed.get("display_name") or "")
         update_rider(conn, rider_id, first, last, parsed.get("birthday"))
-        conn.commit()
+        if not DRY_RUN:
+            conn.commit()
 
         fetched += 1
         if fetched % 100 == 0 or i % 500 == 0:
@@ -230,8 +361,9 @@ def main() -> None:
                   flush=True)
 
     n_applied = apply_cache_to_db(conn, rider_ids)
-    print(f"Done. fetched={fetched} skipped={skipped} failed={failed} "
-          f"db_updated={n_applied}/{total}")
+    print(f"\nDone{' (DRY RUN — nothing written)' if DRY_RUN else ''}. "
+          f"fetched={fetched} skipped={skipped} failed={failed} "
+          f"db_updated={0 if DRY_RUN else n_applied}/{total}")
     conn.close()
 
 
