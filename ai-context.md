@@ -71,7 +71,21 @@ intended behavior.
 **Cost/quality items worth revisiting:**
 - ~~**`classics/riders_index.json` is 2.93 MB / 719 KB gzipped**~~ — **addressed 2026-08-22**: re-encoded to 2.08 MB / 547 KB gzipped (-22%) and 24% faster to load. See "riders_index.json re-encoded" under Frontend performance. Still the largest single asset, so still the first thing to look at if coverage grows again.
 - **`export_gc.py --race tdf`** while everything else says `tour` — a real trip hazard, hit during the 2026-08-15 session. See "Renaming the project" §B.
-- **Social cards are ~1.7 MB committed** across 5 PNGs. Fine for every platform's limit; `pngquant` would roughly halve them.
+- **Social cards are ~1.8 MB committed** across 6 PNGs (gravel added a sixth). Fine for every platform's limit; `pngquant` would roughly halve them.
+- **`gc_by_stage_*.json` is 131.9 MB raw across 469 files, and most of it is key
+  names.** Each rider's `byStage` is an array of 8-key objects, one per stage —
+  Tour 1987 alone materialises 5,382 of them (207 riders x 26 stages). Flattening
+  to numeric arrays, the same move PR #10 made on `riders_index`, measures
+  **131.9 MB -> 41.0 MB raw (-68.9%)**; gzipped it is only 9.9 -> 7.7 MB (-22.9%),
+  so **this is a parse-time and memory win, not a download win.** Two shortcuts do
+  NOT work and were measured before being ruled out: `stage` cannot be dropped and
+  inferred positionally (67,829 of 91,455 riders have a sparse `byStage`), and
+  `name` cannot be dropped and rebuilt from `firstName`/`lastName` (10.2% of riders
+  have neither, and `displayName()` falls back to `name`). Touches ~20 call sites
+  in `stageChart.ts` / `stageTable.ts`. Gate it on a browser A/B forcing layout,
+  per "Measure before claiming a perf win".
+- **Rider-detail loads all five rider indexes** — see the fan-out note under
+  "Known-open" in the classics section. -47% available, mechanism undesigned.
 - **2026 Vuelta** has not been run yet (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
 
 ---
@@ -749,15 +763,20 @@ silently corrupted:
   change (Liège dates to 1892, Roubaix 1896), but re-check the column-shape and
   completeness assumptions above first — 1970–1989 held up well, older editions may
   not.
-- `classics/riders_index.json` is **1.56 MB (391 KB gzipped)** — larger than the three
-  Grand Tour indexes combined, because it carries every rider's per-race breakdown.
-  It is lazy-loaded, so first paint is unaffected, but `drawRiderDetail` awaits all
-  four indexes in parallel. Dropping the redundant team index from each constituent
-  entry saved 87 KB gzipped; further shrinking would mean restructuring `m`.
-  **At 1892–2026 it is 2.93 MB / 719 KB gzipped** — bigger than the three Grand
-  Tour indexes COMBINED (554 KB), and a rider-detail page pulls all four. This is
-  now the clearest cost of extending coverage and the first thing to revisit if it
-  grows again.
+- `classics/riders_index.json` is **2.08 MB / 547 KB gzipped** (re-encoded
+  2026-08-22, PR #10 — was 2.93 MB / 719 KB). Still the largest single asset the
+  app ships, because it carries every rider's per-race breakdown, and still bigger
+  than the three Grand Tour indexes combined. It is lazy-loaded, so first paint is
+  unaffected. The old advice here — "further shrinking would mean restructuring
+  `m`" — is spent: `m` is gone, merged into `ym` by that re-encode.
+  **The live cost is now the fan-out, not this one file.** `drawRiderDetail`
+  (`riderDetail.ts:28`) awaits `Promise.all(RACE_IDS.map(...))` over all **five**
+  indexes — 4,559 KB — on every rider-detail open, regardless of which rider.
+  Measured 2026-08-22: 10,793 of 17,736 riders (61%) appear in exactly ONE race,
+  and an ideal per-rider fetch would average 2,053 KB. A `riderId -> bitmask`
+  manifest costs 343 KB raw / 110 KB gzipped and would cut the average to
+  ~2,396 KB (-47%). Not built — the mechanism needs a design pass, since the
+  manifest is itself a download.
 
 ---
 
@@ -1336,9 +1355,9 @@ tdf-analytics/
 │   │                                 #   and public/robots.txt. Throws if a rewrite matched nothing
 │   ├── og-image.html                 # Social-card template — iframes the live SPA and hides chrome.
 │   │                                 #   NOT in vite input, so it never ships
-│   ├── scripts/render-og-images.sh   # Screenshots the 5 og-*.png cards with headless Chrome against
+│   ├── scripts/render-og-images.sh   # Screenshots the 6 og-*.png cards with headless Chrome against
 │   │                                 #   a running dev server. Run by hand; never in npm run build
-│   ├── public/og-*.png               # The 5 rendered 1200×630 social cards (committed)
+│   ├── public/og-*.png               # The 6 rendered 1200×630 social cards (committed)
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
@@ -1350,25 +1369,43 @@ tdf-analytics/
 │       ├── views/                    # One file per view: overview, allRaces, stageChart, riders, riderDetail
 │       ├── types.ts                  # TypeScript interfaces
 │       ├── style.css                 # All styles
-│       └── data/                     # Generated JSON — one per year + summary
-│           ├── gc_by_stage_1903.json  # TDF files live at top level
-│           ├── ...
-│           ├── gc_by_stage_2026.json  # 113 TDF files total (lazy-loaded, one chunk each)
-│           ├── giro/                  # Giro d'Italia files in subdirectory
-│           │   ├── gc_by_stage_YEAR.json  # 42 years with data (1980–2026)
-│           │   ├── all_races_summary.json # Giro cross-year aggregate (built by export_race_summary.py --race giro)
-│           │   └── riders_index.json      # Giro rider index (2,775 riders / 446 teams)
-│           ├── vuelta/                # Vuelta a España files in subdirectory
-│           │   ├── gc_by_stage_2025.json  # 1 year with data (2025)
-│           │   ├── all_races_summary.json # Vuelta cross-year aggregate (91 years 1935–2025, 1 with data)
-│           │   └── riders_index.json      # Vuelta rider index (184 riders / 23 teams)
-│           ├── all_races_summary.json # Cross-year aggregate data for All Races view (TDF only currently)
-│           └── riders_index.json      # Compact cross-year TDF rider index (lazy-loaded by Riders view)
+│       └── data/                     # Generated JSON — one directory per race, one file per year.
+│           │                         #   NOTHING lives at data/ root any more: the TDF files moved
+│           │                         #   into tour/. Both loaders glob per-race — raceRegistry.ts
+│           │                         #   globs data/*/all_races_summary.json, classicsHistory.ts
+│           │                         #   globs data/*/race_history.json — so a race is wired up by
+│           │                         #   the FILES IT HAS, and the two summary files are exclusive:
+│           │                         #   stage races get all_races_summary, aggregate sets get
+│           │                         #   race_history. Counts below verified 2026-08-22.
+│           ├── tour/                 # Tour de France — 113 years, 1903–2026
+│           │   ├── gc_by_stage_YEAR.json  # One per year, lazy-loaded, one chunk each
+│           │   ├── all_races_summary.json # Cross-year aggregate for the All Years view
+│           │   └── riders_index.json      # 5,471 riders / 633 teams — 787 KB
+│           ├── giro/                 # Giro d'Italia — 109 years, 1909–2026
+│           │   ├── gc_by_stage_YEAR.json
+│           │   ├── all_races_summary.json # built by export_race_summary.py --race giro
+│           │   └── riders_index.json      # 4,718 riders / 712 teams — 666 KB
+│           ├── vuelta/               # Vuelta a España — 80 years, 1935–2025 (2026 not run yet)
+│           │   ├── gc_by_stage_YEAR.json
+│           │   ├── all_races_summary.json
+│           │   └── riders_index.json      # 4,430 riders / 581 teams — 593 KB
+│           ├── classics/             # One-day classics — 134 years, 1892–2026
+│           │   ├── gc_by_stage_YEAR.json  # An aggregate "season": N races ordered by stage_date,
+│           │   │                          #   NOT stages of one race. See "by-Stage Table for an
+│           │   │                          #   aggregate race"
+│           │   ├── race_history.json      # Per-race small multiples. No all_races_summary.json
+│           │   └── riders_index.json      # 11,934 riders / 1,637 teams — 2,078 KB, the largest
+│           │                              #   single asset the app ships
+│           └── gravel/               # Life Time off-road races — 33 years, 1994–2026
+│               ├── gc_by_stage_YEAR.json  # Aggregate season, same shape as classics
+│               ├── race_history.json      # No all_races_summary.json — this set awards no points
+│               └── riders_index.json      # 3,569 riders / 0 teams (no team data off-road) — 436 KB
 └── pipeline/                         # Data pipeline — not deployed
     ├── cycling.db                    # SQLite DB (gitignored, ~140MB, NOT regenerable — back up with db_backup.py)
     ├── db_backup.py                  # Rotating DB backups → db_backups/ (auto-run by add_stages.py before deletes)
     ├── export_gc.py                  # Main exporter: cycling.db + JSON supplements → src/data/
-    │                                 #   --year N for single year, --race giro|tdf to select race
+    │                                 #   --year N for single year, --race {tdf,giro,vuelta} to select race.
+    │                                 #   NOTE it says `tdf`, not `tour`, while the data dir is tour/
     ├── race_common.py                # Shared pipeline helpers, two groups:
     │                                 #   - Giro/Vuelta ingest: parse_time_to_seconds, parse_int, parse_bonus_seconds,
     │                                 #     detect_route_type, parse_year_args, COUNTRY_NAMES, and the RACES:
@@ -1888,7 +1925,7 @@ which file a given function now lives in. Key functions:
 
 **Canonical host (2026-08-15).** The site serves from **`https://www.ericshiflet.com/tdf-analytics/`** — a GitHub Pages *project* site inheriting the custom domain from the `eshiflet.github.io` user site, which is why the repo name is a path segment. `eshiflet.github.io/tdf-analytics/` and the apex `ericshiflet.com` both **301** there, so exactly one URL returns 200. Every canonical/`og:url`/schema/sitemap/robots reference used to point at the redirecting `github.io` URL; they now point at the serving host. The sitemap mattered most: **a sitemap only covers URLs on its own host**, so one served from `www.ericshiflet.com` listing `github.io` entries was being ignored wholesale. `SITE` in `race-page-meta.mjs` is the single definition.
 
-**Social cards are rendered from the real charts (2026-08-15).** `public/og-*.png` are 1200×630 Open Graph images — one per landing page, so a shared link previews the race it actually points at. They are NOT mockups: `og-image.html` iframes the live SPA at a deep link, hides the chrome (topbar, sidebar, `rider-end-label`s, unit toggles), and scales the chart to fill, so the card is the same D3 render a visitor gets and cannot drift from it. `scripts/render-og-images.sh` screenshots the five variants with headless Chrome against a running dev server.
+**Social cards are rendered from the real charts (2026-08-15).** `public/og-*.png` are 1200×630 Open Graph images — one per landing page, so a shared link previews the race it actually points at. They are NOT mockups: `og-image.html` iframes the live SPA at a deep link, hides the chrome (topbar, sidebar, `rider-end-label`s, unit toggles), and scales the chart to fill, so the card is the same D3 render a visitor gets and cannot drift from it. `scripts/render-og-images.sh` screenshots the six variants with headless Chrome against a running dev server.
 
 Deliberately **not** part of `npm run build` — it needs a browser binary, and CI must stay install-free. Re-run it by hand after a palette or chart change. `og-image.html` is absent from `vite.config.ts`'s input, so it never ships. `twitter:card` is `summary_large_image`; the previous `summary` cropped everything to a small square and wasted the chart.
 
