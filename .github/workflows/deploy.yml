@@ -3,6 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # Same checks before a merge, not only after one. The deploy job and the
+  # artifact upload are both gated on this NOT being a pull_request — without
+  # that guard a PR build would publish itself to the live site.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +16,10 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  # Per-PR on pull_request so two open PRs do not cancel each other, and so a PR
+  # build never cancels an in-flight deploy of main. Real deploys keep sharing
+  # the single "pages" group, which is what serialises them.
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'pages' }}
   cancel-in-progress: true
 
 jobs:
@@ -54,12 +62,16 @@ jobs:
         run: node verify.mjs && node verify-views.mjs
         working-directory: cycling-app
 
+      # Nothing to publish from a PR — it has not been merged yet.
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           path: cycling-app/build
 
   deploy:
     needs: build
+    # PRs run the checks above and stop there.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
