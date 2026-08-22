@@ -21,15 +21,49 @@ const scriptSrc = indexHtml
   .replace(/^\.\//, "")
   .replace(/^\/tdf-analytics\//, "");
 
+// Vite hashes the emitted asset names, so build/assets/riders_index-C1EbTERE.json
+// carries nothing to say which race it is. Map them back by byte size against
+// the sources they were copied from — verbatim copies, and all five sizes are
+// distinct. Needed only by bootProgressive(), but built once here so a rename
+// fails loudly rather than silently matching nothing (which is exactly how the
+// first version of that scenario passed without ever applying a delay).
+const RIDER_INDEX_ASSET_BY_RACE = (() => {
+  const bySize = new Map();
+  for (const f of fs.readdirSync(new URL("assets/", buildDir))) {
+    if (!/^riders_index-.*\.json$/.test(f)) continue;
+    bySize.set(fs.statSync(new URL(`assets/${f}`, buildDir)).size, f);
+  }
+  const out = {};
+  for (const race of ["tour", "giro", "vuelta", "classics", "gravel"]) {
+    const size = fs.statSync(new URL(`src/data/${race}/riders_index.json`,
+      import.meta.url)).size;
+    const hit = bySize.get(size);
+    if (!hit) throw new Error(`no built riders_index matches ${race} (${size} bytes)`);
+    out[race] = hit;
+  }
+  return out;
+})();
+
+// Artificial per-race latency in ms, applied only by bootProgressive().
+let fetchDelays = null;
+
 globalThis.fetch = async (url) => {
   const rel = String(url).replace(/^\/tdf-analytics\//, "");
   const data = fs.readFileSync(new URL(rel, buildDir), "utf-8");
+  if (fetchDelays) {
+    for (const [race, ms] of Object.entries(fetchDelays)) {
+      if (rel.endsWith(RIDER_INDEX_ASSET_BY_RACE[race])) {
+        await new Promise((r) => setTimeout(r, ms));
+        break;
+      }
+    }
+  }
   return new Response(data, { status: 200, headers: { "Content-Type": "application/json" } });
 };
 
 let importCounter = 0;
 
-async function boot(hash) {
+async function boot(hash, midLoad) {
   const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml}</body></html>`, {
     url: `http://localhost/${hash}`,
     pretendToBeVisual: true,
@@ -50,8 +84,35 @@ async function boot(hash) {
   // Node caches ES modules by full URL; a unique query forces a fresh
   // evaluation of the bundle (and its init()) for each scenario's DOM.
   await import(`${new URL(scriptSrc, buildDir).href}?scenario=${importCounter++}`);
+  if (midLoad) {
+    // Runs while later indexes are still in flight, so a scenario can act on
+    // the partially-rendered view the way a user would.
+    await new Promise((r) => setTimeout(r, midLoad.at));
+    midLoad.run(window.document);
+  }
   await new Promise((r) => setTimeout(r, 400));
   return window.document;
+}
+
+/** boot() with control over WHICH rider index lands first, and a hook that runs
+ *  partway through the load.
+ *
+ *  The plain harness reads every file with fs.readFileSync behind an
+ *  already-resolved Response, so all five indexes arrive in RACE_IDS order,
+ *  every run. drawRiderDetail is progressive — it renders on the first index
+ *  that contains the rider and folds the rest in as they arrive — so the one
+ *  thing that can actually go wrong there, arrival order differing from
+ *  registry order, is precisely what the harness cannot produce. A real
+ *  ordering bug shipped and passed all 58 checks.
+ */
+async function bootProgressive(hash, delays, midLoad) {
+  fetchDelays = delays;
+  try {
+    const doc = await boot(hash, midLoad);
+    return doc;
+  } finally {
+    fetchDelays = null;
+  }
 }
 
 const failures = [];
@@ -105,6 +166,134 @@ function check(name, cond, detail) {
   // .rider-detail-name also carries a trailing nationality flag emoji.
   check("rider detail deep link shows rider", name?.startsWith("Eddy Merckx") ?? false, `name=${JSON.stringify(name)}`);
   check("career chart has GC dots", dots >= 6, `${dots} dots`);
+
+  // drawRiderDetail is PROGRESSIVE: it renders on the first index that
+  // contains the rider and folds the rest in as they arrive. That fills its
+  // byRace map in ARRIVAL order, i.e. network timing — so everything below is
+  // guarding against output that reshuffles itself between loads. The first
+  // version of that change shipped "…, 1 Gravel, 16 Classics" one run and
+  // "…, 16 Classics, 1 Gravel" the next.
+  const meta = doc.querySelector(".rider-detail-meta")?.textContent ?? "";
+  const order = ["TDF", "Giro", "Vuelta", "Classics"]
+    .map((r) => meta.indexOf(r)).filter((i) => i >= 0);
+  check("rider meta names every race the rider contested",
+    order.length === 4, `meta=${JSON.stringify(meta)}`);
+  check("rider meta is in registry order, not arrival order",
+    order.every((v, i) => i === 0 || v > order[i - 1]), `meta=${JSON.stringify(meta)}`);
+
+  // Every race with data must end up toggled ON, and one with none must stay
+  // .no-data — a late arrival must not leave its own button unwired.
+  const toggles = [...doc.querySelectorAll(".race-toggle-btn")]
+    .map((b) => `${b.textContent}:${b.classList.contains("active") ? "on"
+      : b.classList.contains("no-data") ? "none" : "off"}`);
+  check("every contested race is toggled on, the uncontested one is not",
+    toggles.join(",") === "T:on,G:on,V:on,C:on,X:none", toggles.join(","));
+
+  // The classification toggles only exist because a Grand Tour index arrived;
+  // a classics-only rider gets none. Whichever index landed first, all three
+  // must be present and lit by the time loading settles.
+  const classifs = [...doc.querySelectorAll(".classif-toggle-btn")]
+    .map((b) => `${b.textContent}:${b.classList.contains("active") ? "on" : "off"}`);
+  check("sprint/KOM toggles survive a late Grand Tour arrival",
+    classifs.join(",") === "GC:on,Sprint:on,KOM:on", classifs.join(","));
+
+  // Dots from more than one race prove the fold-in actually merged, rather
+  // than the last render replacing the earlier ones.
+  const racesPlotted = new Set([...doc.querySelectorAll("[class^='career-gc-']")]
+    .map((e) => e.getAttribute("class").replace("career-gc-", "")));
+  check("career chart merges every race, not just the last to arrive",
+    racesPlotted.size === 4, [...racesPlotted].sort().join(","));
+}
+
+// 4b. A rider in exactly ONE race — 61% of them. The progressive path must
+//     render a single-race rider without waiting for the other four, and
+//     without offering toggles for classifications that race does not award.
+{
+  const doc = await boot("#riders/todd-murray");   // gravel only
+  await new Promise((r) => setTimeout(r, 100));
+  const meta = doc.querySelector(".rider-detail-meta")?.textContent ?? "";
+  check("single-race rider names only its own race",
+    /^\d+ Gravel/.test(meta), `meta=${JSON.stringify(meta)}`);
+  const toggles = [...doc.querySelectorAll(".race-toggle-btn")]
+    .filter((b) => !b.classList.contains("no-data")).map((b) => b.textContent);
+  check("single-race rider lights exactly one race toggle",
+    toggles.join(",") === "X", toggles.join(","));
+  check("a race with no sprint/KOM offers no such toggles",
+    doc.querySelectorAll(".classif-toggle-btn").length === 0,
+    `${doc.querySelectorAll(".classif-toggle-btn").length} toggles`);
+}
+
+// 4c. Progressive loading with the indexes arriving OUT of registry order.
+//     drawRiderDetail renders on the first index containing the rider and
+//     folds the rest in, so its byRace map fills in arrival order. Everything
+//     user-visible has to be re-sorted into registry order on the way out, and
+//     a race the user switched off has to stay off when a later index lands.
+//     Both of those broke in the first version of the progressive change, and
+//     both passed every check here until this scenario existed.
+{
+  // classics lands first; the four the rider also rode arrive 80ms later.
+  const doc = await bootProgressive("#riders/eddy-merckx",
+    // classics first, tour just behind it, the rest much later. Two must have
+    // landed before the click below: switching off the ONLY active race is
+    // refused by design, so a single-race moment makes the click a no-op and
+    // the scenario proves nothing.
+    { tour: 20, giro: 120, vuelta: 120, gravel: 120 },
+    // Partway through, with classics and tour rendered and giro/vuelta still
+    // in flight, switch classics off the way a user would. It must not come
+    // back on when the later indexes arrive and rebuild the toggle bar.
+    { at: 60, run: (d) => {
+        const btns = [...d.querySelectorAll(".race-toggle-btn")];
+        const live = btns.filter((b) => !b.classList.contains("no-data"));
+        if (live.length < 2) throw new Error(
+          `scenario is not exercising progressive load: ${live.length} race(s) rendered at 60ms`);
+        live.find((b) => b.textContent === "C").dispatchEvent(
+          new (globalThis.window.MouseEvent)("click", { bubbles: true }));
+      } });
+
+  const meta = doc.querySelector(".rider-detail-meta")?.textContent ?? "";
+  const order = ["TDF", "Giro", "Vuelta", "Classics"]
+    .map((r) => meta.indexOf(r)).filter((i) => i >= 0);
+  check("out-of-order arrival still yields registry order",
+    order.length === 4 && order.every((v, i) => i === 0 || v > order[i - 1]),
+    `meta=${JSON.stringify(meta)}`);
+
+  const off = [...doc.querySelectorAll(".race-toggle-btn")]
+    .filter((b) => b.classList.contains("inactive")).map((b) => b.textContent);
+  check("a race switched off mid-load stays off when later indexes land",
+    off.join(",") === "C", `inactive=[${off.join(",")}]`);
+
+  const plotted = new Set([...doc.querySelectorAll("[class^='career-gc-']")]
+    .map((e) => e.getAttribute("class").replace("career-gc-", "")));
+  check("the switched-off race is excluded from the redrawn chart",
+    !plotted.has("classics") && plotted.size === 3, [...plotted].sort().join(","));
+}
+
+// 4d. Navigating away BEFORE any index has arrived. All five still resolve and
+//     all five still run their handler; each has to notice the user is no
+//     longer on this rider — or on the riders view at all — and render nothing.
+//     Under the old Promise.all there was one render at the end and so one
+//     chance to get this wrong. There are now five, and the guard needs the
+//     VIEW as well as the rider id: switching views leaves currentRiderId set,
+//     so checking the id alone let a late index build a detail header inside
+//     the panel the user had already left.
+{
+  const doc = await bootProgressive("#riders/eddy-merckx",
+    { classics: 200, tour: 200, giro: 200, vuelta: 200, gravel: 200 },
+    { at: 40, run: (d) => {
+        if (d.querySelector(".rider-detail-header")) throw new Error(
+          "an index arrived before the navigation — raise the delays");
+        globalThis.window.location.hash = "#allraces";
+      } });
+
+  check("an index landing after navigation renders nothing",
+    doc.querySelectorAll(".rider-detail-header").length === 0,
+    `${doc.querySelectorAll(".rider-detail-header").length} header(s) left behind`);
+  check("navigating away mid-load does not rewrite the URL back",
+    globalThis.window.location.hash === "#allraces",
+    `hash=${globalThis.window.location.hash}`);
+  check("the view navigated to is the one that renders",
+    doc.querySelectorAll("#all-races-chart svg g .overview-panel-label").length === 4,
+    `${doc.querySelectorAll("#all-races-chart svg g .overview-panel-label").length} panels`);
 }
 
 // 5. All Races deep link.

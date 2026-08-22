@@ -374,16 +374,66 @@ Mean 236 ms against 438 today. Three things kill it:
    fetches can start. On localhost that hop is 7 ms; at a 200 ms RTT the mean
    goes to 436 ms and the entire win is gone.
 
-### What to look at instead
+### Progressive render — DONE 2026-08-22
+
+`drawRiderDetail` no longer awaits `Promise.all` before drawing. It renders on
+the first index containing the rider and folds each later one in.
+
+| | before | after |
+|---|---|---|
+| name, meta line, toggles | 438 ms | **45-82 ms** |
+| chart | 457 ms | 315-471 ms (unchanged, see below) |
+| expected time to first content, all riders | 458 ms | **238 ms mean** |
+
+**The chart is not faster, and cannot be.** The five index builds are
+synchronous main-thread work that runs back to back, so a deferred chart draw
+is starved until they finish. What changed is that the panel is no longer BLANK
+for the whole wait — a deep link to `#riders/<slug>` used to show nothing at
+all, with not even the "Loading riders…" message the grid has.
+
+Consecutive arrivals coalesce: the deferred draw's timer is cancelled and
+re-armed, so a rider in five races pays one chart render, not five.
+
+**Three invariants, all of which broke or nearly broke in the first version:**
+
+1. **Order.** `byRace` now fills in ARRIVAL order, i.e. network timing.
+   Everything user-visible reads it back through `racesWithData()` /
+   `racesToDraw()`, which re-sort into `RACE_IDS` order. The first version
+   shipped "…, 1 Gravel, 16 Classics" one load and "…, 16 Classics, 1 Gravel"
+   the next.
+2. **Toggle state.** The bar is rebuilt on every arrival, so it reads
+   `activeRaces` rather than assuming active — a race the user switched off
+   must stay off.
+3. **The guard needs the VIEW, not just the rider.** Switching views leaves
+   `state.currentRiderId` set, so checking the id alone let a late index build
+   a detail header inside the panel the user had already left. Under the old
+   `Promise.all` there was one render and one chance to get this wrong; there
+   are now five.
+
+**The smoke harness could not have caught any of this**, and that mattered more
+than the code. `verify-views.mjs` reads every file with `fs.readFileSync`
+behind an already-resolved `Response`, so all five indexes arrive in `RACE_IDS`
+order every run — the one thing that can go wrong is the one thing it could not
+produce. It now has `bootProgressive(hash, delays, midLoad)`: per-race
+artificial latency plus a hook that acts on the half-rendered view. Two traps
+found building it — Vite hashes the asset filenames, so the delay map matches
+on byte size against the source files (the first version matched nothing and
+passed for the wrong reason), and switching off the only active race is refused
+by design, so the scenario has to stagger two arrivals before it clicks.
+
+Seven mutations, all caught.
+
+### Still worth looking at
 
 - **The classics index at 208 ms**, which is 46% of the cost and is loaded on
-  every entry into the section. Halving it beats anything the fan-out can offer,
-  and it helps the grid too.
-- **Render progressively.** `drawRiderDetail` (`riderDetail.ts:28`) awaits
-  `Promise.all` over all five before drawing anything, so the slowest index gates
-  first paint. Drawing each race's results as its index resolves would put
-  something on screen at ~34 ms with no manifest, no extra round trip, and no
-  case that gets slower.
+  every entry into the section, grid included. Halving it beats anything the
+  fan-out could have offered.
+- **Build order.** The builds run in fetch-completion order, which measured as
+  tour, giro, vuelta, gravel, classics — near enough to cheapest-first by luck.
+  Forcing true cheapest-first (gravel, tour, giro, vuelta, classics) would take
+  the mean from 238 to 213 ms and the MEDIAN from 215 to 102, because a rider in
+  a cheap index would stop waiting behind expensive ones. It needs fetch split
+  from build in `riderIndexData.ts`, since fetches must stay parallel.
 
 ---
 

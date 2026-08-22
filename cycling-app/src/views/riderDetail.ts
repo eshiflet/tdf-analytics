@@ -18,164 +18,216 @@ import { buildLegend } from "./stageChart";
 import { setRace, loadDataset, switchView, showLoadError } from "../main";
 import { drawRidersPage } from "./riders";
 
+type ClassifId = "gc" | "sprint" | "kom";
+
+// Badge config per race (for toggle buttons and DNF dot outlines). The
+// classics share one neutral gray across all 11 constituent races, and the
+// off-road races one brown across their six — see the registry's `chart`
+// comment for why neither set is coloured individually. "X" for gravel
+// because G is already the Giro.
+const BADGE: Record<RaceId, { bg: string; text: string; label: string }> = {
+  tour:     { bg: "#FFD400", text: "#111", label: "T" },
+  giro:     { bg: "#E4007C", text: "#fff", label: "G" },
+  vuelta:   { bg: "#E30613", text: "#fff", label: "V" },
+  classics: { bg: "#9ca3af", text: "#111", label: "C" },
+  gravel:   { bg: "#b4794a", text: "#fff", label: "X" },
+};
+
+/**
+ * PROGRESSIVE. This used to `await Promise.all` over all five rider indexes
+ * before putting anything on screen, so first paint was gated on the SLOWEST
+ * of them, and a deep link to `#riders/<slug>` showed a blank panel for the
+ * whole wait — with no loading message, unlike the Riders grid.
+ *
+ * Measured 2026-08-22 on a cold document: 438 ms to header, 457 ms to chart,
+ * of which only 48 ms was network. The five builds cost 208 ms (classics),
+ * 79 (vuelta), 69 (giro), 68 (tour), 34 (gravel), and running them in parallel
+ * bought about 4% — it is all main-thread work.
+ *
+ * So the view now draws as soon as the FIRST index containing this rider
+ * resolves, and folds each later one in as it arrives. 61% of riders appear in
+ * exactly one race and reach their final state in a single render.
+ *
+ * Three things this has to keep right, none of them visible until they break:
+ *   - a race the user toggled OFF must stay off when a later index lands
+ *   - "rider not found" cannot be concluded until ALL five have resolved,
+ *     which is why that bail-out is after the Promise.all, not inside the
+ *     per-index handler
+ *   - navigating away mid-load must abandon the render, hence the
+ *     currentRiderId re-check after every await
+ */
 export async function drawRiderDetail(riderId: string): Promise<void> {
   // Claim the slot before the first await so drawRidersPage can bail if it
   // resumes from its own await and sees a detail is now in flight.
   state.currentRiderId = riderId;
   ridersChartEl.innerHTML = "";
 
-  // Load all race indexes in parallel, then find rider in each
-  await Promise.all(RACE_IDS.map((r) => ensureRiderIndexFor(r)));
   const byRace = new Map<RaceId, RiderEntry>();
-  for (const race of RACE_IDS) {
-    const e = riderIndexByRace[race].get(riderId);
-    if (e) byRace.set(race, e);
-  }
-  if (byRace.size === 0) return;
+  const activeRaces = new Set<RaceId>();
+  const activeClassifs = new Set<ClassifId>(["gc"]);
 
-  updateHash();
+  // Both of these are filled in ARRIVAL order now, which is network timing.
+  // Everything user-visible has to read them in RACE_IDS order instead, or the
+  // summary line and the chart's draw order shuffle themselves between loads.
+  const racesWithData = () => RACE_IDS.filter((r) => byRace.has(r));
+  const racesToDraw   = () => RACE_IDS.filter((r) => activeRaces.has(r));
 
-  // Prefer entry from currentRace for name/nationality; fall back to first found
-  const primaryEntry = byRace.get(state.currentRace) ?? [...byRace.values()][0];
-
-  // Badge config per race (for toggle buttons and DNF dot outlines). The
-  // classics share one neutral gray across all 11 constituent races, and the
-  // off-road races one brown across their six — see the registry's `chart`
-  // comment for why neither set is coloured individually. "X" for gravel
-  // because G is already the Giro.
-  const BADGE: Record<RaceId, { bg: string; text: string; label: string }> = {
-    tour:     { bg: "#FFD400", text: "#111", label: "T" },
-    giro:     { bg: "#E4007C", text: "#fff", label: "G" },
-    vuelta:   { bg: "#E30613", text: "#fff", label: "V" },
-    classics: { bg: "#9ca3af", text: "#111", label: "C" },
-    gravel:   { bg: "#b4794a", text: "#fff", label: "X" },
-  };
+  let header: HTMLDivElement | null = null;
+  let toggleGroup: HTMLDivElement;
+  let chartContainer: HTMLDivElement;
 
   // ── Header ──────────────────────────────────────────────────────────────────
-  const header = document.createElement("div");
-  header.className = "rider-detail-header";
+  function renderHeader() {
+    header!.innerHTML = "";
+    // Prefer the entry from currentRace for name/nationality, falling back to
+    // the first found. Recomputed on every arrival, so an early stand-in is
+    // replaced once the preferred race's index lands.
+    const primaryEntry = byRace.get(state.currentRace) ?? byRace.get(racesWithData()[0])!;
 
-  const backBtn = document.createElement("button");
-  backBtn.className = "rider-back-btn";
-  backBtn.textContent = "← All Riders";
-  backBtn.addEventListener("click", () => drawRidersPage());
+    const backBtn = document.createElement("button");
+    backBtn.className = "rider-back-btn";
+    backBtn.textContent = "← All Riders";
+    backBtn.addEventListener("click", () => drawRidersPage());
 
-  const nameEl = document.createElement("h2");
-  nameEl.className = "rider-detail-name";
-  nameEl.appendChild(document.createTextNode(displayName(primaryEntry)));
-  const detailFlag = nationalityFlagEl(primaryEntry.nationality);
-  if (detailFlag) nameEl.appendChild(detailFlag);
+    const nameEl = document.createElement("h2");
+    nameEl.className = "rider-detail-name";
+    nameEl.appendChild(document.createTextNode(displayName(primaryEntry)));
+    const detailFlag = nationalityFlagEl(primaryEntry.nationality);
+    if (detailFlag) nameEl.appendChild(detailFlag);
 
-  // Sits immediately right of the name: the rider's headline results are not
-  // all still theirs, and that belongs next to the name rather than buried in
-  // the per-jersey notes further down the page.
-  const dopingNoteEl = RIDERS_WITH_REVOKED_RESULTS.has(primaryEntry.id)
-    ? document.createElement("span")
-    : null;
-  if (dopingNoteEl) {
-    dopingNoteEl.className = "rider-detail-doping-note";
-    dopingNoteEl.textContent = DOPING_REVOKED_NOTE;
-  }
-
-  const metaEl = document.createElement("div");
-  metaEl.className = "rider-detail-meta";
-  const metaParts: string[] = [];
-  for (const [race, entry] of byRace) {
-    const yrs = [...entry.years.keys()].sort((a, b) => a - b);
-    const finished = yrs.filter((yr) => entry.years.get(yr)!.finalRank < 9999);
-    const best = finished.length > 0
-      ? Math.min(...finished.map((yr) => entry.years.get(yr)!.finalRank))
+    // Sits immediately right of the name: the rider's headline results are not
+    // all still theirs, and that belongs next to the name rather than buried in
+    // the per-jersey notes further down the page.
+    const dopingNoteEl = RIDERS_WITH_REVOKED_RESULTS.has(primaryEntry.id)
+      ? document.createElement("span")
       : null;
-    // "TDF" is kept for the Tour rather than the registry's "Tour" so this
-    // summary line reads exactly as it always has.
-    const raceName = race === "tour" ? "TDF" : RACE_SHORT_LABEL[race];
-    let part = `${yrs.length} ${raceName}`;
-    if (best !== null) part += ` · Best #${best}`;
-    metaParts.push(part);
+    if (dopingNoteEl) {
+      dopingNoteEl.className = "rider-detail-doping-note";
+      dopingNoteEl.textContent = DOPING_REVOKED_NOTE;
+    }
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "rider-detail-meta";
+    const metaParts: string[] = [];
+    for (const race of racesWithData()) {
+      const entry = byRace.get(race)!;
+      const yrs = [...entry.years.keys()].sort((a, b) => a - b);
+      const finished = yrs.filter((yr) => entry.years.get(yr)!.finalRank < 9999);
+      const best = finished.length > 0
+        ? Math.min(...finished.map((yr) => entry.years.get(yr)!.finalRank))
+        : null;
+      // "TDF" is kept for the Tour rather than the registry's "Tour" so this
+      // summary line reads exactly as it always has.
+      const raceName = race === "tour" ? "TDF" : RACE_SHORT_LABEL[race];
+      let part = `${yrs.length} ${raceName}`;
+      if (best !== null) part += ` · Best #${best}`;
+      metaParts.push(part);
+    }
+    metaEl.textContent = metaParts.join(", ");
+    header!.append(backBtn, nameEl, ...(dopingNoteEl ? [dopingNoteEl] : []), metaEl);
   }
-  metaEl.textContent = metaParts.join(", ");
-  header.append(backBtn, nameEl, ...(dopingNoteEl ? [dopingNoteEl] : []), metaEl);
-  ridersChartEl.appendChild(header);
 
   // ── Toggle bar: race buttons (T/G/V) + divider + classification buttons ───────
-  type ClassifId = "gc" | "sprint" | "kom";
-  const activeRaces   = new Set<RaceId>(byRace.keys());
-  // Sprint/KOM only exist if at least one race this rider has data in
-  // contests them — a classics-only rider gets neither the toggles nor the
-  // legend rows, rather than two controls that can never show anything.
-  const hasSprintKom = [...byRace.keys()].some((r) => RACES[r].hasSprintKom);
-  const classifIds: ClassifId[] = hasSprintKom ? ["gc", "sprint", "kom"] : ["gc"];
-  const activeClassifs = new Set<ClassifId>(classifIds);
+  function renderToggles() {
+    toggleGroup.innerHTML = "";
+    // Sprint/KOM only exist if at least one race this rider has data in
+    // contests them — a classics-only rider gets neither the toggles nor the
+    // legend rows, rather than two controls that can never show anything.
+    const hasSprintKom = racesWithData().some((r) => RACES[r].hasSprintKom);
+    const classifIds: ClassifId[] = hasSprintKom ? ["gc", "sprint", "kom"] : ["gc"];
+    // A classification that only becomes available when a later index lands
+    // defaults to on. The user cannot have switched off a control that did not
+    // exist yet, so this never overrides a choice.
+    for (const c of classifIds) activeClassifs.add(c);
 
-  const toggleGroup = document.createElement("div");
-  toggleGroup.className = "race-toggle-group";
+    // Race toggles
+    for (const race of RACE_IDS) {
+      const btn = document.createElement("button");
+      btn.className = "race-toggle-btn";
+      const hasData = byRace.has(race);
+      const badge = BADGE[race];
+      btn.textContent = badge.label;
+      btn.title = RACES[race].name;
+      btn.style.setProperty("--race-color", badge.bg);
+      btn.style.setProperty("--race-text", badge.text);
+      if (!hasData) {
+        btn.classList.add("no-data");
+      } else {
+        // Read the live set rather than assuming active: this bar is rebuilt
+        // every time an index lands, and a race the user switched off has to
+        // come back switched off.
+        btn.classList.add(activeRaces.has(race) ? "active" : "inactive");
+        btn.addEventListener("click", () => {
+          if (activeRaces.has(race)) {
+            if (activeRaces.size === 1) return;
+            activeRaces.delete(race);
+            btn.classList.replace("active", "inactive");
+          } else {
+            activeRaces.add(race);
+            btn.classList.replace("inactive", "active");
+          }
+          redrawChart();
+        });
+      }
+      toggleGroup.appendChild(btn);
+    }
 
-  // Race toggles
-  for (const race of RACE_IDS) {
-    const btn = document.createElement("button");
-    btn.className = "race-toggle-btn";
-    const hasData = byRace.has(race);
-    const badge = BADGE[race];
-    btn.textContent = badge.label;
-    btn.title = RACES[race].name;
-    btn.style.setProperty("--race-color", badge.bg);
-    btn.style.setProperty("--race-text", badge.text);
-    if (!hasData) {
-      btn.classList.add("no-data");
-    } else {
-      btn.classList.add("active");
+    // Divider — only meaningful when there are classification toggles to
+    // separate the race toggles from.
+    if (classifIds.length > 1) {
+      const divider = document.createElement("span");
+      divider.className = "toggle-divider";
+      divider.textContent = "|";
+      toggleGroup.appendChild(divider);
+    }
+
+    // Classification toggles
+    for (const classif of (classifIds.length > 1 ? classifIds : [])) {
+      const label = classif === "gc" ? "GC" : classif === "sprint" ? "Sprint" : "KOM";
+      const btn = document.createElement("button");
+      btn.className = `classif-toggle-btn ${activeClassifs.has(classif) ? "active" : "inactive"}`;
+      btn.textContent = label;
       btn.addEventListener("click", () => {
-        if (activeRaces.has(race)) {
-          if (activeRaces.size === 1) return;
-          activeRaces.delete(race);
+        if (activeClassifs.has(classif)) {
+          if (activeClassifs.size === 1) return;
+          activeClassifs.delete(classif);
           btn.classList.replace("active", "inactive");
         } else {
-          activeRaces.add(race);
+          activeClassifs.add(classif);
           btn.classList.replace("inactive", "active");
         }
         redrawChart();
       });
+      toggleGroup.appendChild(btn);
     }
-    toggleGroup.appendChild(btn);
   }
 
-  // Divider — only meaningful when there are classification toggles to
-  // separate the race toggles from.
-  if (classifIds.length > 1) {
-    const divider = document.createElement("span");
-    divider.className = "toggle-divider";
-    divider.textContent = "|";
-    toggleGroup.appendChild(divider);
+  /** Build the shell on the first arrival, then refresh it on every later one. */
+  function renderAll() {
+    if (!header) {
+      header = document.createElement("div");
+      header.className = "rider-detail-header";
+      toggleGroup = document.createElement("div");
+      toggleGroup.className = "race-toggle-group";
+      chartContainer = document.createElement("div");
+      chartContainer.className = "rider-career-chart";
+      ridersChartEl.append(header, toggleGroup, chartContainer);
+      updateHash();
+    }
+    renderHeader();
+    renderToggles();
+    redrawChart();
   }
 
-  // Classification toggles
-  for (const classif of (classifIds.length > 1 ? classifIds : [])) {
-    const label = classif === "gc" ? "GC" : classif === "sprint" ? "Sprint" : "KOM";
-    const btn = document.createElement("button");
-    btn.className = "classif-toggle-btn active";
-    btn.textContent = label;
-    btn.addEventListener("click", () => {
-      if (activeClassifs.has(classif)) {
-        if (activeClassifs.size === 1) return;
-        activeClassifs.delete(classif);
-        btn.classList.replace("active", "inactive");
-      } else {
-        activeClassifs.add(classif);
-        btn.classList.replace("inactive", "active");
-      }
-      redrawChart();
-    });
-    toggleGroup.appendChild(btn);
-  }
-  ridersChartEl.appendChild(toggleGroup);
-
-  // ── Chart container ──────────────────────────────────────────────────────────
-  const chartContainer = document.createElement("div");
-  chartContainer.className = "rider-career-chart";
-  ridersChartEl.appendChild(chartContainer);
+  // The chart draw is deferred a tick so the flex container can lay out, and
+  // that same timer is the coalescing point: when two indexes land close
+  // together the second supersedes the first's pending draw instead of adding
+  // to it. Without this a rider in five races paid five full chart renders.
+  let pendingDraw: number | null = null;
 
   function redrawChart() {
     chartContainer.innerHTML = "";
+    if (pendingDraw !== null) { clearTimeout(pendingDraw); pendingDraw = null; }
 
     type CrossPt = {
       year: number; race: RaceId;
@@ -186,7 +238,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
     };
 
     const allPoints: CrossPt[] = [];
-    for (const race of activeRaces) {
+    for (const race of racesToDraw()) {
       const entry = byRace.get(race)!;
       if (entry.constituents) {
         // Aggregate race: one point per constituent race contested, so a
@@ -213,7 +265,8 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
     const maxYear = Math.max(...allYears);
 
     // Defer one tick so the flex container has a chance to lay out
-    setTimeout(() => {
+    pendingDraw = setTimeout(() => {
+      pendingDraw = null;
       const rect = chartContainer.getBoundingClientRect();
       const W = Math.max(rect.width || 800, 500);
       const H = Math.max(rect.height || 380, 280);
@@ -250,7 +303,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       const uniqueYears = [...new Set(allPoints.map((p) => p.year))].sort((a, b) => a - b);
       const racesPerYear = new Map<number, RaceId[]>();
       for (const year of uniqueYears) {
-        racesPerYear.set(year, [...activeRaces].filter((r) => allPoints.some((p) => p.race === r && p.year === year)));
+        racesPerYear.set(year, racesToDraw().filter((r) => allPoints.some((p) => p.race === r && p.year === year)));
       }
       const DOT_R = 5;
       function xPos(race: RaceId, year: number): number {
@@ -300,7 +353,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       // Text is left-aligned so "T/S/K" first letters line up vertically.
       // Layout: [line 12px] [gap 4px] [text left-aligned] — per column.
       // Columns are right-to-left with a 12px gap between them.
-      const activeList = [...activeRaces];
+      const activeList = racesToDraw();
       // The classics award neither jersey (registry: hasSprintKom) and no such
       // line is ever drawn for them, so they get no Sprint/KOM legend entry —
       // and their column isn't widened to fit labels that never appear.
@@ -450,7 +503,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       }
 
       // Draw lines + dots per active race × classification
-      for (const race of activeRaces) {
+      for (const race of racesToDraw()) {
         const racePts = allPoints.filter((p) => p.race === race).sort((a, b) => a.year - b.year);
         const { gc: gcColor, sprint: sprintColor, kom: komColor } = RACES[race].chart;
         const xFn = (d: CrossPt) => xPos(d.race, d.year);
@@ -526,8 +579,27 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
             .on("click", (_e, d) => doNavigate(d, "kom"));
         }
       }
-    }, 0);
+    }, 0) as unknown as number;
   }
 
-  redrawChart();
+  // Fold each index in as it lands rather than waiting for the slowest.
+  await Promise.all(RACE_IDS.map((race) =>
+    ensureRiderIndexFor(race).then(() => {
+      // Both halves matter. currentRiderId alone was not enough: switching to
+      // another VIEW mid-load leaves it set, so a late index went on appending
+      // a detail header into the (now hidden) riders panel. Under the old
+      // Promise.all there was one render at the end and one chance to get this
+      // wrong; there are now five.
+      if (state.currentView !== "riders" || state.currentRiderId !== riderId) return;
+      const entry = riderIndexByRace[race].get(riderId);
+      if (!entry) return;                             // nothing to add
+      byRace.set(race, entry);
+      activeRaces.add(race);
+      renderAll();
+    })
+  ));
+
+  // Only now can "no such rider" be distinguished from "not loaded yet".
+  if (state.currentView !== "riders" || state.currentRiderId !== riderId) return;
+  if (byRace.size === 0) ridersChartEl.innerHTML = "";
 }
