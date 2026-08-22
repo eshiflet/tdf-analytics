@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#
+# Pre-push checks — the same ones CI runs, before the commit is on main.
+#
+# WHY THIS EXISTS. Work goes straight to main here (305 of the repo's first 316
+# commits did), so CI only ever reports breakage after the fact: the commit is
+# already pushed, main is already red, and the fix has to go forward. This runs
+# the same checks first.
+#
+# It is not redundant with CI. validate_db.py cannot run in CI at all — the
+# database is gitignored and not regenerable there — so a DB-level regression
+# has no other automated guard.
+#
+# COST, measured rather than guessed:
+#     unit tests            0.5s
+#     validate_exports.py   1.6s
+#     validate_db.py        1.3s   (CI cannot run this)
+#     npm run build         1.3s   } only when cycling-app/ changed
+#     smoke tests          12.7s   }
+# A pipeline- or docs-only push therefore costs ~3s, not ~17s.
+#
+# Install:  ln -sf ../../scripts/pre-push .git/hooks/pre-push
+# Bypass:   git push --no-verify        (it is a guard, not a gate)
+
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+RED=$'\033[31m'; GREEN=$'\033[32m'; DIM=$'\033[2m'; OFF=$'\033[0m'
+fail() { echo "${RED}pre-push: $1 FAILED${OFF}"; echo "${DIM}  re-run it yourself, or bypass with: git push --no-verify${OFF}"; exit 1; }
+step() { printf "  %-22s" "$1"; }
+ok()   { echo "${GREEN}ok${OFF}"; }
+
+# Which commits are actually being pushed? git feeds the hook lines of
+# "<local ref> <local sha> <remote ref> <remote sha>" on stdin. A remote sha of
+# all zeros means the branch is new there, so compare against the default
+# branch instead of a ref that does not exist yet.
+range=""
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac   # deleting a branch
+  if [ -z "${remote_sha//0/}" ]; then
+    base=$(git rev-parse --verify --quiet origin/main || echo "")
+    range="${base:+$base..}$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+done
+[ -z "$range" ] && exit 0
+
+changed=$(git diff --name-only "$range" 2>/dev/null || echo "")
+[ -z "$changed" ] && exit 0
+touches() { echo "$changed" | grep -q "^$1"; }
+
+echo "pre-push checks ${DIM}($(echo "$changed" | wc -l | tr -d ' ') file(s))${OFF}"
+
+if touches "pipeline/"; then
+  step "unit tests";        (cd pipeline && python3 -m unittest discover -p 'test_*.py' >/dev/null 2>&1) || fail "unit tests"; ok
+fi
+
+# Exported data and the DB are checked whenever either the data or the code
+# that produces it moved.
+if touches "pipeline/" || touches "cycling-app/src/data/"; then
+  step "validate_exports";  (cd pipeline && python3 validate_exports.py >/dev/null 2>&1) || fail "validate_exports.py"; ok
+  if [ -f pipeline/cycling.db ]; then
+    step "validate_db";     (cd pipeline && python3 validate_db.py >/dev/null 2>&1) || fail "validate_db.py"; ok
+  fi
+fi
+
+if touches "cycling-app/"; then
+  step "build";             (cd cycling-app && npm run build >/dev/null 2>&1) || fail "npm run build"; ok
+  step "smoke tests";       (cd cycling-app && node verify.mjs >/dev/null 2>&1 && node verify-views.mjs >/dev/null 2>&1) || fail "smoke tests"; ok
+fi
+
+echo "${GREEN}pre-push: all checks passed${OFF}"

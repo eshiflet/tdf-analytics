@@ -272,6 +272,39 @@ unrecognised args as "no years", so give them real arguments.
 
 ---
 
+## Pre-push hook (2026-08-22)
+
+Work goes straight to main here — 305 of the repo's first 316 commits did — so
+CI only ever reports breakage after the fact: the commit is already pushed, main
+is already red, and the fix has to go forward. `scripts/pre-push` runs the same
+checks first.
+
+**Install** (hooks are not version-controlled, so a fresh clone needs this):
+
+```bash
+ln -sf ../../scripts/pre-push .git/hooks/pre-push
+```
+
+**Bypass** with `git push --no-verify`. It is a guard, not a gate.
+
+It is **not redundant with CI**: `validate_db.py` cannot run there at all, since
+`cycling.db` is gitignored and not regenerable in CI, so a DB-level regression
+has no other automated guard anywhere.
+
+Checks are scoped to what changed, because the smoke tests dominate the cost:
+
+| check | cost | runs when |
+|---|---|---|
+| unit tests | 0.5s | `pipeline/` changed |
+| `validate_exports.py` | 1.6s | `pipeline/` or `src/data/` changed |
+| `validate_db.py` | 1.3s | as above, and the DB exists locally |
+| `npm run build` | 1.3s | `cycling-app/` changed |
+| smoke tests | 12.7s | `cycling-app/` changed |
+
+A pipeline-only push costs ~3s rather than ~17s; a docs-only push runs nothing.
+
+---
+
 ## DANGER: re-running ingest_classics.py reverts every DB-only patch (2026-08-21)
 
 Found the hard way while refactoring. `ingest_classics.py` rebuilds each
