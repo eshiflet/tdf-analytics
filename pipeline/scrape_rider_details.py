@@ -35,6 +35,9 @@ import unicodedata
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import SOURCE_PCS, record_provenance_bulk
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 CACHE_DIR = os.path.join(HERE, "rider_scrapes")
@@ -283,6 +286,24 @@ def update_rider(conn: sqlite3.Connection, rider_id: str,
         "birthday=COALESCE(?, birthday) WHERE rider_id=?",
         (first_name, last_name, birthday, rider_id),
     )
+    # The repo's rule is that every writer records where its value came from,
+    # and the riders table was the one place with no provenance at all — 0 rows
+    # for entity='riders' against 41,000 for stages and stage_results. These
+    # values come from the PCS rider page's h1, so they are as attributable as
+    # anything else here.
+    #
+    # entity_id is declared INTEGER but rider_id is TEXT. SQLite's type affinity
+    # keeps a non-numeric string as TEXT, so it round-trips; the alternative —
+    # inventing a surrogate integer key for riders — would make these rows
+    # unjoinable to the table they describe. The orphan check in validate_db.py
+    # knows to compare them as text.
+    cur = conn.cursor()
+    fields = ["first_name", "last_name"]
+    if birthday is not None:
+        fields.append("birthday")     # COALESCEd above; only claim what we set
+    record_provenance_bulk(cur, "riders", rider_id, fields, SOURCE_PCS,
+                           source_ref=f"{BASE}/{rider_id}",
+                           script="scrape_rider_details.py")
 
 
 def split_for(conn: sqlite3.Connection, rider_id: str,

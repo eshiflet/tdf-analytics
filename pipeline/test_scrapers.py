@@ -652,6 +652,9 @@ class RiderNameSplitTest(unittest.TestCase):
         conn.row_factory = sqlite3.Row
         conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT,"
                      " first_name TEXT, last_name TEXT, birthday TEXT)")
+        conn.execute("CREATE TABLE data_provenance (entity TEXT, entity_id INTEGER,"
+                     " field TEXT, source TEXT, source_ref TEXT, script TEXT,"
+                     " recorded_at TEXT, PRIMARY KEY (entity, entity_id, field))")
         conn.execute("INSERT INTO riders VALUES ('rider/x','García Ignacio',"
                      "'Ignacio','García','1968-08-04')")
         SRD.update_rider(conn, "rider/x", "Ignacio", "García", None)
@@ -663,6 +666,9 @@ class RiderNameSplitTest(unittest.TestCase):
         conn.row_factory = sqlite3.Row
         conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT,"
                      " first_name TEXT, last_name TEXT, birthday TEXT)")
+        conn.execute("CREATE TABLE data_provenance (entity TEXT, entity_id INTEGER,"
+                     " field TEXT, source TEXT, source_ref TEXT, script TEXT,"
+                     " recorded_at TEXT, PRIMARY KEY (entity, entity_id, field))")
         conn.execute("INSERT INTO riders VALUES ('rider/x','Vermeulen Alexey',NULL,NULL,NULL)")
         SRD.update_rider(conn, "rider/x", "Alexey", "Vermeulen", "1994-12-16")
         row = conn.execute("SELECT * FROM riders WHERE rider_id='rider/x'").fetchone()
@@ -715,4 +721,58 @@ class RiderCacheDurabilityTest(unittest.TestCase):
         SRD.save_cache("rider/x", {"display_name": "Old Name"})
         SRD.save_cache("rider/x", {"display_name": "A Much Longer New Name"})
         self.assertEqual(SRD.load_cache("rider/x")["display_name"], "A Much Longer New Name")
+
+    def test_writing_a_name_records_where_it_came_from(self):
+        """The repo's rule is that every writer records its source, and the
+        riders table was the one place with none — 0 provenance rows against
+        41,000 for stages and stage_results."""
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT,"
+                     " first_name TEXT, last_name TEXT, birthday TEXT)")
+        conn.execute("CREATE TABLE data_provenance (entity TEXT, entity_id INTEGER,"
+                     " field TEXT, source TEXT, source_ref TEXT, script TEXT,"
+                     " recorded_at TEXT, PRIMARY KEY (entity, entity_id, field))")
+        conn.execute("INSERT INTO riders VALUES ('rider/alexey-vermeulen',"
+                     "'Vermeulen Alexey',NULL,NULL,NULL)")
+        SRD.update_rider(conn, "rider/alexey-vermeulen", "Alexey", "Vermeulen", "1994-12-16")
+        rows = {r["field"]: r["source"] for r in conn.execute(
+            "SELECT field, source FROM data_provenance WHERE entity='riders'")}
+        self.assertEqual(rows, {"first_name": "pcs", "last_name": "pcs", "birthday": "pcs"})
+
+    def test_a_birthday_we_did_not_set_is_not_claimed(self):
+        """update_rider COALESCEs the birthday, so recording provenance for it
+        when the page had none would attribute a value PCS never supplied."""
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT,"
+                     " first_name TEXT, last_name TEXT, birthday TEXT)")
+        conn.execute("CREATE TABLE data_provenance (entity TEXT, entity_id INTEGER,"
+                     " field TEXT, source TEXT, source_ref TEXT, script TEXT,"
+                     " recorded_at TEXT, PRIMARY KEY (entity, entity_id, field))")
+        conn.execute("INSERT INTO riders VALUES ('rider/x','García Ignacio',"
+                     "NULL,NULL,'1968-08-04')")
+        SRD.update_rider(conn, "rider/x", "Ignacio", "García", None)
+        fields = [r[0] for r in conn.execute(
+            "SELECT field FROM data_provenance WHERE entity='riders'")]
+        self.assertEqual(sorted(fields), ["first_name", "last_name"])
+        self.assertEqual(conn.execute("SELECT birthday FROM riders").fetchone()[0],
+                         "1968-08-04")
+
+    def test_the_rider_id_survives_the_INTEGER_column(self):
+        """entity_id is declared INTEGER while rider_id is TEXT. SQLite's type
+        affinity leaves a non-numeric string alone; this pins that, because the
+        orphan check in validate_db.py joins on it as text."""
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT,"
+                     " first_name TEXT, last_name TEXT, birthday TEXT)")
+        conn.execute("CREATE TABLE data_provenance (entity TEXT, entity_id INTEGER,"
+                     " field TEXT, source TEXT, source_ref TEXT, script TEXT,"
+                     " recorded_at TEXT, PRIMARY KEY (entity, entity_id, field))")
+        conn.execute("INSERT INTO riders VALUES ('rider/x','B A','A','B',NULL)")
+        SRD.update_rider(conn, "rider/x", "A", "B", None)
+        got = conn.execute("SELECT entity_id, typeof(entity_id) FROM data_provenance"
+                           " LIMIT 1").fetchone()
+        self.assertEqual((got[0], got[1]), ("rider/x", "text"))
 

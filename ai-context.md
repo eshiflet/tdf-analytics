@@ -580,10 +580,16 @@ cache, so the follow-up `--db-only` needs no second fetch.
   and no first name, which is what the sources actually support.
 - **Classics: 5,250 riders outstanding**, about 75 minutes at
   `SCRAPE_DELAY=0.8`. Not started — it is a long live-scrape and Eric's call.
-- **`riders` has no provenance at all** (0 rows in `data_provenance` for
-  `entity='riders'`), and `record_provenance()` expects an INTEGER
-  `entity_id` while `rider_id` is TEXT. Filling that gap needs a decision about
-  the key, so this scrape did not invent one.
+- ~~**`riders` has no provenance at all**~~ — **fixed 2026-08-22.**
+  `scrape_rider_details.py` now records `entity='riders'` provenance for every
+  name field it writes, sourced `pcs` with the rider page as `source_ref`. The
+  key question resolved itself: `entity_id` is declared INTEGER while
+  `rider_id` is TEXT, and SQLite's type affinity leaves a non-numeric string
+  alone, so the id round-trips and stays joinable to the table it describes —
+  which a surrogate integer never would. `validate_db.check_provenance()` has
+  an orphan check for it that compares as TEXT (a `CAST` would silently match
+  nothing). A birthday the page did not supply is deliberately NOT claimed,
+  since `update_rider()` COALESCEs it.
 
 ---
 

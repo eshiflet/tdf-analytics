@@ -217,6 +217,18 @@ def check_provenance(c):
              "replace_edition() started clearing them. Purge with "
              "python3 validate_db.py --purge-stale-provenance")
 
+    # Riders are keyed by their TEXT rider_id, not an integer, so this orphan
+    # check compares as text. entity_id is declared INTEGER; SQLite's type
+    # affinity leaves a non-numeric string alone, which is what makes that
+    # work — but it also means a careless CAST would silently match nothing.
+    n = c.execute(
+        "SELECT COUNT(*) FROM data_provenance dp WHERE dp.entity='riders' "
+        "AND NOT EXISTS (SELECT 1 FROM riders r WHERE r.rider_id = dp.entity_id)"
+    ).fetchone()[0]
+    if n:
+        err(f"{n} data_provenance row(s) for entity='riders' name a rider that "
+            "does not exist — a rider was renamed or deleted without clearing them")
+
     # Driven off race_common.VALID_SOURCES rather than a second hardcoded
     # list: the two silently diverged when 'cyclingflash' was added, and the
     # validator failed a value record_provenance() had already accepted.

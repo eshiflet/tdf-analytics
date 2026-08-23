@@ -309,6 +309,24 @@ class ProvenanceCheckTest(DBCheckTest):
         self.assertTrue(any("no longer exists" in w for w in validate_db.warnings),
                         validate_db.warnings)
 
+    def test_orphaned_rider_provenance_is_an_error(self):
+        """riders are keyed by TEXT rider_id, not an integer id, so this check
+        has to compare as text — a CAST would silently match nothing."""
+        self.rider("rider/alexey-vermeulen")
+        self.prov("riders", "rider/alexey-vermeulen", "first_name", "pcs")
+        self.prov("riders", "rider/ghost", "first_name", "pcs")
+        validate_db.check_provenance(self.cur)
+        self.assertErrorMatching("name a rider that does not exist")
+        self.assertEqual(len(validate_db.errors), 1,
+                         "the live rider's provenance must not be flagged")
+
+    def test_rider_provenance_for_a_live_rider_is_silent(self):
+        self.rider("rider/alexey-vermeulen")
+        for f in ("first_name", "last_name", "birthday"):
+            self.prov("riders", "rider/alexey-vermeulen", f, "pcs")
+        validate_db.check_provenance(self.cur)
+        self.assertNoErrors()
+
     def test_an_unknown_source_is_an_error(self):
         self.prov("stages", 10, "distance_km", "some-blog")
         validate_db.check_provenance(self.cur)
