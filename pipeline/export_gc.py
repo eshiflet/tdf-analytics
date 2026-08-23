@@ -4,7 +4,7 @@ Main exporter: cycling.db + JSON supplements -> src/data/<slug>/gc_by_stage_YYYY
 
 Usage:
   python3 export_gc.py                          # TDF (default), all years
-  python3 export_gc.py --race {tdf,giro,vuelta}  # all years for that race
+  python3 export_gc.py --race {tour,giro,vuelta}  # all years ("tdf" also works)
   python3 export_gc.py --race vuelta --year 2020 # single year only
 
 --year MUST be passed as its own flag ("--year 2020"), not a bare
@@ -19,6 +19,9 @@ import json
 import os
 import sqlite3
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import resolve_race_arg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -504,20 +507,14 @@ def main(argv=None):
         sys.exit(
             f"error: unrecognized argument(s) {stray} — "
             f"did you mean '--year {stray[0]}'? "
-            f"Usage: python3 export_gc.py [--race {{tdf,giro,vuelta}}] [--year YYYY]"
+            f"Usage: python3 export_gc.py [--race {{tour,giro,vuelta}}] [--year YYYY]"
         )
 
-    race_name, race_subdir = "Tour de France", "tour"
-    if "--race" in argv:
-        race_arg = argv[argv.index("--race") + 1]
-        lookup = {
-            "giro": ("Giro d'Italia", "giro"),
-            "vuelta": ("Vuelta a España", "vuelta"),
-            "tdf": ("Tour de France", "tour"),
-        }
-        if race_arg not in lookup:
-            sys.exit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
-        race_name, race_subdir = lookup[race_arg]
+    # Shared with export_riders_index.py and export_race_summary.py rather than
+    # kept as a fourth copy of the same table — the inline copy that used to
+    # live here rejected "--race tour", which is what the data directory, the
+    # RaceId and the URL hash all call it.
+    race_name, race_subdir = resolve_race_arg(argv)
 
     # Per-race sprint/KOM/GC-time supplements — same lookup for TDF as for
     # Giro/Vuelta (see resolve_supplement_paths). Per-race PCS winner times

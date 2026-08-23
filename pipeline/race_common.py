@@ -444,24 +444,53 @@ def parse_year_args(args: list[str]) -> list[int]:
 
 
 # ── Export-script race resolution (TDF + Giro + Vuelta) ─────────────────────
-# Matches export_gc.py's own inline convention: --race {tdf,giro,vuelta},
-# defaulting to tdf. race_subdir is both the src/data/<slug> directory name
-# and the frontend's RaceId; race_arg "tdf" is historical (predates the
-# tour/giro/vuelta slug scheme) and maps to subdir "tour".
+# race_subdir is both the src/data/<slug> directory name and the frontend's
+# RaceId. "tdf" is historical — it predates the tour/giro/vuelta slug scheme
+# and maps to subdir "tour", so the Tour is the one race whose CLI name and
+# directory name differ.
+#
+# BOTH spellings are accepted. Everything else in the repo says "tour" (the
+# data directory, the RaceId, the URL hash, the og-image names), so `--race
+# tour` is what anyone reasonably types, and it used to exit with "unknown
+# race 'tour'" — a trip hazard hit for real during the 2026-08-15 session.
+# Accepting the alias costs one dict entry; the error message it replaced cost
+# somebody twenty minutes.
 EXPORT_RACE_INFO = {
     "tdf": ("Tour de France", "tour"),
+    "tour": ("Tour de France", "tour"),
     "giro": ("Giro d'Italia", "giro"),
     "vuelta": ("Vuelta a España", "vuelta"),
 }
 
+# Aggregate sets have their own exporters and no per-year GC to export. Naming
+# them explicitly turns "unknown race" into a signpost.
+AGGREGATE_EXPORTERS = {
+    "classics": "export_classics.py",
+    "gravel": "export_gravel.py",
+}
+
 
 def resolve_race_arg(argv: list[str]) -> tuple[str, str]:
-    """Reads --race from argv (default 'tdf'). Returns (db_name, data_subdir)."""
+    """Reads --race from argv (default 'tdf'). Returns (db_name, data_subdir).
+
+    Single source of truth for the stage-race CLI names: export_gc.py used to
+    carry its own copy of this table, and the two could disagree about which
+    spellings were legal.
+    """
     race_arg = "tdf"
     if "--race" in argv:
-        race_arg = argv[argv.index("--race") + 1]
+        i = argv.index("--race")
+        if i + 1 >= len(argv):
+            raise SystemExit("error: --race needs a value (tour|tdf, giro, vuelta)")
+        race_arg = argv[i + 1]
+    if race_arg in AGGREGATE_EXPORTERS:
+        raise SystemExit(
+            f"error: '{race_arg}' is an aggregate race set, not a stage race — "
+            f"export it with {AGGREGATE_EXPORTERS[race_arg]} instead")
     if race_arg not in EXPORT_RACE_INFO:
-        raise SystemExit(f"error: unknown race '{race_arg}' (use 'tdf', 'giro', or 'vuelta')")
+        raise SystemExit(
+            f"error: unknown race '{race_arg}' "
+            f"(use {', '.join(sorted(EXPORT_RACE_INFO))})")
     return EXPORT_RACE_INFO[race_arg]
 
 

@@ -38,6 +38,7 @@ import export_gc
 import export_race_summary as ERS
 import export_riders_index as ERI
 from export_gc import Supplements, compute_stage_labels
+from race_common import AGGREGATE_EXPORTERS, EXPORT_RACE_INFO, resolve_race_arg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -639,3 +640,57 @@ class TestDistanceBaseline(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class RaceArgTest(unittest.TestCase):
+    """
+    The Tour is the one race whose CLI name and directory name differ: the
+    exporters take "tdf" while the data directory, the RaceId, the URL hash and
+    the og-image are all "tour". `--race tour` used to exit with "unknown race",
+    which cost a real session in August 2026.
+    """
+
+    def test_tour_and_tdf_are_the_same_race(self):
+        self.assertEqual(resolve_race_arg(["x", "--race", "tour"]),
+                         resolve_race_arg(["x", "--race", "tdf"]))
+
+    def test_the_tour_writes_to_the_tour_directory_either_way(self):
+        for spelling in ("tour", "tdf"):
+            with self.subTest(spelling=spelling):
+                self.assertEqual(resolve_race_arg(["x", "--race", spelling])[1], "tour")
+
+    def test_the_other_two_are_unchanged(self):
+        self.assertEqual(resolve_race_arg(["x", "--race", "giro"]), ("Giro d'Italia", "giro"))
+        self.assertEqual(resolve_race_arg(["x", "--race", "vuelta"])[1], "vuelta")
+
+    def test_the_default_is_still_the_tour(self):
+        self.assertEqual(resolve_race_arg(["x"])[1], "tour")
+
+    def test_an_aggregate_set_names_its_own_exporter(self):
+        """Passing --race classics is a reasonable thing to try; the answer is
+        a signpost, not "unknown race"."""
+        for race, script in AGGREGATE_EXPORTERS.items():
+            with self.subTest(race=race):
+                with self.assertRaises(SystemExit) as cm:
+                    resolve_race_arg(["x", "--race", race])
+                self.assertIn(script, str(cm.exception))
+
+    def test_an_unknown_race_lists_the_legal_ones(self):
+        with self.assertRaises(SystemExit) as cm:
+            resolve_race_arg(["x", "--race", "milan"])
+        for name in EXPORT_RACE_INFO:
+            self.assertIn(name, str(cm.exception))
+
+    def test_a_bare_race_flag_does_not_crash_on_an_index_error(self):
+        with self.assertRaises(SystemExit) as cm:
+            resolve_race_arg(["x", "--race"])
+        self.assertIn("needs a value", str(cm.exception))
+
+    def test_export_gc_uses_the_shared_table(self):
+        """export_gc.py carried its own copy, which is how the two could
+        disagree about which spellings were legal."""
+        import inspect
+        src = inspect.getsource(export_gc)
+        self.assertIn("resolve_race_arg", src)
+        self.assertNotIn('"tdf": ("Tour de France", "tour")', src)
+

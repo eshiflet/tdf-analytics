@@ -70,7 +70,7 @@ intended behavior.
 
 **Cost/quality items worth revisiting:**
 - ~~**`classics/riders_index.json` is 2.93 MB / 719 KB gzipped**~~ — **addressed 2026-08-22**: re-encoded to 2.08 MB / 547 KB gzipped (-22%) and 24% faster to load. See "riders_index.json re-encoded" under Frontend performance. Still the largest single asset, so still the first thing to look at if coverage grows again.
-- **`export_gc.py --race tdf`** while everything else says `tour` — a real trip hazard, hit during the 2026-08-15 session. See "Renaming the project" §B.
+- ~~**`export_gc.py --race tdf`** while everything else says `tour`~~ — **fixed 2026-08-22**: `--race tour` and `--race tdf` are now the same thing, `export_gc.py` uses the shared `resolve_race_arg()` instead of its own copy of the table, and `--race classics|gravel` names the right exporter instead of saying "unknown race".
 - **Social cards are ~1.8 MB committed** across 6 PNGs (gravel added a sixth). Fine for every platform's limit; `pngquant` would roughly halve them.
 - ~~**Flatten `byStage` in `gc_by_stage_*.json`**~~ — **measured and REJECTED
   2026-08-22. Do not re-propose without reading this.** Each rider's `byStage`
@@ -1835,8 +1835,8 @@ tdf-analytics/
     ├── cycling.db                    # SQLite DB (gitignored, ~140MB, NOT regenerable — back up with db_backup.py)
     ├── db_backup.py                  # Rotating DB backups → db_backups/ (auto-run by add_stages.py before deletes)
     ├── export_gc.py                  # Main exporter: cycling.db + JSON supplements → src/data/
-    │                                 #   --year N for single year, --race {tdf,giro,vuelta} to select race.
-    │                                 #   NOTE it says `tdf`, not `tour`, while the data dir is tour/
+    │                                 #   --year N for single year, --race {tour,giro,vuelta}.
+    │                                 #   "tdf" is accepted as an alias for "tour" (historical)
     ├── race_common.py                # Shared pipeline helpers, two groups:
     │                                 #   - Giro/Vuelta ingest: parse_time_to_seconds, parse_int, parse_bonus_seconds,
     │                                 #     detect_route_type, parse_year_args, COUNTRY_NAMES, and the RACES:
