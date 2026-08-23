@@ -759,8 +759,12 @@ Checks are scoped to what changed, because the smoke tests dominate the cost:
 | `validate_db.py` | 1.3s | as above, and the DB exists locally |
 | `npm run build` | 1.3s | `cycling-app/` changed |
 | smoke tests | 12.7s | `cycling-app/` changed |
+| payload budget | 1.6s | `cycling-app/` changed |
 
-A pipeline-only push costs ~3s rather than ~17s; a docs-only push runs nothing.
+A pipeline-only push costs ~3s rather than ~19s; a docs-only push runs nothing.
+
+The payload check reuses the build two rows above it, so its cost is only the
+gzipping of 474 files — see "Payload budget".
 
 ---
 
@@ -3122,7 +3126,9 @@ main-thread index builds behind the slowest of five downloads, with only a
 Every fetch still starts at the same moment. What changed is **which one is
 waited for**: the page draws from the current race's index, then folds the rest
 in with **one** more rebuild, not one per arrival. Measured on the dev server,
-median of 3 cold loads, forcing layout:
+median of 3 cold loads, forcing layout — **unminified, with a second Claude
+session competing for the same CPU**, so read the ratio and not the absolute
+numbers; production will be faster on both sides:
 
 | | before | after |
 |---|---|---|

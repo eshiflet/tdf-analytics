@@ -18,7 +18,7 @@ flowchart TD
         RAW[("Raw scrape JSON<br/>{race}_scrapes/YEAR/stage_N.json<br/>tracked in git")]
         INGEST["Ingest<br/>ingest_race.py --race {giro,vuelta}<br/>add_pre1960.py / add_stages.py (TDF)"]
         DB[("cycling.db<br/>SQLite — gitignored,<br/>NOT regenerable")]
-        EXPORT["Exporters<br/>export_gc.py · export_riders_index.py<br/>export_race_summary.py · export_all_races_summary.py"]
+        EXPORT["Exporters<br/>export_gc.py · export_riders_index.py<br/>export_race_summary.py · export_all_races_summary.py<br/>(each re-stamps link_rider_race_sets.py)"]
         VALIDATE{{"validate_exports.py<br/>sanity checks"}}
         DBCHECK{{"validate_db.py · audit_stage_counts.py<br/>DB-level integrity + PCS reconciliation"}}
 
@@ -113,6 +113,20 @@ flowchart TD
   writes one combined cross-year file, so a single-year fix still touches every year's
   entry in the diff — that's expected, not a bug.
 
+  Every exporter that writes a `riders_index.json` calls `link_rider_race_sets.stamp()`
+  on its way out. That post-pass writes the cross-race `x` bitmask the rider detail page
+  reads to decide which OTHER indexes it can skip, and rewriting an index drops it — so
+  it is re-applied automatically rather than left as a step to remember.
+  `validate_exports.py` still checks it, as a backstop for a hand-edited file or a new
+  writer that forgets. See `ai-context.md`, "The rider detail page stopped loading all
+  five indexes".
+
+- **coverage.py** — a *report*, not a check, and the only thing here that answers "where
+  are the holes?" rather than "is this value wrong?". Per race set and year, which fields
+  are still missing, ranked by values missing rather than percentage. It never fails a
+  build; its exclusions (cancelled stages, DNF finish times, the fields PCS has no source
+  for) are what keep it readable, and each one is pinned by `test_coverage.py`.
+
 - **validate_exports.py** — a post-export sanity check (not a data source): catches
   decreasing cumulative point totals, malformed stage sequences, and KOM-total drift
   against a reference. Runs locally after any export, and again in CI before every build so
@@ -194,16 +208,16 @@ flowchart TD
   | `tooltip.ts` | Generic tooltip positioning/show/hide (the rider-hover tooltip content itself lives in `stageChart.ts` — too coupled to that view's state to be a leaf) |
   | `jerseyIcons.ts` | Jersey SVG builders, per-classification win-year lookups (memoized), the per-race jersey capability helpers, and `RIDERS_WITH_REVOKED_RESULTS` |
   | `dataLoading.ts` | Pure fetch + LRU cache for per-year datasets (`getDataset`) |
-  | `riderIndexData.ts` | Loads/caches the compact `riders_index.json` per race; dedupes concurrent loads and builds `constituents` lazily |
+  | `riderIndexData.ts` | Loads/caches the compact `riders_index.json` per race; dedupes concurrent loads, builds `constituents` lazily, and decodes the cross-race `x` bitmask that `crossRaceFor()` answers from |
   | `hashRouting.ts` | `computeHash`/`updateHash` only — `applyHash()` stays in `main.ts` (see below) |
   | `views/overview.ts` | Race Overview (per-stage distance/elevation/difficulty bars) |
   | `views/allRaces.ts` | All Races Overview (4-panel cross-year comparison) |
   | `views/stageChart.ts` | By Stage bump chart + its legend and Team/Nation filters — the app's biggest, most state-coupled view, kept as one file since ranking computation, rendering, legend, and filters are genuinely one unit |
   | `views/stageTable.ts` | By Stage spreadsheet grid (riders x stages), its per-column colour ramp, and — for aggregate races only — the Top 10 / Top 20 / All / Nation row filters in the column to its left |
-  | `views/riders.ts` | Riders grid: search/filter and the merged-index cache |
+  | `views/riders.ts` | Riders grid: search/filter, and the merged-index cache — which tracks which races have been **folded in**, not just which are selected, so the grid can draw before every index has landed |
   | `views/riderDetail.ts` | Cross-race rider career chart (446 lines — was the single largest function in the old `main.ts`) |
   | `views/classicsHistory.ts` | Race History small multiples for either aggregate race set — classics or gravel (one panel per race across its own lifetime) |
-  | `main.ts` | Orchestration only: `init()`, `wireControls()`, `setRace()`, `switchView()`, `loadDataset()`, `applyHash()` — the last two stay here rather than in `dataLoading.ts`/`hashRouting.ts` because both call into nearly every view module to trigger redraws |
+  | `main.ts` | Orchestration only: `init()`, `wireControls()`, `setRace()`, `switchView()`, `loadDataset()`, `applyHash()` — the last two stay here rather than in `dataLoading.ts`/`hashRouting.ts` because both call into nearly every view module to trigger redraws. `switchView(view, { draw: false })` swaps the chrome without drawing, used only by a `#riders/<slug>` deep link so the grid does not start loading every race's index ahead of a rider detail |
 
   **Shared mutable state:** ES modules can't reassign an imported `let` binding from outside
   the module that declared it, so every field that used to be a bare `let currentYear = ...`
@@ -219,10 +233,12 @@ flowchart TD
   shape of a router-plus-views SPA without a framework, not a bug to design around. The same
   applies to `views/classicsHistory.ts` importing `updateUnitToggle` from `main.ts`.
 
-  **Riders-page performance invariants (2026-08-18).** The grid renders 14,260 buttons with
-  all four races selected, so several things there are load-bearing rather than incidental,
-  and each has a comment at its site explaining why. Measurements and the full story are in
-  `ai-context.md`'s "Frontend performance — Riders page".
+  **Riders-page performance invariants (2026-08-18, extended 2026-08-22).** The grid renders
+  17,736 buttons with all five races selected — a full rebuild costs 141 ms — so several
+  things there are load-bearing rather than incidental, and each has a comment at its site
+  explaining why. Measurements and the full story are in `ai-context.md`'s "Frontend
+  performance — Riders page", "The rider detail page stopped loading all five indexes" and
+  "The Riders grid draws before every index has landed".
 
   - `jerseyYearsWon` and `jerseyCategoriesForRace` are **memoized**; both were being called
     once per rider per race (~57,000 times per rebuild) over data that never changes.
@@ -235,6 +251,18 @@ flowchart TD
     it exists to avoid. That merge copies the property *descriptor* instead of its value.
   - `ensureRiderIndexFor` **shares its in-flight promise**; its `riderIndexBuilt` flag only
     flips after the build, so it cannot deduplicate concurrent callers on its own.
+  - Neither page loads all five indexes any more. The rider **detail** page reads the
+    cross-race bitmask out of the current race's index and fetches only the races it names
+    (1,185 KB gz → 705 KB mean). The **grid** starts every fetch at once but waits only for
+    the current race, then folds the rest in with ONE more rebuild (1,712 ms → 902 ms to a
+    usable grid, at the cost of +13% to completion).
+  - `mergedRidersCache` keys on the selected race set **and** tracks which races it has
+    already folded in. The set alone cannot distinguish "drew early" from "everything has
+    landed", so the second render would be handed the first render's riders and the late
+    races would never appear.
+  - The count label carries a **"loading more…"** suffix until every selected race is
+    folded in. A search over a partial grid comes back empty for a rider who does exist,
+    which reads as a data bug rather than a loading state.
   - `.rider-name-btn` uses `content-visibility: auto`. Re-measuring it requires **forcing
     synchronous layout**, or the A/B reads as a no-op — this exact mistake was made and
     reverted once.
@@ -435,13 +463,14 @@ flowchart TD
         S1["1. actions/checkout@v4<br/>clone the repo"]
         S2["2. actions/setup-node@v4<br/>Node 20, npm cache keyed on package-lock.json"]
         S3["3. npm ci<br/>(in cycling-app/)<br/>clean install of exact locked deps"]
-        STEST{{"4. python3 -m unittest discover -p 'test_*.py'<br/>(in pipeline/)<br/>156 pipeline regression tests"}}
-        S4{{"5. python3 validate_exports.py<br/>(in pipeline/)<br/>sanity-check all 436 exported JSON files"}}
+        STEST{{"4. python3 -m unittest discover -p 'test_*.py'<br/>(in pipeline/)<br/>401 pipeline regression tests"}}
+        S4{{"5. python3 validate_exports.py<br/>(in pipeline/)<br/>sanity-check all 469 exported JSON files"}}
         S5["6. npm run build<br/>(in cycling-app/)<br/>tsc -b (typecheck) + vite build → build/"]
         S6{{"7. node verify.mjs && node verify-views.mjs<br/>(in cycling-app/)<br/>smoke-test the BUILT bundle in jsdom"}}
-        S7["8. actions/upload-pages-artifact@v3<br/>package cycling-app/build/ as the Pages artifact"]
+        SPAY{{"8. node check-payload.mjs<br/>(in cycling-app/)<br/>gzipped sizes vs payload-baseline.json"}}
+        S7["9. actions/upload-pages-artifact@v3<br/>package cycling-app/build/ as the Pages artifact"]
 
-        S1 --> S2 --> S3 --> STEST --> S4 --> S5 --> S6 --> S7
+        S1 --> S2 --> S3 --> STEST --> S4 --> S5 --> S6 --> SPAY --> S7
     end
 
     subgraph DEPLOY["Job: deploy (needs: build)"]
@@ -465,7 +494,7 @@ flowchart TD
 3. **`npm ci`** — installs exactly what's in `package-lock.json` (unlike `npm install`, it
    never modifies the lockfile and fails if it's out of sync with `package.json`) — the
    right choice for CI reproducibility.
-4. **Pipeline tests** (`python3 -m unittest discover -p 'test_*.py'` in `pipeline/`) — 156
+4. **Pipeline tests** (`python3 -m unittest discover -p 'test_*.py'` in `pipeline/`) — 401
    stdlib regression tests, no dependencies to install. Nearly every case encodes a bug
    that actually reached the database, so a failure here means a real defect has been
    reintroduced, not that a test is fussy. Runs before the exports are validated because
@@ -497,6 +526,15 @@ flowchart TD
    fresh `jsdom` instances at several deep-link hashes (stage, riders, rider detail,
    all-races, overview) to catch view-specific regressions the default-view check would
    miss.
+8. **Payload budget** (`check-payload.mjs`) — compares the gzipped size of 13 tracked
+   payloads against the committed `payload-baseline.json` and fails a >2% regression.
+   Reuses the build from step 6, so it costs only the gzipping (~1.6s for 474 files).
+   Every payload win in this repo was measured once by hand and had nothing holding it in
+   place; an exporter change could undo one and the only symptom would be a slower site.
+   Growth from a new year or race is real and is re-baselined **in the commit that causes
+   it** with `node check-payload.mjs --update`, so the baseline diff becomes the record of
+   what grew. `scripts/pre-push` runs the same check locally. See `ai-context.md`,
+   "Payload budget".
 
    **Assert against ids, never against position in a NodeList.** A check named "team filter
    populated from team table" reached the team `<select>` as `.riders-filter-select[1]`.
