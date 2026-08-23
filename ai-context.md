@@ -3110,6 +3110,59 @@ null rather than concluding the rider raced nowhere.
 
 ---
 
+## Payload budget (2026-08-22)
+
+```bash
+cd cycling-app
+node check-payload.mjs             # compare against the committed baseline
+node check-payload.mjs --update    # re-baseline, deliberately
+```
+
+Every payload win in this repo was measured once, by hand, and then had nothing
+holding it in place — the compact JSON separators (−10%), the `riders_index`
+re-encode (−22% gzipped), the cross-race bitmask. An exporter change could undo
+any of them and the only symptom would be a slower site: no test fails, no
+validator complains, and the diff on a 2 MB minified JSON file tells you
+nothing.
+
+So the sizes are committed. `payload-baseline.json` holds the **gzipped** byte
+count of 13 tracked payloads and the run fails when one grows more than 2%:
+
+```
+REGRESSED riders_index:classics  462.4 KB -> 578.0 KB  +25.0%
+```
+
+**What it tracks, and why not simply every file.** `entry:main.js` /
+`entry:main.css` (main.js also carries the three `all_races_summary.json` files,
+which raceRegistry.ts imports as data rather than by URL, so they are bundled
+into it and never appear as their own asset); each race's `riders_index.json`
+individually, because those are the biggest single downloads and the ones that
+get re-encoded; each race's per-year files as one **bucket** total, because
+there are 440 of them, they are fetched one at a time, and 440 baseline lines
+would be noise nobody acts on; and `total:assets`, so a new category cannot slip
+in below the radar.
+
+**Attribution.** The build flattens every race's data into one `assets/`
+directory, so `gc_by_stage_1987.json` could belong to any of four races and all
+five races have a `riders_index.json`. Vite copies these verbatim, so the file
+is matched back to its race on `basename:rawBytes` — no hashing of 131 MB of
+source. A genuinely ambiguous file is split evenly across its candidates: the
+per-race bucket goes approximate, the total stays exact.
+
+**Growth is expected and is not a regression.** Adding a year makes the archive
+bigger, which is why this compares against a committed baseline with a tolerance
+rather than a hardcoded ceiling. Re-baseline in the commit that causes the
+growth — the diff on `payload-baseline.json` is then the actual record of what
+grew and why. The failure is only what makes you look.
+
+Wired into `scripts/pre-push` and the CI workflow, both reusing the build they
+already ran, so it costs only the gzipping (~1.6s for 474 files). A new or
+removed asset is reported but does **not** fail: adding a race set is normal
+work, and failing it would only teach people to pass `--update` reflexively,
+which is the one habit that makes this useless.
+
+---
+
 ## Dev-loop traps (2026-08-18)
 
 **Vite HMR serves stale modules more often than you'd think.** Three separate

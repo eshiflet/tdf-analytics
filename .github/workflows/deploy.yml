@@ -62,6 +62,15 @@ jobs:
         run: node verify.mjs && node verify-views.mjs
         working-directory: cycling-app
 
+      # Payload budget. Compares the gzipped size of every asset against the
+      # committed baseline, so an exporter or encoding change that quietly
+      # inflates the site fails here rather than just making it slower. Real
+      # growth (a new year, a new race) is re-baselined deliberately with
+      # `node check-payload.mjs --update` in the commit that causes it.
+      - name: Check payload budget
+        run: node check-payload.mjs
+        working-directory: cycling-app
+
       # Nothing to publish from a PR — it has not been merged yet.
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
