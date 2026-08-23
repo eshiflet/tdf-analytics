@@ -426,6 +426,18 @@ re-armed, so a rider in five races pays one chart render, not five.
    `Promise.all` there was one render and one chance to get this wrong; there
    are now five.
 
+> **The progressive scenarios must WAIT for their preconditions, never assume
+> a wall-clock delay.** The first version fired its mid-load hook at a fixed
+> 60ms and threw if the view was not ready. That is a correct thing to check
+> and a terrible thing to bet a build on: it passed on the laptop and failed in
+> CI, where the runner had rendered one race by then instead of two. The
+> settle at the end of `boot()` was a second such assumption — a flat 400ms
+> that could not survive a slow machine once artificial fetch delays were in
+> play. Both are now conditions polled to a deadline, with one small fixed wait
+> left for the deferred chart draw. Making the settle condition assert the
+> chart's contents instead would just restate the check below it, and would
+> therefore never fail. Verified at normal speed and at 4x the delays.
+
 **The smoke harness could not have caught any of this**, and that mattered more
 than the code. `verify-views.mjs` reads every file with `fs.readFileSync`
 behind an already-resolved `Response`, so all five indexes arrive in `RACE_IDS`

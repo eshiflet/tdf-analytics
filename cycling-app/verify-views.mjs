@@ -63,7 +63,7 @@ globalThis.fetch = async (url) => {
 
 let importCounter = 0;
 
-async function boot(hash, midLoad) {
+async function boot(hash, midLoad, settleUntil) {
   const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml}</body></html>`, {
     url: `http://localhost/${hash}`,
     pretendToBeVisual: true,
@@ -87,10 +87,41 @@ async function boot(hash, midLoad) {
   if (midLoad) {
     // Runs while later indexes are still in flight, so a scenario can act on
     // the partially-rendered view the way a user would.
-    await new Promise((r) => setTimeout(r, midLoad.at));
+    //
+    // WAITS for its precondition rather than assuming a wall-clock delay is
+    // enough. The first version fired at a fixed 60ms and threw if the view
+    // was not ready — which is a correct thing to check and a terrible thing
+    // to bet a build on: it passed on this laptop and failed in CI, where the
+    // runner had rendered one race by then instead of two. Polling keeps the
+    // guarantee (the scenario still refuses to pass while proving nothing)
+    // without making it a race against the machine.
+    const deadline = Date.now() + (midLoad.timeout ?? 5000);
+    while (!midLoad.until(window.document) && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    if (!midLoad.until(window.document)) {
+      throw new Error(midLoad.describe ?? "midLoad precondition never held");
+    }
     midLoad.run(window.document);
   }
-  await new Promise((r) => setTimeout(r, 400));
+  // Settling is a CONDITION where the caller can name one, and a fixed wait
+  // only as a fallback. A flat 400ms is fine for the ordinary scenarios but
+  // cannot survive a slow machine once artificial fetch delays are in play —
+  // it is the second wall-clock assumption that broke this suite in CI.
+  if (settleUntil) {
+    const deadline = Date.now() + 8000;
+    while (!settleUntil(window.document) && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    // The condition covers the slow, machine-dependent part (indexes loading).
+    // The chart itself is drawn one deferred tick after that, and NOT waiting
+    // for it here would be the only alternative to making the condition assert
+    // the chart's contents — which would be the same statement as the check
+    // below, and would therefore never fail.
+    await new Promise((r) => setTimeout(r, 200));
+  } else {
+    await new Promise((r) => setTimeout(r, 400));
+  }
   return window.document;
 }
 
@@ -105,14 +136,19 @@ async function boot(hash, midLoad) {
  *  registry order, is precisely what the harness cannot produce. A real
  *  ordering bug shipped and passed all 58 checks.
  */
-async function bootProgressive(hash, delays, midLoad) {
+async function bootProgressive(hash, delays, midLoad, settleUntil) {
   fetchDelays = delays;
   try {
-    const doc = await boot(hash, midLoad);
-    return doc;
+    return await boot(hash, midLoad, settleUntil);
   } finally {
     fetchDelays = null;
   }
+}
+
+/** Race toggles that actually have data — the ones a user could click. */
+function liveRaceToggles(doc) {
+  return [...doc.querySelectorAll(".race-toggle-btn")]
+    .filter((b) => !b.classList.contains("no-data"));
 }
 
 const failures = [];
@@ -341,17 +377,20 @@ function check(name, cond, detail) {
     // refused by design, so a single-race moment makes the click a no-op and
     // the scenario proves nothing.
     { tour: 20, giro: 120, vuelta: 120, gravel: 120 },
-    // Partway through, with classics and tour rendered and giro/vuelta still
-    // in flight, switch classics off the way a user would. It must not come
-    // back on when the later indexes arrive and rebuild the toggle bar.
-    { at: 60, run: (d) => {
-        const btns = [...d.querySelectorAll(".race-toggle-btn")];
-        const live = btns.filter((b) => !b.classList.contains("no-data"));
-        if (live.length < 2) throw new Error(
-          `scenario is not exercising progressive load: ${live.length} race(s) rendered at 60ms`);
-        live.find((b) => b.textContent === "C").dispatchEvent(
-          new (globalThis.window.MouseEvent)("click", { bubbles: true }));
-      } });
+    // Once classics and tour have rendered and giro/vuelta are still in
+    // flight, switch classics off the way a user would. It must not come back
+    // on when the later indexes arrive and rebuild the toggle bar.
+    {
+      until: (d) => liveRaceToggles(d).length >= 2,
+      describe: "no second race ever rendered — the scenario cannot exercise "
+        + "a mid-load toggle, so raise the delays on giro/vuelta",
+      run: (d) => liveRaceToggles(d).find((b) => b.textContent === "C")
+        .dispatchEvent(new (globalThis.window.MouseEvent)("click", { bubbles: true })),
+    },
+    // Settled = all four of this rider's races have a toggle. Waiting for that
+    // rather than for a stopwatch is what lets the assertions below be about
+    // ordering instead of about how fast the machine is.
+    (d) => liveRaceToggles(d).length >= 4);
 
   const meta = doc.querySelector(".rider-detail-meta")?.textContent ?? "";
   const order = ["TDF", "Giro", "Vuelta", "Classics"]
@@ -382,11 +421,20 @@ function check(name, cond, detail) {
 {
   const doc = await bootProgressive("#riders/eddy-merckx",
     { classics: 200, tour: 200, giro: 200, vuelta: 200, gravel: 200 },
-    { at: 40, run: (d) => {
+    // Nothing must have rendered yet, so this one waits for a settling period
+    // rather than a state: it is asserting an ABSENCE, which no amount of
+    // polling can bring about sooner.
+    {
+      until: () => true,
+      run: (d) => {
         if (d.querySelector(".rider-detail-header")) throw new Error(
           "an index arrived before the navigation — raise the delays");
         globalThis.window.location.hash = "#allraces";
-      } });
+      },
+    },
+    // Settled = the view navigated to has drawn. The detail must still be
+    // absent at that point, which is the actual assertion.
+    (d) => d.querySelectorAll("#all-races-chart svg g .overview-panel-label").length === 4);
 
   check("an index landing after navigation renders nothing",
     doc.querySelectorAll(".rider-detail-header").length === 0,
