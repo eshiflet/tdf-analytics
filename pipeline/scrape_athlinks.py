@@ -32,11 +32,10 @@ import json
 import os
 import re
 import sys
-import unicodedata
 from datetime import datetime, timezone
 
 from athlinks_api import event_metadata, results
-from race_common import GRAVEL
+from race_common import GRAVEL, fix_mojibake
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRAPES = os.path.join(HERE, "gravel_scrapes")
@@ -119,30 +118,6 @@ PARTICLES = {
     "der", "den", "ter", "ten", "op", "uit", "st", "st.", "san", "santa",
     "saint", "el", "al", "bin", "ibn", "mac", "af", "av",
 }
-
-
-def fix_mojibake(text):
-    """Undo UTF-8-read-as-MacRoman, which Athlinks ships as-is.
-
-    "Andrew L‚ÄôEsperance" is "Andrew L’Esperance" whose UTF-8 bytes
-    (E2 80 99) were decoded as MacRoman. Round-tripping fixes it. Applied only
-    when the result is strictly cleaner, so a legitimately accented name is
-    never mangled by an over-eager repair.
-    """
-    if not text or not re.search(r"[‘’‚„†ÄÅâãïô]", text):
-        return text
-    for codec in ("mac-roman", "cp1252"):
-        try:
-            fixed = text.encode(codec).decode("utf-8")
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            continue
-        # "Cleaner" = fewer characters outside Latin-1 letters/punctuation.
-        def weird(s):
-            return sum(1 for ch in s if unicodedata.category(ch) in ("So", "Sk", "Co", "Cn")
-                       or ch in "†ÄÅâãô‚„")
-        if weird(fixed) < weird(text):
-            return fixed
-    return text
 
 
 def normalize_case(name):

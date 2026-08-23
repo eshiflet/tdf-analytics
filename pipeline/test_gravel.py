@@ -15,6 +15,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import os
+import sqlite3
+
+import ingest_classics
+import ingest_gravel
 from race_common import GRAVEL, gravel_route_type
 from link_gravel_riders import decide, fold, slugify, tokens
 from scrape_athlinks import (
@@ -55,8 +60,25 @@ class TestNameNormalisation(unittest.TestCase):
         self.assertEqual(clean_name("Andrew L‚ÄôEsperance"),
                          "Andrew L’Esperance")
 
+    def test_mojibake_of_accented_letters_is_repaired(self):
+        # The E2-lead case above was the only one the first version caught.
+        # Every accented LETTER mojibakes through C3, which MacRoman renders
+        # as "√" — Unbound 2025 shipped two of them and both survived into
+        # the DB, where "Emil √Öberg" was served to the app for weeks.
+        self.assertEqual(clean_name("Emil √Öberg"), "Emil Åberg")
+        self.assertEqual(clean_name("Lukas L√∂er"), "Lukas Löer")
+        # cp1252 is the other renderer of the same bytes; C3 89 -> É.
+        self.assertEqual(clean_name("Banque d'Ã‰pargne"), "Banque d'Épargne")
+
+    def test_repair_is_idempotent(self):
+        # A scrape partly repaired by an earlier run must not be "fixed" twice.
+        for name in ("Emil Åberg", "Lukas Löer", "Andrew L’Esperance"):
+            self.assertEqual(clean_name(name), name)
+
     def test_legitimate_accents_survive(self):
-        for name in ("Torbjørn Andre Røed", "Petr Vakoč", "Cécile Lejeune"):
+        for name in ("Torbjørn Andre Røed", "Petr Vakoč", "Cécile Lejeune",
+                     "Emil Åberg", "Tadej Pogačar", "Jonas Vingegaard",
+                     "Chloé Dygert", "Iván García Cortina", "Seán Kelly"):
             self.assertEqual(clean_name(name), name)
 
     def test_all_lower_and_all_upper_are_title_cased(self):
@@ -375,3 +397,84 @@ class TestRiderLinking(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _schema_conn():
+    """In-memory DB with the real schema, so a column rename breaks a test."""
+    conn = sqlite3.connect(":memory:")
+    here = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(here, "schema.sql"), encoding="utf-8") as f:
+        conn.executescript(f.read())
+    return conn
+
+
+class TestIngestRepairsMojibake(unittest.TestCase):
+    """The repair has to live at the INGEST choke point, not just the scraper.
+
+    The scrape files on disk still hold whatever the upstream shipped the day
+    they were fetched, so a rebuild reads the corruption again. These are the
+    tests that "re-ingesting will not bring it back" actually rests on.
+    """
+
+    def setUp(self):
+        self.conn = _schema_conn()
+        self.cur = self.conn.cursor()
+
+    def test_classics_team_is_repaired_on_insert(self):
+        ingest_classics.upsert_team(self.cur, "team/sefb-1987",
+                                    "S.E.F.B. Banque d'Ã‰pargne")
+        self.cur.execute("SELECT name FROM teams WHERE team_id='team/sefb-1987'")
+        self.assertEqual(self.cur.fetchone()[0], "S.E.F.B. Banque d'Épargne")
+
+    def test_classics_team_already_stored_corrupted_is_healed(self):
+        # A team inserted by an older run keeps sitting there: ingest_classics
+        # returns early for a known team, so without the narrow un-corrupt
+        # branch a re-ingest would leave the bad name in place forever.
+        self.cur.execute("INSERT INTO teams (team_id, name) VALUES (?,?)",
+                         ("team/sefb-1987", "S.E.F.B. Banque d'Ã‰pargne"))
+        ingest_classics.upsert_team(self.cur, "team/sefb-1987",
+                                    "S.E.F.B. Banque d'Ã‰pargne")
+        self.cur.execute("SELECT name FROM teams WHERE team_id='team/sefb-1987'")
+        self.assertEqual(self.cur.fetchone()[0], "S.E.F.B. Banque d'Épargne")
+
+    def test_healing_cannot_rename_a_team(self):
+        # The un-corrupt branch must never fire on two genuinely different
+        # names, or a re-ingest silently rewrites team history.
+        self.cur.execute("INSERT INTO teams (team_id, name) VALUES (?,?)",
+                         ("team/x-1987", "Panasonic"))
+        ingest_classics.upsert_team(self.cur, "team/x-1987", "Raleigh")
+        self.cur.execute("SELECT name FROM teams WHERE team_id='team/x-1987'")
+        self.assertEqual(self.cur.fetchone()[0], "Panasonic")
+
+    def test_classics_rider_is_repaired_and_gets_provenance(self):
+        ingest_classics.upsert_rider(self.cur, "rider/x", "Emil √Öberg", "no",
+                                     "https://example.invalid/race")
+        self.cur.execute("SELECT full_name FROM riders WHERE rider_id='rider/x'")
+        self.assertEqual(self.cur.fetchone()[0], "Emil Åberg")
+        self.cur.execute("""SELECT field, source FROM data_provenance
+                             WHERE entity='riders' AND entity_id='rider/x'
+                             ORDER BY field""")
+        self.assertEqual(self.cur.fetchall(),
+                         [("full_name", "pcs"), ("nationality_code", "pcs")])
+
+    def test_gravel_rider_is_repaired_and_gets_provenance(self):
+        ingest_gravel.upsert_rider(self.cur, {
+            "rider_id": "rider/emil-aberg", "name": "Emil √Öberg",
+            "first_name": "Emil", "last_name": "√Öberg",
+            "country": "no", "birth_year_approx": 1999})
+        self.cur.execute("""SELECT full_name, last_name FROM riders
+                             WHERE rider_id='rider/emil-aberg'""")
+        self.assertEqual(self.cur.fetchone(), ("Emil Åberg", "Åberg"))
+        self.cur.execute("""SELECT COUNT(*) FROM data_provenance
+                             WHERE entity='riders' AND entity_id='rider/emil-aberg'
+                               AND source='athlinks'""")
+        self.assertEqual(self.cur.fetchone()[0], 5)
+
+    def test_provenance_takes_a_text_slug_as_entity_id(self):
+        # ingest_gravel.py carried a comment claiming rider provenance was
+        # impossible because entity_id is declared INTEGER. It is not: the
+        # table is not STRICT, so affinity leaves a non-numeric string alone.
+        ingest_classics.upsert_rider(self.cur, "rider/x", "A B", "be", None)
+        self.cur.execute("""SELECT typeof(entity_id) FROM data_provenance
+                             WHERE entity='riders' LIMIT 1""")
+        self.assertEqual(self.cur.fetchone()[0], "text")

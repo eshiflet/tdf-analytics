@@ -49,6 +49,7 @@ from race_common import (
     GRAVEL,
     SOURCE_ATHLINKS,
     SOURCE_DERIVED,
+    fix_mojibake,
     gravel_route_type,
     record_provenance,
 )
@@ -71,13 +72,15 @@ def upsert_rider(cur, ident):
     cur.execute("SELECT rider_id FROM riders WHERE rider_id = ?", (rid,))
     if cur.fetchone():
         return rid
+    name = fix_mojibake(ident["name"])
+    first = fix_mojibake(ident.get("first_name"))
+    last = fix_mojibake(ident.get("last_name"))
     cur.execute(
         """INSERT INTO riders (rider_id, full_name, nationality_code,
                                birth_year_approx, first_name, last_name)
            VALUES (?,?,?,?,?,?)""",
-        (rid, ident["name"], upsert_country(cur, ident.get("country")),
-         ident.get("birth_year_approx"), ident.get("first_name"),
-         ident.get("last_name")),
+        (rid, name, upsert_country(cur, ident.get("country")),
+         ident.get("birth_year_approx"), first, last),
     )
     # NOTE on nationality: Athlinks records where an athlete LIVES, not their
     # nationality, and the two differ for real riders in this data (Torbjorn
@@ -85,9 +88,12 @@ def upsert_rider(cur, ident):
     # stored anyway because it is right for the overwhelming majority and a
     # missing flag helps nobody — but it is never allowed to overwrite a
     # nationality that came from PCS, which is why this function returns early
-    # above. data_provenance keys on an INTEGER entity_id and riders are keyed
-    # by TEXT slug, so this cannot be recorded there; it is documented here and
-    # in ai-context.md instead.
+    # above. That caveat is what `nationality_code`'s provenance below means:
+    # athlinks is the honest source, and it is a residence, not a passport.
+    for field in ("full_name", "first_name", "last_name", "nationality_code",
+                  "birth_year_approx"):
+        record_provenance(cur, "riders", rid, field, SOURCE_ATHLINKS,
+                          source_ref=ident.get("source_ref") or "gravel_scrapes/_rider_ids.json")
     return rid
 
 

@@ -29,6 +29,8 @@ from race_common import (
     RACES,
     STAGE_ROW_LEN,
     SOURCE_PCS,
+    SOURCE_DERIVED,
+    fix_mojibake,
     record_provenance,
     record_provenance_bulk,
     DB_PATH,
@@ -410,8 +412,15 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                 riders_seen.add(rider_slug)
                 cur.execute(
                     "INSERT OR IGNORE INTO riders (rider_id, full_name, nationality_code) VALUES (?,?,?)",
-                    (rider_slug, rider_name, nat),
+                    (rider_slug, fix_mojibake(rider_name), nat),
                 )
+                # Only claim provenance for a row this ingest actually wrote.
+                # OR IGNORE means an existing rider keeps someone else's value,
+                # and claiming it here would attribute their work to us.
+                if cur.rowcount:
+                    record_provenance_bulk(cur, "riders", rider_slug,
+                                           ["full_name", "nationality_code"],
+                                           SOURCE_PCS, source_ref=ref)
 
             if team_slug and team_slug not in teams_seen:
                 teams_seen.add(team_slug)
@@ -419,8 +428,14 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                 season_year = int(m.group(1)) if m else None
                 cur.execute(
                     "INSERT OR IGNORE INTO teams (team_id, name, season_year) VALUES (?,?,?)",
-                    (team_slug, team_name, season_year),
+                    (team_slug, fix_mojibake(team_name), season_year),
                 )
+                if cur.rowcount:
+                    record_provenance(cur, "teams", team_slug, "name",
+                                      SOURCE_PCS, source_ref=ref)
+                    record_provenance(cur, "teams", team_slug, "season_year",
+                                      SOURCE_DERIVED,
+                                      source_ref="trailing year of the PCS team slug")
 
             # Status. NOTE: "DF" is deliberately NOT an exit status — on
             # historical PCS pages it marks riders who finished the stage

@@ -47,6 +47,7 @@ from race_common import (
     parse_int,
     parse_time_to_seconds,
     parse_ttt_rows,
+    fix_mojibake,
     record_provenance,
     row_gap_violations,
 )
@@ -211,7 +212,13 @@ def main():
             cur.execute("INSERT OR IGNORE INTO countries (code, name) VALUES (?,?)",
                         (sr.nat, COUNTRY_NAMES.get(sr.nat)))
         cur.execute("INSERT OR IGNORE INTO riders (rider_id, full_name, nationality_code) "
-                    "VALUES (?,?,?)", (sr.slug, sr.name, sr.nat or None))
+                    "VALUES (?,?,?)", (sr.slug, fix_mojibake(sr.name), sr.nat or None))
+        # OR IGNORE: only claim provenance for a row we actually inserted.
+        if cur.rowcount:
+            record_provenance(cur, "riders", sr.slug, "full_name",
+                              SOURCE_PCS, source_ref=origin)
+            record_provenance(cur, "riders", sr.slug, "nationality_code",
+                              SOURCE_PCS, source_ref=origin)
         if sr.team_slug:
             m = re.search(r"-(\d{4})$", sr.team_slug)
             cur.execute("INSERT OR IGNORE INTO teams (team_id, name, season_year) VALUES (?,?,?)",

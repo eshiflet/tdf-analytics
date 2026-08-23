@@ -24,7 +24,13 @@ import sqlite3
 import sys
 from datetime import datetime
 
-from race_common import StageRow
+from race_common import (
+    SOURCE_DERIVED,
+    SOURCE_PCS,
+    StageRow,
+    fix_mojibake,
+    record_provenance,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH     = os.path.join(HERE, "cycling.db")
@@ -125,6 +131,9 @@ def insert_edition(conn, race_id, year, icons_for_year, countries_seen, riders_s
     if not stages_data:
         print(f"  No data file for {year}, skipping")
         return 0, 0
+    # The scrape file is the honest source_ref: these rows come from it, not
+    # from a live fetch. scrape_pcs_stages.py wrote it from PCS.
+    ref = f"tdf_{year}_full.json"
 
     cur = conn.cursor()
 
@@ -248,8 +257,14 @@ def insert_edition(conn, race_id, year, icons_for_year, countries_seen, riders_s
                 riders_seen[rider_slug] = rider_name
                 cur.execute(
                     "INSERT OR IGNORE INTO riders (rider_id, full_name, nationality_code) VALUES (?,?,?)",
-                    (rider_slug, rider_name, nat),
+                    (rider_slug, fix_mojibake(rider_name), nat),
                 )
+                # OR IGNORE: only claim provenance for a row we actually wrote.
+                if cur.rowcount:
+                    record_provenance(cur, "riders", rider_slug, "full_name",
+                                      SOURCE_PCS, source_ref=ref)
+                    record_provenance(cur, "riders", rider_slug, "nationality_code",
+                                      SOURCE_PCS, source_ref=ref)
 
             # Teams
             if team_slug and team_slug not in teams_seen:
@@ -258,8 +273,14 @@ def insert_edition(conn, race_id, year, icons_for_year, countries_seen, riders_s
                 season_year = int(m.group(1)) if m else None
                 cur.execute(
                     "INSERT OR IGNORE INTO teams (team_id, name, season_year) VALUES (?,?,?)",
-                    (team_slug, team_name, season_year),
+                    (team_slug, fix_mojibake(team_name), season_year),
                 )
+                if cur.rowcount:
+                    record_provenance(cur, "teams", team_slug, "name",
+                                      SOURCE_PCS, source_ref=ref)
+                    record_provenance(cur, "teams", team_slug, "season_year",
+                                      SOURCE_DERIVED,
+                                      source_ref="trailing year of the PCS team slug")
 
             # Status
             status = "FINISHED"

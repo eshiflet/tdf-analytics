@@ -29,6 +29,7 @@ import sys
 from race_common import (
     CLASSICS,
     classic_route_type,
+    fix_mojibake,
     parse_time_to_seconds,
     record_provenance,
 )
@@ -53,7 +54,8 @@ SOURCE_DERIVED = "derived"
 STATUS_MAP = {"DNF": "DNF", "DNS": "DNS", "DSQ": "DSQ", "OTL": "OTL", "DF": "DNF"}
 
 
-def upsert_rider(cur, slug, name, nat):
+def upsert_rider(cur, slug, name, nat, url=None):
+    name = fix_mojibake(name)
     cur.execute("SELECT rider_id FROM riders WHERE rider_id = ?", (slug,))
     if cur.fetchone():
         # Never overwrite an existing identity — a rider already known from a
@@ -64,14 +66,26 @@ def upsert_rider(cur, slug, name, nat):
         "INSERT INTO riders (rider_id, full_name, nationality_code) VALUES (?,?,?)",
         (slug, name, upsert_country(cur, nat)),
     )
+    record_provenance(cur, "riders", slug, "full_name", SOURCE_PCS, source_ref=url)
+    record_provenance(cur, "riders", slug, "nationality_code", SOURCE_PCS,
+                      source_ref=url)
     return slug
 
 
-def upsert_team(cur, slug, name):
+def upsert_team(cur, slug, name, url=None):
     if not slug:
         return None
-    cur.execute("SELECT team_id FROM teams WHERE team_id = ?", (slug,))
-    if cur.fetchone():
+    name = fix_mojibake(name)
+    cur.execute("SELECT name FROM teams WHERE team_id = ?", (slug,))
+    row = cur.fetchone()
+    if row:
+        # A team already here keeps its name, with one exception: if the stored
+        # name is the mojibake of the one we just repaired, this row predates
+        # the repair and is the same team spelled wrong. Narrow on purpose —
+        # it cannot rename a team, only un-corrupt one.
+        if row[0] != name and fix_mojibake(row[0]) == name:
+            cur.execute("UPDATE teams SET name = ? WHERE team_id = ?", (name, slug))
+            record_provenance(cur, "teams", slug, "name", SOURCE_PCS, source_ref=url)
         return slug
     season = None
     tail = slug.rsplit("-", 1)[-1]
@@ -79,6 +93,10 @@ def upsert_team(cur, slug, name):
         season = int(tail)
     cur.execute("INSERT INTO teams (team_id, name, season_year) VALUES (?,?,?)",
                 (slug, name, season))
+    record_provenance(cur, "teams", slug, "name", SOURCE_PCS, source_ref=url)
+    # Parsed out of the slug's trailing year, not published as its own field.
+    record_provenance(cur, "teams", slug, "season_year", SOURCE_DERIVED,
+                      source_ref="trailing year of the PCS team slug")
     return slug
 
 
@@ -134,8 +152,8 @@ def ingest_one(cur, path, dry_run=False):
          team_name, team_slug, uci, pcs_pts, _bonus, abs_time, gap) = r
         if not rslug:
             continue
-        upsert_rider(cur, rslug, name, nat)
-        upsert_team(cur, team_slug, team_name)
+        upsert_rider(cur, rslug, name, nat, url)
+        upsert_team(cur, team_slug, team_name, url)
 
         stage_rank = int(rnk) if rnk.isdigit() else None
         status = "FINISHED" if stage_rank is not None else STATUS_MAP.get(rnk.upper(), "DNF")

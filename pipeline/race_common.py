@@ -25,6 +25,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass
 
 
@@ -585,6 +586,62 @@ def assign_stage_numbers(slugs: list[str]) -> tuple[list[tuple[int, str]], str |
     if has_prologue:
         numbered.insert(0, (0, "prologue"))
     return numbered, None
+
+
+# ── Text repair ─────────────────────────────────────────────────────────────
+# Both upstreams ship UTF-8 that was decoded through a single-byte codec
+# somewhere in their own stack, and both ship it inside otherwise-clean rows:
+# PCS serves "Martens René" correctly and "Banque d\'Ã‰pargne" corrupted in the
+# SAME row, Athlinks serves "Emil √Öberg". Lives here rather than in one
+# scraper because the road ingest and the gravel ingest each need it.
+
+# Characters that legitimately appear in a name, beyond letters and combining
+# marks: the space, both hyphen/apostrophe spellings, the period in "St.",
+# and the "/" and "&" that team names actually use.
+NAME_PUNCT = frozenset(" -\'’./&")
+
+
+def unnamelike(s):
+    """How many characters in `s` have no business being in a name.
+
+    Deliberately not a blocklist of specific "suspicious" characters. An
+    earlier version listed Å among them, which scored the correct "Åberg"
+    dirtier than the mojibake "√Öberg" it should have been repaired to — a
+    rule that could never fire on a Nordic name.
+    """
+    return sum(1 for ch in s
+               if unicodedata.category(ch)[0] not in "LMN" and ch not in NAME_PUNCT)
+
+
+def fix_mojibake(text):
+    """Undo UTF-8-read-as-MacRoman (or -cp1252), which both upstreams ship as-is.
+
+    "Andrew L‚ÄôEsperance" is "Andrew L’Esperance" whose UTF-8 bytes
+    (E2 80 99) were decoded as MacRoman; "Emil √Öberg" is "Emil Åberg" via the
+    same accident on C3 85; "d\'Ã‰pargne" is "d\'Épargne" via cp1252 on C3 89.
+
+    The round trip is its own best detector, so there is no character-class
+    trigger to keep in sync with the data — the previous one was built from a
+    single observed example and had no "√", the MacRoman rendering of C3, which
+    fronts every accented Latin letter in UTF-8. Re-encoding a legitimately
+    accented name almost always yields bytes that are not valid UTF-8 ("Røed"
+    hits a bare continuation byte, "Vakoč" will not encode at all) and those
+    raise rather than returning a plausible-looking wrong answer. The
+    cleanliness check is the second gate, for anything that survives the first.
+
+    Being a provable no-op on already-correct text is what makes this safe to
+    run at ingest, over scrape files that may already be partly repaired.
+    """
+    if not text or text.isascii():
+        return text
+    for codec in ("mac-roman", "cp1252"):
+        try:
+            fixed = text.encode(codec).decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            continue
+        if fixed != text and unnamelike(fixed) < unnamelike(text):
+            return fixed
+    return text
 
 
 # ── Data provenance ─────────────────────────────────────────────────────────
