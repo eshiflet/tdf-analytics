@@ -24,6 +24,8 @@ import sys
 import time
 import urllib.request
 import urllib.error
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import exit_on_help
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPRINT_PATH = os.path.join(HERE, "tour_sprint_points.json")
@@ -121,6 +123,7 @@ def parse_points_final(html):
 
 
 def main():
+    exit_on_help(__doc__)
     year_args = [int(a) for a in sys.argv[1:] if a.isdigit()]
     years = year_args if year_args else TARGET_YEARS
 

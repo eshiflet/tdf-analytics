@@ -23,6 +23,8 @@ import time
 import unicodedata
 import urllib.request
 import urllib.error
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import exit_on_help
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(HERE, "kom_totals.json")
@@ -153,6 +155,7 @@ def scrape_bri(year: int) -> list[tuple[str, int]]:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main():
+    exit_on_help(__doc__)
     import sqlite3
     args = sys.argv[1:]
     resume = "--resume" in args

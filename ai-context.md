@@ -307,12 +307,32 @@ and `export_all_races_summary.py`: zero exported files changed.
 
 **Extend it by hand**, verifying each value the way `4f82d99` did.
 
-### Careful with `--help` on the check scripts
+### `--help` no longer starts a scrape (fixed for all of them, 2026-08-22)
 
-`check_gc_times.py` now handles `-h/--help`. It did not before, and `--help`
-fell through to a full run over every year, each one a live PCS fetch. Found by
-doing it. The `scrape_*` scripts still have the older behaviour of treating
-unrecognised args as "no years", so give them real arguments.
+`check_gc_times.py` grew a private `-h/--help` guard after `--help` fell
+through to a full run over every year, each one a live PCS fetch. An audit on
+2026-08-22 found **17 more networked scripts with the identical hole** — every
+`scrape_*` that parses argv by scanning for the flags it knows and ignoring the
+rest. They all now call `race_common.exit_on_help(__doc__)` as the first
+statement in `main()`, which prints the module docstring (where every one of
+them keeps its usage) and exits 0.
+
+`exit_on_help` exits rather than returning a flag on purpose: a caller that
+forgets to check a return value is exactly the failure it exists to prevent.
+argparse users were already fine and were left alone.
+
+`test_scrapers.py` asserts the guard is in the first three statements of every
+`main()` in that list, checked against the source rather than by running them —
+running them is the thing being prevented.
+
+**That audit also found a dead script.** `scrape_vuelta_gc_pages.py` imported
+`HEADERS, td_text, dedup_time, parse_profile_icon, parse_info, parse_rows,
+parse_year_args` from `scrape_vuelta`, which the Giro/Vuelta merge earlier the
+same day had reduced to a thin wrapper exporting only `main()`. Every run had
+been dying on `ImportError` since. Nothing caught it: the script has no tests
+and CI never invokes it. Now imported from `scrape_race`, where the
+implementation actually lives, and the same test suite imports all 17 so a
+future merge cannot silently orphan one again.
 
 ---
 

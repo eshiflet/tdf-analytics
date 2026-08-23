@@ -20,7 +20,7 @@ import time
 import urllib.request
 import urllib.error
 
-from race_common import apply_stage_title, parse_ttt_rows
+from race_common import apply_stage_title, exit_on_help, parse_ttt_rows
 
 HERE    = os.path.dirname(os.path.abspath(__file__))
 ICONS_PATH = os.path.join(HERE, "profile_icons.json")
@@ -351,6 +351,7 @@ def scrape_year(year: int) -> dict | None:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
+    exit_on_help(__doc__)
     args = sys.argv[1:]
     resume = "--resume" in args
     year_args = [int(a) for a in args if a.isdigit()]

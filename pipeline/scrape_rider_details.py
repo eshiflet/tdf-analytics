@@ -36,7 +36,7 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from race_common import SOURCE_PCS, record_provenance_bulk
+from race_common import SOURCE_PCS, exit_on_help, record_provenance_bulk
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -446,6 +446,7 @@ def print_changes(changes: list[tuple]) -> None:
 
 
 def main() -> None:
+    exit_on_help(__doc__)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rider_ids = get_all_rider_ids(conn)

@@ -443,6 +443,30 @@ def parse_year_args(args: list[str]) -> list[int]:
     return sorted(set(years))
 
 
+# ── --help must never start a scrape ────────────────────────────────────────
+# Most scripts here parse flags by scanning sys.argv for the ones they know
+# and ignoring the rest, so `--help` matched nothing and fell straight through
+# to a full run. That is not hypothetical: it burned about five minutes of live
+# PCS requests on check_gc_times.py, which then grew a private guard. An audit
+# on 2026-08-22 found 18 networked scripts with the same hole.
+#
+# argparse users are already fine — it handles -h itself. This is for the rest,
+# and it prints the module docstring, which is where every one of these keeps
+# its usage.
+
+
+def exit_on_help(doc: str | None = None, argv: list[str] | None = None) -> None:
+    """Print `doc` and exit 0 if -h/--help is present. Call it FIRST in main().
+
+    Deliberately exits rather than returning a flag: a caller that forgets to
+    check the return value is exactly the failure this exists to prevent.
+    """
+    args = sys.argv if argv is None else argv
+    if "-h" in args or "--help" in args:
+        print((doc or "").strip() or "no usage available")
+        raise SystemExit(0)
+
+
 # ── Export-script race resolution (TDF + Giro + Vuelta) ─────────────────────
 # race_subdir is both the src/data/<slug> directory name and the frontend's
 # RaceId. "tdf" is historical — it predates the tour/giro/vuelta slug scheme

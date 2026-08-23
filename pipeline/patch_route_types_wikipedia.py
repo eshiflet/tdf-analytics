@@ -24,6 +24,8 @@ import time
 import urllib.request
 import urllib.error
 import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import exit_on_help
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -175,6 +177,7 @@ def stage_label_to_db_number(label, year_stages):
 
 
 def main():
+    exit_on_help(__doc__)
     args = sys.argv[1:]
     dry_run = "--dry-run" in args
     year_args = [int(a) for a in args if a.isdigit()]

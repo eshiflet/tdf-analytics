@@ -39,6 +39,8 @@ import sys
 import time
 import urllib.request
 import urllib.error
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import exit_on_help
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.path.join(HERE, "cycling.db")
@@ -343,6 +345,7 @@ def scrape_year(year: int) -> list[dict] | None:
 
 
 def main():
+    exit_on_help(__doc__)
     args = sys.argv[1:]
     resume = "--resume" in args
     year_args = [int(a) for a in args if a.isdigit()]

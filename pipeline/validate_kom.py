@@ -16,6 +16,8 @@ import time
 import unicodedata
 import urllib.request
 import urllib.error
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import exit_on_help
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data")
@@ -284,6 +286,7 @@ def print_result(r: dict, summary_only: bool = False):
 
 
 def main():
+    exit_on_help(__doc__)
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     summary_only = "--summary" in sys.argv
 

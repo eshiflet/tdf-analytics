@@ -57,6 +57,7 @@ import urllib.error
 from race_common import (
     RACES,
     apply_stage_title,
+    exit_on_help,
     assign_stage_numbers,
     parse_ttt_rows,
 )
@@ -537,6 +538,7 @@ def parse_year_args(args: list[str]) -> list[int]:
 
 
 def main(argv=None):
+    exit_on_help(__doc__)
     args = list(argv if argv is not None else sys.argv[1:])
     race_key = None
     if "--race" in args:

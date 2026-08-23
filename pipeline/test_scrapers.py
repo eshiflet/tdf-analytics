@@ -776,3 +776,70 @@ class RiderCacheDurabilityTest(unittest.TestCase):
                            " LIMIT 1").fetchone()
         self.assertEqual((got[0], got[1]), ("rider/x", "text"))
 
+
+
+class HelpNeverScrapesTest(unittest.TestCase):
+    """
+    These scripts parse flags by scanning sys.argv for the ones they know and
+    ignoring the rest, so `--help` matched nothing and fell through to a full
+    run. check_gc_times.py burned about five minutes of live PCS requests that
+    way and grew a private guard; an audit on 2026-08-22 found 17 more
+    networked scripts with the identical hole.
+
+    Importing every one of them is also a smoke test that they still import at
+    all — which is how scrape_vuelta_gc_pages.py was found dead, importing six
+    names from scrape_vuelta that the Giro/Vuelta merge had reduced to a
+    wrapper exporting only main().
+    """
+
+    NETWORKED = [
+        "patch_kom_wikipedia", "patch_route_types_wikipedia", "scrape_bri_stages",
+        "scrape_gc_all_times", "scrape_gc_winner_times", "scrape_kom_points",
+        "scrape_kom_totals", "scrape_pcs_kom_finals", "scrape_pcs_stages",
+        "scrape_race", "scrape_rider_details", "scrape_sprint_finals",
+        "scrape_sprint_per_stage", "scrape_stage_info", "scrape_vuelta_gc_pages",
+        "scrape_wiki_distances", "validate_kom",
+    ]
+
+    def test_every_networked_script_still_imports(self):
+        import importlib
+        for name in self.NETWORKED:
+            with self.subTest(script=name):
+                importlib.import_module(name)
+
+    def test_every_networked_script_guards_help(self):
+        """main() must call exit_on_help() before anything that touches the
+        network. Asserted against the source rather than by running them,
+        because running them is the thing being prevented."""
+        import importlib
+        import inspect
+        for name in self.NETWORKED:
+            with self.subTest(script=name):
+                mod = importlib.import_module(name)
+                self.assertTrue(hasattr(mod, "main"), name + " has no main()")
+                lines = inspect.getsource(mod.main).splitlines()[1:]
+                code = [ln.strip() for ln in lines
+                        if ln.strip() and not ln.strip().startswith(('"""', "'''", "#"))]
+                self.assertTrue(any("exit_on_help" in ln for ln in code[:3]),
+                                name + ".main() does not call exit_on_help() up front")
+
+    def test_the_guard_exits_zero_and_prints_the_docstring(self):
+        from race_common import exit_on_help
+        buf = io.StringIO()
+        with self.assertRaises(SystemExit) as cm:
+            with contextlib.redirect_stdout(buf):
+                exit_on_help("Usage: do the thing", ["x", "--help"])
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("Usage: do the thing", buf.getvalue())
+
+    def test_short_and_long_flags_both_work(self):
+        from race_common import exit_on_help
+        for flag in ("-h", "--help"):
+            with self.subTest(flag=flag):
+                with self.assertRaises(SystemExit):
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        exit_on_help("usage", ["x", flag])
+
+    def test_the_guard_is_a_no_op_without_the_flag(self):
+        from race_common import exit_on_help
+        exit_on_help("usage", ["x", "--year", "2020"])      # must not raise

@@ -27,7 +27,7 @@ import time
 import urllib.error
 import urllib.request
 
-from race_common import RACES, SOURCE_PCS, record_provenance_bulk
+from race_common import RACES, SOURCE_PCS, exit_on_help, record_provenance_bulk
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -98,6 +98,7 @@ def parse_year_args(args: list[str]) -> list[int]:
 
 
 def main(argv=None):
+    exit_on_help(__doc__)
     args_in = list(argv if argv is not None else sys.argv[1:])
     race_key = None
     if "--race" in args_in:

@@ -18,6 +18,8 @@ Usage:
 """
 
 import json, os, re, sqlite3, sys, time, unicodedata, urllib.request, urllib.error
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import exit_on_help
 
 HERE     = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.path.join(HERE, "cycling.db")
@@ -343,6 +345,7 @@ def process_year(year, html, name_lookup, conn):
 
 
 def main():
+    exit_on_help(__doc__)
     year_args = [int(a) for a in sys.argv[1:] if a.isdigit()]
     years = year_args if year_args else ALL_RACE_YEARS
 

@@ -50,10 +50,17 @@ if "--race" in sys.argv:
 RACE_PATH, _scrapes_dirname = RACES[RACE]
 SCRAPES_DIR = os.path.join(HERE, _scrapes_dirname)
 
-from scrape_vuelta import (  # noqa: E402
+# From scrape_race, not scrape_vuelta. The Giro/Vuelta scrapers were merged on
+# 2026-08-22 and scrape_vuelta.py became a thin wrapper exporting only main(),
+# which left this import raising ImportError on every run. Nothing caught it:
+# this script has no tests and CI never invokes it. The --help audit that added
+# the guard below is what surfaced it.
+from scrape_race import (  # noqa: E402
     HEADERS, td_text, dedup_time, parse_profile_icon, parse_info,
     parse_rows, parse_year_args,
 )
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from race_common import exit_on_help
 
 DELAY = float(os.environ.get("SCRAPE_DELAY", "3.5"))
 
@@ -178,6 +185,7 @@ def scrape_slug(year: int, slug: str) -> dict | None:
 
 
 def main():
+    exit_on_help(__doc__)
     years = parse_year_args(sys.argv[1:])
     if not years:
         print("Usage: python3 scrape_vuelta_gc_pages.py YEAR [YEAR_START-YEAR_END ...]")

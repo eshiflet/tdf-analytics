@@ -32,7 +32,7 @@ import sys
 import urllib.parse
 import urllib.request
 
-from race_common import DB_PATH
+from race_common import DB_PATH, exit_on_help
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 API = "https://en.wikipedia.org/w/api.php"
@@ -118,6 +118,7 @@ def parse_distance(text):
 
 
 def main():
+    exit_on_help(__doc__)
     if "--race" not in sys.argv:
         sys.exit("usage: python3 scrape_wiki_distances.py --race {giro,vuelta}")
     race = sys.argv[sys.argv.index("--race") + 1]
