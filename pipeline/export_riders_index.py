@@ -58,6 +58,7 @@ import sqlite3
 import sys
 from collections import defaultdict
 
+from link_rider_race_sets import stamp as stamp_cross_race
 from race_common import DB_PATH, resolve_race_arg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -214,6 +215,13 @@ def main(argv=None):
         f"Wrote {len(index['riders']):,} riders / {len(index['teams'])} teams across "
         f"{len(files)} years -> {out_path} ({size_kb:.0f} KB)"
     )
+
+    # The cross-race bitmask the rider detail page uses to decide which OTHER
+    # indexes it can skip. Rewriting this file drops it, so it is restored here
+    # rather than left as a step to remember — validate_exports.py checking for
+    # it is a backstop, not the mechanism. Membership is symmetric, so this can
+    # also touch the other races' indexes; only changed bytes are written.
+    stamp_cross_race(quiet=True)
 
 
 if __name__ == "__main__":

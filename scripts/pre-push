@@ -17,7 +17,8 @@
 #     validate_db.py        1.3s   (CI cannot run this)
 #     npm run build         1.3s   } only when cycling-app/ changed
 #     smoke tests          12.7s   }
-# A pipeline- or docs-only push therefore costs ~3s, not ~17s.
+#     payload budget        1.6s   }
+# A pipeline- or docs-only push therefore costs ~3s, not ~19s.
 #
 # Install:  ln -sf ../../scripts/pre-push .git/hooks/pre-push
 # Bypass:   git push --no-verify        (it is a guard, not a gate)
@@ -69,6 +70,10 @@ fi
 if touches "cycling-app/"; then
   step "build";             (cd cycling-app && npm run build >/dev/null 2>&1) || fail "npm run build"; ok
   step "smoke tests";       (cd cycling-app && node verify.mjs >/dev/null 2>&1 && node verify-views.mjs >/dev/null 2>&1) || fail "smoke tests"; ok
+  # Reuses the build above, so this costs only the gzipping (~1.6s for 474
+  # files). Every payload win in this repo was measured once by hand and had
+  # nothing holding it in place; this is what holds them.
+  step "payload budget";    (cd cycling-app && node check-payload.mjs >/dev/null 2>&1) || fail "payload budget (run: cd cycling-app && node check-payload.mjs)"; ok
 fi
 
 echo "${GREEN}pre-push: all checks passed${OFF}"

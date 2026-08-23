@@ -35,6 +35,7 @@ import json
 import os
 import sys
 
+import link_rider_race_sets
 from reconcile_kom import name_match, slug_to_display
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -320,6 +321,22 @@ def main():
                 if len(stale) > 5:
                     print(f"        ... and {len(stale) - 5} more")
                 total_errors += 1
+
+        # The cross-race `x` bitmask is stamped by a POST-PASS over the same
+        # files, so any exporter run drops it — and a stale bit is worse than a
+        # missing one: the rider detail page trusts it to decide which indexes
+        # to skip, so a rider who left a set would have their results silently
+        # dropped from the career chart rather than merely loading slowly.
+        indexes = link_rider_race_sets.load_indexes(DATA_ROOT)
+        if len(indexes) > 1:
+            membership = link_rider_race_sets.compute_membership(indexes)
+            for slug, idx in indexes.items():
+                xr, masks = membership[slug]
+                if link_rider_race_sets.apply_membership(idx, xr, masks):
+                    print("ERROR cross-race rider membership is stale. "
+                          "Run: python3 link_rider_race_sets.py")
+                    total_errors += 1
+                    break
 
     print(f"\n{checked} files checked: {total_errors} errors, {total_warnings} warnings")
     sys.exit(1 if total_errors else 0)

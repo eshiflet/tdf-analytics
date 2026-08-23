@@ -517,39 +517,29 @@ against "Rodriguez José Francisco". Guessing there is exactly the thing
 "never fabricate" rules out. The cache simply predates the classics and gravel
 expansions: 5,260 of the 5,265 were never fetched.
 
-### Applied 2026-08-22 — 4,505 names filled, 771 classics riders left
+### DONE 2026-08-22 — every rider PCS can name now has one
 
 | race | before | after |
 |---|---|---|
-| classics | 5,250 missing (44%) | **771 (6.5%)** |
-| stage races | 27 | 17 |
+| classics | 5,250 missing (**44%**) | **40 (0.34%)** |
+| stage races | 27 | 3 |
 | gravel | 28 | 1 |
 
-**4,505 NULL-fills, 0 overwrites** — nothing that already had a value was
-touched. Verified in the app: "Alexey Vermeulen", "Alfons Schepers", "Edvald
-Boasson Hagen" all render first-name-first.
+5,252 names filled across two applies, **0 overwrites of an existing value**.
+All 5,250 classics riders were fetched, 0 failures.
 
-The remaining 771 are simply not fetched yet; the scrape was still running when
-this was applied, and the apply is incremental and idempotent. Finish it with:
+**The 43 that remain are correct, not a backlog.** Every one has a last name and
+no first name because PCS records only a surname for them — `Monin`, `Legaux`,
+`Chiesa`, and the `bel-*`/`fra-*` slugs PCS uses for unidentified early
+starters. `displayName()` falls back to the surname, which is the honest
+output.
 
-```bash
-cd pipeline
-SCRAPE_DELAY=0.8 python3 scrape_rider_details.py --missing --race classics --dry-run
-python3 scrape_rider_details.py --missing --dry-run     # sweeps up the stage races too
-python3 db_backup.py && python3 scrape_rider_details.py --db-only
-python3 export_classics.py && python3 export_gravel.py
-for r in tour giro vuelta; do python3 export_gc.py --race $r; python3 export_riders_index.py --race $r; done
-python3 validate_db.py && python3 validate_exports.py
-```
-
-Run `--db-only` WITHOUT `--missing`, as above: that re-applies every cached
-rider, which is how the 39,031 `entity='riders'` provenance rows got
-backfilled for riders whose names were already correct.
-
-**A first name of `"A."` or `"."` is faithful, not a bug.** PCS itself records
-many pre-war starters as "Bardella A." or "Van Muyten .", so the split puts the
-initial where the first name goes. It reads oddly and it is what the source
-says; a nicer rendering is a frontend decision, not a data one.
+**PCS's unknown-name markers are dropped, not stored.** It writes an unrecorded
+given name as `?`, `??` or `.` rather than omitting it, and 14 riders came
+through with `first_name='?'` — rendering "? Pujol", which is worse than
+"Pujol". `split_for()` now maps those to NULL. An INITIAL is kept: "C."
+in "C. Terruzzi" is what is known about that rider, not a placeholder for it
+(86 riders).
 
 ### DANGER: PCS answers an unknown rider with HTTP 200
 
@@ -3012,6 +3002,210 @@ which is exactly what that check is for.
 
 ---
 
+## The rider detail page stopped loading all five indexes (2026-08-22)
+
+The rider detail page is cross-race by design — it shows every race a rider has
+results in — and the only way it could find out *which* races those were was to
+download and build **all five** `riders_index.json` files. That is **1,185 KB
+gzipped** plus five synchronous index builds on the main thread, for every
+rider page opened.
+
+Almost all of it was spent proving a negative. Of **17,736 riders** across the
+five sets, **10,793 (61%) appear in exactly one** and **31 appear in all five**:
+
+| sets a rider appears in | riders |
+|---|---|
+| 1 | 10,793 |
+| 2 | 3,254 |
+| 3 | 1,966 |
+| 4 | 1,692 |
+| 5 | 31 |
+
+### The stamp
+
+`link_rider_race_sets.py` writes the answer into the file the page has to load
+anyway. Each index gains:
+
+```
+"xr": ["giro", "vuelta", ...]              # the OTHER sets this file reaches
+riders: { "<slug>": { ..., "x": 5 } }      # bitmask over xr; omitted when 0
+```
+
+**Each file names its own bit order.** The two exporters —
+`export_riders_index.py` for the Grand Tours, `race_set_export.py` for the
+aggregate sets — do not know about each other, and a fixed bit order duplicated
+across Python and TypeScript is exactly the pair that drifts. The frontend
+validates each slug against the race registry and maps anything unrecognised to
+`undefined` *without shifting the remaining bits*, so an index stamped before a
+new race set existed stays readable rather than being misread.
+
+### Measured
+
+Over every (race, rider) pair:
+
+| | before | after |
+|---|---|---|
+| payload per rider page | 1,185 KB gz | **705 KB mean / 737 KB median** (−41% / −38%) |
+| cost of the stamp itself | — | **+25 KB gz** across all five files |
+
+Verified in the browser on a cold deep link: `#riders/achiel-de-smet`
+(Tour only) fetches **one** index; `#riders/aad-van-den-hoek` (Tour, Vuelta,
+Classics) fetches **three** and skips Giro and gravel.
+
+### The deep link was loading them all a second way
+
+`switchView("riders")` draws the Riders **grid**, and an unfiltered grid loads
+every race. So `#riders/<slug>` fetched all five through the grid before
+`drawRiderDetail` ever ran — the grid's own bail-out discarded that work, but
+only after the fetches were in flight. `switchView` now takes `{ draw: false }`,
+used by exactly that one caller. Without this the bitmask saves nothing on the
+path it was built for.
+
+### The exporters restore it themselves
+
+Rewriting an index drops the stamp, so `export_riders_index.py` and
+`race_set_export.py` (via `export_classics.py` / `export_gravel.py`) call
+`stamp(quiet=True)` after writing one. There is no step to remember. Proven
+live: `export_riders_index.py --race giro` writes 666 KB without the stamp,
+re-stamps to 694 KB, and leaves the working tree **byte-identical** to what was
+committed. Same for `export_gravel.py` on the aggregate path.
+
+Membership is symmetric, so stamping one index can legitimately rewrite the
+others — a rider newly appearing in the Giro changes the classics file's mask
+for that rider too. Only files whose bytes actually change are written, so a
+no-op export produces a clean `git diff`.
+
+`validate_exports.py` still checks it, and that is now the **backstop** — for a
+hand-edited file, or a new writer that forgets:
+
+```
+ERROR cross-race rider membership is stale. Run: python3 link_rider_race_sets.py
+```
+
+Run it by hand only after some other writer touches a `riders_index.json`.
+`test_exports.py` asserts both exporters still make the call, because a
+refactor that drops one would otherwise surface as a failed pre-push much later.
+
+A **stale** bit is worse than a missing one: the page trusts it to decide which
+indexes to skip, so a rider who left a set would have that race silently dropped
+from their career chart rather than merely loading slowly. `apply_membership()`
+clears old stamps before writing, and only rewrites a file whose bytes actually
+changed — these are 6 MB of JSON and a stamp that always reported "changed"
+would churn every diff.
+
+`crossRaceFor()` returns **null**, not an empty list, when no built index has
+heard of the rider: those mean opposite things ("ask again later" versus "this
+rider races nowhere else"), and the page falls back to loading everything on
+null rather than concluding the rider raced nowhere.
+
+---
+
+## The Riders grid draws before every index has landed (2026-08-22)
+
+With no race filter set the Riders page shows all five races, and it used to
+`await Promise.all` over all five indexes before drawing anything — ~460 ms of
+main-thread index builds behind the slowest of five downloads, with only a
+"Loading riders…" label on screen throughout.
+
+Every fetch still starts at the same moment. What changed is **which one is
+waited for**: the page draws from the current race's index, then folds the rest
+in with **one** more rebuild, not one per arrival. Measured on the dev server,
+median of 3 cold loads, forcing layout:
+
+| | before | after |
+|---|---|---|
+| time to a usable grid | 1,712 ms | **902 ms** (−47%) |
+| time to all 17,736 riders | 1,712 ms | 1,936 ms (+13%) |
+
+**The +13% is real and cannot be designed away.** The early merge and render are
+main-thread work, so they push the remaining index builds back. What it *can* be
+reduced to is the question — see below.
+
+### The merge had to become incremental
+
+The first version invalidated the merge cache and re-merged from scratch when
+the late races landed. That cost more than drawing early saved: full grid ready
+went **1,712 ms → 2,511 ms**, a 47% regression on completion for a 47%
+improvement on first paint.
+
+`mergedRidersCache` now remembers which races have been **folded in**, not just
+which were selected, and folds late arrivals into the existing clones. A race
+whose index is still building is simply absent from `folded` and gets merged on
+a later call. That took completion from +47% to +13%.
+
+The old cache key could not have expressed this: keyed on the selected race set
+alone, the second render looks identical to the first, so it would have been
+handed the first render's riders and the late races would never have appeared.
+
+### Why the count label says "loading more…"
+
+A search over a partial grid comes back **empty for a rider who does exist** —
+which looks like a data bug, not a loading state. So the count reads
+`12,499 riders · loading more…` until every selected race has been folded in,
+and drops the suffix when the grid is complete.
+
+### One rebuild, not five
+
+A full grid is 17,736 buttons and costs **141 ms** to rebuild (measured, median
+of 7, forcing layout). Rebuilding once per arriving index would spend more than
+drawing early saves — the point of drawing early is the first screen, not a
+five-step animation of the count going up.
+
+---
+
+## Payload budget (2026-08-22)
+
+```bash
+cd cycling-app
+node check-payload.mjs             # compare against the committed baseline
+node check-payload.mjs --update    # re-baseline, deliberately
+```
+
+Every payload win in this repo was measured once, by hand, and then had nothing
+holding it in place — the compact JSON separators (−10%), the `riders_index`
+re-encode (−22% gzipped), the cross-race bitmask. An exporter change could undo
+any of them and the only symptom would be a slower site: no test fails, no
+validator complains, and the diff on a 2 MB minified JSON file tells you
+nothing.
+
+So the sizes are committed. `payload-baseline.json` holds the **gzipped** byte
+count of 13 tracked payloads and the run fails when one grows more than 2%:
+
+```
+REGRESSED riders_index:classics  462.4 KB -> 578.0 KB  +25.0%
+```
+
+**What it tracks, and why not simply every file.** `entry:main.js` /
+`entry:main.css` (main.js also carries the three `all_races_summary.json` files,
+which raceRegistry.ts imports as data rather than by URL, so they are bundled
+into it and never appear as their own asset); each race's `riders_index.json`
+individually, because those are the biggest single downloads and the ones that
+get re-encoded; each race's per-year files as one **bucket** total, because
+there are 440 of them, they are fetched one at a time, and 440 baseline lines
+would be noise nobody acts on; and `total:assets`, so a new category cannot slip
+in below the radar.
+
+**Attribution.** The build flattens every race's data into one `assets/`
+directory, so `gc_by_stage_1987.json` could belong to any of four races and all
+five races have a `riders_index.json`. Vite copies these verbatim, so the file
+is matched back to its race on `basename:rawBytes` — no hashing of 131 MB of
+source. A genuinely ambiguous file is split evenly across its candidates: the
+per-race bucket goes approximate, the total stays exact.
+
+**Growth is expected and is not a regression.** Adding a year makes the archive
+bigger, which is why this compares against a committed baseline with a tolerance
+rather than a hardcoded ceiling. Re-baseline in the commit that causes the
+growth — the diff on `payload-baseline.json` is then the actual record of what
+grew and why. The failure is only what makes you look.
+
+Wired into `scripts/pre-push` and the CI workflow, both reusing the build they
+already ran, so it costs only the gzipping (~1.6s for 474 files). A new or
+removed asset is reported but does **not** fail: adding a race set is normal
+work, and failing it would only teach people to pass `--update` reflexively,
+which is the one habit that makes this useless.
+
+---
+
 ## Dev-loop traps (2026-08-18)
 
 **Vite HMR serves stale modules more often than you'd think.** Three separate
@@ -3445,7 +3639,45 @@ python3 -m unittest discover -p "test_*.py"
 # COUNT against that baseline rather than expecting zero.
 python3 validate_exports.py
 python3 validate_db.py               # 0 errors, 3 warnings expected
+
+# Cross-race rider membership — the `x` bitmask the rider detail page uses to
+# decide which indexes it can skip. The exporters re-stamp it themselves; this
+# only needs running by hand after some OTHER writer touches a riders_index.json.
+python3 link_rider_race_sets.py --check     # report drift, write nothing
 ```
+
+### coverage.py — what is missing, and where (2026-08-22)
+
+```bash
+python3 coverage.py                    # every race set, worst gaps first
+python3 coverage.py --race tour        # tour/giro/vuelta/classics/gravel
+python3 coverage.py --field vertical_meters   # one field, every year lacking it
+python3 coverage.py --years            # full per-year table, not just the gaps
+python3 coverage.py --csv              # machine-readable
+```
+
+**Not a validator.** Every other check here answers "is this value wrong?".
+This one answers the question that actually picks the next scrape target: for
+every race and year, which fields are simply *not there yet*. It never fails a
+build and never claims a value is wrong.
+
+The whole difficulty is honest denominators — a gap that cannot be filled is
+noise, and noise is what made the per-field audits hard to read side by side:
+
+| excluded | why |
+|---|---|
+| cancelled stages | never raced, so a NULL distance is the correct value — the same rule the race totals use |
+| `finish_time_seconds` / `gc_rank` for a **DNF** | no finishing time or GC standing exists; counting the whole startlist reported ~60% missing on years that are complete. Biggest single source of noise |
+| gravel: elevation, profile score, route type, teams, source slugs | PCS has no gravel or MTB coverage at all — verified, not assumed, so there is nothing to scrape from |
+| one-day: profile score, route type | a one-day race is not classified flat/hilly/mountain |
+
+Gaps rank by **values missing**, not by percentage: a year at 40% of 180 is a
+bigger afternoon than one at 0% of 3. As of 2026-08-22 the top of the list is
+per-stage `gc_rank` for the 1980s Giro and Vuelta and `finish_time_seconds` for
+the 1950s Tour, with 3,618 stage elevations outstanding across 340 race-years.
+
+`test_coverage.py` pins each exclusion above, because each one is a case where
+a naive `COUNT` reported a gap that does not exist.
 
 `validate_kom.py` / `validate_gc.py` need external reference data that isn't in
 the repo; without it they report `0 ok / 0 mismatch` or `no_data` for every year

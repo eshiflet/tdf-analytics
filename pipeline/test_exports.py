@@ -37,6 +37,7 @@ import export_all_races_summary as EARS
 import export_gc
 import export_race_summary as ERS
 import export_riders_index as ERI
+import link_rider_race_sets as LRRS
 from export_gc import Supplements, compute_stage_labels
 from race_common import AGGREGATE_EXPORTERS, EXPORT_RACE_INFO, resolve_race_arg
 
@@ -694,3 +695,78 @@ class RaceArgTest(unittest.TestCase):
         self.assertIn("resolve_race_arg", src)
         self.assertNotIn('"tdf": ("Tour de France", "tour")', src)
 
+
+
+class TestCrossRaceMembership(unittest.TestCase):
+    """link_rider_race_sets stamps which OTHER sets each rider appears in.
+
+    The rider detail page trusts this to decide which indexes NOT to fetch, so
+    a wrong bit does not merely slow the page down — it silently drops a race
+    from a rider's career chart.
+    """
+
+    def idx(self, *slugs):
+        return {"teams": [], "riders": {s: {"n": s, "c": None} for s in slugs}}
+
+    def test_a_rider_in_one_set_gets_no_mask(self):
+        """61% of riders are in exactly one set. Omitting `x` for them is what
+        keeps the stamp down to +25 KB gzipped across all five files."""
+        got = LRRS.compute_membership({
+            "tour": self.idx("merckx", "tour-only"),
+            "giro": self.idx("merckx"),
+        })
+        xr, masks = got["tour"]
+        self.assertEqual(xr, ["giro"])
+        self.assertEqual(masks, {"merckx": 1})
+
+    def test_the_mask_is_read_against_the_files_own_bit_order(self):
+        """Each index names its own `xr`, because the two exporters do not know
+        about each other and a shared bit order would drift."""
+        got = LRRS.compute_membership({
+            "classics": self.idx("a"),
+            "gravel": self.idx("a"),
+            "tour": self.idx("a"),
+        })
+        self.assertEqual(got["gravel"][0], ["classics", "tour"])
+        self.assertEqual(got["gravel"][1]["a"], 0b11)
+        self.assertEqual(got["classics"][0], ["gravel", "tour"])
+        self.assertEqual(got["tour"][0], ["classics", "gravel"])
+
+    def test_a_rider_who_left_a_set_loses_the_bit(self):
+        """A stale bit sends the page after an index that no longer mentions
+        the rider — the one failure this must not have."""
+        idx = self.idx("a")
+        idx["riders"]["a"]["x"] = 7
+        idx["xr"] = ["gone", "also-gone", "still-gone"]
+        changed = LRRS.apply_membership(idx, ["giro"], {})
+        self.assertTrue(changed)
+        self.assertEqual(idx["xr"], ["giro"])
+        self.assertNotIn("x", idx["riders"]["a"])
+
+    def test_restamping_an_already_correct_index_changes_nothing(self):
+        """The exporters rewrite these files often; a stamp that always
+        reported 'changed' would churn 6 MB of JSON in every diff."""
+        indexes = {"tour": self.idx("a", "b"), "giro": self.idx("b")}
+        membership = LRRS.compute_membership(indexes)
+        for slug, idx in indexes.items():
+            LRRS.apply_membership(idx, *membership[slug])
+        for slug, idx in indexes.items():
+            self.assertFalse(LRRS.apply_membership(idx, *membership[slug]),
+                             f"{slug} reported a change on a second pass")
+
+    def test_a_single_index_is_left_alone(self):
+        """Nothing to link against, and stamping an empty `xr` would only make
+        a partial checkout look stale to validate_exports."""
+        self.assertEqual(LRRS.compute_membership({"tour": self.idx("a")}),
+                         {"tour": ([], {})})
+
+    def test_both_exporters_restore_the_stamp_themselves(self):
+        """Rewriting an index drops the stamp, so the exporters re-apply it
+        rather than leaving a step to remember. validate_exports.py checking
+        for it is the backstop, not the mechanism — and a refactor that drops
+        these calls would only surface as a failed pre-push much later."""
+        import inspect
+        import race_set_export
+        for module in (ERI, race_set_export):
+            self.assertIn("stamp_cross_race(quiet=True)", inspect.getsource(module),
+                          f"{module.__name__} no longer re-stamps cross-race membership")
