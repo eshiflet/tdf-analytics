@@ -13,7 +13,7 @@ import { positionTooltip, hideTooltip } from "../tooltip";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
 import { DOPING_REVOKED_NOTE, RIDERS_WITH_REVOKED_RESULTS } from "../jerseyIcons";
 import type { RiderEntry } from "../riderIndexData";
-import { riderIndexByRace, ensureRiderIndexFor } from "../riderIndexData";
+import { riderIndexByRace, ensureRiderIndexFor, crossRaceFor } from "../riderIndexData";
 import { buildLegend } from "./stageChart";
 import { setRace, loadDataset, switchView, showLoadError } from "../main";
 import { drawRidersPage } from "./riders";
@@ -48,11 +48,15 @@ const BADGE: Record<RaceId, { bg: string; text: string; label: string }> = {
  * resolves, and folds each later one in as it arrives. 61% of riders appear in
  * exactly one race and reach their final state in a single render.
  *
+ * It also no longer loads all five. The cross-race bitmask in the current
+ * race's index names the other sets this rider actually rode, so the rest are
+ * never fetched — see the two-phase load at the bottom of this function.
+ *
  * Three things this has to keep right, none of them visible until they break:
  *   - a race the user toggled OFF must stay off when a later index lands
- *   - "rider not found" cannot be concluded until ALL five have resolved,
- *     which is why that bail-out is after the Promise.all, not inside the
- *     per-index handler
+ *   - "rider not found" cannot be concluded until every index this rider could
+ *     be in has resolved, which is why that bail-out is after the final
+ *     Promise.all, not inside the per-index handler
  *   - navigating away mid-load must abandon the render, hence the
  *     currentRiderId re-check after every await
  */
@@ -583,7 +587,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
   }
 
   // Fold each index in as it lands rather than waiting for the slowest.
-  await Promise.all(RACE_IDS.map((race) =>
+  const foldIn = (race: RaceId) =>
     ensureRiderIndexFor(race).then(() => {
       // Both halves matter. currentRiderId alone was not enough: switching to
       // another VIEW mid-load leaves it set, so a late index went on appending
@@ -596,8 +600,32 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       byRace.set(race, entry);
       activeRaces.add(race);
       renderAll();
-    })
-  ));
+    });
+
+  // TWO PHASES, not five parallel fetches. This page is cross-race, so it used
+  // to load every index to find out which races the rider actually rode —
+  // 1,185 KB gzipped and five main-thread builds, when 61% of riders are in
+  // exactly one set and only 31 of 17,736 are in all five.
+  //
+  // Phase 1 is the current race's index, which this page needs regardless and
+  // which carries the cross-race bitmask (see crossRaceFor). Phase 2 fetches
+  // only the sets that bitmask names, still in parallel with each other.
+  //
+  // The trade is one extra round trip on a cold deep link for a rider who does
+  // race elsewhere, against 480 KB less transfer on average — and phase 1 is
+  // usually already resolved, because arriving from the Riders grid means that
+  // index is built.
+  const entryRace = state.currentRace;
+  await foldIn(entryRace);
+  if (state.currentView !== "riders" || state.currentRiderId !== riderId) return;
+
+  // null means no built index has heard of this rider — a deep link into a
+  // race they never rode, or a slug that has since been renamed. Fall back to
+  // loading everything rather than concluding they raced nowhere.
+  const known = crossRaceFor(riderId);
+  await Promise.all(
+    (known ?? RACE_IDS).filter((r) => r !== entryRace).map(foldIn),
+  );
 
   // Only now can "no such rider" be distinguished from "not loaded yet".
   if (state.currentView !== "riders" || state.currentRiderId !== riderId) return;

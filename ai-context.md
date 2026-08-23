@@ -539,6 +539,7 @@ python3 scrape_rider_details.py --missing --dry-run     # sweeps up the stage ra
 python3 db_backup.py && python3 scrape_rider_details.py --db-only
 python3 export_classics.py && python3 export_gravel.py
 for r in tour giro vuelta; do python3 export_gc.py --race $r; python3 export_riders_index.py --race $r; done
+python3 link_rider_race_sets.py          # ALWAYS after an exporter — see below
 python3 validate_db.py && python3 validate_exports.py
 ```
 
@@ -3012,6 +3013,90 @@ which is exactly what that check is for.
 
 ---
 
+## The rider detail page stopped loading all five indexes (2026-08-22)
+
+The rider detail page is cross-race by design — it shows every race a rider has
+results in — and the only way it could find out *which* races those were was to
+download and build **all five** `riders_index.json` files. That is **1,185 KB
+gzipped** plus five synchronous index builds on the main thread, for every
+rider page opened.
+
+Almost all of it was spent proving a negative. Of **17,736 riders** across the
+five sets, **10,793 (61%) appear in exactly one** and **31 appear in all five**:
+
+| sets a rider appears in | riders |
+|---|---|
+| 1 | 10,793 |
+| 2 | 3,254 |
+| 3 | 1,966 |
+| 4 | 1,692 |
+| 5 | 31 |
+
+### The stamp
+
+`link_rider_race_sets.py` writes the answer into the file the page has to load
+anyway. Each index gains:
+
+```
+"xr": ["giro", "vuelta", ...]              # the OTHER sets this file reaches
+riders: { "<slug>": { ..., "x": 5 } }      # bitmask over xr; omitted when 0
+```
+
+**Each file names its own bit order.** The two exporters —
+`export_riders_index.py` for the Grand Tours, `race_set_export.py` for the
+aggregate sets — do not know about each other, and a fixed bit order duplicated
+across Python and TypeScript is exactly the pair that drifts. The frontend
+validates each slug against the race registry and maps anything unrecognised to
+`undefined` *without shifting the remaining bits*, so an index stamped before a
+new race set existed stays readable rather than being misread.
+
+### Measured
+
+Over every (race, rider) pair:
+
+| | before | after |
+|---|---|---|
+| payload per rider page | 1,185 KB gz | **705 KB mean / 737 KB median** (−41% / −38%) |
+| cost of the stamp itself | — | **+25 KB gz** across all five files |
+
+Verified in the browser on a cold deep link: `#riders/achiel-de-smet`
+(Tour only) fetches **one** index; `#riders/aad-van-den-hoek` (Tour, Vuelta,
+Classics) fetches **three** and skips Giro and gravel.
+
+### The deep link was loading them all a second way
+
+`switchView("riders")` draws the Riders **grid**, and an unfiltered grid loads
+every race. So `#riders/<slug>` fetched all five through the grid before
+`drawRiderDetail` ever ran — the grid's own bail-out discarded that work, but
+only after the fetches were in flight. `switchView` now takes `{ draw: false }`,
+used by exactly that one caller. Without this the bitmask saves nothing on the
+path it was built for.
+
+### The rule
+
+**Run `link_rider_race_sets.py` after any exporter that rewrites an index.** It
+is a post-pass over their output, not a step inside either — and every exporter
+run drops the stamp. `validate_exports.py` fails when it drifts, so a forgotten
+run is loud:
+
+```
+ERROR cross-race rider membership is stale. Run: python3 link_rider_race_sets.py
+```
+
+A **stale** bit is worse than a missing one: the page trusts it to decide which
+indexes to skip, so a rider who left a set would have that race silently dropped
+from their career chart rather than merely loading slowly. `apply_membership()`
+clears old stamps before writing, and only rewrites a file whose bytes actually
+changed — these are 6 MB of JSON and a stamp that always reported "changed"
+would churn every diff.
+
+`crossRaceFor()` returns **null**, not an empty list, when no built index has
+heard of the rider: those mean opposite things ("ask again later" versus "this
+rider races nowhere else"), and the page falls back to loading everything on
+null rather than concluding the rider raced nowhere.
+
+---
+
 ## Dev-loop traps (2026-08-18)
 
 **Vite HMR serves stale modules more often than you'd think.** Three separate
@@ -3445,7 +3530,45 @@ python3 -m unittest discover -p "test_*.py"
 # COUNT against that baseline rather than expecting zero.
 python3 validate_exports.py
 python3 validate_db.py               # 0 errors, 3 warnings expected
+
+# Cross-race rider membership — the `x` bitmask the rider detail page uses to
+# decide which indexes it can skip. Every exporter run drops it; validate_exports
+# fails when it drifts. --check reports without writing.
+python3 link_rider_race_sets.py --check
 ```
+
+### coverage.py — what is missing, and where (2026-08-22)
+
+```bash
+python3 coverage.py                    # every race set, worst gaps first
+python3 coverage.py --race tour        # tour/giro/vuelta/classics/gravel
+python3 coverage.py --field vertical_meters   # one field, every year lacking it
+python3 coverage.py --years            # full per-year table, not just the gaps
+python3 coverage.py --csv              # machine-readable
+```
+
+**Not a validator.** Every other check here answers "is this value wrong?".
+This one answers the question that actually picks the next scrape target: for
+every race and year, which fields are simply *not there yet*. It never fails a
+build and never claims a value is wrong.
+
+The whole difficulty is honest denominators — a gap that cannot be filled is
+noise, and noise is what made the per-field audits hard to read side by side:
+
+| excluded | why |
+|---|---|
+| cancelled stages | never raced, so a NULL distance is the correct value — the same rule the race totals use |
+| `finish_time_seconds` / `gc_rank` for a **DNF** | no finishing time or GC standing exists; counting the whole startlist reported ~60% missing on years that are complete. Biggest single source of noise |
+| gravel: elevation, profile score, route type, teams, source slugs | PCS has no gravel or MTB coverage at all — verified, not assumed, so there is nothing to scrape from |
+| one-day: profile score, route type | a one-day race is not classified flat/hilly/mountain |
+
+Gaps rank by **values missing**, not by percentage: a year at 40% of 180 is a
+bigger afternoon than one at 0% of 3. As of 2026-08-22 the top of the list is
+per-stage `gc_rank` for the 1980s Giro and Vuelta and `finish_time_seconds` for
+the 1950s Tour, with 3,618 stage elevations outstanding across 340 race-years.
+
+`test_coverage.py` pins each exclusion above, because each one is a case where
+a naive `COUNT` reported a gap that does not exist.
 
 `validate_kom.py` / `validate_gc.py` need external reference data that isn't in
 the repo; without it they report `0 ok / 0 mismatch` or `no_data` for every year

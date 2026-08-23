@@ -274,7 +274,15 @@ export async function loadDataset(year: string) {
   else if (state.currentView === "allraces") drawCrossYear();
 }
 
-export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
+/** `draw: false` swaps the view chrome without drawing the new view's content.
+ *  Exactly one caller wants that: a `#riders/<slug>` deep link, which is about
+ *  to draw a rider DETAIL and would otherwise have the Riders grid start
+ *  loading every race's index first — all five, since an unfiltered grid shows
+ *  them all. The grid's own bail-out then discarded that work, but only after
+ *  the fetches were in flight, which is precisely the 1,185 KB the detail
+ *  page's two-phase load exists to avoid. */
+export function switchView(view: "stage" | "overview" | "allraces" | "riders",
+                           { draw = true }: { draw?: boolean } = {}) {
   // Guard rather than trust the caller: a stale deep link or a race switch can
   // ask for a view this race doesn't have (the classics have no All Years
   // Summary), and drawAllRacesOverview would render an empty chart.
@@ -299,7 +307,8 @@ export function switchView(view: "stage" | "overview" | "allraces" | "riders") {
   overviewSummaryEl.hidden = view !== "overview";
   allRacesChartEl.classList.toggle("visible", view === "allraces");
   ridersChartEl.classList.toggle("visible", view === "riders");
-  if (view === "stage") renderStage();
+  if (!draw) { /* caller draws it */ }
+  else if (view === "stage") renderStage();
   else if (view === "overview") drawOverview();
   else if (view === "allraces") drawCrossYear();
   else drawRidersPage().catch(showLoadError);
@@ -331,7 +340,7 @@ async function applyHash(): Promise<boolean> {
     if (parts[0] === "riders") {
       if (parts[1]) {
         const id = `rider/${parts[1]}`;
-        switchView("riders");
+        switchView("riders", { draw: false });
         await drawRiderDetail(id);
         return true;
       }

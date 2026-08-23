@@ -5,7 +5,7 @@
 // own chunk the first time the Riders view opens, so it never weighs down
 // first paint (the default view is the stage chart).
 import type { RaceId } from "./raceRegistry";
-import { emptyPerRace, isRaceId } from "./raceRegistry";
+import { RACE_IDS, emptyPerRace, isRaceId } from "./raceRegistry";
 import { state } from "./state";
 
 
@@ -35,6 +35,12 @@ export interface RiderEntry {
    *  Built on FIRST READ, not at load — see defineLazyConstituents(). Reading
    *  it is transparent; just don't reach for it in a loop over every rider. */
   constituents?: Map<number, ConstituentResult[]>;
+  /** The OTHER race sets this rider also has results in — stamped into every
+   *  index by pipeline/link_rider_race_sets.py. Empty for the 61% of riders
+   *  who appear in exactly one set. Lets the cross-race rider detail page skip
+   *  the indexes that have nothing to say about this rider; see
+   *  crossRaceFor(). */
+  alsoIn: RaceId[];
 }
 
 export const riderIndexByRace = emptyPerRace<Map<string, RiderEntry>>(() => new Map());
@@ -85,8 +91,17 @@ type RawRiderIndex = {
   teams: string[];
   /** Constituent-race name table; absent for the three Grand Tours. */
   races?: string[];
+  /** Bit order for each rider's `x` — the OTHER race-set slugs this file's
+   *  riders can appear in. Each index names its own order rather than sharing
+   *  a constant with the exporters: the two of them (export_riders_index.py,
+   *  race_set_export.py) do not know about each other, and a fixed bit order
+   *  duplicated across Python and TypeScript is exactly the pair that drifts.
+   *  Unknown slugs are dropped on load rather than trusted. */
+  xr?: string[];
   riders: Record<string, {
     n: string; fn?: string; ln?: string; c: string | null; yw?: number[];
+    /** Bitmask over `xr`; omitted when the rider is in this set only. */
+    x?: number;
     /** Grand Tours. */
     y?: Record<string, RawYearTuple>;
     /** Aggregate races (classics, gravel) — replaces both `y` and `m`. */
@@ -252,6 +267,13 @@ async function buildRiderIndexFor(race: RaceId): Promise<void> {
 function buildIndexFromRaw(race: RaceId, raw: RawRiderIndex): void {
   const teamTable = raw.teams;
   const raceTable = raw.races ?? [];
+  // Bit position -> RaceId, with anything the registry doesn't recognise
+  // mapped to undefined rather than dropped, so the remaining bits keep their
+  // positions. An index stamped before a new race set existed is therefore
+  // readable, not misread.
+  const crossTable: (RaceId | undefined)[] = (raw.xr ?? []).map(
+    (slug) => (isRaceId(slug) ? slug : undefined),
+  );
   const index = riderIndexByRace[race];
   for (const [slug, rec] of Object.entries(raw.riders)) {
     const id = `rider/${slug}`;
@@ -282,7 +304,13 @@ function buildIndexFromRaw(race: RaceId, raw: RawRiderIndex): void {
       if (team) teams.add(team);
     }
 
-    const entry: RiderEntry = { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams };
+    const alsoIn: RaceId[] = [];
+    for (let bit = 0; bit < crossTable.length; bit++) {
+      const other = crossTable[bit];
+      if (other && ((rec.x ?? 0) & (1 << bit))) alsoIn.push(other);
+    }
+
+    const entry: RiderEntry = { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams, alsoIn };
     if (rec.ym) defineLazyConstituents(entry, rec.ym, raceTable, years);
     index.set(id, entry);
   }
@@ -295,4 +323,31 @@ function buildIndexFromRaw(race: RaceId, raw: RawRiderIndex): void {
 
 export async function ensureRiderIndex(): Promise<void> {
   return ensureRiderIndexFor(state.currentRace);
+}
+
+/** Every race set this rider has results in, from the cross-race bitmask —
+ *  or null if no index that mentions them has been built yet.
+ *
+ *  WHY THIS EXISTS. The rider detail page is cross-race, and the only way it
+ *  could find out which races a rider raced was to load ALL FIVE indexes:
+ *  1,185 KB gzipped and five main-thread builds, per rider page. But 10,793 of
+ *  the 17,736 riders (61%) are in exactly one set, and 31 are in all five —
+ *  so four of those fetches usually existed to prove a negative.
+ *
+ *  Answering from the bitmask instead costs one index the page has to load
+ *  anyway. Measured over every (race, rider) pair: 1,185 KB -> 705 KB mean,
+ *  737 KB median. The stamp that makes it possible adds 25 KB gzipped in
+ *  total, spread across the five files.
+ *
+ *  Returns null rather than an empty list when nothing is loaded, because the
+ *  two mean opposite things: "ask again later" versus "this rider races
+ *  nowhere else, stop fetching".
+ */
+export function crossRaceFor(riderId: string): RaceId[] | null {
+  for (const race of RACE_IDS) {
+    if (!riderIndexBuilt[race]) continue;
+    const entry = riderIndexByRace[race].get(riderId);
+    if (entry) return [race, ...entry.alsoIn];
+  }
+  return null;
 }
