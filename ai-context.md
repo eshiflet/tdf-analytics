@@ -539,7 +539,6 @@ python3 scrape_rider_details.py --missing --dry-run     # sweeps up the stage ra
 python3 db_backup.py && python3 scrape_rider_details.py --db-only
 python3 export_classics.py && python3 export_gravel.py
 for r in tour giro vuelta; do python3 export_gc.py --race $r; python3 export_riders_index.py --race $r; done
-python3 link_rider_race_sets.py          # ALWAYS after an exporter — see below
 python3 validate_db.py && python3 validate_exports.py
 ```
 
@@ -3072,16 +3071,30 @@ only after the fetches were in flight. `switchView` now takes `{ draw: false }`,
 used by exactly that one caller. Without this the bitmask saves nothing on the
 path it was built for.
 
-### The rule
+### The exporters restore it themselves
 
-**Run `link_rider_race_sets.py` after any exporter that rewrites an index.** It
-is a post-pass over their output, not a step inside either — and every exporter
-run drops the stamp. `validate_exports.py` fails when it drifts, so a forgotten
-run is loud:
+Rewriting an index drops the stamp, so `export_riders_index.py` and
+`race_set_export.py` (via `export_classics.py` / `export_gravel.py`) call
+`stamp(quiet=True)` after writing one. There is no step to remember. Proven
+live: `export_riders_index.py --race giro` writes 666 KB without the stamp,
+re-stamps to 694 KB, and leaves the working tree **byte-identical** to what was
+committed. Same for `export_gravel.py` on the aggregate path.
+
+Membership is symmetric, so stamping one index can legitimately rewrite the
+others — a rider newly appearing in the Giro changes the classics file's mask
+for that rider too. Only files whose bytes actually change are written, so a
+no-op export produces a clean `git diff`.
+
+`validate_exports.py` still checks it, and that is now the **backstop** — for a
+hand-edited file, or a new writer that forgets:
 
 ```
 ERROR cross-race rider membership is stale. Run: python3 link_rider_race_sets.py
 ```
+
+Run it by hand only after some other writer touches a `riders_index.json`.
+`test_exports.py` asserts both exporters still make the call, because a
+refactor that drops one would otherwise surface as a failed pre-push much later.
 
 A **stale** bit is worse than a missing one: the page trusts it to decide which
 indexes to skip, so a rider who left a set would have that race silently dropped
@@ -3532,9 +3545,9 @@ python3 validate_exports.py
 python3 validate_db.py               # 0 errors, 3 warnings expected
 
 # Cross-race rider membership — the `x` bitmask the rider detail page uses to
-# decide which indexes it can skip. Every exporter run drops it; validate_exports
-# fails when it drifts. --check reports without writing.
-python3 link_rider_race_sets.py --check
+# decide which indexes it can skip. The exporters re-stamp it themselves; this
+# only needs running by hand after some OTHER writer touches a riders_index.json.
+python3 link_rider_race_sets.py --check     # report drift, write nothing
 ```
 
 ### coverage.py — what is missing, and where (2026-08-22)

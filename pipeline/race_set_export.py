@@ -45,6 +45,7 @@ import os
 import sqlite3
 from dataclasses import dataclass
 
+from link_rider_race_sets import stamp as stamp_cross_race
 from race_common import CLASSICS, GRAVEL
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -310,6 +311,10 @@ def run(race_set, year=None):
             json.dump(idx, f, ensure_ascii=False, separators=(",", ":"))
         print(f"  riders_index: {len(idx['riders'])} riders, "
               f"{len(idx['teams'])} teams, {len(idx['races'])} races")
+        # See export_riders_index.py's call for why this is here and not a
+        # step to remember. Skipped on a --year run for the same reason the
+        # index itself is: nothing rewrote it, so nothing dropped the stamp.
+        stamp_cross_race(quiet=True)
     else:
         print("  riders_index: SKIPPED (--year run; rerun without --year)")
 

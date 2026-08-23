@@ -31,9 +31,17 @@ duplicated in Python and TypeScript is exactly the kind of pair that drifts.
 Each file names its own bit order, and the frontend validates the slugs it
 finds against the race registry rather than trusting them.
 
-RUN IT AFTER any exporter that rewrites an index — it is a post-pass over
-their output, not a step inside either. `validate_exports.py` fails when the
-stamp disagrees with the files, so a forgotten run is loud rather than silent.
+THE EXPORTERS CALL THIS THEMSELVES. `export_riders_index.py` and
+`race_set_export.py` (via export_classics.py / export_gravel.py) invoke stamp()
+after writing an index, so it is restored the moment it is dropped and there is
+no step to remember. `validate_exports.py` still checks it — that is now a
+backstop for a hand-edited file or a new writer that forgets, not the mechanism.
+
+Run it by hand after any OTHER writer that touches a riders_index.json.
+
+Stamping one index can legitimately rewrite the others: membership is symmetric,
+so a rider newly appearing in the Giro changes the classics file's bitmask for
+that rider too. Only files whose bytes actually change are written.
 
 Idempotent: existing `x`/`xr` are discarded and recomputed from membership,
 and a file is only rewritten when its bytes actually change.
@@ -112,12 +120,18 @@ def apply_membership(idx, xr, masks):
     return changed
 
 
-def stamp(data_root=None, check_only=False):
-    """Returns (written, drifted) — paths rewritten, and paths that would be."""
+def stamp(data_root=None, check_only=False, quiet=False):
+    """Returns (written, drifted) — paths rewritten, and paths that would be.
+
+    `quiet` reports only the files that changed. The exporters call it that way:
+    they re-stamp on every run, and five "unchanged" lines after every export
+    would train the eye to skip the one line that matters.
+    """
     root = data_root or DATA_ROOT
     indexes = load_indexes(root)
     if len(indexes) < 2:
-        print(f"Nothing to link: found {len(indexes)} riders_index.json under {root}")
+        if not quiet:
+            print(f"Nothing to link: found {len(indexes)} riders_index.json under {root}")
         return [], []
 
     membership = compute_membership(indexes)
@@ -126,7 +140,8 @@ def stamp(data_root=None, check_only=False):
         xr, masks = membership[slug]
         path = os.path.join(root, slug, "riders_index.json")
         if not apply_membership(idx, xr, masks):
-            print(f"  {slug:9s} unchanged ({len(masks):,}/{len(idx['riders']):,} cross-race)")
+            if not quiet:
+                print(f"  {slug:9s} unchanged ({len(masks):,}/{len(idx['riders']):,} cross-race)")
             continue
         drifted.append(path)
         if check_only:

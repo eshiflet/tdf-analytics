@@ -759,3 +759,14 @@ class TestCrossRaceMembership(unittest.TestCase):
         a partial checkout look stale to validate_exports."""
         self.assertEqual(LRRS.compute_membership({"tour": self.idx("a")}),
                          {"tour": ([], {})})
+
+    def test_both_exporters_restore_the_stamp_themselves(self):
+        """Rewriting an index drops the stamp, so the exporters re-apply it
+        rather than leaving a step to remember. validate_exports.py checking
+        for it is the backstop, not the mechanism — and a refactor that drops
+        these calls would only surface as a failed pre-push much later."""
+        import inspect
+        import race_set_export
+        for module in (ERI, race_set_export):
+            self.assertIn("stamp_cross_race(quiet=True)", inspect.getsource(module),
+                          f"{module.__name__} no longer re-stamps cross-race membership")
