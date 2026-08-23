@@ -112,9 +112,15 @@ intended behavior.
   negative deltas. The only stable reading was the current encoding at
   359 KB/copy for Tour 1987, with the flat one too small to register.
 
-- **Entering the Riders section costs 438 ms, once per session** — measured
-  2026-08-22, and the fix is NOT the manifest I proposed. See "The Riders
-  section's 438 ms" below.
+- ~~**Entering the Riders section costs 438 ms, once per session**~~ —
+  **largely addressed 2026-08-22**, by four separate changes, none of which was
+  the manifest originally proposed: the rider detail renders progressively
+  (first content 438 -> ~50 ms), the index builds go through a queue that
+  parses inside the scheduled slot and yields via MessageChannel (first chart
+  462 -> 60 ms), the Riders grid draws before every index has landed
+  (1,712 -> 902 ms), and a cross-race membership bitmask means a rider page
+  loads one index instead of five (1,185 -> 705 KB). See "The Riders section's
+  438 ms" for the measurements and for why the manifest was dropped.
 - **2026 Vuelta** has not been run yet (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
 
 ---
@@ -582,13 +588,12 @@ run, and `--dry-run` fetches and caches but writes nothing, printing the change
 table with NULL-fills separated from overwrites. A dry run still populates the
 cache, so the follow-up `--db-only` needs no second fetch.
 
-### Done and not done
+### Done
 
-- **Gravel: fixed.** 27 riders filled from PCS, 0 overwrites. The 28th,
-  `rider/kvalsten`, has no PCS page at all — it keeps `last_name='Kvalsten'`
-  and no first name, which is what the sources actually support.
-- **Classics: 5,250 riders outstanding**, about 75 minutes at
-  `SCRAPE_DELAY=0.8`. Not started — it is a long live-scrape and Eric's call.
+- **All of it, 2026-08-22.** classics 5,250 -> 40, stage races 27 -> 3, gravel
+  28 -> 1. 5,252 names filled, 0 overwrites. Every one of the 5,250 classics
+  riders was fetched, 0 failures. See the DONE section above for what the 43
+  remaining riders are and why they are correct.
 - ~~**`riders` has no provenance at all**~~ — **fixed 2026-08-22.**
   `scrape_rider_details.py` now records `entity='riders'` provenance for every
   name field it writes, sourced `pcs` with the rider page as `source_ref`. The
