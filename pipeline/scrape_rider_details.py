@@ -306,17 +306,34 @@ def update_rider(conn: sqlite3.Connection, rider_id: str,
                            script="scrape_rider_details.py")
 
 
+# PCS writes an unknown given name as "?", "??", "." or "-" rather than leaving
+# it out, so those arrive looking like names. Storing one makes displayName()
+# render "? Pujol", which is worse than the surname alone — the app already
+# falls back to the surname when there is no first name, and that is the honest
+# output for a rider whose given name nobody recorded. 14 riders had one.
+#
+# An INITIAL is different and is kept: "C. Terruzzi" is what is known about
+# that rider, not a placeholder for it.
+UNKNOWN_NAME_MARKERS = {"?", "??", "???", ".", "-", "--", "_"}
+
+
+def _drop_placeholder(name: str | None) -> str | None:
+    return None if name is None or name.strip() in UNKNOWN_NAME_MARKERS else name
+
+
 def split_for(conn: sqlite3.Connection, rider_id: str,
               display_name: str | None) -> tuple[str | None, str | None]:
     """The one place a name gets split. Exact rotation against the stored
-    full_name where possible, particle heuristic otherwise."""
+    full_name where possible, particle heuristic otherwise, and PCS's
+    unknown-name markers dropped rather than stored as names."""
     if not display_name:
         return (None, None)
     row = conn.execute("SELECT full_name FROM riders WHERE rider_id=?",
                        (rider_id,)).fetchone()
     full = row["full_name"] if row else None
     exact = split_from_both_orderings(full, display_name)
-    return exact if exact else parse_first_last(display_name)
+    first, last = exact if exact else parse_first_last(display_name)
+    return _drop_placeholder(first), _drop_placeholder(last)
 
 
 def describe_change(conn: sqlite3.Connection, rider_id: str,

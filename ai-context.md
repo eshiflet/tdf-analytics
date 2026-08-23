@@ -517,39 +517,29 @@ against "Rodriguez José Francisco". Guessing there is exactly the thing
 "never fabricate" rules out. The cache simply predates the classics and gravel
 expansions: 5,260 of the 5,265 were never fetched.
 
-### Applied 2026-08-22 — 4,505 names filled, 771 classics riders left
+### DONE 2026-08-22 — every rider PCS can name now has one
 
 | race | before | after |
 |---|---|---|
-| classics | 5,250 missing (44%) | **771 (6.5%)** |
-| stage races | 27 | 17 |
+| classics | 5,250 missing (**44%**) | **40 (0.34%)** |
+| stage races | 27 | 3 |
 | gravel | 28 | 1 |
 
-**4,505 NULL-fills, 0 overwrites** — nothing that already had a value was
-touched. Verified in the app: "Alexey Vermeulen", "Alfons Schepers", "Edvald
-Boasson Hagen" all render first-name-first.
+5,252 names filled across two applies, **0 overwrites of an existing value**.
+All 5,250 classics riders were fetched, 0 failures.
 
-The remaining 771 are simply not fetched yet; the scrape was still running when
-this was applied, and the apply is incremental and idempotent. Finish it with:
+**The 43 that remain are correct, not a backlog.** Every one has a last name and
+no first name because PCS records only a surname for them — `Monin`, `Legaux`,
+`Chiesa`, and the `bel-*`/`fra-*` slugs PCS uses for unidentified early
+starters. `displayName()` falls back to the surname, which is the honest
+output.
 
-```bash
-cd pipeline
-SCRAPE_DELAY=0.8 python3 scrape_rider_details.py --missing --race classics --dry-run
-python3 scrape_rider_details.py --missing --dry-run     # sweeps up the stage races too
-python3 db_backup.py && python3 scrape_rider_details.py --db-only
-python3 export_classics.py && python3 export_gravel.py
-for r in tour giro vuelta; do python3 export_gc.py --race $r; python3 export_riders_index.py --race $r; done
-python3 validate_db.py && python3 validate_exports.py
-```
-
-Run `--db-only` WITHOUT `--missing`, as above: that re-applies every cached
-rider, which is how the 39,031 `entity='riders'` provenance rows got
-backfilled for riders whose names were already correct.
-
-**A first name of `"A."` or `"."` is faithful, not a bug.** PCS itself records
-many pre-war starters as "Bardella A." or "Van Muyten .", so the split puts the
-initial where the first name goes. It reads oddly and it is what the source
-says; a nicer rendering is a frontend decision, not a data one.
+**PCS's unknown-name markers are dropped, not stored.** It writes an unrecorded
+given name as `?`, `??` or `.` rather than omitting it, and 14 riders came
+through with `first_name='?'` — rendering "? Pujol", which is worse than
+"Pujol". `split_for()` now maps those to NULL. An INITIAL is kept: "C."
+in "C. Terruzzi" is what is known about that rider, not a placeholder for it
+(86 riders).
 
 ### DANGER: PCS answers an unknown rider with HTTP 200
 

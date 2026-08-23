@@ -722,6 +722,31 @@ class RiderCacheDurabilityTest(unittest.TestCase):
         SRD.save_cache("rider/x", {"display_name": "A Much Longer New Name"})
         self.assertEqual(SRD.load_cache("rider/x")["display_name"], "A Much Longer New Name")
 
+    def test_pcs_unknown_markers_are_not_stored_as_names(self):
+        """PCS writes an unrecorded given name as "?" rather than omitting it.
+        Stored, that renders "? Pujol" — worse than the surname alone, which is
+        what displayName() already falls back to."""
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT)")
+        conn.execute("INSERT INTO riders VALUES ('rider/pujol', 'Pujol ?')")
+        self.assertEqual(SRD.split_for(conn, "rider/pujol", "? Pujol"), (None, "Pujol"))
+
+    def test_an_initial_is_kept_because_it_is_real(self):
+        """"C." is what is known about that rider, not a placeholder for it."""
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT)")
+        conn.execute("INSERT INTO riders VALUES ('rider/c.-terruzzi', 'Terruzzi C.')")
+        self.assertEqual(SRD.split_for(conn, "rider/c.-terruzzi", "C. Terruzzi"),
+                         ("C.", "Terruzzi"))
+
+    def test_every_marker_variant_is_dropped(self):
+        for marker in ("?", "??", ".", "-", "  ?  "):
+            with self.subTest(marker=marker):
+                self.assertIsNone(SRD._drop_placeholder(marker))
+        self.assertEqual(SRD._drop_placeholder("Alexey"), "Alexey")
+
     def test_writing_a_name_records_where_it_came_from(self):
         """The repo's rule is that every writer records its source, and the
         riders table was the one place with none — 0 provenance rows against
