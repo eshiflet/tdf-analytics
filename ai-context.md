@@ -3100,6 +3100,59 @@ null rather than concluding the rider raced nowhere.
 
 ---
 
+## The Riders grid draws before every index has landed (2026-08-22)
+
+With no race filter set the Riders page shows all five races, and it used to
+`await Promise.all` over all five indexes before drawing anything — ~460 ms of
+main-thread index builds behind the slowest of five downloads, with only a
+"Loading riders…" label on screen throughout.
+
+Every fetch still starts at the same moment. What changed is **which one is
+waited for**: the page draws from the current race's index, then folds the rest
+in with **one** more rebuild, not one per arrival. Measured on the dev server,
+median of 3 cold loads, forcing layout:
+
+| | before | after |
+|---|---|---|
+| time to a usable grid | 1,712 ms | **902 ms** (−47%) |
+| time to all 17,736 riders | 1,712 ms | 1,936 ms (+13%) |
+
+**The +13% is real and cannot be designed away.** The early merge and render are
+main-thread work, so they push the remaining index builds back. What it *can* be
+reduced to is the question — see below.
+
+### The merge had to become incremental
+
+The first version invalidated the merge cache and re-merged from scratch when
+the late races landed. That cost more than drawing early saved: full grid ready
+went **1,712 ms → 2,511 ms**, a 47% regression on completion for a 47%
+improvement on first paint.
+
+`mergedRidersCache` now remembers which races have been **folded in**, not just
+which were selected, and folds late arrivals into the existing clones. A race
+whose index is still building is simply absent from `folded` and gets merged on
+a later call. That took completion from +47% to +13%.
+
+The old cache key could not have expressed this: keyed on the selected race set
+alone, the second render looks identical to the first, so it would have been
+handed the first render's riders and the late races would never have appeared.
+
+### Why the count label says "loading more…"
+
+A search over a partial grid comes back **empty for a rider who does exist** —
+which looks like a data bug, not a loading state. So the count reads
+`12,499 riders · loading more…` until every selected race has been folded in,
+and drops the suffix when the grid is complete.
+
+### One rebuild, not five
+
+A full grid is 17,736 buttons and costs **141 ms** to rebuild (measured, median
+of 7, forcing layout). Rebuilding once per arriving index would spend more than
+drawing early saves — the point of drawing early is the first screen, not a
+five-step animation of the count going up.
+
+---
+
 ## Payload budget (2026-08-22)
 
 ```bash
