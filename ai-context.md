@@ -517,52 +517,39 @@ against "Rodriguez José Francisco". Guessing there is exactly the thing
 "never fabricate" rules out. The cache simply predates the classics and gravel
 expansions: 5,260 of the 5,265 were never fetched.
 
-### RESUME HERE — the classics scrape was interrupted 2026-08-22
+### Applied 2026-08-22 — 4,505 names filled, 771 classics riders left
 
-Nothing is half-applied. The run was `--dry-run`, so **the database was never
-touched**; all progress lives in `pipeline/rider_scrapes/` as one JSON per
-rider, and the run skips whatever is already there. Interrupting it costs only
-the request in flight.
-
-State at the deliberate pause (verified: 13,034 cache entries, 0 corrupt,
-0 stray temp files, DB untouched at 5,264 un-split riders):
-
-| set | cached | outstanding |
+| race | before | after |
 |---|---|---|
-| classics | 4,049 / 5,250 | 1,201 (~25 min) |
-| stage races | 11 / 26 | 15 |
-| gravel | 1 / 1 | 0 (done) |
+| classics | 5,250 missing (44%) | **771 (6.5%)** |
+| stage races | 27 | 17 |
+| gravel | 28 | 1 |
 
-Pick it up with the same command — it re-fetches only what is missing, and that
-includes the ~12 riders whose fetch failed on a transient network blip (those
-were never cached, which is the point):
+**4,505 NULL-fills, 0 overwrites** — nothing that already had a value was
+touched. Verified in the app: "Alexey Vermeulen", "Alfons Schepers", "Edvald
+Boasson Hagen" all render first-name-first.
+
+The remaining 771 are simply not fetched yet; the scrape was still running when
+this was applied, and the apply is incremental and idempotent. Finish it with:
 
 ```bash
 cd pipeline
 SCRAPE_DELAY=0.8 python3 scrape_rider_details.py --missing --race classics --dry-run
-SCRAPE_DELAY=0.8 python3 scrape_rider_details.py --missing --dry-run   # sweeps up the rest
-```
-
-Then read the change table it prints, and only then write:
-
-```bash
-python3 db_backup.py
-python3 scrape_rider_details.py --missing --db-only     # applies the cache
-python3 export_classics.py && python3 export_gc.py --race tdf   # + giro, vuelta
-python3 export_riders_index.py --race tdf               # + giro, vuelta
+python3 scrape_rider_details.py --missing --dry-run     # sweeps up the stage races too
+python3 db_backup.py && python3 scrape_rider_details.py --db-only
+python3 export_classics.py && python3 export_gravel.py
+for r in tour giro vuelta; do python3 export_gc.py --race $r; python3 export_riders_index.py --race $r; done
 python3 validate_db.py && python3 validate_exports.py
 ```
 
-Expect ~98.8% of splits to come from the exact rotation and ~1.2% to end with a
-last name and no first name — those are riders PCS itself knows only by
-surname (`Borgonovo`, `Forain`, the `bel-*` slugs) and are correct, not gaps.
+Run `--db-only` WITHOUT `--missing`, as above: that re-applies every cached
+rider, which is how the 39,031 `entity='riders'` provenance rows got
+backfilled for riders whose names were already correct.
 
-**The cache is crash-safe as of this session**, which it was not when the run
-started: `save_cache()` writes to a temp file and `os.replace()`s it (atomic),
-and `load_cache()` treats a damaged entry as absent and deletes it rather than
-raising. Before that, a shutdown mid-write could leave a truncated file whose
-`json.load` would abort the entire resume. Verified 0 corrupt entries and 0
-stray temp files across 12,933 cached riders.
+**A first name of `"A."` or `"."` is faithful, not a bug.** PCS itself records
+many pre-war starters as "Bardella A." or "Van Muyten .", so the split puts the
+initial where the first name goes. It reads oddly and it is what the source
+says; a nicer rendering is a frontend decision, not a data one.
 
 ### DANGER: PCS answers an unknown rider with HTTP 200
 
