@@ -230,6 +230,8 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `fix_doubled_winner_times.py` | the 3,377-row winner repair (arithmetic, no re-scrape) |
 | `backfill_stage_metadata.py` | fills NULL route/date from PCS's info panel |
 | `scrape_route_overview_elevation.py` | elevation from the race ROUTE page (stage pages omit Paris finales/prologues); `--replace-derived` |
+| `repair_mojibake_names.py` | un-corrupts stored names; re-slugs OUR ids minted from them, never an upstream one |
+| `backfill_rider_team_provenance.py` | provenance for pre-tracking `riders`/`teams` rows; companion to `backfill_provenance.py` (which covers `stages`) |
 | `patch_cyclingflash_elevation.py` | 2001/2006 s20 from cyclingflash.com; guards on distance before writing |
 
 ### State as of 2026-08-11
@@ -604,6 +606,134 @@ cache, so the follow-up `--db-only` needs no second fetch.
   an orphan check for it that compares as TEXT (a `CAST` would silently match
   nothing). A birthday the page did not supply is deliberately NOT claimed,
   since `update_rider()` COALESCEs it.
+
+---
+
+## Mojibake: "Emil √Öberg", and the ids minted from it (2026-08-23)
+
+The app served a rider called **Emil √Öberg**. `√Ö` is not a name — it is the
+bytes `C3 85` (UTF-8 `Å`) rendered through MacRoman. Both upstreams ship this,
+and both ship it inside otherwise-clean rows: the same PCS row that carries
+`Martens René` correctly also carries `S.E.F.B. Banque d'Ã‰pargne` (cp1252 on
+`C3 89` = `É`). Three names were affected in the whole DB.
+
+**`scrape_athlinks.fix_mojibake()` already existed and already missed them**,
+for three compounding reasons worth remembering, because each one looks
+reasonable on its own:
+
+1. Its trigger was a character class, `[‘’‚„†ÄÅâãïô]`, built from the one
+   example anyone had seen (`L‚ÄôEsperance`, `E2 80 99`). It had no `√` —
+   MacRoman's rendering of `C3`, the lead byte of *every* accented Latin
+   letter in UTF-8. The entire À–ÿ family was outside the guard.
+2. Its cleanliness score counted only categories `So/Sk/Co/Cn`. `√` and `∂`
+   are `Sm`, so `Lukas L√∂er` scored 0 corrupted and 0 repaired — no
+   improvement, no fix.
+3. That score's blocklist contained **`Å`**, a real Nordic letter. So the
+   correct `Emil Åberg` scored *dirtier* than the mojibake it came from. This
+   is the one that made the case unfixable rather than merely untriggered.
+
+The replacement lives in `race_common.py` (both ingests need it) and inverts
+the design: **the round trip is its own detector.** Re-encoding a legitimately
+accented name almost always yields bytes that are not valid UTF-8 — `Røed`
+hits a bare continuation byte, `Vakoč` will not encode into MacRoman at all —
+so the codec raises instead of returning a plausible wrong answer. The second
+gate counts characters that have no business in a *name* (not letters, marks,
+or name punctuation) rather than blocklisting specific ones, so no real letter
+can ever be evidence against itself. It is a provable no-op on clean text,
+which is what makes it safe to run at ingest.
+
+Audited over **10.3 M strings** — every name in the DB and every string in
+every scrape directory — it changes exactly those 3 names and nothing else.
+
+### The ids are the part that outlives the names
+
+Fixing a display name is the surface. The slugs minted *from* the corrupted
+string are the actual damage, and the two upstreams need opposite treatment:
+
+| | id | policy |
+|---|---|---|
+| gravel riders | `rider/emil-oberg`, `rider/lukas-l-er` | **re-slugged** to `rider/emil-aberg`, `rider/lukas-loer` |
+| classics team | `team/sefb-banque-d-a-pargne-1987` | **left exactly as PCS spells it** |
+
+The rider ids were minted by *our* `link_gravel_riders.slugify()` from the
+corrupted string — PCS covers no gravel, so no upstream id exists and we own
+them outright. `√Öberg` slugified to `emil-oberg`, which reads as `Ø` and is
+wrong twice over.
+
+The team id came out of a **PCS href**. It is PCS's own identifier, generated
+from PCS's own corrupted name; renaming it would break the join to the source
+and to every scrape file on disk. Same rule as the four upstream PCS bib
+collisions: repair the display value, never the upstream key.
+
+`repair_mojibake_names.py` applies both policies and rewrites the 12 affected
+scrape files **textually** rather than re-dumping them — they are written by
+four scripts in three different `json.dump` styles, and re-dumping would bury
+a two-name repair in a 40k-line reformat.
+
+`classics_scrapes/_captures/*.txt` still contain the corruption **and must
+keep it**. No script parses them; they are the raw DevTools capture of what
+PCS served, and `team/sefb-banque-d-a-pargne-1987=S.E.F.B. Banque d'Ã‰pargne`
+sitting in one is the evidence that the mojibake is upstream's and that the
+slug was generated from PCS's own broken string. Repairing evidence destroys
+it.
+
+### Why the ingest, not the scraper
+
+The scrape files on disk still hold whatever upstream shipped the day they
+were fetched, so a rebuild reads the corruption again no matter how good the
+scraper is. `fix_mojibake()` is therefore wired into all five writers
+(`ingest_race`, `ingest_classics`, `ingest_gravel`, `add_pre1960`,
+`reingest_tdf_stage`), and `upsert_team()` additionally heals a row already
+stored corrupted — narrowly: only when `fix_mojibake(stored) == repaired`, so
+it can un-corrupt a name but never rename a team.
+`test_gravel.TestIngestRepairsMojibake` covers both, including that negative.
+
+---
+
+## Provenance: `teams` had none at all (2026-08-23)
+
+Backfilled by `backfill_rider_team_provenance.py` — the companion to
+`backfill_provenance.py`, which covers `stages` and never touched these two
+tables. `riders` and `teams` are now at 100%
+coverage (0 rows without a provenance row, 0 orphans).
+
+**The source is derived from evidence, never assumed.** The script reads every
+scrape file on disk, records which ids are actually attested in one, and
+assigns:
+
+| evidence | source | rows |
+|---|---|---|
+| value byte-identical to `_rider_ids.json` | `athlinks` | 16,820 |
+| id attested in a road scrape | `pcs` | 28,520 |
+| id in no surviving scrape file | `unknown` | 34 riders, 1,303 teams |
+| `season_year` parsed from the slug's own tail | `derived` | 4,781 |
+
+Two things that matter more than the totals:
+
+*Attestation only proves what the evidence covers.* A PCS results table
+carries a rider's name and nationality, so it is evidence for `full_name` and
+`nationality_code` — and for nothing else. A `birth_year_approx` in the same
+row came from somewhere the script cannot see, so it gets `unknown`. The
+`athlinks` claim is stronger than attestation: all 3,475 gravel-only riders
+hold values *byte-identical* to `_rider_ids.json`, checked rather than assumed.
+
+*The 1,303 `unknown` teams are the point, not a failure.* Their ids are
+PCS-shaped, so `pcs` would look right and read plausibly forever — but no
+scrape file that still exists mentions them, and 718 no longer have a single
+result pointing at them. A row that admits the trail is gone is worth more
+than a guess nobody can falsify.
+
+### The comment that caused the gap
+
+`ingest_gravel.upsert_rider()` carried a note saying rider provenance was
+impossible because `data_provenance.entity_id` is declared `INTEGER` while
+`rider_id` is TEXT. **That was false**, and it was the whole reason gravel
+riders had no provenance: the table is not `STRICT`, so SQLite's affinity
+leaves a non-numeric string alone — 41,171 rows were already doing exactly
+this. The docs had resolved it on 2026-08-22; the comment was never updated
+and quietly kept a writer from recording anything. There is now a test
+(`test_provenance_takes_a_text_slug_as_entity_id`) asserting the behaviour the
+comment denied.
 
 ---
 

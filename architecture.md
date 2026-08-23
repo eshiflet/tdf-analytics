@@ -433,7 +433,15 @@ Rider  → Country                  (riders.nationality_code → countries.code)
   across tables, so there is no foreign key and `ingest_race.py` must delete an edition's
   rows itself on re-ingest or they orphan. A `source` of `unknown` means "patched by
   something nobody recorded" and is a real signal — it is how six Paris finales carrying
-  the *previous* stage's distance were found.
+  the *previous* stage's distance were found. As of 2026-08-23 `riders` and `teams` are
+  at 100% coverage; `entity_id` holds a TEXT slug for both, which works because the
+  table is not `STRICT` and affinity leaves a non-numeric string alone. When a value's
+  origin cannot be evidenced, record `unknown` — 1,303 teams appear in no scrape file
+  that still exists, and a plausible `pcs` there would be unfalsifiable forever.
+- **Names arriving as mojibake are repaired at INGEST, not at scrape time.** The files on
+  disk hold whatever upstream shipped, so `race_common.fix_mojibake()` runs in all five
+  writers. Ids minted from a corrupted name are re-slugged only when *we* minted them; an
+  id that came from an upstream href (PCS team slugs) keeps upstream's spelling.
 - **`stage_incidents` is the free-text note table** — relegations and fines originally,
   now also why a stage was cancelled (Vuelta 1957 st4: snow on the mountain passes).
   There is no `notes` column on `stages`; put narrative facts here.
