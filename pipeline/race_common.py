@@ -211,13 +211,58 @@ CLASSICS: dict[str, ClassicInfo] = {
 }
 
 
+# ── Data provenance ─────────────────────────────────────────────────────────
+# Every write of a stored value should say where the value came from. See the
+# data_provenance table in schema.sql for the granularity rule (per-field on
+# stages; one 'results' row per stage covering all its stage_results).
+#
+# Why this exists: several corruption bugs were slow to diagnose because the DB
+# could not say where a number originated — Vuelta 1990's vertical_meters was
+# correct while its profile_score was shifted by one, and TDF split years have
+# PCS elevation partly overwritten by later Wikipedia backfills, which is why
+# those still can't be safely bulk re-scraped.
+#
+# Honesty rule: never guess a source. If it isn't known, record SOURCE_UNKNOWN
+# (or leave no row) rather than assuming — a confidently wrong provenance is
+# worse than an admitted gap, because it invites exactly the bulk re-scrape
+# that would destroy good patched values.
+
+SOURCE_PCS = "pcs"              # scraped from procyclingstats.com
+SOURCE_WIKIPEDIA = "wikipedia"  # from a Wikipedia route/results table
+SOURCE_BIKERACEINFO = "bikeraceinfo"  # from bikeraceinfo.com (patch_bri_distances.py)
+SOURCE_CYCLINGFLASH = "cyclingflash"  # from cyclingflash.com; relayed by the repo
+                                # owner, since Cloudflare blocks automated fetches
+SOURCE_ATHLINKS = "athlinks"    # from the public Athlinks results API; Life Time
+                                # owns Athlinks, so for its own off-road races
+                                # this is the timer's own data, not an aggregator
+SOURCE_SPORTMANIACS = "sportmaniacs"  # sportmaniacs.com JSON API — the timer
+                                # for The Traka from 2023 on
+SOURCE_TRETZESPORTS = "tretzesports"  # tretzesports.com (Klassmark's own timing
+                                # platform) — The Traka's 2021 and 2022 editions
+SOURCE_MANUAL = "manual"        # hand-entered or hand-corrected
+SOURCE_DERIVED = "derived"      # computed from other DB values, not fetched
+SOURCE_UNKNOWN = "unknown"      # predates provenance tracking; origin unproven
+
+VALID_SOURCES = frozenset({
+    SOURCE_PCS, SOURCE_WIKIPEDIA, SOURCE_BIKERACEINFO, SOURCE_CYCLINGFLASH,
+    SOURCE_ATHLINKS, SOURCE_SPORTMANIACS, SOURCE_TRETZESPORTS,
+    SOURCE_MANUAL, SOURCE_DERIVED, SOURCE_UNKNOWN,
+})
+
+
 @dataclass(frozen=True)
 class GravelInfo:
     name: str          # DB races.name / frontend stage_label, e.g. "Unbound Gravel"
     short: str         # x-axis tick label, e.g. "UB"
     country: str
-    master_id: int     # Athlinks masterEventId — the race's whole edition list
+    master_id: int | None  # Athlinks masterEventId — the race's whole edition
+                       # list. None for a race Athlinks does not time: The Traka
+                       # is European and its editions live on two other
+                       # platforms, so it is addressed by _traka_events.json.
     discipline: str    # 'gravel' | 'mtb'; drives route_type, see gravel_route_type
+    source: str = SOURCE_ATHLINKS  # which upstream times this race. Life Time
+                       # owns Athlinks, so for its six that is the timer's own
+                       # data; The Traka's is split across two others by year.
 
 
 # The six Life Time off-road races, keyed by a slug of our own (Athlinks has no
@@ -243,6 +288,14 @@ GRAVEL: dict[str, GravelInfo] = {
     "chequamegon":  GravelInfo("Chequamegon MTB Festival", "CQ", "United States", 32709, "mtb"),
     "little-sugar": GravelInfo("Little Sugar MTB", "LS", "United States", 381583, "mtb"),
     "big-sugar":    GravelInfo("Big Sugar Gravel", "BS", "United States", 359937, "gravel"),
+    # Not a Life Time race and not on Athlinks. Girona, Spain; the 360 km course
+    # only — The Traka also runs 50/60/100/200/560 km events on the same weekend
+    # and those are different races, not different classes of this one. Its
+    # editions are addressed by gravel_scrapes/_traka_events.json rather than a
+    # masterEventId, because they are split across two timing platforms and the
+    # course name drifts every year (360K, THE TRAKA 360, 360 K, 360 PRO M).
+    "traka":        GravelInfo("The Traka 360", "TK", "Spain", None, "gravel",
+                               source=SOURCE_SPORTMANIACS),
 }
 
 
@@ -642,40 +695,6 @@ def fix_mojibake(text):
         if fixed != text and unnamelike(fixed) < unnamelike(text):
             return fixed
     return text
-
-
-# ── Data provenance ─────────────────────────────────────────────────────────
-# Every write of a stored value should say where the value came from. See the
-# data_provenance table in schema.sql for the granularity rule (per-field on
-# stages; one 'results' row per stage covering all its stage_results).
-#
-# Why this exists: several corruption bugs were slow to diagnose because the DB
-# could not say where a number originated — Vuelta 1990's vertical_meters was
-# correct while its profile_score was shifted by one, and TDF split years have
-# PCS elevation partly overwritten by later Wikipedia backfills, which is why
-# those still can't be safely bulk re-scraped.
-#
-# Honesty rule: never guess a source. If it isn't known, record SOURCE_UNKNOWN
-# (or leave no row) rather than assuming — a confidently wrong provenance is
-# worse than an admitted gap, because it invites exactly the bulk re-scrape
-# that would destroy good patched values.
-
-SOURCE_PCS = "pcs"              # scraped from procyclingstats.com
-SOURCE_WIKIPEDIA = "wikipedia"  # from a Wikipedia route/results table
-SOURCE_BIKERACEINFO = "bikeraceinfo"  # from bikeraceinfo.com (patch_bri_distances.py)
-SOURCE_CYCLINGFLASH = "cyclingflash"  # from cyclingflash.com; relayed by the repo
-                                # owner, since Cloudflare blocks automated fetches
-SOURCE_ATHLINKS = "athlinks"    # from the public Athlinks results API; Life Time
-                                # owns Athlinks, so for its own off-road races
-                                # this is the timer's own data, not an aggregator
-SOURCE_MANUAL = "manual"        # hand-entered or hand-corrected
-SOURCE_DERIVED = "derived"      # computed from other DB values, not fetched
-SOURCE_UNKNOWN = "unknown"      # predates provenance tracking; origin unproven
-
-VALID_SOURCES = frozenset({
-    SOURCE_PCS, SOURCE_WIKIPEDIA, SOURCE_BIKERACEINFO, SOURCE_CYCLINGFLASH,
-    SOURCE_ATHLINKS, SOURCE_MANUAL, SOURCE_DERIVED, SOURCE_UNKNOWN,
-})
 
 
 def record_provenance(cur, entity, entity_id, field, source,

@@ -61,6 +61,20 @@ OUT_PATH = os.path.join(SCRAPES, "_rider_ids.json")
 CAREER_SPAN = 30
 BIRTH_TOLERANCE = 2
 
+# A country disagreement is NOT evidence on its own: these sources record where
+# an athlete registered from, not their passport, and the archive is full of
+# honest conflicts — Mohorič rides for Slovenia and enters from Monaco, Woods
+# for Canada from Andorra, Voigt as a German from the US. Every one of those is
+# a rider whose road career overlaps or nearly touches the gravel result.
+#
+# Combined with a long silence it is different. Nobody stops racing for two
+# decades and comes back under a different flag; that pattern is a namesake.
+# The two it rejects are Sean Yates (road to 1996, a Spanish-registered rider
+# in the 2024 Traka) and Dag Selander (one Norwegian road result in 1981, US
+# off-road results in 1999 and 2006) — and it leaves every long-gap match whose
+# country AGREES, which is what Carmichael, Bradley and Friel are.
+STALE_SPAN = 15
+
 UNDECOMPOSED = {"ø": "o", "ł": "l", "đ": "d", "ð": "d", "þ": "th",
                 "ß": "ss", "æ": "ae", "œ": "oe", "ı": "i"}
 
@@ -179,6 +193,16 @@ def decide(person, by_tokens):
         return (None, "new_era_mismatch",
                 f"{c['rider_id']} raced {c['first_year']}-{c['last_year']}, "
                 f"gravel {gy_min}-{gy_max}")
+    # No birth year is published by either Traka source, so for those riders the
+    # check below cannot fire at all and this is the only disqualifier left.
+    gravel_countries = set(person.get("countries") or ())
+    if (c["nationality_code"] and gravel_countries
+            and c["nationality_code"] not in gravel_countries
+            and gy_min - c["last_year"] > STALE_SPAN):
+        return (None, "new_country_and_era_mismatch",
+                f"{c['rider_id']} is {c['nationality_code']} and last raced "
+                f"{c['last_year']}; this rider entered from "
+                f"{'/'.join(sorted(gravel_countries))} in {gy_min}")
     if person["births"] and c["birth_year_approx"]:
         near = min(abs(b - c["birth_year_approx"]) for b in person["births"])
         if near > BIRTH_TOLERANCE:

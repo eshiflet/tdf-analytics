@@ -1,0 +1,275 @@
+{
+ "2019": {
+  "candidates": [
+   {
+    "id": 827,
+    "name": "TRAKA GIRONA"
+   },
+   {
+    "id": 835,
+    "name": "TRAKA GIRONA - EQUIPS"
+   },
+   {
+    "id": 901,
+    "name": "TRAKA GIRONA - EQUIPS - CLASSIFICACIÓ GENERAL"
+   },
+   {
+    "id": 903,
+    "name": "TRAKA - GIRONA - RESULTATS 2a ETAPA"
+   },
+   {
+    "id": 904,
+    "name": "TRAKA - GIRONA - CLASSIFICACIÓ GENERAL"
+   },
+   {
+    "id": 906,
+    "name": "TRAKA GIRONA - EQUIPS - 2a ETAPA"
+   }
+  ],
+  "city": "Girona",
+  "date": "2019-09-22",
+  "skip": "no 360 event in this edition",
+  "source": "tretzesports"
+ },
+ "2020": {
+  "candidates": [
+   {
+    "id": 996,
+    "name": "TRAKA GRAVEL - 200K"
+   },
+   {
+    "id": 997,
+    "name": "TRAKA GRAVEL -100K"
+   },
+   {
+    "id": 998,
+    "name": "TRAKA GRAVEL - 50K"
+   }
+  ],
+  "city": "Girona",
+  "date": "2020-09-12",
+  "skip": "no 360 event in this edition",
+  "source": "tretzesports"
+ },
+ "2021": {
+  "also_seen": [
+   {
+    "skip": "event exists but publishes no rankings",
+    "source": "sportmaniacs"
+   }
+  ],
+  "candidates": [
+   {
+    "id": 1051,
+    "name": "TRAKA 60"
+   },
+   {
+    "id": 1052,
+    "name": "TRAKA 100"
+   },
+   {
+    "id": 1062,
+    "name": "TRAKA 200"
+   },
+   {
+    "id": 1075,
+    "name": "TRAKA 360"
+   }
+  ],
+  "city": "Girona",
+  "date": "2021-05-16",
+  "distance_km": 360.0,
+  "event_id": 1075,
+  "event_name": "TRAKA 360",
+  "n_men": 72,
+  "n_rows": 79,
+  "rule": "open_field",
+  "source": "tretzesports"
+ },
+ "2022": {
+  "candidates": [
+   {
+    "id": 1316,
+    "name": "THE TRAKA 100"
+   },
+   {
+    "id": 1317,
+    "name": "THE TRAKA 200"
+   },
+   {
+    "id": 1318,
+    "name": "THE TRAKA 360"
+   }
+  ],
+  "city": "Girona",
+  "date": "2022-05-01",
+  "distance_km": 360.0,
+  "event_id": 1318,
+  "event_name": "THE TRAKA 360",
+  "n_men": 201,
+  "n_rows": 212,
+  "rule": "open_field",
+  "source": "tretzesports"
+ },
+ "2023": {
+  "candidates": [
+   {
+    "distance": "200km",
+    "id": "644d7c47-cf2c-49ba-a823-3297ac1f1e7d",
+    "name": "THE TRAKA 200"
+   },
+   {
+    "distance": "50km",
+    "id": "644e55df-b280-48b0-ae73-0158ac1f1e7d",
+    "name": "THE TRAKA 50"
+   },
+   {
+    "distance": "360km",
+    "id": "644e5f00-d5cc-4ae6-872b-5945ac1f1e7d",
+    "name": "THE TRAKA 360"
+   },
+   {
+    "distance": "100km",
+    "id": "644e79b6-bd20-4107-abfa-5947ac1f1e7d",
+    "name": "THE TRAKA 100"
+   }
+  ],
+  "city": "Girona",
+  "date": "2023-04-29",
+  "distance_km": 360.0,
+  "event_id": "644e5f00-d5cc-4ae6-872b-5945ac1f1e7d",
+  "event_name": "THE TRAKA 360",
+  "n_men": 291,
+  "n_rows": 316,
+  "race_id": "64468b07-1524-4699-b5bc-0906ac1f1d1f",
+  "race_slug": "the-traka-75671",
+  "rule": "open_field",
+  "source": "sportmaniacs"
+ },
+ "2024": {
+  "candidates": [
+   {
+    "distance": "360km",
+    "id": "6636588d-4b70-4005-95e9-41d8ac1f18cb",
+    "name": "THE TRAKA 360"
+   },
+   {
+    "distance": "200km",
+    "id": "6636a1c5-ae44-4712-b856-4405ac1f00ea",
+    "name": "THE TRAKA 200"
+   },
+   {
+    "distance": "100km",
+    "id": "663789f1-f36c-4fb1-b87e-42bfac1f00ea",
+    "name": "THE TRAKA 100"
+   },
+   {
+    "distance": "50km",
+    "id": "66378b7e-4298-4c3d-8d5c-4628ac1f00ea",
+    "name": "THE TRAKA 50"
+   }
+  ],
+  "city": "Girona",
+  "date": "2024-05-01",
+  "distance_km": 360.0,
+  "event_id": "6636588d-4b70-4005-95e9-41d8ac1f18cb",
+  "event_name": "THE TRAKA 360",
+  "n_men": 737,
+  "n_rows": 834,
+  "race_id": "661ffbdf-b44c-4816-a6f5-4a62ac1f1551",
+  "race_slug": "the-traka-2024-15365",
+  "rule": "open_field",
+  "source": "sportmaniacs"
+ },
+ "2025": {
+  "candidates": [
+   {
+    "distance": "360km",
+    "id": "6816498c-e960-420c-b10e-4e04ac1f27a2",
+    "name": "360 K"
+   },
+   {
+    "distance": "200km",
+    "id": "681666e4-bc00-4d58-87f6-4956ac1f1368",
+    "name": "200 K"
+   },
+   {
+    "distance": "100km",
+    "id": "681772aa-bc14-4462-95ba-44d4ac1f27a2",
+    "name": "100 K "
+   },
+   {
+    "distance": "560km",
+    "id": "68177311-4a60-4579-8f06-4481ac1f1368",
+    "name": "THE TRAKA ADVENTURE"
+   }
+  ],
+  "city": "Girona",
+  "date": "2025-04-30",
+  "distance_km": 360.0,
+  "event_id": "6816498c-e960-420c-b10e-4e04ac1f27a2",
+  "event_name": "360 K",
+  "n_men": 0,
+  "n_rows": 0,
+  "race_id": "67fffcd5-7364-44a3-a8f1-478eac1f27a2",
+  "race_slug": "the-traka-2025",
+  "rule": "open_field",
+  "skip": "event exists but publishes no rankings",
+  "source": "sportmaniacs"
+ },
+ "2026": {
+  "candidates": [
+   {
+    "distance": "325km",
+    "id": "69f531c7-403c-4df8-bfec-4b41ac1f26eb",
+    "name": "360 PRO W"
+   },
+   {
+    "distance": "325km",
+    "id": "69f53fd3-f714-4863-b567-420dac1f1976",
+    "name": "360 PRO M"
+   },
+   {
+    "distance": "325km",
+    "id": "69f74cec-c1d4-4f71-8ba5-4790ac1f221d",
+    "name": "360 OPEN"
+   },
+   {
+    "distance": "200km",
+    "id": "69f74d03-c6c8-4bc9-97e0-4715ac1f221d",
+    "name": "200 PRO W"
+   },
+   {
+    "distance": "200km",
+    "id": "69f74d26-18dc-458e-a8b5-4e1aac1f221d",
+    "name": "200 PRO M"
+   },
+   {
+    "distance": "200km",
+    "id": "69f74d34-81d8-4128-9169-940eac1f138a",
+    "name": "200 OPEN"
+   },
+   {
+    "distance": "100km",
+    "id": "69f74d42-a6f8-4690-9cac-4626ac1f221d",
+    "name": "100 OPEN"
+   },
+   {
+    "distance": "550km",
+    "id": "69f74d65-3adc-4fd3-8b1d-43afac1f0615",
+    "name": "THE TRAKA ADVENTURE"
+   }
+  ],
+  "city": "Girona",
+  "date": "2026-04-30",
+  "distance_km": 325.0,
+  "event_id": "69f53fd3-f714-4863-b567-420dac1f1976",
+  "event_name": "360 PRO M",
+  "n_men": 135,
+  "n_rows": 135,
+  "race_id": "69eb9571-541c-4b70-81ec-4d13ac1f231a",
+  "race_slug": "the-traka-2026",
+  "rule": "elite_course",
+  "source": "sportmaniacs"
+ }
+}

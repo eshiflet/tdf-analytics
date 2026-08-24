@@ -20,6 +20,8 @@ import sqlite3
 
 import ingest_classics
 import ingest_gravel
+import scrape_traka
+from resolve_traka_events import pick_360
 from race_common import GRAVEL, gravel_route_type
 from link_gravel_riders import decide, fold, slugify, tokens
 from scrape_athlinks import (
@@ -40,10 +42,26 @@ from scrape_athlinks import (
 
 
 class TestGravelRaceTable(unittest.TestCase):
-    def test_six_races_with_unique_shorts(self):
-        self.assertEqual(len(GRAVEL), 6)
+    def test_seven_races_with_unique_shorts(self):
+        self.assertEqual(len(GRAVEL), 7)
         shorts = [i.short for i in GRAVEL.values()]
         self.assertEqual(len(shorts), len(set(shorts)), "x-axis labels must be unique")
+
+    def test_a_race_addressed_by_athlinks_has_a_master_id(self):
+        # master_id is optional now that not every gravel race is a Life Time
+        # one, and the two must not drift: an athlinks-sourced race with no
+        # master id cannot be scraped, and a non-athlinks race with one is
+        # claiming an id that addresses nothing.
+        for slug, info in GRAVEL.items():
+            if info.source == "athlinks":
+                self.assertIsNotNone(info.master_id, f"{slug} needs a masterEventId")
+            else:
+                self.assertIsNone(info.master_id, f"{slug} is not on Athlinks")
+
+    def test_every_gravel_source_is_a_valid_provenance_source(self):
+        from race_common import VALID_SOURCES
+        for slug, info in GRAVEL.items():
+            self.assertIn(info.source, VALID_SOURCES, slug)
 
     def test_route_type_is_surface_not_climbing(self):
         self.assertEqual(gravel_route_type("gravel"), "G")
@@ -371,6 +389,40 @@ class TestRiderLinking(unittest.TestCase):
         self.assertIsNone(rid)
         self.assertEqual(decision, "new_era_mismatch")
 
+    def test_a_different_flag_after_a_long_silence_is_a_namesake(self):
+        # Sean Yates last raced in 1996; a Spanish-registered rider of that
+        # name rode the 2024 Traka. Neither Traka source publishes a birth
+        # year, so the birth check below cannot fire and this is the only
+        # disqualifier left.
+        yates = self.existing("rider/sean-yates", "Sean", "Yates", nat="gb")
+        yates["first_year"], yates["last_year"] = 1982, 1996
+        person = dict(self.person("Sean Yates", [2024]), countries={"es"})
+        rid, decision, why = decide(person, {tokens("Yates Sean"): [yates]})
+        self.assertIsNone(rid)
+        self.assertEqual(decision, "new_country_and_era_mismatch")
+        self.assertIn("1996", why)
+
+    def test_a_different_flag_while_still_racing_is_just_residence(self):
+        # These sources record where someone entered FROM, not their passport:
+        # Mohoric rides for Slovenia and enters from Monaco. 22 existing
+        # matches look like this and every one of them is right.
+        m = self.existing("rider/matej-mohoric", "Matej", "Mohoric", nat="si")
+        m["first_year"], m["last_year"] = 2012, 2026
+        person = dict(self.person("Matej Mohoric", [2024]), countries={"mc"})
+        rid, decision, _ = decide(person, {tokens("Mohoric Matej"): [m]})
+        self.assertEqual(rid, "rider/matej-mohoric")
+        self.assertEqual(decision, "matched")
+
+    def test_a_long_silence_with_the_same_flag_still_matches(self):
+        # Chris Carmichael's road results stop in 1986 and he shows up in
+        # 2006-2014 off-road, as himself. The gap alone proves nothing.
+        c = self.existing("rider/chris-carmichael", "Chris", "Carmichael", nat="us")
+        c["first_year"], c["last_year"] = 1985, 1986
+        person = dict(self.person("Chris Carmichael", [2006, 2014]), countries={"us"})
+        rid, decision, _ = decide(person, {tokens("Carmichael Chris"): [c]})
+        self.assertEqual(rid, "rider/chris-carmichael")
+        self.assertEqual(decision, "matched")
+
     def test_ambiguous_name_is_never_guessed(self):
         cands = [self.existing("rider/a-vermeulen", "Alexey", "Vermeulen"),
                  self.existing("rider/b-vermeulen", "Alexey", "Vermeulen")]
@@ -478,3 +530,117 @@ class TestIngestRepairsMojibake(unittest.TestCase):
         self.cur.execute("""SELECT typeof(entity_id) FROM data_provenance
                              WHERE entity='riders' LIMIT 1""")
         self.assertEqual(self.cur.fetchone()[0], "text")
+
+
+class TestTrakaEventSelection(unittest.TestCase):
+    """Which event IS "The Traka 360" — the one judgement this race needs.
+
+    The Traka runs 50/60/100/200/360/560 km on one weekend. Those are
+    different races, not classes of one, and the name of the 360 changed in
+    four of its five editions.
+    """
+
+    @staticmethod
+    def ev(*names):
+        return [{"id": i, "name": n} for i, n in enumerate(names)]
+
+    def test_every_real_edition_name_is_recognised(self):
+        # The five spellings the source has actually used, one per edition.
+        for name in ("TRAKA 360", "THE TRAKA 360", "360K", "360 K", "360 PRO M"):
+            chosen, _, _ = pick_360(self.ev(name, "THE TRAKA 200", "THE TRAKA 100"))
+            self.assertIsNotNone(chosen, f"{name!r} should resolve")
+            self.assertEqual(chosen["name"], name)
+
+    def test_other_distances_are_never_the_360(self):
+        # "360K" has no word boundary before the K, so a \b-anchored pattern
+        # silently matched nothing — and no results looks exactly like no race.
+        for name in ("THE TRAKA 200", "200 K", "THE TRAKA 100", "TRAKA 60",
+                     "THE TRAKA ADVENTURE", "TRAKA GIRONA", "TRAKA GRAVEL - 200K"):
+            chosen, cands, rule = pick_360(self.ev(name))
+            self.assertIsNone(chosen, f"{name!r} must not resolve as the 360")
+            self.assertEqual(cands, [])
+            self.assertIsNone(rule)
+
+    def test_2026_split_takes_the_mens_pro_race(self):
+        chosen, cands, rule = pick_360(self.ev("360 PRO W", "360 PRO M", "360 OPEN"))
+        self.assertEqual(chosen["name"], "360 PRO M")
+        self.assertEqual(len(cands), 3, "all three must be recorded as candidates")
+        # A split BY CLASS is the sport drawing the elite line itself, so the
+        # whole field is kept rather than windowed.
+        self.assertEqual(rule, "elite_course")
+
+    def test_one_open_360_is_a_mass_start_and_gets_windowed(self):
+        # 2021-2024: everyone rode the same race, so any elite cutoff is ours.
+        chosen, _, rule = pick_360(self.ev("THE TRAKA 360", "THE TRAKA 200"))
+        self.assertEqual(chosen["name"], "THE TRAKA 360")
+        self.assertEqual(rule, "open_field")
+
+    def test_an_unresolvable_split_picks_nothing(self):
+        # Two men's-looking 360s is a question for a person, not a guess.
+        chosen, cands, rule = pick_360(self.ev("360 M", "360 PRO M"))
+        self.assertIsNone(chosen)
+        self.assertEqual(len(cands), 2)
+        self.assertIsNone(rule)
+
+
+class TestTrakaRowParsing(unittest.TestCase):
+    def test_a_dnf_zero_time_never_becomes_a_finish(self):
+        # 180 of 2024's 737 men carry officialTime "00:00:00". Parsed naively
+        # that is a finish in zero seconds, which sorts ahead of the winner.
+        self.assertIsNone(scrape_traka.to_seconds("00:00:00"))
+        self.assertIsNone(scrape_traka.to_seconds(""))
+        self.assertIsNone(scrape_traka.to_seconds("DNF"))
+        self.assertEqual(scrape_traka.to_seconds("11:42:23"), 42143)
+
+    def test_country_covers_all_four_upstream_formats(self):
+        for raw, want in (("ESP", "es"),          # ISO-3, 2026
+                          ("ESPAÑA", "es"),       # Spanish, 2023
+                          ("DE", "de"),           # ISO-2, 2024
+                          ("Germany", "de"),      # English, 2024
+                          ("Unites States (US)", "us"),  # upstream typo
+                          ("UK", "gb")):          # not ISO, but unambiguous
+            self.assertEqual(scrape_traka.country_of(raw), want, raw)
+
+    def test_an_unmappable_country_is_null_not_a_guess(self):
+        # A wrong flag is a claim; a missing one is a gap.
+        for raw in ("", None, "UM", "ATLANTIS"):
+            self.assertIsNone(scrape_traka.country_of(raw))
+
+    def test_an_open_field_is_capped_like_every_other_mass_start(self):
+        # 737 men finished the 2024 Traka 360 in one mass start. Keeping all of
+        # them would make one race a third of the whole off-road archive, and
+        # would apply a rule to it that no Life Time edition gets.
+        rows = [{"rank": i, "name": f"R{i}", "finish_seconds": 40000 + i,
+                 "status": "FINISHED", "country": "es", "gap_seconds": None}
+                for i in range(1, 738)]
+        kept = scrape_traka.apply_field_rule(list(rows), "open_field")
+        self.assertEqual(len(kept), scrape_traka.FIELD_CAP)
+        self.assertEqual(kept[0]["rank"], 1)
+        self.assertEqual(kept[-1]["rank"], scrape_traka.FIELD_CAP)
+
+    def test_an_elite_course_is_never_truncated(self):
+        rows = [{"rank": i, "name": f"R{i}", "finish_seconds": 40000 + i,
+                 "status": "FINISHED", "country": "es", "gap_seconds": None}
+                for i in range(1, 136)]
+        kept = scrape_traka.apply_field_rule(list(rows), "elite_course")
+        self.assertEqual(len(kept), 135)
+
+    def test_dnfs_do_not_fill_the_cap(self):
+        # An unranked rider has no claim on a top-100 place. If DNFs counted,
+        # a race with 90 finishers and 40 DNFs would drop real finishers.
+        rows = [{"rank": i, "name": f"F{i}", "finish_seconds": 40000 + i,
+                 "status": "FINISHED", "country": None, "gap_seconds": None}
+                for i in range(1, 121)]
+        rows += [{"rank": None, "name": f"D{i}", "finish_seconds": None,
+                  "status": "DNF", "country": None, "gap_seconds": None}
+                 for i in range(40)]
+        kept = scrape_traka.apply_field_rule(rows, "open_field")
+        self.assertEqual(len(kept), 100)
+        self.assertTrue(all(r["status"] == "FINISHED" for r in kept))
+
+    def test_gap_is_measured_from_the_mens_winner(self):
+        rows = [{"rank": 1, "finish_seconds": 42143, "gap_seconds": None},
+                {"rank": 2, "finish_seconds": 42160, "gap_seconds": None},
+                {"rank": None, "finish_seconds": None, "gap_seconds": None}]
+        scrape_traka.add_gaps(rows)
+        self.assertEqual([r["gap_seconds"] for r in rows], [0, 17, None])

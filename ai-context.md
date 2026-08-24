@@ -231,6 +231,8 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `backfill_stage_metadata.py` | fills NULL route/date from PCS's info panel |
 | `scrape_route_overview_elevation.py` | elevation from the race ROUTE page (stage pages omit Paris finales/prologues); `--replace-derived` |
 | `repair_mojibake_names.py` | un-corrupts stored names; re-slugs OUR ids minted from them, never an upstream one |
+| `resolve_traka_events.py` | picks which event is The Traka 360 each year; `--report`, `--force` |
+| `scrape_traka.py` | The Traka → the standard gravel scrape-file shape, men only |
 | `backfill_rider_team_provenance.py` | provenance for pre-tracking `riders`/`teams` rows; companion to `backfill_provenance.py` (which covers `stages`) |
 | `patch_cyclingflash_elevation.py` | 2001/2006 s20 from cyclingflash.com; guards on distance before writing |
 
@@ -1365,28 +1367,37 @@ silently corrupted:
 
 ---
 
-## Gravel — the Life Time off-road races (August 2026)
+## Gravel — the off-road races (August 2026)
 
-Six American gravel and mountain-bike races, **1994–2026**, added 2026-08-21. In the
-DB they are **6 independent races** (`races.race_type='gravel'`, one stage per
-edition); the frontend shows **one** race, `gravel` — "Gravel" — whose
-"stages" are those races. Same aggregation as the classics, done at export time
-by `export_gravel.py`.
+Seven gravel and mountain-bike races, **1994–2026**. Six are Life Time's
+American events (added 2026-08-21); the seventh, The Traka 360, is Spanish and
+was added 2026-08-24. In the DB they are **7 independent races**
+(`races.race_type='gravel'`, one stage per edition); the frontend shows **one**
+race, `gravel` — "Gravel" — whose "stages" are those races. Same aggregation as
+the classics, done at export time by `export_gravel.py`.
 
-| slug | display | short | discipline | | slug | display | short | discipline |
-|---|---|---|---|---|---|---|---|---|
-| `sea-otter` | Sea Otter Classic | SO | mtb→gravel | | `chequamegon` | Chequamegon MTB Festival | CQ | mtb |
-| `unbound` | Unbound Gravel | UB | gravel | | `little-sugar` | Little Sugar MTB | LS | mtb |
-| `leadville` | Leadville Trail 100 MTB | LV | mtb | | `big-sugar` | Big Sugar Gravel | BS | gravel |
+| slug | display | short | discipline | timed by | | slug | display | short | discipline | timed by |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `sea-otter` | Sea Otter Classic | SO | mtb→gravel | athlinks | | `chequamegon` | Chequamegon MTB Festival | CQ | mtb | athlinks |
+| `unbound` | Unbound Gravel | UB | gravel | athlinks | | `little-sugar` | Little Sugar MTB | LS | mtb | athlinks |
+| `leadville` | Leadville Trail 100 MTB | LV | mtb | athlinks | | `big-sugar` | Big Sugar Gravel | BS | gravel | athlinks |
+| `traka` | The Traka 360 | TK | gravel | sportmaniacs / tretzesports | | | | | | |
 
-**89 race-years · 7,607 results · 3,569 riders · 93 of them already in the DB from their road careers.**
+**94 race-years · 8,115 results · 3,948 riders · 105 of them already in the DB from their road careers.**
 
-These six are today's Life Time Grand Prix line-up, but **the archive is
+Six of the seven are today's Life Time Grand Prix line-up, but **the archive is
 deliberately wider than that series**. The Grand Prix began in 2022; Leadville
 has run since 1994 and Chequamegon since 1999 (on Athlinks — the race itself
-dates to 1983). A season before 2021 therefore holds fewer than six races, the
+dates to 1983). A season before 2021 therefore holds fewer than seven races, the
 same way a classics season before 1907 holds fewer than eleven. Nothing
 special-cases it: ordering by `stage_date` renders it correctly for free.
+
+The Traka is not a Life Time race and not part of that series at all — it is
+here because it is where the European road-to-gravel crossover actually shows
+up. Adding it took the road-career crossover from 93 riders to 105, and the
+thirteen it added are almost all European pros: Bram Tankink, Ide Schelling,
+Diego Rosa, Tom Leezer, Christian Meier, Joonas Henttala, Ruben Zepuntke,
+Umberto Marengo, Alan Riou.
 
 **Men's fields only, for now.** These races run co-equal men's and women's
 series and the women's half is a deliberate gap, not an oversight — `riders`
@@ -1394,12 +1405,21 @@ has no gender column, so adding it is a schema change and a second pass.
 
 ### PCS has nothing here — do not reach for it
 
-Verified, not assumed: searching PCS for "unbound" returns zero results while
-"gravel" returns plenty. No rider slugs, no team attribution, no ProfileScore,
-no `won_how`. Every instinct the rest of this pipeline has about where data
-comes from is wrong for these six races.
+Verified, not assumed, and re-verified for The Traka on 2026-08-24: PCS's
+search returns **one** gravel race, "Gravel and Tar" (New Zealand). Not
+Unbound, not The Traka, and not the UCI Gravel World Championships. It does
+carry gravel TEAM rosters for 2026 (Tudor, Movistar), which is a different
+thing and not useful here. No rider slugs, no team attribution, no
+ProfileScore, no `won_how`. Every instinct the rest of this pipeline has about
+where data comes from is wrong for all seven of these races.
 
-### The source: Athlinks, which Life Time owns
+**UCI Gravel World Championships is wanted but not yet sourced** (asked for
+2026-08-24, deferred). PCS does not have it; UCI's own dataride is an ASP.NET
+`__VIEWSTATE` app that was returning `Exception occured while executing the
+controller`; firstcycling sits behind the same Cloudflare check that blocks
+cyclingflash. Eric is choosing a source.
+
+### The source for the six: Athlinks, which Life Time owns
 
 Life Time owns Athlinks, so for its own events this is the timer's own data
 rather than a third-party aggregation. Three public, unauthenticated endpoints,
@@ -1420,6 +1440,145 @@ Two things that are not obvious and cost real time:
    Elasticsearch inner hits, so a course with many splits 400s
    ("Inner result window is too large") at a page size another course serves
    happily. `results()` starts at 100 and halves on failure.
+
+### The Traka: one race, two timing platforms, five names
+
+Not on Athlinks and not on PCS — verified by search, PCS's only gravel race is
+"Gravel and Tar" (NZ). Its results live on the two timers Klassmark has used,
+and both are plain JSON over GET, gzipped, no key and no browser:
+
+| years | platform | how it is addressed |
+|---|---|---|
+| 2021, 2022 | tretzesports.com | `getCursa.php?idCursa=N` + `getResultats.php?idCursa=N` |
+| 2023, 2024, 2026 | sportmaniacs.com | `api/races/{slug}` → `api/events?race={id}` → `races/rankings/{eventId}` |
+
+**Only the 360 km course.** The Traka also runs 50/60/100/200/560 km events on
+the same weekend; those are different races, not classes of this one.
+
+`resolve_traka_events.py` decides which event IS the 360 and writes
+`_traka_events.json` for review — the same discipline as `_course_map.json`,
+and it earns it here, because two things move at once:
+
+- **The name changed in four of five editions**: `TRAKA 360` (2021),
+  `THE TRAKA 360` (2022–24), `360 K` (2025), `360 PRO M` (2026). A fixed string
+  returns nothing, and nothing looks exactly like "race not held".
+- **The distance moved too.** 2026's "360" is **325 km**. A km band tight
+  enough to exclude the 200 would have excluded the 2026 race itself.
+
+So the match is on a leading `360` token, then a preference for an explicitly
+men's event (2026 splits into PRO M / PRO W / OPEN). Two spellings cost a
+silent miss when the pattern is wrong and are now regression-tested: `"THE"` is
+optional (2021 is `TRAKA 360`) and there is **no word boundary in `360K`**.
+
+**2021 exists on BOTH platforms** — tretzesports has the real 72-man field,
+sportmaniacs an empty `360K` stub. The merge prefers whichever record actually
+resolved to results, so file order cannot decide which edition the archive keeps.
+
+**2025 is missing, and that is the source's doing.** All four of that edition's
+distances return an empty rankings list, and the only 2025 link on The Traka's
+own results page points at a "PNS Hill Climb Challenge" side event which 404s.
+The race was held on 2025-04-30. Recorded as a skip with its reason rather than
+inferred away — and if the organiser publishes it later, re-running the resolve
+step picks it up with no code change.
+
+### The Traka gets the same FIELD_CAP window as everything else
+
+Not a special case — the same rule, applied by the same constant, for the same
+reason. It matters more here than anywhere: **737 men finished the 2024 Traka
+360 in one mass start.** Kept whole, that single edition would have been more
+of the off-road archive than Unbound's entire twenty years, under a rule no
+Life Time edition gets.
+
+| year | event | rule | men | kept |
+|---|---|---|---|---|
+| 2021 | `TRAKA 360` | `open_field` | 72 | 72 (under the cap) |
+| 2022 | `THE TRAKA 360` | `open_field` | 201 | **100** |
+| 2023 | `THE TRAKA 360` | `open_field` | 291 | **100** |
+| 2024 | `THE TRAKA 360` | `open_field` | 737 | **100** |
+| 2026 | `360 PRO M` | `elite_course` | 135 | 135 |
+
+The rule comes out of `resolve_traka_events.py` and is recorded in the map, so
+it is reviewable rather than inferred at scrape time:
+
+- **One 360 on the programme → `open_field`.** Everyone rode the same race and
+  there is no line in the data between elite and everyone else, so any cutoff
+  is ours. Exactly Leadville's position through 2015.
+- **Split by class → `elite_course`.** 2026's `360 PRO M` / `PRO W` / `OPEN` is
+  the sport drawing that line itself, so the whole field is kept.
+
+`field_size_men` records the true size beside `field_size_selected`, and
+`truncated` flags the editions that hit the cap, so the window stays visible as
+a window. The cost is real and worth naming: Jeremy Hunt and Leonardo Basso are
+genuine road-career crossovers who finished outside the top 100 and are
+therefore not in the archive at all. That is the same trade every `open_field`
+edition already makes.
+
+### The Traka's three upstream traps
+
+Each of these corrupts the archive silently rather than loudly:
+
+1. **A sportmaniacs non-finisher carries `officialTime: "00:00:00"`** with an
+   empty position. Parsed naively that is a finish in zero seconds, which sorts
+   ahead of the winner — 180 of 2024's 737 men are in this state.
+2. **tretzesports puts `DNF`/`DNS` in the time field itself** and gives those
+   rows `PosicioSexe: "-1"`. Both must become a status, never a rank or a time.
+3. **`nationality` arrives in four formats across five editions** — Spanish
+   names (2023: `ESPAÑA`, `PAÍSES BAJOS`), ISO-2 (2024), ISO-3 (2026), plus a
+   few English names and the upstream typo `Unites States (US)`. All 110
+   distinct values are mapped through an explicit reviewed table in
+   `scrape_traka.py`; anything not in it stays NULL. The one deliberate
+   omission is `UM` (US Minor Outlying Islands) — a real ISO-2 code, so not
+   dismissible as junk, but on a Girona start list far likelier a mis-selection
+   than a claim. tretzesports publishes no nationality at all, so 2021 and 2022
+   have none.
+
+**`club` is captured in the scrape files but not ingested.** sportmaniacs gives
+a real per-edition club ("AMERICAN GRAVEL MAFIA", "PAS NORMAL STUDIOS"), which
+is better evidence than the one-current-team-per-athlete figure that kept
+`team_id` NULL for the Life Time races. It is still left NULL, because storing
+clubs for one race of seven would make the column mean something different per
+race. The data is in the files if that decision is ever revisited.
+
+### A different flag after a long silence is a namesake
+
+Adding The Traka exposed a hole in `link_gravel_riders.decide()`. Neither Traka
+source publishes an age, so `BIRTH_TOLERANCE` — the check the docstring calls
+the one that "does most of the work" — **cannot fire at all** for these riders.
+`CAREER_SPAN = 30` was then the only guard, and on the first (uncapped) pass it
+let through `rider/sean-yates`: the real Sean Yates last raced in 1996, and a
+Spanish-registered rider of that name rode the 2024 Traka 28 years later.
+
+The FIELD_CAP window later removed that particular rider from the archive
+anyway — he finished well outside the top 100 — so the rule's only LIVE effect
+today is the second row below. That does not make it redundant: the hole it
+closes is real, it is invisible without a birth year, and the only reason the
+Yates case is not in the data is a cap that could be changed by editing one
+constant.
+
+A country conflict on its own is NOT evidence and must never be treated as
+such — these sources record where someone entered FROM, not their passport, and
+22 existing matches are honest conflicts of exactly that kind (Mohorič rides
+for Slovenia and enters from Monaco; Woods for Canada from Andorra; Voigt as a
+German from the US). Every one of those riders' road careers overlaps or nearly
+touches the gravel result.
+
+Combined with a long silence it is different, and the two separate cleanly:
+
+```
+STALE_SPAN = 15   # years of silence after which a conflicting flag disqualifies
+```
+
+What it rejects, of everything currently in the archive:
+
+| rider | road | gravel | why | live? |
+|---|---|---|---|---|
+| `rider/dag-selander` | no, one 1981 result | us, 1999 + 2006 | 18-year gap, different flag | **yes** — a pre-existing bad merge the Traka work surfaced |
+| `rider/sean-yates` | gb, to 1996 | es, 2024 | 28-year gap, different flag | no — outside the top 100, so not in the archive |
+
+The rejected rider mints a `-gvl` gravel-only identity, which is the cheap
+reversible fallback the script was built around. Every long-gap match whose
+country *agrees* survives untouched — Carmichael (1986 → 2006-14), Bradley,
+Friel.
 
 ### Which course is the race? — `_course_map.json`
 
@@ -1570,7 +1729,7 @@ mistyped age cannot drag it.
 |---|---|
 | `vertical_meters` | Athlinks publishes no elevation; PCS has nothing. Published figures disagree wildly — 11,586 ft and 14,517 ft for the same Leadville course, from two RideWithGPS traces. A NULL is a gap; a guess would be a claim. The Race Overview hides its elevation and difficulty metrics automatically (`hasElevationData`). |
 | `profile_score` | PCS's metric, and PCS has nothing here. |
-| `team_id` | Athlinks records no team. lifetimegrandprix.com does — but only ONE team per athlete, their current one, so attaching it to a 2022 result would be fiction. |
+| `team_id` | Athlinks records no team. lifetimegrandprix.com does — but only ONE team per athlete, their current one, so attaching it to a 2022 result would be fiction. sportmaniacs DOES give a real per-edition club for The Traka; it is captured in the scrape files and still not ingested, because storing clubs for one race of seven would make the column mean something different per race. |
 | season points | Life Time's own 30-to-1 Grand Prix scale exists, but it scores a 25-rider invitational, not the race. `hasSeasonPoints: false`; the bump chart plots finishing position, as the classics' does. |
 | women's fields | Deliberate, and the next thing to do here. |
 
@@ -1581,7 +1740,7 @@ distinguishes these races. Leaving the column NULL was the alternative, and
 that paints Unbound flat green in the Race Overview, which is a claim rather
 than a gap. `SOURCE_DERIVED`, from the discipline.
 
-`nationality_code` for a gravel-only rider is Athlinks' **registered location
+`nationality_code` for a gravel-only rider is the timer's **registered location
 country**, not necessarily nationality — Torbjørn Andre Røed races as Norwegian
 out of Grand Junction, Colorado. It is stored because it is right for the
 overwhelming majority, and it is **never** allowed to overwrite a nationality
@@ -1590,12 +1749,14 @@ that came from PCS.
 ### Pipeline
 
 ```
-resolve_gravel_courses.py   → gravel_scrapes/_course_map.json   (REVIEW THIS)
-       ↓  scrape_athlinks.py
+resolve_gravel_courses.py   → gravel_scrapes/_course_map.json    (REVIEW THIS)
+resolve_traka_events.py     → gravel_scrapes/_traka_events.json  (REVIEW THIS)
+       ↓  scrape_athlinks.py   (the six Life Time races)
+       ↓  scrape_traka.py      (The Traka, from either platform)
 gravel_scrapes/<race>/<year>.json        (tracked in git; _raw/ is not)
        ↓  link_gravel_riders.py          → gravel_scrapes/_rider_ids.json
        ↓  ingest_gravel.py               (--dry-run; atomic per race-year)
-   cycling.db                            (6 races, race_type='gravel')
+   cycling.db                            (7 races, race_type='gravel')
        ↓  export_gravel.py               → cycling-app/src/data/gravel/
        ↓  export_classics_history.py --set gravel
 ```
@@ -1650,6 +1811,9 @@ cd pipeline
 python3 resolve_gravel_courses.py --race leadville     # then READ the table
 python3 resolve_gravel_courses.py --report             # or re-read it later, offline
 python3 scrape_athlinks.py --race leadville --year 2027
+# The Traka is not on Athlinks and has its own pair:
+python3 resolve_traka_events.py                        # then READ the table
+python3 scrape_traka.py                                # every resolved year
 python3 link_gravel_riders.py                          # idempotent; re-run after ANY scrape
 python3 ingest_gravel.py --dry-run                     # then without --dry-run
 python3 export_gravel.py                               # no --year: the index is cross-year
@@ -1658,10 +1822,18 @@ python3 validate_db.py && python3 validate_exports.py
 python3 crosscheck_ltgp.py                             # 2022+ only
 ```
 
-A new race needs a `GRAVEL` entry in `race_common.py` (with its Athlinks
-masterEventId), a `HEADLINE` pattern and km band in
-`resolve_gravel_courses.py`, and nothing else — the frontend discovers the data
-by glob.
+A new **Athlinks** race needs a `GRAVEL` entry in `race_common.py` (with its
+masterEventId), a `HEADLINE` pattern and km band in `resolve_gravel_courses.py`,
+and nothing else — the frontend discovers the data by glob.
+
+A race on **another timer** needs more: a `GRAVEL` entry with `master_id=None`
+and its own `source=`, that source added to `VALID_SOURCES`, and a resolve +
+scrape pair that writes the same `{info, cancelled, rows}` file shape. The
+Traka pair is the worked example. Everything downstream —
+`link_gravel_riders.py`, `ingest_gravel.py`, `export_gravel.py` — needed no
+per-race knowledge, only for `ingest_gravel.py` to read `info["source"]`
+instead of assuming Athlinks (a file without that key predates the change and
+IS Athlinks).
 
 **`scrape_athlinks.py --force` re-derives from the raw cache without refetching.**
 Every selection rule in this pipeline has needed correcting after the fact; that

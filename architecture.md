@@ -169,16 +169,23 @@ flowchart TD
   the other would have failed nothing.
 
 - **Gravel** (`resolve_gravel_courses.py`, `scrape_athlinks.py`,
-  `link_gravel_riders.py`, `ingest_gravel.py`, `export_gravel.py`) — the same aggregate
-  shape as the classics: 6 independent `race_type='gravel'` races combined at export
-  time. Three things make it a genuinely different path rather than a copy. The source
-  is the Athlinks results API, not PCS, which does not cover these races at all. Which
-  Athlinks *course* holds each edition's top-level men's field is resolved once into a
-  reviewed `_course_map.json`, because Athlinks renames courses yearly and a wrong pick
-  yields a plausible fictional race rather than an error. And rider identity has no id
-  to join on, so `link_gravel_riders.py` decides by name — under a strict rule, with its
-  evidence written down — which is what puts Peter Stetina's gravel results on the same
-  page as his Tours. See ai-context.md's "Gravel".
+  `resolve_traka_events.py`, `scrape_traka.py`, `link_gravel_riders.py`,
+  `ingest_gravel.py`, `export_gravel.py`) — the same aggregate shape as the classics:
+  7 independent `race_type='gravel'` races combined at export time. Three things make
+  it a genuinely different path rather than a copy. **PCS covers none of it**, so the
+  sources are results timers instead: Athlinks for Life Time's six, and sportmaniacs
+  or tretzesports for The Traka depending on the year. Which *course* holds each
+  edition's top-level men's field is resolved once into a reviewed map
+  (`_course_map.json`, `_traka_events.json`), because every one of these timers renames
+  courses yearly and a wrong pick yields a plausible fictional race rather than an
+  error. And rider identity has no id to join on, so `link_gravel_riders.py` decides by
+  name — under a strict rule, with its evidence written down — which is what puts Peter
+  Stetina's gravel results on the same page as his Tours. See ai-context.md's "Gravel".
+
+  A race on a new timer plugs in by writing the same `{info, cancelled, rows}` scrape
+  file; only `ingest_gravel.py` reads `info["source"]`, and everything after it is
+  source-agnostic. `GravelInfo.master_id` is therefore optional and paired with a
+  `source`, an invariant the tests hold.
 
 - **Vite build** — compiles `main.ts` (TypeScript) and bundles it with the JSON data files
   into a static site. Per-year `gc_by_stage_*.json` files are emitted as separate lazily
@@ -278,8 +285,8 @@ flowchart TD
 `cycling.db` is one SQLite database shared by every race, distinguished by
 `races.race_id` — the three Grand Tours (`race_type='stage_race'`, race_id 1–3) plus
 the 11 one-day classics (`race_type='one_day'`, race_id 4–14, one stage per edition)
-and the 6 Life Time off-road races (`race_type='gravel'`, race_id 15–20, likewise one
-stage per edition). Every table below actually exists in the live DB. `riders` has three
+and the 7 off-road races (`race_type='gravel'`, race_id 15–21 — Life Time's six plus
+The Traka 360, likewise one stage per edition). Every table below actually exists in the live DB. `riders` has three
 extra columns (`first_name`, `last_name`, `birthday`) that were added via `ALTER TABLE`
 by `scrape_rider_details.py` — `schema.sql` has been updated to reflect them.
 

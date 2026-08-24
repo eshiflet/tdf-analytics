@@ -60,7 +60,7 @@ SCRAPES = os.path.join(HERE, "gravel_scrapes")
 RIDER_IDS = os.path.join(SCRAPES, "_rider_ids.json")
 
 
-def upsert_rider(cur, ident):
+def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
     """Insert a gravel-only rider; leave an already-known rider untouched.
 
     The no-overwrite rule is the same one ingest_classics.py follows, and it
@@ -90,10 +90,13 @@ def upsert_rider(cur, ident):
     # nationality that came from PCS, which is why this function returns early
     # above. That caveat is what `nationality_code`'s provenance below means:
     # athlinks is the honest source, and it is a residence, not a passport.
+    # The source is the race file this rider is first seen in — which is where
+    # the stored values actually came from. A rider who later turns up in
+    # another off-road race keeps this row, because upsert returns early above.
     for field in ("full_name", "first_name", "last_name", "nationality_code",
                   "birth_year_approx"):
-        record_provenance(cur, "riders", rid, field, SOURCE_ATHLINKS,
-                          source_ref=ident.get("source_ref") or "gravel_scrapes/_rider_ids.json")
+        record_provenance(cur, "riders", rid, field, source,
+                          source_ref=source_ref or "gravel_scrapes/_rider_ids.json")
     return rid
 
 
@@ -118,8 +121,15 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     # The resolved Athlinks address, stored so nothing ever re-finds this race
     # by searching course names again — the same discipline as source_slug for
     # PCS, and for the same reason: the name is not stable, the id is.
-    source_slug = (f"event/{info['event_id']}/race/{info['course_id']}"
-                   if info.get("course_id") else f"event/{info['event_id']}")
+    # Not every gravel race is on Athlinks: The Traka's editions are addressed
+    # by sportmaniacs event uuid or tretzesports idCursa. The file says which,
+    # and an older file that does not say predates any of that and is Athlinks.
+    source = info.get("source", SOURCE_ATHLINKS)
+    if source == SOURCE_ATHLINKS:
+        source_slug = (f"event/{info['event_id']}/race/{info['course_id']}"
+                       if info.get("course_id") else f"event/{info['event_id']}")
+    else:
+        source_slug = f"{source}/{info['event_id']}"
     route = gravel_route_type(info.get("discipline"))
     cur.execute(
         """INSERT INTO stages
@@ -135,7 +145,7 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     api = info.get("api_url") or info.get("source_url")
     for field in ("stage_date", "distance_km", "source_slug", "cancelled",
                   "stage_type"):
-        record_provenance(cur, "stages", stage_id, field, SOURCE_ATHLINKS,
+        record_provenance(cur, "stages", stage_id, field, source,
                           source_ref=api)
     record_provenance(cur, "stages", stage_id, "route_type", SOURCE_DERIVED,
                       source_ref="race_common.gravel_route_type(discipline)")
@@ -157,7 +167,7 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
             raise KeyError(
                 f"{path}: {key!r} has no entry in _rider_ids.json — "
                 "re-run link_gravel_riders.py after any new scrape")
-        rider_id = upsert_rider(cur, ident)
+        rider_id = upsert_rider(cur, ident, source, api)
         if rider_id in seen_riders:
             collisions.append((r["name"], seen_riders[rider_id], r.get("rank")))
         seen_riders[rider_id] = r.get("rank")
