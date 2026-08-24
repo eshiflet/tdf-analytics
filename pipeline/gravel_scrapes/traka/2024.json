@@ -8,11 +8,15 @@
   "distance_km": 360.0,
   "event_id": "6636588d-4b70-4005-95e9-41d8ac1f18cb",
   "event_name": "THE TRAKA 360",
-  "fetched_at": "2026-08-24T13:52:16+00:00",
+  "fetched_at": "2026-08-24T14:51:00+00:00",
   "field_size_men": 737,
-  "field_size_selected": 100,
+  "field_size_selected": 102,
   "field_size_source": 834,
-  "finishers": 100,
+  "finishers": 101,
+  "kept_beyond_cap": [
+   "Jeremy Hunt",
+   "Leonardo Basso"
+  ],
   "no_country": 0,
   "race_slug": "traka",
   "rank_type": "gun",
@@ -1622,6 +1626,38 @@
    "rank": 100,
    "rank_overall": 108,
    "status": "FINISHED"
+  },
+  {
+   "age": null,
+   "bib": "739",
+   "category": "SENIOR M",
+   "club": "TEAM ROOM",
+   "country": "it",
+   "finish_seconds": 51778,
+   "first_name": "Leonardo",
+   "gap_seconds": 9635,
+   "gender": "M",
+   "last_name": "Basso",
+   "name": "Leonardo Basso",
+   "rank": 103,
+   "rank_overall": 112,
+   "status": "FINISHED"
+  },
+  {
+   "age": null,
+   "bib": "288",
+   "category": "Master 50 M",
+   "club": "FORMFINDER",
+   "country": "gb",
+   "finish_seconds": null,
+   "first_name": "Jeremy",
+   "gap_seconds": null,
+   "gender": "M",
+   "last_name": "Hunt",
+   "name": "Jeremy Hunt",
+   "rank": null,
+   "rank_overall": null,
+   "status": "DNF"
   }
  ]
 }

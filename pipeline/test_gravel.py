@@ -638,6 +638,46 @@ class TestTrakaRowParsing(unittest.TestCase):
         self.assertEqual(len(kept), 100)
         self.assertTrue(all(r["status"] == "FINISHED" for r in kept))
 
+    def test_a_named_exception_survives_the_cap_with_its_real_rank(self):
+        # Leonardo Basso finished 103rd in the 2024 Traka 360 — three places
+        # outside the window — and is kept by explicit decision. He must keep
+        # rank 103, not be renumbered into the field: 103rd is what happened.
+        rows = [{"rank": i, "name": f"R{i}", "finish_seconds": 40000 + i,
+                 "status": "FINISHED", "country": "es", "gap_seconds": None}
+                for i in range(1, 200)]
+        rows[102]["name"] = "Leonardo Basso"          # rank 103
+        kept = scrape_traka.apply_field_rule(rows, "open_field", 2024)
+        self.assertEqual(len(kept), scrape_traka.FIELD_CAP + 1)
+        self.assertEqual([r["rank"] for r in kept[:100]], list(range(1, 101)),
+                         "the first 100 must still be exactly the window")
+        self.assertEqual(kept[-1]["name"], "Leonardo Basso")
+        self.assertEqual(kept[-1]["rank"], 103)
+
+    def test_an_exception_is_scoped_to_its_own_year(self):
+        # The list is keyed (name, year): a namesake in another edition must
+        # not inherit the decision.
+        rows = [{"rank": i, "name": f"R{i}", "finish_seconds": 40000 + i,
+                 "status": "FINISHED", "country": "es", "gap_seconds": None}
+                for i in range(1, 200)]
+        rows[102]["name"] = "Leonardo Basso"
+        self.assertEqual(len(scrape_traka.apply_field_rule(list(rows), "open_field", 2022)),
+                         scrape_traka.FIELD_CAP)
+
+    def test_a_dnf_exception_is_kept_without_a_rank(self):
+        # Jeremy Hunt DNF'd the 2024 Traka, so he was never in the window at
+        # all rather than just outside it. Stored like every other non-finisher
+        # in this archive — Mohoric's Unbound 2024 DNF is the same shape.
+        rows = [{"rank": i, "name": f"R{i}", "finish_seconds": 40000 + i,
+                 "status": "FINISHED", "country": None, "gap_seconds": None}
+                for i in range(1, 150)]
+        rows.append({"rank": None, "name": "Jeremy Hunt", "finish_seconds": None,
+                     "status": "DNF", "country": "gb", "gap_seconds": None})
+        kept = scrape_traka.apply_field_rule(rows, "open_field", 2024)
+        hunt = [r for r in kept if r["name"] == "Jeremy Hunt"]
+        self.assertEqual(len(hunt), 1)
+        self.assertIsNone(hunt[0]["rank"])
+        self.assertEqual(hunt[0]["status"], "DNF")
+
     def test_gap_is_measured_from_the_mens_winner(self):
         rows = [{"rank": 1, "finish_seconds": 42143, "gap_seconds": None},
                 {"rank": 2, "finish_seconds": 42160, "gap_seconds": None},

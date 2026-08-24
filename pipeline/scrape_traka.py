@@ -188,7 +188,29 @@ def rows_tretzesports(cursa_id, force=False):
     return out, len(raw)
 
 
-def apply_field_rule(rows, rule):
+# Riders kept beyond the FIELD_CAP window by explicit decision (Eric, 2026-08-24),
+# in the spirit of fix_tt_route_types.ADJUDICATED_NOT_TT: a named list of calls a
+# person made, not a rule the scraper inferred.
+#
+# The window exists because a mass-start field has no line between elite and
+# everyone else. That is true of the field as a whole and still leaves specific
+# riders it is worth making an exception for — a road professional whose gravel
+# ride is exactly the crossover this archive exists to show. Keeping them costs
+# three rows and does not move anyone else's rank: an exception keeps its REAL
+# finishing position, so Basso is stored 103rd in a field of 100 rather than
+# renumbered into it. That is the honest way to say "he finished 103rd".
+#
+# Keep this short. Every addition makes "top 100" less true as a description,
+# and the count is reported per edition so it stays visible.
+KEEP_BEYOND_CAP = {
+    ("Leonardo Basso", 2023): "Italian road pro (Strade Bianche, Roubaix, Flanders); 139th",
+    ("Leonardo Basso", 2024): "same rider, 103rd — three places outside the cap",
+    ("Jeremy Hunt", 2024): "British road pro (Tour, Giro, Vuelta, 11 Roubaix); DNF, "
+                           "so never in the window at all rather than just outside it",
+}
+
+
+def apply_field_rule(rows, rule, year=None):
     """The edition's field, windowed per its rule. Mirrors select_field().
 
     Sorted finishers-first in classification order, then the unranked — which
@@ -209,7 +231,14 @@ def apply_field_rule(rows, rule):
     cap.
     """
     rows.sort(key=lambda r: (r["rank"] is None, r["rank"] or 0, r["name"]))
-    return rows[:FIELD_CAP] if rule == "open_field" else rows
+    if rule != "open_field":
+        return rows
+    kept, cut = rows[:FIELD_CAP], rows[FIELD_CAP:]
+    # Re-attach the named exceptions, in their own finishing order after the
+    # window. They are appended rather than merged so the first FIELD_CAP rows
+    # remain exactly the window, whatever else is in the file.
+    kept += [r for r in cut if (r["name"], year) in KEEP_BEYOND_CAP]
+    return kept
 
 
 def add_gaps(rows):
@@ -244,7 +273,7 @@ def scrape_year(year, rec, force=False):
     # Finishers first in classification order, then the unranked. This is the
     # order FIELD_CAP windows over, so it has to be right before the cut.
     n_men = len(rows)
-    rows = apply_field_rule(rows, rule)
+    rows = apply_field_rule(rows, rule, year)
     add_gaps(rows)
     finishers = sum(1 for r in rows if r["status"] == "FINISHED")
     no_country = sum(1 for r in rows if not r["country"])
@@ -264,7 +293,9 @@ def scrape_year(year, rec, force=False):
         "field_size_source": n_source,
         "field_size_men": n_men,
         "field_size_selected": len(rows),
-        "truncated": rule == "open_field" and len(rows) == FIELD_CAP,
+        "truncated": rule == "open_field" and len(rows) >= FIELD_CAP,
+        "kept_beyond_cap": sorted(r["name"] for r in rows
+                                  if (r["name"], year) in KEEP_BEYOND_CAP),
         "finishers": finishers,
         "no_country": no_country,
         "source_url": source_url,
@@ -307,7 +338,8 @@ def main(argv=None):
         print(f"  {year}  {i['source']:<14} {i['event_name']:<16} "
               f"{i['rule']:<13} men={i['field_size_men']:<4} "
               f"kept={i['field_size_selected']:<4} fin={i['finishers']:<4} "
-              f"{'CAPPED' if i['truncated'] else '      '} "
+              f"{'CAPPED' if i['truncated'] else '      '}"
+              f"{'+' + str(len(i['kept_beyond_cap'])) if i['kept_beyond_cap'] else '  '} "
               f"winner={winner['name'] if winner else '?'}")
         written += 1
     print(f"\nwrote {written} file(s) to {os.path.relpath(OUT_DIR, HERE)}/")

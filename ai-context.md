@@ -1383,7 +1383,7 @@ the classics, done at export time by `export_gravel.py`.
 | `leadville` | Leadville Trail 100 MTB | LV | mtb | athlinks | | `big-sugar` | Big Sugar Gravel | BS | gravel | athlinks |
 | `traka` | The Traka 360 | TK | gravel | sportmaniacs / tretzesports | | | | | | |
 
-**94 race-years · 8,115 results · 3,948 riders · 105 of them already in the DB from their road careers.**
+**94 race-years · 8,118 results · 3,950 riders · 107 of them already in the DB from their road careers.**
 
 Six of the seven are today's Life Time Grand Prix line-up, but **the archive is
 deliberately wider than that series**. The Grand Prix began in 2022; Leadville
@@ -1493,8 +1493,8 @@ Life Time edition gets.
 |---|---|---|---|---|
 | 2021 | `TRAKA 360` | `open_field` | 72 | 72 (under the cap) |
 | 2022 | `THE TRAKA 360` | `open_field` | 201 | **100** |
-| 2023 | `THE TRAKA 360` | `open_field` | 291 | **100** |
-| 2024 | `THE TRAKA 360` | `open_field` | 737 | **100** |
+| 2023 | `THE TRAKA 360` | `open_field` | 291 | **100** + 1 |
+| 2024 | `THE TRAKA 360` | `open_field` | 737 | **100** + 2 |
 | 2026 | `360 PRO M` | `elite_course` | 135 | 135 |
 
 The rule comes out of `resolve_traka_events.py` and is recorded in the map, so
@@ -1508,10 +1508,33 @@ it is reviewable rather than inferred at scrape time:
 
 `field_size_men` records the true size beside `field_size_selected`, and
 `truncated` flags the editions that hit the cap, so the window stays visible as
-a window. The cost is real and worth naming: Jeremy Hunt and Leonardo Basso are
-genuine road-career crossovers who finished outside the top 100 and are
-therefore not in the archive at all. That is the same trade every `open_field`
-edition already makes.
+a window.
+
+**Three riders are kept beyond the window by explicit decision**
+(`scrape_traka.KEEP_BEYOND_CAP`, Eric 2026-08-24) — the "+1" and "+2" above.
+The window exists because a mass-start field has no line between elite and
+everyone else; that is true of the field as a whole and still leaves specific
+riders worth an exception, namely road professionals whose gravel ride is the
+crossover this archive exists to show:
+
+| rider | year | where |
+|---|---|---|
+| Leonardo Basso | 2023 | 139th |
+| Leonardo Basso | 2024 | 103rd — three places outside the cap |
+| Jeremy Hunt | 2024 | **DNF** — never in the window at all, rather than just outside it |
+
+Two properties make this safe rather than a hole in the rule. An exception
+**keeps its real finishing position** — Basso is stored 103rd in a field of
+100, which is the honest way to say he finished 103rd — and the first
+`FIELD_CAP` rows remain exactly the window, so nobody else's rank moves. The
+list is keyed `(name, year)`, so a namesake in another edition inherits
+nothing. Keep it short: every addition makes "top 100" less true as a
+description of the archive, which is why the count is reported per edition.
+
+Hunt's row is a non-finisher, stored exactly as the archive's other 233
+non-finisher rows are — `stage_rank` NULL, `status` DNF. Matej Mohorič's
+Unbound 2024 DNF is the same shape. The reason he needed naming at all is that
+DNFs sort last and so are never what fills a cap.
 
 ### The Traka's three upstream traps
 

@@ -32606,6 +32606,24 @@
    2010
   ]
  },
+ "jeremy hunt": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "matched",
+  "evidence": "Hunt Jeremy (gb), road 1996-2012, gravel 2024-2024",
+  "first_name": "Jeremy",
+  "homonym_suspect": false,
+  "last_name": "Hunt",
+  "name": "Jeremy Hunt",
+  "results": 1,
+  "rider_id": "rider/jeremy-hunt",
+  "years": [
+   2024
+  ]
+ },
  "jeremy kroto": {
   "birth_year_approx": 1978,
   "countries": [
@@ -43234,6 +43252,25 @@
   "rider_id": "rider/leonard-muller",
   "years": [
    2026
+  ]
+ },
+ "leonardo basso": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "matched",
+  "evidence": "Basso Leonardo (it), road 2018-2023, gravel 2023-2024",
+  "first_name": "Leonardo",
+  "homonym_suspect": false,
+  "last_name": "Basso",
+  "name": "Leonardo Basso",
+  "results": 2,
+  "rider_id": "rider/leonardo-basso",
+  "years": [
+   2023,
+   2024
   ]
  },
  "leroy popowski": {

@@ -8,11 +8,14 @@
   "distance_km": 360.0,
   "event_id": "644e5f00-d5cc-4ae6-872b-5945ac1f1e7d",
   "event_name": "THE TRAKA 360",
-  "fetched_at": "2026-08-24T13:52:16+00:00",
+  "fetched_at": "2026-08-24T14:51:00+00:00",
   "field_size_men": 291,
-  "field_size_selected": 100,
+  "field_size_selected": 101,
   "field_size_source": 316,
-  "finishers": 100,
+  "finishers": 101,
+  "kept_beyond_cap": [
+   "Leonardo Basso"
+  ],
   "no_country": 0,
   "race_slug": "traka",
   "rank_type": "gun",
@@ -1621,6 +1624,22 @@
    "name": "Pierfrancesco Santin",
    "rank": 100,
    "rank_overall": 107,
+   "status": "FINISHED"
+  },
+  {
+   "age": null,
+   "bib": "335",
+   "category": "-",
+   "club": "FAMIGLIA BASSO BIKES",
+   "country": "it",
+   "finish_seconds": 67260,
+   "first_name": "Leonardo",
+   "gap_seconds": 20718,
+   "gender": "M",
+   "last_name": "Basso",
+   "name": "Leonardo Basso",
+   "rank": 139,
+   "rank_overall": 148,
    "status": "FINISHED"
   }
  ]
