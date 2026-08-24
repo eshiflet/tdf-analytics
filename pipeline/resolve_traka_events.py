@@ -37,7 +37,9 @@ import os
 import re
 import sys
 
-from race_common import GRAVEL, SOURCE_SPORTMANIACS, SOURCE_TRETZESPORTS, exit_on_help
+from race_common import (GRAVEL, SOURCE_PCS, SOURCE_SPORTMANIACS,
+                         SOURCE_TRETZESPORTS, exit_on_help)
+import scrape_pcs_gravel as pcs
 import traka_api as api
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -48,6 +50,15 @@ MAP_PATH = os.path.join(HERE, "gravel_scrapes", "_traka_events.json")
 # ran, not just the 360, so the skip reasons below can be stated from evidence.
 TRETZE_IDS = [827, 835, 901, 903, 904, 906, 996, 997, 998,
               1051, 1052, 1062, 1075, 1316, 1317, 1318]
+
+# PCS files gravel under `national-race/`, a namespace its own search does not
+# return — which is why an earlier pass concluded, wrongly and in writing, that
+# PCS had nothing here. Probed by URL, it has 2023 onward, and it is the
+# PREFERRED source for any year it covers: it publishes real rider/<slug> ids,
+# so the crossover to a road career becomes an exact join instead of a name
+# match, and it has 2025, which neither timer ever published.
+PCS_SLUG = "the-traka-360"
+PCS_YEARS = range(2023, 2027)
 
 # A name is a 360 if it opens with that number, with the race name optionally
 # in front. Anchored at the start so "THE TRAKA 100" cannot match on a stray
@@ -88,6 +99,32 @@ def pick_360(events):
     if len(mens) == 1:
         return mens[0], cands, "elite_course"
     return None, cands, None
+
+
+def resolve_pcs(force=False):
+    """Every year PCS holds, which outranks whatever a timer has for it."""
+    out = {}
+    for year in PCS_YEARS:
+        data = pcs.scrape_year("traka", PCS_SLUG, year, force=force)
+        if data is None:
+            continue
+        i, rows = data["info"], data["rows"]
+        out[str(year)] = {
+            "source": SOURCE_PCS,
+            "pcs_slug": PCS_SLUG,
+            "event_id": i["event_id"],
+            "event_name": f"The Traka 360 ({year})",
+            "rule": "pcs_field",
+            "distance_km": i["distance_km"],
+            "date": None,
+            "city": "Girona",
+            "n_rows": len(rows),
+            "n_men": len(rows),
+            "pcs_pro_riders": i["pcs_pro_riders"],
+            "pcs_national_only": i["pcs_national_only"],
+            "last_rank": i["last_rank"],
+        }
+    return out
 
 
 def resolve_sportmaniacs(force=False):
@@ -190,17 +227,25 @@ def _usable(rec):
 
 def report(data):
     print(f"\n=== {GRAVEL['traka'].name}   (Girona, Spain)")
-    print(f"{'year':<6}{'source':<14}{'event':<16}{'rule':<14}"
+    print(f"{'year':<6}{'source':<14}{'event':<22}{'rule':<14}"
           f"{'km':>5}{'rows':>7}{'men':>6}  note")
     for year in sorted(data):
         r = data[year]
         if "event_id" not in r or r.get("skip"):
             note = r.get("skip", "")
-            print(f"{year:<6}{r['source']:<14}{r.get('event_name','—'):<16}"
+            print(f"{year:<6}{r['source']:<14}{r.get('event_name','—'):<22}"
                   f"{'':<14}{'':>5}{'':>7}{'':>6}  SKIP: {note}")
             continue
-        print(f"{year:<6}{r['source']:<14}{r['event_name']:<16}{r['rule']:<14}"
-              f"{r['distance_km'] or 0:>5.0f}{r['n_rows']:>7}{r['n_men']:>6}")
+        extra = ""
+        if r["source"] == "pcs":
+            extra = (f"  pro={r['pcs_pro_riders']} national={r['pcs_national_only']}"
+                     f" last_rank={r['last_rank']}")
+        seen = r.get("also_seen") or []
+        if seen:
+            extra += "  (also: " + ", ".join(
+                f"{x['source']} {x.get('n_men') or x.get('skip')}" for x in seen) + ")"
+        print(f"{year:<6}{r['source']:<14}{r['event_name']:<22}{r['rule']:<14}"
+              f"{r['distance_km'] or 0:>5.0f}{r['n_rows']:>7}{r['n_men']:>6}{extra}")
     usable = [y for y, r in data.items() if r.get("event_id") and not r.get("skip")]
     print(f"\n{len(usable)} usable race-year(s): {', '.join(sorted(usable))}")
     print(f"{sum(data[y]['n_men'] for y in usable)} men's results")
@@ -224,7 +269,12 @@ def main(argv=None):
         return 0
 
     data = resolve_tretzesports(force=args.force)
-    for year, rec in resolve_sportmaniacs(force=args.force).items():
+    sm = resolve_sportmaniacs(force=args.force)
+    # The timers are consulted first so their record is visible in the map, but
+    # PCS wins every year it covers — see PCS_YEARS. The timer's own reading is
+    # kept alongside as `also_seen`, which is what makes the two comparable at
+    # a glance rather than one silently replacing the other.
+    for year, rec in sm.items():
         # 2021 exists in BOTH systems: tretzesports has the real 72-man field
         # and sportmaniacs has an empty stub. A record that resolved to actual
         # results always wins, whichever platform it came from — otherwise
@@ -234,6 +284,14 @@ def main(argv=None):
             old.setdefault("also_seen", []).append(
                 {"source": rec["source"], "skip": rec.get("skip")})
             continue
+        data[year] = rec
+    for year, rec in resolve_pcs(force=args.force).items():
+        prev = data.get(year)
+        if prev:
+            rec["date"] = rec["date"] or prev.get("date")
+            rec["also_seen"] = (prev.get("also_seen") or []) + [{
+                "source": prev["source"], "event_name": prev.get("event_name"),
+                "n_men": prev.get("n_men"), "skip": prev.get("skip")}]
         data[year] = rec
     with open(MAP_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1, sort_keys=True)

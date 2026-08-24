@@ -267,6 +267,11 @@ def scrape_year(year, rec, force=False):
                       f"{rec['event_id']}")
         api_url = ("https://tretzesports.com/curses3/backend/code/api/"
                    f"getResultats.php?idCursa={rec['event_id']}")
+    elif rec["source"] == "pcs":
+        # PCS covers 2023 on and outranks both timers for those years — it has
+        # real rider ids. scrape_pcs_gravel.py writes those files; this one
+        # stays the source for 2021-22, which PCS does not have.
+        return None
     else:
         raise ValueError(f"{year}: unknown source {rec['source']!r}")
 

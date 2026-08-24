@@ -36,6 +36,7 @@ import os
 import sqlite3
 import sys
 
+from ingest_classics import upsert_team
 from link_gravel_riders import fold
 from race_set_ingest import (
     capture_patches,
@@ -172,12 +173,18 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
             collisions.append((r["name"], seen_riders[rider_id], r.get("rank")))
         seen_riders[rider_id] = r.get("rank")
         bib = r.get("bib")
+        # Athlinks records no team, which is why this column was NULL for every
+        # gravel result. A PCS-sourced row DOES carry one, and it is a real
+        # trade team for that season — the same kind of value the classics
+        # store, from the same source. Coverage is sparse (PCS names a team for
+        # 2 to 29 riders an edition), and sparse-but-real beats absent.
+        team_id = upsert_team(cur, r.get("team_slug"), r.get("team_name"), api)
         cur.execute(
             """INSERT OR REPLACE INTO stage_results
                  (stage_id, rider_id, team_id, bib_number, stage_rank, status,
                   finish_time_seconds, gap_seconds, age_at_race)
-               VALUES (?,?,NULL,?,?,?,?,?,?)""",
-            (stage_id, rider_id,
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (stage_id, rider_id, team_id,
              int(bib) if (bib or "").isdigit() else None,
              r.get("rank"), r.get("status") or "FINISHED",
              r.get("finish_seconds"), r.get("gap_seconds"), r.get("age")),

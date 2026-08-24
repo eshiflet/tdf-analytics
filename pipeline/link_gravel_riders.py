@@ -160,7 +160,7 @@ def gravel_people():
             p = people.setdefault(key, {
                 "name": r["name"], "first_name": r["first_name"],
                 "last_name": r["last_name"], "years": set(), "countries": set(),
-                "births": set(), "results": 0,
+                "births": set(), "results": 0, "pcs_slugs": set(),
             })
             p["years"].add(year)
             p["results"] += 1
@@ -168,11 +168,32 @@ def gravel_people():
                 p["countries"].add(r["country"])
             if r.get("age"):
                 p["births"].add(year - int(r["age"]))
+            # A PCS-sourced row carries the rider's real id. That ends the
+            # guessing for this person: everything below is machinery for
+            # deciding identity from a NAME, which is only necessary because
+            # Athlinks has no id to offer. Only `rider/` counts —
+            # `national-rider/` is a different namespace that does not exist
+            # in `riders`.
+            if r.get("pcs_is_pro") and r.get("pcs_slug"):
+                p["pcs_slugs"].add(r["pcs_slug"])
     return people
 
 
 def decide(person, by_tokens):
     """(rider_id or None, decision, evidence) for one gravel name."""
+    # PCS publishes the id, so there is nothing to decide. This is strictly
+    # better evidence than any name rule below and is checked first.
+    slugs = person.get("pcs_slugs") or set()
+    if len(slugs) == 1:
+        slug = next(iter(slugs))
+        return slug, "pcs_slug", f"PCS publishes this rider as {slug}"
+    if len(slugs) > 1:
+        # One folded name, two PCS ids: two different people who happen to
+        # share a name. Guessing between them is exactly the wrong merge this
+        # script exists to avoid.
+        return (None, "new_ambiguous_pcs",
+                f"PCS has {len(slugs)} different riders under this name: "
+                + ", ".join(sorted(slugs)))
     toks = tokens(person["name"])
     if len(toks) < 2:
         return None, "new_single_token", "fewer than two name tokens"
@@ -265,6 +286,7 @@ def main(argv=None):
             homonyms.append((p["name"], sorted(p["births"]), sorted(p["countries"]),
                              sorted(p["years"])))
         out[key] = {
+            "pcs_slug": sorted(p.get("pcs_slugs") or ())[:1] or None,
             "rider_id": rider_id, "name": p["name"],
             "first_name": p["first_name"], "last_name": p["last_name"],
             "decision": decision, "evidence": why,

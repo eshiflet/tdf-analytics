@@ -20,6 +20,7 @@ import sqlite3
 
 import ingest_classics
 import ingest_gravel
+import scrape_pcs_gravel
 import scrape_traka
 from resolve_traka_events import pick_360
 from race_common import GRAVEL, gravel_route_type
@@ -684,3 +685,60 @@ class TestTrakaRowParsing(unittest.TestCase):
                 {"rank": None, "finish_seconds": None, "gap_seconds": None}]
         scrape_traka.add_gaps(rows)
         self.assertEqual([r["gap_seconds"] for r in rows], [0, 17, None])
+
+
+class TestPCSGravelParsing(unittest.TestCase):
+    """PCS is the preferred gravel source where it exists. Two things about it
+    corrupt data silently if read naively."""
+
+    @staticmethod
+    def row(rank, slug, time_raw):
+        return {"rank_raw": rank, "pcs_slug": slug, "surname": "X", "given": "Y",
+                "team_slug": None, "team_name": None, "country": "es",
+                "time_raw": time_raw}
+
+    def test_the_winners_cell_is_a_time_and_everyone_elses_is_a_gap(self):
+        # One cell holds both. Reading the winner's as a gap and adding it to
+        # itself is what doubled 3,377 winning times across this DB once.
+        rows = scrape_pcs_gravel.to_rows([
+            self.row("1", "rider/a", "12:55:42"),
+            self.row("2", "rider/b", "13:00"),
+            self.row("3", "rider/c", "1:49:13"),
+        ])
+        self.assertEqual([r["finish_seconds"] for r in rows],
+                         [46542, 46542 + 780, 46542 + 6553])
+        self.assertEqual([r["gap_seconds"] for r in rows], [0, 780, 6553])
+
+    def test_a_national_rider_is_not_a_pro_slug(self):
+        # national-rider/ is a separate namespace that does not exist in
+        # `riders`; storing one as a rider_id would invent a join.
+        rows = scrape_pcs_gravel.to_rows([
+            self.row("1", "rider/a", "10:00:00"),
+            self.row("2", "national-rider/b", "1:00"),
+        ])
+        self.assertEqual([r["pcs_is_pro"] for r in rows], [True, False])
+
+    def test_a_non_finisher_keeps_no_rank_and_no_time(self):
+        rows = scrape_pcs_gravel.to_rows([
+            self.row("1", "rider/a", "10:00:00"),
+            self.row("DNF", "rider/b", ""),
+        ])
+        self.assertIsNone(rows[1]["rank"])
+        self.assertIsNone(rows[1]["finish_seconds"])
+        self.assertEqual(rows[1]["status"], "DNF")
+
+    def test_true_positions_are_preserved_not_renumbered(self):
+        # PCS lists only riders it tracks, so 2024's 87 rows run to rank 147.
+        # Renumbering would claim 87 people finished a race that 147 finished.
+        rows = scrape_pcs_gravel.to_rows([
+            self.row("1", "rider/a", "10:00:00"),
+            self.row("147", "rider/b", "3:00:00"),
+        ])
+        self.assertEqual([r["rank"] for r in rows], [1, 147])
+
+    def test_distance_comes_from_the_header_and_zero_means_unknown(self):
+        html = '<b> &rsaquo; </b> (360km)<tbody></tbody>'
+        self.assertEqual(scrape_pcs_gravel.parse_result(html)[1], 360.0)
+        # Big Sugar's page says (0km) — PCS does not know it. A gap, not a zero.
+        html0 = '<b> &rsaquo; </b> (0km)<tbody></tbody>'
+        self.assertIsNone(scrape_pcs_gravel.parse_result(html0)[1])

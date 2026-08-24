@@ -1381,9 +1381,9 @@ the classics, done at export time by `export_gravel.py`.
 | `sea-otter` | Sea Otter Classic | SO | mtb→gravel | athlinks | | `chequamegon` | Chequamegon MTB Festival | CQ | mtb | athlinks |
 | `unbound` | Unbound Gravel | UB | gravel | athlinks | | `little-sugar` | Little Sugar MTB | LS | mtb | athlinks |
 | `leadville` | Leadville Trail 100 MTB | LV | mtb | athlinks | | `big-sugar` | Big Sugar Gravel | BS | gravel | athlinks |
-| `traka` | The Traka 360 | TK | gravel | sportmaniacs / tretzesports | | | | | | |
+| `traka` | The Traka 360 | TK | gravel | **pcs** (2023-26) / tretzesports (2021-22) | | | | | | |
 
-**94 race-years · 8,118 results · 3,950 riders · 107 of them already in the DB from their road careers.**
+**95 race-years · 8,152 results · 3,944 riders · 108 of them with a road career in this DB.**
 
 Six of the seven are today's Life Time Grand Prix line-up, but **the archive is
 deliberately wider than that series**. The Grand Prix began in 2022; Leadville
@@ -1394,30 +1394,66 @@ special-cases it: ordering by `stage_date` renders it correctly for free.
 
 The Traka is not a Life Time race and not part of that series at all — it is
 here because it is where the European road-to-gravel crossover actually shows
-up. Adding it took the road-career crossover from 93 riders to 105, and the
-thirteen it added are almost all European pros: Bram Tankink, Ide Schelling,
-Diego Rosa, Tom Leezer, Christian Meier, Joonas Henttala, Ruben Zepuntke,
-Umberto Marengo, Alan Riou.
+up. Of its 443 riders, **34 also have road results** in this DB: Bram Tankink,
+Ide Schelling, Diego Rosa, Tom Leezer, Christian Meier, Joonas Henttala,
+Leonardo Basso, Jeremy Hunt, Ruben Zepuntke, Umberto Marengo, Alan Riou.
+
+Be exact about the size of that win, because it is easy to overstate. The
+gravel set's cross-race rider count went **93 → 107** when The Traka arrived
+from the timers, and **107 → 108** when it moved to PCS. PCS barely finds more
+crossovers. What it changes is that they stop being *inferred*: 183 of The
+Traka's riders now carry an id PCS published rather than one this repo matched
+by name.
 
 **Men's fields only, for now.** These races run co-equal men's and women's
 series and the women's half is a deliberate gap, not an oversight — `riders`
 has no gender column, so adding it is a schema change and a second pass.
 
-### PCS has nothing here — do not reach for it
+### PCS's gravel coverage — an earlier claim here was WRONG
 
-Verified, not assumed, and re-verified for The Traka on 2026-08-24: PCS's
-search returns **one** gravel race, "Gravel and Tar" (New Zealand). Not
-Unbound, not The Traka, and not the UCI Gravel World Championships. It does
-carry gravel TEAM rosters for 2026 (Tudor, Movistar), which is a different
-thing and not useful here. No rider slugs, no team attribution, no
-ProfileScore, no `won_how`. Every instinct the rest of this pipeline has about
-where data comes from is wrong for all seven of these races.
+This section used to say PCS had nothing for gravel, "verified, not assumed".
+**It was wrong, and how it was wrong is the part worth keeping.** The check was
+a single method: search PCS's own index for "unbound", "traka" and "gravel",
+get back only "Gravel and Tar", conclude it is not there. That search **does
+not return `national-race/` entries**, which is exactly where PCS files gravel.
+One method, written down as verified. Eric found The Traka on PCS afterwards.
 
-**UCI Gravel World Championships is wanted but not yet sourced** (asked for
-2026-08-24, deferred). PCS does not have it; UCI's own dataride is an ASP.NET
+Probe by URL, never by search:
+
+```
+procyclingstats.com/national-race/<slug>/<year>/result
+```
+
+| race | on PCS |
+|---|---|
+| **The Traka 360** | 2023–2026 — including **2025**, which neither timer ever published |
+| The Traka 200 | yes (deliberately out of scope — a different race, not a class of the 360) |
+| **Big Sugar Gravel** | 2023–2025 |
+| Unbound, Leadville, Sea Otter, Chequamegon, Little Sugar | genuinely absent |
+
+So the old consequences still hold for five of the six Life Time races, and
+NOT for The Traka, which now comes from PCS for every year PCS has.
+
+**Big Sugar stays on Athlinks** despite PCS having it, and the reasoning is the
+opposite of The Traka's. Athlinks already resolves a real elite men's course
+there (`BIG SUGAR PRO MEN`, `… ELITE MEN`), so the field is already the sport's
+own pro field rather than a window we invented; it is slightly deeper than PCS
+(76/93/102 against 73/84/99); it covers 2021 and 2022, which PCS does not; and
+PCS publishes no distance for it at all (`(0km)`). PCS earns its place on The
+Traka because it replaces a *guess*; on Big Sugar it would replace something
+already better.
+
+That comparison did clear one thing up. **Big Sugar 2025 is stored at 86.91 km
+against ~167 km every other year, and that is correct** — Athlinks' own course
+name is `BIG SUGAR 50 MILE (Formerly 100)`, every 2025 course is 86.91 km, and
+the winner's 39.2 km/h is right for a shorter race. The edition was genuinely
+halved. It looks exactly like a course-resolution bug and is not one.
+
+**UCI Gravel World Championships is still unsourced** (asked for 2026-08-24,
+deferred). Not on PCS under either namespace; UCI's own dataride is an ASP.NET
 `__VIEWSTATE` app that was returning `Exception occured while executing the
-controller`; firstcycling sits behind the same Cloudflare check that blocks
-cyclingflash. Eric is choosing a source.
+controller`; firstcycling sits behind the Cloudflare check that also blocks
+cyclingflash.
 
 ### The source for the six: Athlinks, which Life Time owns
 
@@ -1447,10 +1483,35 @@ Not on Athlinks and not on PCS — verified by search, PCS's only gravel race is
 "Gravel and Tar" (NZ). Its results live on the two timers Klassmark has used,
 and both are plain JSON over GET, gzipped, no key and no browser:
 
-| years | platform | how it is addressed |
+| years | source | how it is addressed |
 |---|---|---|
+| **2023–2026** | **PCS** | `national-race/the-traka-360/{year}/result` — preferred wherever it exists |
 | 2021, 2022 | tretzesports.com | `getCursa.php?idCursa=N` + `getResultats.php?idCursa=N` |
-| 2023, 2024, 2026 | sportmaniacs.com | `api/races/{slug}` → `api/events?race={id}` → `races/rankings/{eventId}` |
+| *(2023, 2024, 2026)* | *sportmaniacs.com* | *still resolved and recorded as `also_seen`, but PCS wins* |
+
+**PCS wins every year it covers**, for one reason that outranks the rest: it
+publishes real `rider/<slug>` ids. Identity in the gravel set is otherwise
+matched by NAME under a strict rule with its evidence written down, because
+Athlinks has no id to join on — a PCS slug turns that claim into a fact. It
+also has 2025, which neither timer ever published, and it gives real trade
+teams and PCS's own distance figure (independently confirming 360 km for
+2023–25 and **325 km for 2026**).
+
+Two things about PCS's rider column shape everything downstream:
+
+| namespace | meaning |
+|---|---|
+| `rider/<slug>` | a rider PCS tracks. Joins straight to `riders`. 183 of The Traka's riders resolve this way. |
+| `national-rider/<slug>` | known to PCS only from national/amateur racing. A **separate namespace** that does not exist in `riders` and must never be stored as if it did — these fall back to name matching like any other gravel-only rider. |
+
+`link_gravel_riders.decide()` checks the PCS slug **first** and returns
+`pcs_slug` as the decision; one folded name carrying two different PCS ids is
+two people, and returns `new_ambiguous_pcs` rather than picking one.
+
+PCS's time column is its usual one-cell time-and-gap — rank 1 absolute,
+everyone below a gap — so the winner's gap is forced to 0 and every other
+finisher's absolute time is winner + gap. Reading the winner's cell as both is
+the bug that doubled 3,377 winning times across this DB once already.
 
 **Only the 360 km course.** The Traka also runs 50/60/100/200/560 km events on
 the same weekend; those are different races, not classes of this one.
@@ -1481,64 +1542,57 @@ The race was held on 2025-04-30. Recorded as a skip with its reason rather than
 inferred away — and if the organiser publishes it later, re-running the resolve
 step picks it up with no code change.
 
-### The Traka gets the same FIELD_CAP window as everything else
+### Field selection: `pcs_field` for 2023 on, FIELD_CAP before it
 
-Not a special case — the same rule, applied by the same constant, for the same
-reason. It matters more here than anywhere: **737 men finished the 2024 Traka
-360 in one mass start.** Kept whole, that single edition would have been more
-of the off-road archive than Unbound's entire twenty years, under a rule no
-Life Time edition gets.
-
-| year | event | rule | men | kept |
+| year | source | rule | rows | note |
 |---|---|---|---|---|
-| 2021 | `TRAKA 360` | `open_field` | 72 | 72 (under the cap) |
-| 2022 | `THE TRAKA 360` | `open_field` | 201 | **100** |
-| 2023 | `THE TRAKA 360` | `open_field` | 291 | **100** + 1 |
-| 2024 | `THE TRAKA 360` | `open_field` | 737 | **100** + 2 |
-| 2026 | `360 PRO M` | `elite_course` | 135 | 135 |
+| 2021 | tretzesports | `open_field` | 72 | under the cap anyway |
+| 2022 | tretzesports | `open_field` | **100** | capped from 201 |
+| 2023 | pcs | `pcs_field` | 21 | ranks 1–21 |
+| 2024 | pcs | `pcs_field` | 87 | ranks run to **147** |
+| 2025 | pcs | `pcs_field` | 123 | ranks run to **198** |
+| 2026 | pcs | `pcs_field` | 141 | ranks run to 133 |
 
-The rule comes out of `resolve_traka_events.py` and is recorded in the map, so
-it is reviewable rather than inferred at scrape time:
+**`pcs_field` is never truncated, and that is not an exemption.** FIELD_CAP
+exists because a mass-start result list has no line in it between elite and
+everyone else, so any cutoff is ours. PCS lists only the riders it holds a page
+for — that IS a line, drawn by the sport's own record-keeper, exactly as an
+`elite_course` is. There is no tail to window.
 
-- **One 360 on the programme → `open_field`.** Everyone rode the same race and
-  there is no line in the data between elite and everyone else, so any cutoff
-  is ours. Exactly Leadville's position through 2015.
-- **Split by class → `elite_course`.** 2026's `360 PRO M` / `PRO W` / `OPEN` is
-  the sport drawing that line itself, so the whole field is kept.
+What PCS publishes is a **sparse subset at TRUE positions**: 87 rows in 2024
+whose ranks run to 147. Those holes are real and are preserved. Renumbering
+them 1–87 would claim 87 people finished a race that 147 finished, and it would
+put a rider who came 147th on the same line as one who came 87th.
 
-`field_size_men` records the true size beside `field_size_selected`, and
-`truncated` flags the editions that hit the cap, so the window stays visible as
-a window.
+The 2022 cap still bites (201 men → 100) because tretzesports publishes the
+whole mass-start field and nothing distinguishes the front of it. Where a year
+has both, PCS's row count is far smaller than the timer's — 2024 is 87 against
+737 — because they are answering different questions: "who does PCS track" and
+"who crossed the line".
 
-**Three riders are kept beyond the window by explicit decision**
-(`scrape_traka.KEEP_BEYOND_CAP`, Eric 2026-08-24) — the "+1" and "+2" above.
-The window exists because a mass-start field has no line between elite and
-everyone else; that is true of the field as a whole and still leaves specific
-riders worth an exception, namely road professionals whose gravel ride is the
-crossover this archive exists to show:
+`KEEP_BEYOND_CAP` still exists in `scrape_traka.py` but no longer fires: it
+named riders kept past a window that the PCS-sourced years do not apply. The
+move to PCS did not preserve what it was doing, and the difference is worth
+recording rather than discovering later:
 
-| rider | year | where |
+| rider | under the timers | under PCS |
 |---|---|---|
-| Leonardo Basso | 2023 | 139th |
-| Leonardo Basso | 2024 | 103rd — three places outside the cap |
-| Jeremy Hunt | 2024 | **DNF** — never in the window at all, rather than just outside it |
+| Leonardo Basso | 2023 139th, 2024 103rd | **2024 only, at rank 100** |
+| Jeremy Hunt | 2024 DNF | **absent** |
 
-Two properties make this safe rather than a hole in the rule. An exception
-**keeps its real finishing position** — Basso is stored 103rd in a field of
-100, which is the honest way to say he finished 103rd — and the first
-`FIELD_CAP` rows remain exactly the window, so nobody else's rank moves. The
-list is keyed `(name, year)`, so a namesake in another edition inherits
-nothing. Keep it short: every addition makes "top 100" less true as a
-description of the archive, which is why the count is reported per edition.
+PCS lists no non-finishers at all for 2023–2025 (2026 has 27), so Hunt's DNF
+simply is not in the source. And the two sources disagree on Basso: PCS ranks
+him 100th where sportmaniacs had him 103rd among men and 112th overall — three
+different numbers for one ride, which is a good reminder that "rank" means
+something slightly different in each. PCS's is the one stored, because PCS is
+the source of record for that year.
 
-Hunt's row is a non-finisher, stored exactly as the archive's other 233
-non-finisher rows are — `stage_rank` NULL, `status` DNF. Matej Mohorič's
-Unbound 2024 DNF is the same shape. The reason he needed naming at all is that
-DNFs sort last and so are never what fills a cap.
+### The Traka's upstream traps
 
-### The Traka's three upstream traps
-
-Each of these corrupts the archive silently rather than loudly:
+The first and third below applied to sportmaniacs, which no longer sources any
+ingested year — kept because the code still resolves it for comparison and
+because a future race on that platform will meet them again. The second is
+live, for 2021 and 2022:
 
 1. **A sportmaniacs non-finisher carries `officialTime: "00:00:00"`** with an
    empty position. Parsed naively that is a finish in zero seconds, which sorts
