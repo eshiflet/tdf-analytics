@@ -48,7 +48,8 @@ RACE_NAME = {"tour": "Tour de France", "giro": "Giro d'Italia",
 def violations(cur):
     """Riders holding more than one bib inside one edition — the invariant."""
     return cur.execute("""
-        SELECT e.year, r.name AS race, sr.rider_id, COUNT(DISTINCT sr.bib_number) n
+        SELECT st.edition_id, e.year, r.name AS race, sr.rider_id,
+               COUNT(DISTINCT sr.bib_number) n
           FROM stage_results sr
           JOIN stages st ON st.stage_id = sr.stage_id
           JOIN race_editions e ON e.edition_id = st.edition_id
@@ -58,15 +59,26 @@ def violations(cur):
         HAVING n > 1""").fetchall()
 
 
-def fillable(cur, race=None):
+def fillable(cur, race=None, skip_editions=()):
     """[(result_id, stage_id, rider_id, bib, race, year, route_type)] to write.
 
     `known` collapses each (edition, rider) to their single bib. MIN() is not
     picking a winner among several — the guard has already established there is
-    only ever one — it is just how SQLite returns the value of a group.
+    only ever one for every edition this writes to — it is just how SQLite
+    returns the value of a group.
+
+    `skip_editions` are the editions where that is not true. They are excluded
+    here rather than aborting the run: a rider carrying two numbers in the 1931
+    Tour makes 1931 unfillable and says nothing whatever about 1985. The guard
+    used to be global, so those six rider-editions blocked the tool for every
+    race and every year — including the 7,647 TTT bibs that a re-ingest of
+    1960-2025 has to put back.
     """
     where = "AND r.name = ?" if race else ""
     args = (RACE_NAME[race],) if race else ()
+    if skip_editions:
+        where += " AND e.edition_id NOT IN (%s)" % ",".join("?" * len(skip_editions))
+        args = args + tuple(skip_editions)
     return cur.execute(f"""
         WITH known AS (
             SELECT st.edition_id, sr.rider_id, MIN(sr.bib_number) AS bib
@@ -97,17 +109,21 @@ def main(argv=None):
     cur = conn.cursor()
 
     bad = violations(cur)
+    skip = sorted({b["edition_id"] for b in bad})
     if bad:
-        print(f"REFUSING: {len(bad)} rider-edition(s) hold more than one bib, so "
-              "'the rider's bib elsewhere' is not a single value:")
+        print(f"SKIPPING {len(skip)} edition(s): {len(bad)} rider-edition(s) hold "
+              "more than one bib, so 'the rider's bib elsewhere' is not a single "
+              "value there. Nothing is written to these; every other edition is "
+              "unaffected.")
         for b in bad[:10]:
             print(f"    {b['race']} {b['year']} {b['rider_id']} ({b['n']} bibs)")
+        if len(bad) > 10:
+            print(f"    ... and {len(bad) - 10} more")
         print("  Run fix_name_swaps.py --from-db --dry-run; these are usually "
-              "adjacent-row name swaps.")
-        conn.close()
-        return 1
+              "adjacent-row name swaps. Some are upstream PCS collisions that "
+              "must NOT be renamed — see ai-context.md.")
 
-    rows = fillable(cur, args.race)
+    rows = fillable(cur, args.race, skip)
     by_race = Counter(r["race"] for r in rows)
     ttt = sum(1 for r in rows if r["route_type"] == "TTT")
     print(f"{'[DRY RUN] ' if not args.apply else ''}{len(rows):,} bib(s) fillable "

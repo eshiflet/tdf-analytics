@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import race_common as rc
 from audit_stage_counts import norm
+import backfill_bib_numbers
 from backfill_source_slugs import slugs_for_edition
 from detect_name_swaps import _bib_check
 from race_common import (
@@ -469,6 +470,79 @@ class TestStageNotes(unittest.TestCase):
         for key, entry in rc.load_stage_notes().items():
             self.assertGreater(len(entry.get("note", "")), 20, key)
             self.assertTrue(entry.get("source"), key)
+
+class TestBibBackfillScope(unittest.TestCase):
+    """backfill_bib_numbers — the guard, and how far it reaches.
+
+    A rider carrying two numbers in one edition makes "the rider's bib
+    elsewhere" ambiguous THERE. The guard used to be global, so six such
+    rider-editions in the 1931 and 1933 Tours blocked the tool for every race
+    and every year — including the 7,647 TTT bibs a re-ingest of 1960-2025 has
+    to put back.
+    """
+
+    def setUp(self):
+        self.conn = sqlite3.connect(":memory:")
+        self.conn.row_factory = sqlite3.Row
+        schema = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
+        with open(schema, encoding="utf-8") as f:
+            self.conn.executescript(f.read())
+        cur = self.conn.cursor()
+        cur.execute("INSERT INTO races (race_id, name, country, race_type) "
+                    "VALUES (1,'Tour de France','France','stage_race')")
+        for rider in ("rider/ambiguous", "rider/clean"):
+            cur.execute("INSERT INTO riders (rider_id, full_name) VALUES (?,?)",
+                        (rider, rider))
+        # 1931: one rider wears two numbers. 1985: the ordinary case, with a
+        # TTT row whose bib the parser could not read.
+        for year, eid in ((1931, 1), (1985, 2)):
+            cur.execute("INSERT INTO race_editions (edition_id, race_id, year) "
+                        "VALUES (?,1,?)", (eid, year))
+            for n in (1, 2):
+                cur.execute("INSERT INTO stages (edition_id, stage_number, route_type) "
+                            "VALUES (?,?,?)", (eid, n, "TTT" if n == 2 else "F"))
+        def result(stage_number, edition_id, rider, bib):
+            sid = cur.execute("SELECT stage_id FROM stages WHERE edition_id=? AND "
+                              "stage_number=?", (edition_id, stage_number)).fetchone()[0]
+            cur.execute("INSERT INTO stage_results (stage_id, rider_id, bib_number) "
+                        "VALUES (?,?,?)", (sid, rider, bib))
+        result(1, 1, "rider/ambiguous", 11)
+        result(2, 1, "rider/ambiguous", 77)      # the same rider, a second number
+        result(1, 2, "rider/clean", 55)
+        result(2, 2, "rider/clean", None)        # the TTT row to fill
+        self.conn.commit()
+        self.cur = self.conn.cursor()
+
+    def tearDown(self):
+        self.conn.close()
+
+    def test_the_ambiguous_edition_is_reported(self):
+        bad = backfill_bib_numbers.violations(self.cur)
+        self.assertEqual([(b["year"], b["rider_id"]) for b in bad],
+                         [(1931, "rider/ambiguous")])
+
+    def test_a_clean_edition_is_filled_even_so(self):
+        skip = {b["edition_id"] for b in backfill_bib_numbers.violations(self.cur)}
+        rows = backfill_bib_numbers.fillable(self.cur, "tour", sorted(skip))
+        self.assertEqual([(r["year"], r["rider_id"], r["bib"]) for r in rows],
+                         [(1985, "rider/clean", 55)])
+
+    def test_nothing_is_written_to_the_ambiguous_edition(self):
+        """The invariant still holds where it is actually in doubt: 1931 gets
+        no bib, however the rest of the run goes."""
+        skip = sorted({b["edition_id"]
+                       for b in backfill_bib_numbers.violations(self.cur)})
+        rows = backfill_bib_numbers.fillable(self.cur, "tour", skip)
+        self.assertNotIn(1931, [r["year"] for r in rows])
+
+    def test_without_the_skip_list_the_ambiguous_bib_would_be_guessed(self):
+        """Why the skip list exists rather than nothing at all: MIN() would
+        hand 1931 an arbitrary one of that rider's two numbers."""
+        rows = backfill_bib_numbers.fillable(self.cur, "tour")
+        self.assertEqual([r["year"] for r in rows], [1985],
+                         "1931's rows are already bibbed, so only the shape of "
+                         "the query is under test here")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
