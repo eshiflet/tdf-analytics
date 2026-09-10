@@ -217,6 +217,13 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # this path carries the most exposure of the three ingests.
         patched = capture_patches(cur, race_id, year)
 
+        # A stage's incidents (1904's disqualifications, 1998's Festina walkout)
+        # are keyed to a stage_id that is about to be deleted, and they exist in
+        # no scrape file. Carry them by stage NUMBER, which is what survives.
+        incidents = [(r["stage_number"], r["description"]) for r in cur.execute(
+            "SELECT s.stage_number, si.description FROM stage_incidents si "
+            "JOIN stages s USING(stage_id) WHERE s.edition_id=?", (eid,))]
+
         cur.execute("DELETE FROM stage_results WHERE stage_id IN (SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
         # Provenance is keyed by stage_id, and re-inserting an edition mints new
         # ones — without this the old rows are orphaned and accumulate as dead
@@ -225,14 +232,34 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         cur.execute(
             "DELETE FROM data_provenance WHERE entity='stages' AND entity_id IN "
             "(SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
+        cur.execute("DELETE FROM stage_incidents WHERE stage_id IN "
+                    "(SELECT stage_id FROM stages WHERE edition_id=?)", (eid,))
         cur.execute("DELETE FROM stages WHERE edition_id=?", (eid,))
-        cur.execute("DELETE FROM race_editions WHERE edition_id=?", (eid,))
 
-    cur.execute(
-        "INSERT INTO race_editions (race_id, year, edition_name) VALUES (?,?,?)",
-        (race_id, year, f"{year} {race_name}"),
-    )
-    edition_id = cur.lastrowid
+    # The edition ROW stays. It used to be deleted and re-inserted, which is
+    # how this path came to refuse every year it most needed to serve:
+    # classification_standings references edition_id and has no ON DELETE
+    # CASCADE, so from the moment the September standings landed (86 Tour, 88
+    # Giro and 80 Vuelta editions) the delete raised FOREIGN KEY constraint
+    # failed and rolled the whole ingest back. The verification that this path
+    # matched reingest_edition_results on 1949 predates those rows.
+    #
+    # Keeping the row also keeps what the scrape files do not carry: the
+    # ordinal edition_name ("72nd Tour de France", on 1,170 editions) and
+    # uci_classification, both of which the re-insert overwrote with a generic
+    # "YEAR Race". ingest_classics.replace_edition has always done it this way.
+    if existing:
+        edition_id = eid
+        cur.execute(
+            "UPDATE race_editions SET edition_name = COALESCE(edition_name, ?) "
+            "WHERE edition_id=?", (f"{year} {race_name}", edition_id))
+    else:
+        cur.execute(
+            "INSERT INTO race_editions (race_id, year, edition_name) VALUES (?,?,?)",
+            (race_id, year, f"{year} {race_name}"),
+        )
+        edition_id = cur.lastrowid
+        incidents = []
 
     countries_seen = {r["code"] for r in cur.execute("SELECT code FROM countries")}
     riders_seen = {r["rider_id"] for r in cur.execute("SELECT rider_id FROM riders")}
@@ -536,6 +563,27 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     filled = backfill_edition_slugs(cur, edition_id)
     if filled:
         print(f"  derived source_slug for {filled} stage(s) from stage dates")
+
+    # Hand the incidents back to the stages that now hold their numbers. A
+    # stage that the re-ingest did not re-create keeps its incident only if
+    # some other stage took its number, which is why this reports the shortfall
+    # rather than passing over it.
+    if incidents:
+        restored = 0
+        for stage_number, description in incidents:
+            row = cur.execute(
+                "SELECT stage_id FROM stages WHERE edition_id=? AND stage_number=?",
+                (edition_id, stage_number)).fetchone()
+            if row:
+                cur.execute(
+                    "INSERT INTO stage_incidents (stage_id, description) VALUES (?,?)",
+                    (row[0], description))
+                restored += 1
+        if restored != len(incidents):
+            print(f"  WARNING: {len(incidents) - restored} stage incident(s) had no "
+                  f"stage to return to and were dropped")
+        else:
+            print(f"  restored {restored} stage incident(s)")
 
     report_patches(f"{race_name} {year}",
                    *restore_patches(cur, edition_id, patched))

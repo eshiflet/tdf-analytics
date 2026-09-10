@@ -128,17 +128,34 @@ def fetch(url: str, retries: int = 2, soft_fail_429: bool = False,
     return _NETWORK_ERROR if probe else None
 
 
+def looks_like_a_stage(html) -> bool:
+    return bool(html and html is not _NETWORK_ERROR
+                and "rider/" in html and len(html) > 15000)
+
+
 def discover_stages(race, year: int) -> list[str]:
-    """Probe PCS for stage slugs: stage-1, stage-2, ..., or stage-1a/1b for splits."""
+    """Probe PCS for stage slugs: prologue, stage-1, ..., or stage-1a/1b for splits."""
     slugs = []
     consecutive_misses = 0
+
+    # A prologue is slugged 'prologue', never 'stage-0' — and this loop only
+    # ever asked for stage-N, so it found none of the 82 in the database (41 of
+    # them the Tour's, 1967-2012). Nothing broke loudly, because
+    # assign_stage_numbers handles a prologue perfectly well once it is given
+    # one: the year would simply have been scraped one stage short, and
+    # ingest_race's orphan guard would then refuse the whole edition rather
+    # than renumber every stage behind the missing day.
+    if looks_like_a_stage(fetch(f"{BASE}/race/{race.pcs_slug}/{year}/prologue", probe=True)):
+        slugs.append("prologue")
+        time.sleep(DELAY)
+
     for n in range(1, 30):
         found_any = False
         network_error = False
         slug = f"stage-{n}"
         url = f"{BASE}/race/{race.pcs_slug}/{year}/{slug}"
         html = fetch(url, probe=True)
-        if html and html is not _NETWORK_ERROR and "rider/" in html and len(html) > 15000:
+        if looks_like_a_stage(html):
             slugs.append(slug)
             found_any = True
             consecutive_misses = 0
@@ -151,7 +168,7 @@ def discover_stages(race, year: int) -> list[str]:
             for letter in "abcd":
                 slug = f"stage-{n}{letter}"
                 html = fetch(f"{BASE}/race/{race.pcs_slug}/{year}/{slug}", probe=True)
-                if html and html is not _NETWORK_ERROR and "rider/" in html and len(html) > 15000:
+                if looks_like_a_stage(html):
                     slugs.append(slug)
                     found_any = True
                     consecutive_misses = 0

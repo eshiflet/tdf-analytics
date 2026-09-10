@@ -47,7 +47,7 @@ import scrape_race as SV
 # these tests only ever exercised the Vuelta copy of two 94%-identical files.
 import scrape_rider_details as SRD
 import scrape_stage_info as SVSI
-from race_common import RACES, STAGE_ROW_LEN, StageRow
+from race_common import RACES, STAGE_ROW_LEN, StageRow, assign_stage_numbers
 from record_fixtures import FIXTURES, load, path_for
 
 
@@ -489,6 +489,61 @@ class TestRouteParsing(unittest.TestCase):
         self.assertEqual(RSS.norm("Saint Hilaire du Harcouët"),
                          RSS.norm("saint-hilaire du harcouet"))
         self.assertNotEqual(RSS.norm("Nantes"), RSS.norm("Nancy"))
+
+
+class TestStageDiscovery(unittest.TestCase):
+    """discover_stages — which slugs PCS is asked for at all.
+
+    A prologue is slugged 'prologue', never 'stage-0', and this loop only ever
+    asked for stage-N. It therefore found none of the 82 prologues in the
+    database, 41 of them the Tour's between 1967 and 2012 — every one of those
+    years would have been scraped a stage short.
+    """
+
+    def setUp(self):
+        self._fetch, self._delay = SV.fetch, SV.DELAY
+        SV.DELAY = 0
+
+    def tearDown(self):
+        SV.fetch, SV.DELAY = self._fetch, self._delay
+
+    def serve(self, available):
+        self.asked = []
+
+        def fake_fetch(url, **kw):
+            slug = url.rsplit("/", 1)[-1]
+            self.asked.append(slug)
+            # Long enough and rider-shaped is what the real probe looks for.
+            return ("<a href=rider/x>" + "x" * 20000) if slug in available else None
+
+        SV.fetch = fake_fetch
+
+    def test_a_prologue_is_found_and_comes_first(self):
+        self.serve({"prologue"} | {f"stage-{n}" for n in range(1, 23)})
+        slugs = SV.discover_stages(RACES["tour"], 1985)
+        self.assertEqual(slugs[0], "prologue")
+        self.assertEqual(len(slugs), 23)
+        numbered, err = assign_stage_numbers(slugs)
+        self.assertIsNone(err)
+        self.assertEqual(numbered[0], (0, "prologue"))
+        self.assertEqual(numbered[1], (1, "stage-1"))
+
+    def test_a_year_without_one_is_not_given_a_phantom_prologue(self):
+        self.serve({f"stage-{n}" for n in range(1, 22)})
+        slugs = SV.discover_stages(RACES["tour"], 2026)
+        self.assertIn("prologue", self.asked, "it must still ask")
+        self.assertNotIn("prologue", slugs)
+        self.assertEqual(slugs[0], "stage-1")
+
+    def test_split_days_still_resolve(self):
+        self.serve({"prologue", "stage-1", "stage-2a", "stage-2b", "stage-3"})
+        slugs = SV.discover_stages(RACES["tour"], 1985)
+        self.assertEqual(slugs, ["prologue", "stage-1", "stage-2a", "stage-2b",
+                                 "stage-3"])
+        numbered, err = assign_stage_numbers(slugs)
+        self.assertIsNone(err)
+        self.assertEqual(numbered, [(0, "prologue"), (1, "stage-1"), (2, "stage-2a"),
+                                    (3, "stage-2b"), (4, "stage-3")])
 
 
 class TestScrapeStageEndToEnd(unittest.TestCase):

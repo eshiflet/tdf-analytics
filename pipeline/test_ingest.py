@@ -393,5 +393,102 @@ class TestMalformedRows(IngestHarness):
         self.assertEqual(len(rows[0]), STAGE_ROW_LEN)
 
 
+class TestEditionScopedDataSurvives(IngestHarness):
+    """Everything hanging off edition_id rather than off a stage.
+
+    This path used to DELETE the race_editions row and insert a fresh one. That
+    made it refuse the 254 editions it most needed to serve: classification
+    standings reference edition_id with no ON DELETE CASCADE, so from the day
+    the September standings landed (86 Tour, 88 Giro, 80 Vuelta editions) every
+    re-ingest of those years raised FOREIGN KEY constraint failed and rolled
+    back. Nothing was lost — but nothing could be re-ingested either, which is
+    the whole point of the script.
+
+    schema.sql sets the pragma; the connection has to as well, or a test here
+    passes while the real run fails.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.conn.execute("PRAGMA foreign_keys = ON")
+        cur = self.conn.cursor()
+        cur.execute("INSERT INTO race_editions (race_id, year, edition_name, "
+                    "uci_classification) VALUES (?,?,?,?)",
+                    (self.race_id, 1990, "45th Vuelta a España", "SPP"))
+        self.edition_id = cur.lastrowid
+        cur.execute("INSERT INTO riders (rider_id, full_name) VALUES (?,?)",
+                    ("rider/a", "Rider A"))
+        cur.execute(
+            "INSERT INTO classification_standings "
+            "(edition_id, classification, rank, rider_id, points) VALUES (?,?,?,?,?)",
+            (self.edition_id, "kom", 1, "rider/a", 180))
+        self.conn.commit()
+
+    def test_the_standings_survive_and_the_ingest_completes(self):
+        self.write_stage(1)
+        self.ingest()
+        self.assertEqual(
+            self.conn.execute("SELECT COUNT(*) FROM classification_standings "
+                              "WHERE edition_id=?", (self.edition_id,)).fetchone()[0], 1)
+        self.assertEqual(
+            self.conn.execute("SELECT COUNT(*) FROM stage_results").fetchone()[0], 1)
+
+    def test_the_edition_keeps_its_id(self):
+        """A new edition_id would orphan every standing that pointed at the old
+        one, which is the silent version of the same bug."""
+        self.write_stage(1)
+        self.ingest()
+        self.assertEqual(
+            self.conn.execute("SELECT edition_id FROM race_editions").fetchone()[0],
+            self.edition_id)
+
+    def test_the_ordinal_name_and_uci_grade_are_not_overwritten(self):
+        """"45th Vuelta a España" is on 1,170 editions and in no scrape file;
+        the re-insert replaced it with a generated "1990 Vuelta a España"."""
+        self.write_stage(1)
+        self.ingest()
+        row = self.conn.execute(
+            "SELECT edition_name, uci_classification FROM race_editions").fetchone()
+        self.assertEqual(row["edition_name"], "45th Vuelta a España")
+        self.assertEqual(row["uci_classification"], "SPP")
+
+    def test_an_edition_with_no_name_gets_the_generated_one(self):
+        self.conn.execute("UPDATE race_editions SET edition_name=NULL")
+        self.write_stage(1)
+        self.ingest()
+        self.assertEqual(
+            self.conn.execute("SELECT edition_name FROM race_editions").fetchone()[0],
+            "1990 Vuelta a España")
+
+    def test_stage_incidents_are_handed_back(self):
+        """1904's disqualifications and 1998's Festina walkout live in no scrape
+        file, and they key on a stage_id the re-ingest replaces."""
+        self.write_stage(1)
+        self.ingest()
+        stage_id = self.conn.execute("SELECT stage_id FROM stages").fetchone()[0]
+        self.conn.execute("INSERT INTO stage_incidents (stage_id, description) "
+                          "VALUES (?,?)", (stage_id, "Festina expelled"))
+        self.conn.commit()
+        self.write_stage(1)
+        self.ingest()
+        rows = self.conn.execute(
+            "SELECT s.stage_number, si.description FROM stage_incidents si "
+            "JOIN stages s USING(stage_id)").fetchall()
+        self.assertEqual([(r[0], r[1]) for r in rows], [(1, "Festina expelled")])
+
+    def test_an_incident_is_not_duplicated_by_a_second_reingest(self):
+        self.write_stage(1)
+        self.ingest()
+        stage_id = self.conn.execute("SELECT stage_id FROM stages").fetchone()[0]
+        self.conn.execute("INSERT INTO stage_incidents (stage_id, description) "
+                          "VALUES (?,?)", (stage_id, "Festina expelled"))
+        self.conn.commit()
+        for _ in range(3):
+            self.write_stage(1)
+            self.ingest()
+        self.assertEqual(
+            self.conn.execute("SELECT COUNT(*) FROM stage_incidents").fetchone()[0], 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
