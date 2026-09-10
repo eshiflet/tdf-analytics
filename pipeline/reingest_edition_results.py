@@ -9,12 +9,18 @@ and only knows 1939/1947-1959, and reingest_tdf_stage.py replaces a single
 stage without recomputing the general classification, which silently NULLed
 102 gc_ranks on TDF 1924 stage 4 the one time it was tried.
 
-Recomputing GC is the whole point. Carry-forward is keyed on the RIDER: a stage
-whose row carries no gc_pos inherits that rider's last known standing. So a row
-naming the wrong rider does not just corrupt its own stage — it feeds the wrong
-rider's standing forward until the next stage that publishes one. The ten
-name-swaps repaired in the Tour's 1924-1949 files contaminated 81 further
-rider-stages that way. Only a rebuild that replays the carry-forward fixes it.
+GC IS NOT CARRIED FORWARD. It was, when this script was written on 2026-09-09,
+because add_pre1960.py did and preserving behaviour seemed the conservative
+choice during a name-swap repair. That was wrong, and build_vuelta_gc_standings.py
+had already said so: "the old ingest carry-forward INVENTED per-stage GC by
+replicating stale values". A rider's gap changes every stage, so repeating last
+stage's figure asserts they neither gained nor lost time. 53,903 of the Tour's
+66,673 stored gc_ranks were invented that way.
+
+So the priority here is the same as ingest_race.py's: (1) the stage row's own
+gc_pos, authoritative when present; (2) the year's gc_standings.json sidecar,
+real PCS standings merged with gaps computed from actual stage results; (3)
+nothing. A NULL is a gap; a repeated value is a claim.
 
 WHAT IT DOES NOT TOUCH. The `stages` rows: distance, elevation, route type,
 dates and their provenance live only in the database for the older editions —
@@ -47,6 +53,7 @@ from race_common import (
     STAGE_RACES,
     StageRow,
     fix_mojibake,
+    load_sidecar,
     load_stage_rows,
     parse_bonus_seconds,
     parse_int,
@@ -61,14 +68,15 @@ NON_FINISH = {"DNF": "DNF", "DNS": "DNS", "OTL": "OTL", "NP": "NP",
               "DSQ": "DSQ", "DEL": "DEL", "DF": "DNF"}
 
 
-def build_results(stages):
+def build_results(stages, standings=None):
     """[(stage_n, [result dicts])] with GC carried forward, as the ingest does.
 
-    `last_gc` is keyed on the rider slug, exactly as add_pre1960.py keys it —
-    that is what makes a corrected name propagate correctly instead of handing
-    the next stage the previous occupant's standing.
+    `standings` is the year's gc_standings.json, or None. It fills only where
+    the row itself is silent, and NEVER overrides a published gc_pos — doing so
+    dropped 26-48% of finishers' GC rank on several Giro editions before
+    ingest_race.py was corrected.
     """
-    last_gc, out = {}, []
+    out = []
     for n in sorted(stages):
         winner_seconds, rows = None, []
         for row in stages[n].get("rows", []):
@@ -79,14 +87,15 @@ def build_results(stages):
                 continue                     # an incident line, not a result
 
             gc_pos, gc_lag = sr.gc_pos, sr.gc_lag
-            if not gc_pos:
-                carried = last_gc.get(sr.slug)
-                if carried:
-                    gc_pos, gc_lag = carried
-                elif n == min(stages) and parse_int(sr.rnk) is not None:
-                    gc_pos, gc_lag = str(parse_int(sr.rnk)), sr.gap
-            if gc_pos:
-                last_gc[sr.slug] = (gc_pos, gc_lag)
+            if not gc_pos and n == min(stages) and parse_int(sr.rnk) is not None:
+                # On the opening stage the finishing order IS the classification.
+                gc_pos, gc_lag = str(parse_int(sr.rnk)), sr.gap
+            gc_rank_v = parse_int(gc_pos)
+            gc_gap_v = parse_time_to_seconds(gc_lag)
+            if gc_rank_v is None and standings:
+                entry = standings.get(n, {}).get(sr.slug)
+                if entry:
+                    gc_rank_v, gc_gap_v = entry[0], entry[1]
 
             status = NON_FINISH.get(sr.rnk, "FINISHED")
             abs_secs = parse_time_to_seconds(sr.abs_time)
@@ -109,8 +118,8 @@ def build_results(stages):
                 "status": status, "finish": finish, "gap": gap_secs,
                 "bonus": parse_bonus_seconds(sr.bonus),
                 "pcs": parse_int(sr.pcs_pts),
-                "gc_rank": parse_int(gc_pos),
-                "gc_gap": parse_time_to_seconds(gc_lag),
+                "gc_rank": gc_rank_v,
+                "gc_gap": gc_gap_v,
                 "age": parse_int(sr.age),
             })
         out.append((n, rows))
@@ -126,14 +135,17 @@ def db_stages(cur, race, year):
             WHERE r.name = ? AND e.year = ?""", (DB_RACE_NAME[race], year))}
 
 
-def reingest(cur, race, year, key, apply_it):
+def reingest(cur, race, year, key, apply_it, allow_gc_drop=False):
     stages, _ = load_stage_rows(race, key)
+    raw = load_sidecar(race, year, "gc_standings.json")
+    standings = ({int(n): e for n, e in raw.get("stages", {}).items()}
+                 if raw else None)
     known = db_stages(cur, race, year)
     if not known:
         print(f"  {race} {year}: not in the database, skipping")
         return 0, 0
 
-    built = [(n, rows) for n, rows in build_results(stages) if n in known]
+    built = [(n, rows) for n, rows in build_results(stages, standings) if n in known]
     if not built:
         print(f"  {race} {year}: no stage in the file matches the database")
         return 0, 0
@@ -157,6 +169,14 @@ def reingest(cur, race, year, key, apply_it):
                             ("ranks", old_ranked, tot_ranked),
                             ("gc standings", old_gc, tot_gc)):
         if new < old:
+            # --replace-invented-gc is the one case where losing GC is the
+            # point: the stored values were carried forward from a previous
+            # stage rather than published, and the incoming ones are computed
+            # from real stage times and validated against the authoritative
+            # standings. Never a default — every other caller wants the refusal.
+            if label == "gc standings" and allow_gc_drop:
+                print(f"    replacing {old} carried GC value(s) with {new} computed")
+                continue
             print(f"    REFUSING: that would lose {old - new} {label}")
             return 0, 0
 
@@ -204,6 +224,8 @@ def main(argv=None):
     ap.add_argument("--race", choices=list(STAGE_RACES), required=True)
     ap.add_argument("--year", type=int)
     ap.add_argument("years", nargs="*", type=int)
+    ap.add_argument("--replace-invented-gc", action="store_true",
+                    help="allow carried-forward GC to be replaced by fewer, real values")
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
@@ -220,7 +242,8 @@ def main(argv=None):
           f"{len(sources)} race-year(s)")
     rows = stages_written = 0
     for year, key in sources:
-        r, w = reingest(cur, args.race, year, key, args.apply)
+        r, w = reingest(cur, args.race, year, key, args.apply,
+                        args.replace_invented_gc)
         rows += r
         stages_written += w
     if args.apply:

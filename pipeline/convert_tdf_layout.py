@@ -2,9 +2,9 @@
 """
 Split the Tour's scrape files into the per-stage layout the Giro and Vuelta use.
 
-  tdf_YEAR_full.json   ->  tdf_scrapes/YEAR/stage_N.json
-  scrapes/stage_N.json ->  tdf_scrapes/2026/stage_N.json
-  bundle.classifications -> tdf_scrapes/YEAR/classifications.json
+  tdf_YEAR_full.json   ->  tour_scrapes/YEAR/stage_N.json
+  scrapes/stage_N.json ->  tour_scrapes/2026/stage_N.json
+  bundle.classifications -> tour_scrapes/YEAR/classifications.json
 
 WHY. The Tour keeping a whole year in one file, while the other two keep a file
 per stage, is an accident of which scraper was written first — and it has cost
@@ -43,7 +43,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT_ROOT = os.path.join(HERE, "tdf_scrapes")
+OUT_ROOT = os.path.join(HERE, "tour_scrapes")
 FLAT_2026 = os.path.join(HERE, "scrapes")
 SIDECAR = "classifications.json"
 
@@ -161,7 +161,7 @@ def main(argv=None):
             write_year(year, stages, cls)
     print(f"{'wrote' if args.apply else '[DRY RUN] would write'} "
           f"{stages_total:,} stage file(s) and {cls_total} sidecar(s) "
-          f"under tdf_scrapes/")
+          f"under tour_scrapes/")
     if args.apply:
         print("originals untouched — run --verify next, then move the readers")
     return 0

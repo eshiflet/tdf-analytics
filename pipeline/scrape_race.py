@@ -254,8 +254,22 @@ def parse_header_indices(table_html: str) -> dict:
     return {td_text(h): i for i, h in enumerate(headers)}
 
 
+def parse_header_codes(table_html: str) -> dict:
+    """{data-code: column index} — PCS's own name for each column.
+
+    Preferred over the visible header text, which is not a reliable key: an old
+    Tour table carries an empty <th> for the bonus column and prints "Pnt"
+    twice, and a fixed positional map breaks the moment a table gains or loses
+    a column. PCS tags every <th> with data-code ("rnk", "bonis", "pnt",
+    "time"), so ask it rather than guess.
+    """
+    return {m.group(1): i for i, m in enumerate(
+        re.finditer(r'<th[^>]*\bdata-code="([^"]*)"[^>]*>', table_html))}
+
+
 def parse_rows(table_html: str) -> list[list]:
     ci = parse_header_indices(table_html)
+    cc = parse_header_codes(table_html)
     tbody_m = re.search(r"<tbody>(.*?)</tbody>", table_html, re.DOTALL)
     if not tbody_m:
         return []
@@ -339,8 +353,15 @@ def parse_rows(table_html: str) -> list[list]:
             abs_time_txt = ""
             gap_txt = ""
             if rnk == "1":
+                # The winner's gap is zero, not their own finishing time.
+                # Setting both from the one cell is what produced the doubled
+                # winner times fix_doubled_winner_times.py had to repair —
+                # 3,377 rows across 3,354 stages, because ingest computes
+                # `finish = winner_seconds + gap`. That script fixed the
+                # database and left this line alone, so every re-scrape since
+                # has written the defect back into the stage files.
                 abs_time_txt = time_txt
-                gap_txt = time_txt
+                gap_txt = "+0:00"
             elif time_txt.startswith("+"):
                 gap_txt = time_txt
             elif time_txt in ("s.t.", "s.t", "0:00", ""):
@@ -350,13 +371,17 @@ def parse_rows(table_html: str) -> list[list]:
             else:
                 gap_txt = time_txt
 
+            # The bonus column, asked for by name. This used to scan the two
+            # columns before Time for anything shaped like a number, which
+            # picks up the POINTS column whenever it sits there — 29,849 Giro
+            # and 24,963 Vuelta rows held a points total as a time bonus, every
+            # one equal to that row's own pcs_pts. It also caught a doubled time
+            # on Tour 1954 stage 4. data-code makes the guess unnecessary.
             bonus_txt = ""
-            for bi in range(max(0, time_idx - 2), time_idx):
-                if bi < len(tds):
-                    bt = td_text(tds[bi]).strip()
-                    if re.match(r'^\d+[″"]?$', bt):
-                        bonus_txt = bt
-                        break
+            if "bonis" in cc and cc["bonis"] < len(tds):
+                bt = td_text(tds[cc["bonis"]]).strip()
+                if re.match(r'^\d+[″"]?$', bt):
+                    bonus_txt = bt
 
             rows.append([
                 rnk, gc_pos, gc_lag, bib, age,

@@ -171,7 +171,7 @@ RACES: dict[str, RaceInfo] = {
     # tdf_YEAR_full.json, which is why several tools covered only the other two.
     "tour": RaceInfo(
         name="Tour de France", country="France",
-        scrapes_dirname="tdf_scrapes", flat_2026_fallback=False,
+        scrapes_dirname="tour_scrapes", flat_2026_fallback=False,
         pcs_slug="tour-de-france", cli="tour",
     ),
     "giro": RaceInfo(

@@ -130,7 +130,7 @@ intended behavior.
 A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen older descriptions of this codebase, these supersede them:
 
 **Data safety (pipeline):**
-- All raw scraped data (`pipeline/tdf_*_full.json`, `scrapes/`, `giro_scrapes/`, `vuelta_scrapes/`) is now **tracked in git** — it used to be gitignored with the only copy on one machine.
+- All raw scraped data (`pipeline/tour_scrapes/`, `giro_scrapes/`, `vuelta_scrapes/` — one directory per race, `YEAR/stage_N.json` inside each) is now **tracked in git** — it used to be gitignored with the only copy on one machine.
 - `cycling.db` is NOT regenerable; back it up with `python3 pipeline/db_backup.py` (rotating snapshots in `pipeline/db_backups/`). `add_stages.py` snapshots automatically before its destructive delete.
 - `ingest_race.py --race {giro,vuelta}` (merged from `ingest_giro.py`/`ingest_vuelta.py` 2026-07-18 — see below): `--dry-run` is truly read-only (it used to delete the edition!), delete+reinsert is atomic, `vertical_meters`/`profile_score` are preserved across re-ingest, and a bare no-arg run is refused without `--all`.
 - All TDF-only scripts filter `race_editions` by the TDF race_id (year-only lookups could silently hit a Giro/Vuelta edition of the same year).
@@ -224,7 +224,7 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `audit_stage_counts.py` | reconciles editions against PCS's stage list by route; `--fix-slugs`, `--confirm-slugs` |
 | `patch_missing_distances.py` | fills 0 km distances from the headline; refuses a neighbour's value |
 | `fix_tt_route_types.py` | reclassifies TTs mis-stored as flat; `ADJUDICATED_NOT_TT` holds 34 Eric ruled on |
-| `reingest_tdf_stage.py --from-pcs` | replaces one TDF stage's results; the only route for 1960+ (no `tdf_YEAR_full.json`) |
+| `reingest_tdf_stage.py --from-pcs` | replaces one TDF stage's results; the only route for 1960+, which has no local scrape files at all |
 | `derive_ttt_rider_times.py` | team time → each rider, for TTTs where PCS's rider tables are empty |
 | `rescrape_ditto_stages.py` | re-scrapes stale-ditto files; rewrites only on strictly fewer violations |
 | `fix_doubled_winner_times.py` | the 3,377-row winner repair (arithmetic, no re-scrape) |
@@ -2363,7 +2363,7 @@ tdf-analytics/
     │                                   #   (e.g. full-planned-route elevation for an in-progress year)
     │
     │   # Scraping scripts
-    ├── tdf_YEAR_full.json            # Raw PCS scrape files — ALL tracked in git (as are scrapes/, giro_scrapes/, vuelta_scrapes/)
+    ├── tour_scrapes/YEAR/stage_N.json  # Raw PCS scrape files — ALL tracked in git; identical layout for giro_scrapes/ and vuelta_scrapes/
     ├── scrape_kom_points.py          # Scrapes KOM points from PCS stage -kom pages
     ├── scrape_kom_totals.py          # Scrapes final KOM totals from Wikipedia + bikeraceinfo
     ├── scrape_bri_stages.py          # Scrapes per-stage results from bikeraceinfo
@@ -2398,7 +2398,7 @@ tdf-analytics/
     └── validate_gc.py               # Validates per-stage GC leaders/gaps vs bikeraceinfo
 ```
 
-> **Critical:** `cycling.db` is gitignored and must be kept locally at `pipeline/cycling.db`. It is **not regenerable** — most historical years' raw scrape files no longer exist. Back it up with `python3 pipeline/db_backup.py` (rotating snapshots in `pipeline/db_backups/`, newest 5 kept; `add_stages.py` snapshots automatically before its destructive delete step). All raw scraped data (`tdf_*_full.json`, `scrapes/`, `giro_scrapes/`, `vuelta_scrapes/`) IS tracked in git.
+> **Critical:** `cycling.db` is gitignored and must be kept locally at `pipeline/cycling.db`. It is **not regenerable** — most historical years' raw scrape files no longer exist. Back it up with `python3 pipeline/db_backup.py` (rotating snapshots in `pipeline/db_backups/`, newest 5 kept; `add_stages.py` snapshots automatically before its destructive delete step). All raw scraped data (`tour_scrapes/`, `giro_scrapes/`, `vuelta_scrapes/`) IS tracked in git.
 
 > **`add_pre1960.py` is the tool for adding a TDF year**, despite its pre-1960-sounding name — it reads a CLI year argument (`python3 add_pre1960.py 2026`), writes additively to the real `pipeline/cycling.db`, and skips (never wipes) any year already present. (The old `build_db.py` was deleted — it was stale and dangerous.) See "Adding a New Year" below.
 
@@ -2408,7 +2408,7 @@ tdf-analytics/
 
 ### Tour de France pipeline
 ```
-PCS website  →  tdf_YEAR_full.json  (scraped via a real browser — see note below)
+PCS website  →  tour_scrapes/YEAR/stage_N.json  (scraped via a real browser — see note below)
                        ↓
                 add_pre1960.py  →  cycling.db
                                       │
@@ -2512,7 +2512,7 @@ All three pipelines feed into the same `cycling.db` (the `races` table distingui
 2. Else if it contains "time trial" → `"TT"`.
 3. Else fall back to `ICON_TO_ROUTE = {"p1": "F", "p2": "H", "p3": "H", "p4": "M", "p5": "M"}`.
 
-This matters when scraping a TTT stage whose PCS page doesn't populate `won_how` with descriptive text (seen on 2026 stage 1) — you must **manually set that stage's `info["Won how"]`** in the raw `tdf_YEAR_full.json` to a string containing "team time trial" (or "time trial" for a lone ITT) before running `add_pre1960.py`, or it silently misclassifies as Flat/Hilly/Mountain from the icon alone.
+This matters when scraping a TTT stage whose PCS page doesn't populate `won_how` with descriptive text (seen on 2026 stage 1) — you must **manually set that stage's `info["Won how"]`** in that stage's `tour_scrapes/YEAR/stage_N.json` to a string containing "team time trial" (or "time trial" for a lone ITT) before running `add_pre1960.py`, or it silently misclassifies as Flat/Hilly/Mountain from the icon alone.
 
 **`tour_sprint_points.json`** — Green jersey points per stage per rider.
 ```json
@@ -2870,7 +2870,7 @@ The July 2026 pass migrated TDF's *supplemental* files to the `tour_` prefix but
 1. Unify the `tdf`/`tour` race key (do this regardless — it's a bug magnet).
 2. Move to a dedicated subdomain, making the repo name invisible.
 3. Rename the repo, which is then free.
-4. Rename the `tdf_*_full.json` files last, or never.
+4. Rename the `tour_scrapes/` directory last, or never.
 
 Names considered: `grand-tour-analytics` is **already too narrow** (the classics aren't grand tours). Prefer race-agnostic — `cycling-analytics`, `procycling-analytics`, `peloton-analytics`.
 
@@ -3791,6 +3791,57 @@ could not use the ordinary ingest path, and `fix_2026_name_swaps.py` is a
 completed one-off whose hardcoded swap list `fix_name_swaps.py --race tour` now
 covers generically. Migrating them would be work thrown away, so the originals
 stay until they go.
+
+## One parser for all three Grand Tours, and the Tour's GC rebuilt (2026-09-10)
+
+The Tour is no longer parsed differently. `scrape_race.parse_rows` is the single
+row parser; `scrape_pcs_stages` had its own copy, and that divergence is the
+whole reason four defects survived — a fix landed in one implementation and
+nobody noticed the other never got it.
+
+**Four parser defects, each an assumption that fails on old racing.**
+
+| defect | what it cost |
+|---|---|
+| the `<font>` ditto read instead of `<span class="hide">` | PCS resolves its own ditto marks in a hidden span; reading the visible `,,` discarded every tied rider's time. **1925 stage gaps: 1% -> 100%** |
+| unsigned figure at rank != 1 stored as an absolute time | it is a GAP. Told apart by comparing against the winner — a finishing time can never be less than the winner's |
+| rank-1 `gap = own finishing time` | the cause of the doubled-winner-time bug, "3,377 rows across 3,354 stages". The DB was repaired in 2026-08; **the parser never was**, so every re-scrape wrote it back. Now `+0:00` |
+| bonus column guessed by scanning near Time | it lands on POINTS. **29,849 Giro and 24,963 Vuelta rows** held a points total as a time bonus, each equal to its own `pcs_pts`. Now read by `data-code="bonis"` |
+
+`fix_doubled_winner_times.py --files` repaired the artifacts already on disk —
+3,378 winner gaps and 54,837 bonus values across 3,741 files, all three races.
+Zero defects remain. Both rules are exact: a winner's gap can never equal their
+own time, and a genuine bonus carries PCS's `"` mark and never equals `pcs_pts`.
+
+**Then the Tour's per-stage GC was rebuilt from real times.** 53,903 of its
+stored `gc_rank` values were carried forward from a previous stage — what
+`build_vuelta_gc_standings.py` calls "invented per-stage GC by replicating
+stale values", fixed for the Giro and Vuelta in July 2026 and never for the
+Tour. Three further fixes were needed before the computed path could work:
+
+- **validation scoped to the conflicting day onward**, not the whole race. One
+  mismatch was erasing a rider's entire Tour; in 1937 all 26 conflicts land on
+  the final stage, the only day whose authoritative GC covers the field.
+- **`MAX_GAP` bounded by the winner's time**, not a flat 4 hours. Pre-war
+  stages ran 300-400 km and the back of the field finished five hours down; 23
+  real gaps were discarded in 1914 stage 1 alone, dropping it under the rank gate.
+- **uncomputable riders excluded from the coverage denominator** — a rider whose
+  stage time PCS never recorded cannot be summed, and counting them suppressed
+  ranks for the riders who could be.
+
+Result: **57,457 computed GC values across 47 editions, 97% of them ranked**,
+against 66,673 carried-forward ones. Validated the only way that counts —
+the computed 1925 final standings reproduce PCS's published classification to
+the second (Buysse +54:20, Aimo +56:37, Frantz +1:11:24, Dejonghe +1:27:42).
+
+**1905 stage 1 is `manual`, not `pcs`.** PCS records 29 riders there as rank
+999 with no time — missing data, not abandonment, since 25 of them ride stage 2
+and are classified normally. letour.fr lists all 29 finishing 16th at
++5h20'00", the same time as Fischer in 15th; our ranks 1-15 already agreed with
+letour on every name and gap, which is what made the join safe. The page has no
+citable URL, so the values were relayed by the repo owner and
+`patch_1905_unranked_finishers.py` records them as `manual`. **It is the only
+stage in the database with rank-999 rows**, so nothing is generalised from it.
 
 ## The Tour's scrape files now match the Giro and Vuelta (2026-09-09)
 

@@ -45,7 +45,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RACE = "vuelta"
 if "--race" in sys.argv:
     RACE = sys.argv[sys.argv.index("--race") + 1]
-    if RACE not in ("vuelta", "giro"):
+    if RACE not in ("vuelta", "giro", "tour"):
         sys.exit(f"error: unknown race '{RACE}' (use vuelta or giro)")
 SCRAPES_DIR = os.path.join(HERE, f"{RACE}_scrapes")
 
@@ -157,9 +157,27 @@ def load_days(year: int) -> list[dict]:
 
 
 def day_gaps_statuses(day: dict) -> tuple[dict, dict]:
-    """rider -> stage gap seconds (winner = 0); rider -> status."""
+    """rider -> stage gap seconds (winner = 0); rider -> status.
+
+    The cap on a believable gap is the WINNER'S OWN TIME, not a fixed number of
+    hours. A flat 4-hour ceiling is a modern-racing assumption: it holds for a
+    200 km stage and fails badly on the pre-war Tour, where stages ran 300-400
+    km and the back of the field genuinely finished five hours down. It threw
+    away 23 of 1914 stage 1's 119 real gaps as "absolute-time leakage" — which
+    dropped that day's coverage to 80% and, being under RANK_COVERAGE, cost the
+    whole edition its ranks. What the cap is really for is catching an absolute
+    time that leaked into the gap column, and such a value is by definition at
+    least the winner's time, so compare against that and keep MAX_GAP only as
+    the fallback when the winner's time is unknown.
+    """
     gaps = {}
     statuses = {}
+    winner_abs = None
+    for r in day["rows"]:
+        if len(r) >= 15 and r[6] and parse_int(r[0]) == 1 and r[13]:
+            winner_abs = parse_time_to_seconds(r[13])
+            break
+    cap = winner_abs if winner_abs else MAX_GAP
     for r in day["rows"]:
         if len(r) < 15 or not r[6]:
             continue
@@ -176,7 +194,7 @@ def day_gaps_statuses(day: dict) -> tuple[dict, dict]:
         if isinstance(r[14], str) and r[14].lstrip("+").startswith("*"):
             continue  # starred cells are bonus markers, not time gaps
         gap = parse_time_to_seconds(r[14])
-        if gap is not None and gap < MAX_GAP:
+        if gap is not None and gap < cap:
             gaps[slug] = gap
     return gaps, statuses
 
@@ -264,7 +282,15 @@ def build_year(year: int, report: bool = False) -> dict | None:
     # drops ALL the rider's computed values (bonus seconds are not in the
     # scraped data, so bonus earners fail here by design — better absent than
     # wrong). Authoritative entries always survive.
-    suspects = set()
+    # Dropped FROM the first conflicting day, not for the whole race. A
+    # cumulative score is only wrong from the point the unrecorded seconds
+    # entered it, and every day before that reconciled with the authoritative
+    # gap — discarding those too throws away good data to punish a later
+    # mismatch. It is not a small difference: in the 1937 Tour all 26 conflicts
+    # land on the FINAL stage, because that is the only day whose authoritative
+    # GC covers the whole field rather than just the leader. The old rule
+    # erased 31 days apiece to disown one.
+    suspect_from = {}
     for slug in all_riders:
         vals = score[slug]
         for i, day in enumerate(days):
@@ -274,8 +300,9 @@ def build_year(year: int, report: bool = False) -> dict | None:
             if v is None:
                 continue
             if abs((v - C[i]) - day["auth"][slug][1]) > TOL:
-                suspects.add(slug)
+                suspect_from[slug] = i
                 break
+    suspects = set(suspect_from)
 
     # --- Assembly.
     out_stages = {}
@@ -283,10 +310,21 @@ def build_year(year: int, report: bool = False) -> dict | None:
              "no_C_days": sum(1 for c in C if c is None), "no_rank_days": 0}
     for i, day in enumerate(days):
         auth = day["auth"]
+        # A rider whose GC cannot be computed from the data does not count
+        # against coverage. PCS records rank 999 with a "-" time for a stage it
+        # has no time for — 29 riders in 1905 stage 1, of whom 25 rode stage 2
+        # and were classified normally. That is missing data, not an
+        # abandonment, and it leaves the rider's cumulative total genuinely
+        # unknowable: the unrecorded stage cannot be summed and no
+        # authoritative entry exists to re-anchor from. Keeping them in the
+        # denominator held whole editions below RANK_COVERAGE and suppressed
+        # ranks for the riders who ARE computable, which serves nobody — their
+        # own entries stay absent either way.
         active = {r for r in all_riders
                   if first_seen.get(r, 10**9) <= i
                   and last_seen.get(r, -1) >= i
-                  and exit_from.get(r, 10**9) > i}
+                  and exit_from.get(r, 10**9) > i
+                  and (score[r][i] is not None or r in day["auth"])}
 
         entries = {slug: [rank, gap] for slug, (rank, gap) in auth.items()}
         stats["auth"] += len(entries)
@@ -294,7 +332,7 @@ def build_year(year: int, report: bool = False) -> dict | None:
         computed = {}
         if C[i] is not None:
             for slug in active:
-                if slug in auth or slug in suspects:
+                if slug in auth or suspect_from.get(slug, 10**9) <= i:
                     continue
                 v = score[slug][i]
                 if v is None:

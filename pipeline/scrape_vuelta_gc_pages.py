@@ -41,6 +41,11 @@ BASE = "https://www.procyclingstats.com"
 RACES = {
     "vuelta": ("vuelta-a-espana", "vuelta_scrapes"),
     "giro": ("giro-d-italia", "giro_scrapes"),
+    # The Tour joined on 2026-09-09, once its scrape files moved to the shared
+    # per-stage layout. Its pre-1960 editions carry the same defect this whole
+    # path exists to fix: 53,903 of its stored gc_ranks were carried forward
+    # from a previous stage rather than published by PCS.
+    "tour": ("tour-de-france", "tour_scrapes"),
 }
 RACE = "vuelta"
 if "--race" in sys.argv:

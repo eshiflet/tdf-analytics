@@ -21,7 +21,9 @@ import time
 import urllib.request
 import urllib.error
 
-from race_common import apply_stage_title, exit_on_help, parse_ttt_rows
+from race_common import (RACES, apply_stage_title, exit_on_help,
+                         parse_time_to_seconds, parse_ttt_rows, save_sidecar,
+                         save_stage)
 
 HERE    = os.path.dirname(os.path.abspath(__file__))
 ICONS_PATH = os.path.join(HERE, "profile_icons.json")
@@ -186,6 +188,7 @@ def parse_rows(html: str) -> list[list]:
         return []
 
     rows = []
+    winner_abs_secs = None
 
     for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tbody_m.group(1), re.DOTALL):
         tds = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.DOTALL)
@@ -230,25 +233,49 @@ def parse_rows(html: str) -> list[list]:
             pcs_pts  = td_text(tds[9])  if len(tds) > 9  else ""
             bonus_txt = td_text(tds[10]) if len(tds) > 10 else ""
 
-            # Time column: extract only the <font> content (skip hidden span)
+            # Time column. The cell holds the same figure twice —
+            #   <font>5:59</font><span class="hide">5:59</span>
+            # — EXCEPT where PCS prints its ditto mark, and there the two halves
+            # differ in the way that matters:
+            #   <font>,,</font><span class="hide">5:59</span>
+            # The visible half says "same as the rider above"; the hidden half
+            # says what that actually was. This used to read the <font> only and
+            # throw the answer away, recording no gap at all for every dittoed
+            # rider — 95% of the 1925 Tour's field, and every old edition where
+            # PCS groups finishers. The hidden span is the resolved value, so
+            # prefer it and keep <font> only as the fallback.
             time_td = tds[11] if len(tds) > 11 else ""
             font_m  = re.search(r"<font[^>]*>([^<]*)</font>", time_td)
-            time_txt = font_m.group(1).strip() if font_m else td_text(time_td)
+            hide_m  = re.search(r'<span class="hide"[^>]*>([^<]*)</span>', time_td)
+            visible = font_m.group(1).strip() if font_m else td_text(time_td)
+            hidden  = hide_m.group(1).strip() if hide_m else ""
+            time_txt = hidden if (visible in ("", ",,") and hidden) else visible
 
-            # PCS shows absolute time only for rank-1; others show ",," (no stage gap)
+            # PCS shows absolute time only for rank-1; others show a gap.
             abs_time_txt = ""
             gap_txt = ""
             if rnk == "1":
                 abs_time_txt = time_txt
                 gap_txt = "+0:00"
+                winner_abs_secs = parse_time_to_seconds(time_txt)
             elif time_txt.startswith("+"):
                 gap_txt = time_txt
             elif time_txt in ("s.t.", "s.t", "0:00", ""):
                 gap_txt = "+0:00"
             elif time_txt == ",,":
-                gap_txt = ""  # stage gap not available for this rider
+                gap_txt = ""  # no hidden value either — genuinely unavailable
             elif re.match(r"^\d+:\d{2}(:\d{2})?$", time_txt):
-                abs_time_txt = time_txt  # some stages show absolute for all
+                # Bare figure, no sign. Some stages print an absolute time for
+                # every rider; the old ones print the WINNER's absolute time and
+                # then everyone else's gap, unsigned. Telling them apart by shape
+                # is impossible ("5:59" is a plausible either way), so compare
+                # against the winner: a real finishing time can never be less
+                # than the stage winner's, and a gap essentially always is.
+                secs = parse_time_to_seconds(time_txt)
+                if winner_abs_secs is not None and secs is not None and secs < winner_abs_secs:
+                    gap_txt = time_txt
+                else:
+                    abs_time_txt = time_txt
             else:
                 gap_txt = time_txt
 
