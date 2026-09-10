@@ -206,6 +206,27 @@ class TestResultsTable(unittest.TestCase):
         html = require("vuelta_1991_stage_11_cancelled")
         self.assertEqual(SV.parse_rows(SV.find_results_table(html) or ""), [])
 
+    def test_the_valence_dagen_strike_stage_has_no_results_to_read(self):
+        """1978 stage-12a: the riders struck at Valence d'Agen, and PCS says
+        "Race/stage is cancelled. Stage cancelled due to riders' strike" over
+        an empty results table.
+
+        It reads exactly like the 1991 Vuelta's weather-cancelled stage, which
+        is the point: a stage with no result is placed by
+        insert_cancelled_stages.py with cancelled=1, never written as a stage
+        file that would land it in the database as a raced day nobody finished.
+        The database currently holds it the other way round — cancelled=0 with
+        99 GC-only rows — which is a data defect, not a scraper one."""
+        html = require("tdf_1978_stage_12a_no_result")
+        table = SV.find_results_table(html)
+        self.assertIsNotNone(table, "PCS does serve a table, just an empty one")
+        self.assertEqual(SV.parse_rows(table), [])
+        self.assertTrue(ICS.CANCEL_RE.search(ICS.page_text(html)),
+                        "PCS labels this one cancelled, exactly like 1991")
+        info = SV.parse_info(html)
+        self.assertEqual(info["Finish"], "Valence d'Agen")
+        self.assertEqual(info["Distance"], "158 km")
+
     def test_sparse_historical_page(self):
         """The ordinary row parser finds exactly ONE row on this page — and
         that is the bug, not the truth. It is a team time trial: the results
@@ -576,6 +597,22 @@ class TestScrapeStageEndToEnd(unittest.TestCase):
         self.assertEqual(rec["profile_icon"], "p2")
         self.assertGreater(len(rec["sprint_points"]), 0)
         self.assertEqual(rec["kom_points"], {})      # missing page -> empty, not an error
+
+    def test_a_stage_with_no_published_result_writes_no_file(self):
+        """Both stages with an empty table return None, so no stage file is
+        written and ingest's orphan guard refuses the edition rather than
+        quietly dropping the day. That refusal is the correct outcome: it asks
+        for a decision about a stage that was never classified."""
+        orig = SV.fetch
+        for fixture in ("tdf_1978_stage_12a_no_result", "vuelta_1991_stage_11_cancelled"):
+            SV.fetch = lambda url, _f=fixture, **kw: (
+                None if url.endswith(("-points", "-kom")) else load(_f))
+            try:
+                self.assertIsNone(
+                    self._quiet(SV.scrape_stage, RACES["tour"], 1978, "stage-12a", 13),
+                    fixture)
+            finally:
+                SV.fetch = orig
 
     def test_returns_none_when_the_page_has_no_results(self):
         SV.fetch = lambda url, **kw: load("vuelta_1991_stage_11_cancelled")

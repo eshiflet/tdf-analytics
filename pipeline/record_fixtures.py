@@ -94,6 +94,13 @@ FIXTURES = {
         "/race/tour-de-france/1986/prologue",
         "Prologue: slug is 'prologue', never 'stage-0'.",
     ),
+    "tdf_1978_stage_12a_no_result": (
+        "/race/tour-de-france/1978/stage-12a",
+        "The Valence d'Agen strike: the riders walked and no result was ever "
+        "awarded. PCS serves the page — date, route, elevation — with an EMPTY "
+        "results tbody. Distinguishing that from a table the parser failed to "
+        "read is what lets the stage reach the database at all.",
+    ),
     "tdf_2026_stage_1_ttt": (
         "/race/tour-de-france/2026/stage-1",
         "TEAM time trial timed to the THOUSANDTH: '21:47.870' where the 2015 "

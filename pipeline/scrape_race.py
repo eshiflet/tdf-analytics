@@ -509,6 +509,13 @@ def scrape_stage(race, year: int, slug: str, stage_num: int) -> dict | None:
             return None
         rows = parse_rows(table_html)
         if not rows:
+            # An empty results table is not a stage this scraper can write.
+            # PCS says "Race/stage is cancelled" on every one found so far —
+            # the 1991 Vuelta's weather-cancelled stage 11 and the 1978 Tour's
+            # stage-12a, abandoned to the Valence d'Agen riders' strike — and a
+            # stage file would land such a day in the database as one that was
+            # raced and that nobody finished. insert_cancelled_stages.py places
+            # them instead, with cancelled=1 and no results at all.
             print("NO ROWS", end=" ")
             return None
 
