@@ -3697,6 +3697,48 @@ module-evaluation time.
 
 ---
 
+## The Tour's scrape files now match the Giro and Vuelta (2026-09-09)
+
+`tdf_YEAR_full.json` -> `tdf_scrapes/YEAR/stage_N.json`, and the flat 2026
+`scrapes/` -> `tdf_scrapes/2026/`. 917 stage files across 47 years, plus 20
+`classifications.json` sidecars. **Nothing was deleted**: the originals stay
+until every reader has moved.
+
+`convert_tdf_layout.py --verify` reconstructs each bundle from the split files
+and compares field by field — **47/47 round-trip exactly**. Three independent
+checks then confirmed the new layout reads the same: `fix_name_swaps --race
+tour` still finds 0, `detect_name_swaps` still finds 0 across all 47 years, and
+`reingest_edition_results` reports identical rows/ranks/GC for 1924, 1949 and
+2026.
+
+**The Tour branch is gone from `race_common`.** `RACES` gains a `tour` entry
+with `scrapes_dirname="tdf_scrapes"`, and `year_sources()` / `load_stage_rows()`
+are now one code path for all three. That branch is what let
+`fix_name_swaps.py` cover only two races and leave ten name swaps unrepaired.
+
+The 2026 files needed no reshaping — the live scrape already wrote the
+Giro/Vuelta per-stage shape (`info`, `n`, `rows`, `profile_icon`, `kom_points`,
+`sprint_points`); it was only the flat directory that differed. Where a stage
+exists in both places the flat file wins, the precedence
+`detect_name_swaps.check_bib_consistency_tdf2026` already applied.
+
+`classifications` became a per-year sidecar because a per-stage file has no
+place for one dict of final standings. The Giro and Vuelta already keep a
+per-year sidecar (`gc_standings.json`), so this adopts a pattern rather than
+inventing one — the pattern is shared, the payload stays whatever that race's
+source publishes.
+
+**`ingest_race.py` explicitly refuses `--race tour`.** The Tour is in `RACES`
+for its file layout, which it now shares; its *ingest* is still separate
+(additive, its own classifications, live-Tour gating), so accepting it would
+rebuild an edition by rules never written for it.
+
+**Remaining:** 12 tools still read `tdf_*_full.json` directly, and until they
+move the originals cannot go. Then step 5 — retiring `add_pre1960.py` and
+`reingest_tdf_stage.py`, which exist only because the Tour could not use the
+ordinary path. Plus the 1933-59 KOM ingest, and Giro/Vuelta
+`classification_standings`, which nobody ever wrote a scraper for.
+
 ## TTT rows had no bib; 13,333 filled from the edition (2026-09-09)
 
 PCS renders a team time trial as team blocks with the per-rider cells empty —

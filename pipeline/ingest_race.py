@@ -555,6 +555,14 @@ def main():
     race = args[args.index("--race") + 1]
     if race not in RACES:
         sys.exit(f"error: unknown race '{race}' (use 'giro' or 'vuelta')")
+    if race == "tour":
+        # The Tour is in RACES for its scrape-file layout, which it now shares.
+        # Its INGEST is still separate — additive, with its own classifications
+        # and live-Tour gating — so accepting it here would rebuild an edition
+        # by rules that were never written for it. See ai-context.md, step 5.
+        sys.exit("error: the Tour's ingest is not wired here yet; use "
+                 "reingest_edition_results.py --race tour, or add_stages.py "
+                 "for a live edition")
     info = RACES[race]
     scrapes_dir = os.path.join(HERE, info.scrapes_dirname)
 
