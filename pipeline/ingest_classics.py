@@ -137,9 +137,11 @@ def ingest_one(cur, path, dry_run=False):
     )
     stage_id = cur.lastrowid
 
+    # 'results' covers every stage_results row below: they come out of this same
+    # fetch, so they are recorded here rather than per rider (see schema.sql).
     for field in ("stage_date", "start_location", "finish_location", "distance_km",
                   "profile_score", "vertical_meters", "won_how", "source_slug",
-                  "cancelled"):
+                  "cancelled", "results"):
         record_provenance(cur, "stages", stage_id, field, SOURCE_PCS, source_ref=url)
     # route_type is computed from ProfileScore, not published by PCS.
     record_provenance(cur, "stages", stage_id, "route_type", SOURCE_DERIVED,

@@ -3695,6 +3695,59 @@ module-evaluation time.
 
 ---
 
+## Provenance: `stages` finished, and the one-day gap in the backfill (2026-09-09)
+
+`backfill_provenance.py` had 2,934 stage rows pending and was run. It is the
+stages companion to `backfill_rider_team_provenance.py`; `stages` is now at
+100% coverage on all six tracked fields (`results`, `distance_km`,
+`vertical_meters`, `profile_score`, `route_type`, `source_slug`) with 0 orphans.
+
+**It had to be fixed before it was run.** The script was written when the DB
+held only the Tour, Giro and Vuelta, and its `SCRAPE_DIRS` names only the two
+races with per-stage files. Every one of the 18 one-day races added since —
+11 classics, 7 gravel/MTB — therefore fell through to the `unknown` branch. A
+run would have marked **1,063 stages "origin unproven" while the file proving
+them sat in `classics_scrapes/` or `gravel_scrapes/`**. That is not a corrupt
+value, but `unknown` is a to-do list, and it would have buried the 1,861 real
+gaps under ~1,000 phantom ones. Per-race pending counts matched the on-disk
+file counts exactly, which is what made the gap obvious.
+
+**The source is read back, never hardcoded.** The one-day branch cannot copy
+the Giro/Vuelta branch's literal `'pcs'`: the gravel races come from Athlinks,
+and The Traka changes upstream mid-history (tretzesports 2021-22, PCS from
+2023). Instead `ingested_origin()` reads the `(source, source_ref)` that
+`ingest_classics.py`/`ingest_gravel.py` recorded for that same stage's other
+fields — the results and the metadata come out of one fetch in one
+transaction, so it is the same artifact, not an inference. It resolved
+1,063/1,063 and split The Traka correctly, which a per-race constant would not.
+
+Scoping to the ingest scripts is the load-bearing part. Milan-San Remo 2013's
+`distance_km` was later re-sourced from Wikipedia (see the distance/time
+cross-check); without the `script IN (...)` filter that patch makes the stage
+look like it has two origins. It is the one stage of the 1,063 that needed it.
+
+**The root cause was upstream and is fixed:** neither ingest script ever wrote
+a `results` provenance row, so the gap would have reopened on the next ingest.
+Both now include `results` in their field list, covering the `stage_results`
+rows from the same fetch (the granularity rule in `schema.sql`).
+
+`validate_db` goes from 3 warnings to 4, and **the new one is the backfill
+working**. Vuelta 1941 (2) and 1968 (1) carry `derived` source_slugs that
+route matching cannot confirm — a route repeated inside one edition. They were
+invisible only because nothing had recorded their origin; the warning says
+what it has always said about this class, that what remains needs a human.
+Nothing here is a value change: only `data_provenance` rows were written, none
+of the five sources used is in `race_set_ingest.PATCH_SOURCES`, so patch
+carry-over is untouched, and no exporter reads the table.
+
+`test_backfill_provenance.py` (11 tests) covers it, including that a new race
+added to `CLASSICS`/`GRAVEL` without a scrape dir fails rather than silently
+going back to `unknown`.
+
+The 11,328 remaining `unknown` rows are dominated by the Tour de France
+(9,449), which has no per-stage scrape file to point at — `tdf_YEAR_full.json`
+is per-year. That is the genuine to-do list.
+
 ## Scraping a live/in-progress race from PCS
 
 > **The `CF_CLEARANCE` cookie route is DEAD as of 2026-08-13.** `scrape_vuelta.py` and

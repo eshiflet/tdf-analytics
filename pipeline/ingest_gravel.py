@@ -144,8 +144,10 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     stage_id = cur.lastrowid
 
     api = info.get("api_url") or info.get("source_url")
+    # 'results' covers every stage_results row below: they come out of this same
+    # fetch, so they are recorded here rather than per rider (see schema.sql).
     for field in ("stage_date", "distance_km", "source_slug", "cancelled",
-                  "stage_type"):
+                  "stage_type", "results"):
         record_provenance(cur, "stages", stage_id, field, source,
                           source_ref=api)
     record_provenance(cur, "stages", stage_id, "route_type", SOURCE_DERIVED,
