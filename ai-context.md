@@ -3697,6 +3697,31 @@ module-evaluation time.
 
 ---
 
+## TTT rows had no bib; 13,333 filled from the edition (2026-09-09)
+
+PCS renders a team time trial as team blocks with the per-rider cells empty —
+the same shape that makes `parse_ttt_rows` necessary — so no bib ever reached
+the parser. **12,758 TTT result rows carried none**, including every Giro and
+Vuelta TTT row. Re-scraping cannot help: the cells are empty at the source.
+
+`backfill_bib_numbers.py` fills them from the rider's own bib on another stage
+of the same edition, which is not a guess but the stage-race invariant: one
+rider, one number, for the whole race. That invariant is exact only *because*
+the 27 adjacent-row name swaps were repaired first, and the script re-checks it
+and refuses to write if it has stopped holding — a fabricated bib would blind
+`detect_name_swaps`, which keys its identity check on exactly this column.
+
+TTT coverage: Giro 0 -> 97.5%, Vuelta 0 -> 99.9%, Tour 32% -> 76%. 13,333 rows
+filled across 530 stages, `derived` provenance, one row per stage rather than
+13,333 copies of one fact. **26,623 stay NULL** — riders who appear on no bibbed
+stage in their edition, mostly pre-war Tours where PCS records bibs for 4-20% of
+the field. Nothing to read across from, so an honest absence.
+
+**No export changed**, and that is expected rather than disappointing:
+`export_gc.py` already took each rider's bib from whichever stage had one, so
+the shipped `bibNumber` was never the gap. The gain is a database whose TTT rows
+finally say who rode them.
+
 ## The 17 modern name swaps, repaired in the database (2026-09-09)
 
 The other half of the same defect. 1976-2014 has no `tdf_YEAR_full.json`, and
