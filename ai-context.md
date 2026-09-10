@@ -3879,6 +3879,18 @@ python3 ingest_race.py --race tour YEAR
 python3 backfill_bib_numbers.py --apply                  # once, at the end
 ```
 
+Before the ingest step, see what it would do:
+
+```bash
+python3 preview_reingest.py --race tour 1960-2025        # the change table
+python3 preview_reingest.py --race tour 1985 --verbose   # with example values
+```
+
+It copies the database, ingests into the copy and diffs — the real one is only
+ever read. NULL-fills, overwrites and clears are counted separately because
+they carry different risk, and a year the ingest refuses is reported as refused
+rather than counted, since nothing moves when the edition rolls back.
+
 **Never ingest a year before its `gc_standings.json` exists.** Old PCS stage
 pages carry GC for ~15 riders; the rest of the field reaches the database only
 through the sidecar. 1962 without it loses 130 rows on one stage; with it, the
