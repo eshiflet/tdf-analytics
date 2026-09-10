@@ -40,12 +40,14 @@ Usage:
 
 import argparse
 import glob
+import sqlite3
 import json
 import os
 from collections import Counter, defaultdict
 
 from detect_name_swaps import _bib_check
-from race_common import (STAGE_RACES, StageRow, load_stage_rows,
+from race_common import (DB_PATH, SOURCE_DERIVED, STAGE_RACES, StageRow,
+                         load_stage_rows, record_provenance,
                          swap_identity, year_sources)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -159,7 +161,29 @@ def main():
     ap.add_argument("--year", type=int, default=None)
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--from-db", action="store_true",
+                    help="repair in the database, for editions with no scrape file")
     args = ap.parse_args()
+
+    if args.from_db:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        plan = db_plan(cur)
+        print(f"{'[DRY RUN] ' if not args.apply else ''}{len(plan)} corroborated "
+              f"pair(s) in the database")
+        for year, n, _, ra, rb in plan:
+            print(f"  {year} st{n:<3} bib {rb['bib_number']} -> "
+                  f"{ra['rider_id'].split('/')[-1]}, "
+                  f"bib {ra['bib_number']} -> {rb['rider_id'].split('/')[-1]}"
+                  f"   (ranks {ra['stage_rank']}/{rb['stage_rank']}, "
+                  f"gc {ra['gc_rank']}<->{rb['gc_rank']})")
+        if args.apply:
+            db_apply(cur, plan)
+            conn.commit()
+            print(f"\nswapped {len(plan)} pair(s)")
+        conn.close()
+        return
     if not args.apply:
         args.dry_run = True
 
@@ -207,6 +231,98 @@ def main():
                           f"--stage {st} --apply")
             else:
                 print(f"  python3 ingest_race.py --race {race} {year}")
+
+
+
+
+# ── the same repair, sourced from the database ──────────────────────────────
+# Columns bound to the ROW rather than to the rider. rider_id stays put and
+# everything else moves, which is the same swap the file mode performs from the
+# other side: there the identity moves within a fixed row, here the row's facts
+# move between two fixed identities. The end state is identical, and this
+# direction needs no sentinel to get past UNIQUE(stage_id, rider_id).
+ROW_COLUMNS = ["team_id", "bib_number", "stage_rank", "status",
+               "finish_time_seconds", "gap_seconds", "bonus_seconds",
+               "penalty_seconds", "uci_points", "pcs_points",
+               "gc_rank", "gc_gap_seconds", "age_at_race"]
+
+
+def db_plan(cur):
+    """[(year, stage_n, stage_id, rowA, rowB)] for corroborated DB-only swaps.
+
+    The same four criteria the file mode applies, read from the database:
+    mutual, strong majority, adjacent, team-bound.
+    """
+    import collections
+    out, seen = [], set()
+    riders = cur.execute("""
+        SELECT st.edition_id, e.year, sr.rider_id
+          FROM stage_results sr
+          JOIN stages st ON st.stage_id = sr.stage_id
+          JOIN race_editions e ON e.edition_id = st.edition_id
+          JOIN races r ON r.race_id = e.race_id
+         WHERE sr.bib_number IS NOT NULL AND r.race_type = 'stage_race'
+         GROUP BY st.edition_id, sr.rider_id
+        HAVING COUNT(DISTINCT sr.bib_number) > 1""").fetchall()
+
+    prof = {}
+    for r in riders:
+        rows = cur.execute("""
+            SELECT st.stage_number n, st.stage_id, sr.* FROM stage_results sr
+              JOIN stages st ON st.stage_id = sr.stage_id
+             WHERE st.edition_id=? AND sr.rider_id=? ORDER BY st.stage_number""",
+            (r["edition_id"], r["rider_id"])).fetchall()
+        bibs = collections.Counter(x["bib_number"] for x in rows
+                                   if x["bib_number"] is not None)
+        major, support = bibs.most_common(1)[0]
+        teams = collections.Counter(x["team_id"] for x in rows
+                                    if x["bib_number"] == major and x["team_id"])
+        prof[(r["edition_id"], r["rider_id"])] = {
+            "year": r["year"], "major": major, "support": support,
+            "total": sum(bibs.values()),
+            "team": teams.most_common(1)[0][0] if teams else None,
+            "rows": {x["n"]: x for x in rows},
+            "odd": [x for x in rows if x["bib_number"] not in (None, major)]}
+
+    by_major = {(k[0], v["major"]): k for k, v in prof.items()}
+    for k, a in prof.items():
+        if k in seen:
+            continue
+        for row_a in a["odd"]:
+            partner = by_major.get((k[0], row_a["bib_number"]))
+            if not partner or partner in seen:
+                continue
+            b = prof[partner]
+            row_b = b["rows"].get(row_a["n"])
+            if row_b is None or row_b["bib_number"] != a["major"]:
+                continue                      # mutual
+            if not (a["support"] > 1 and a["support"] * 2 > a["total"]
+                    and b["support"] > 1 and b["support"] * 2 > b["total"]):
+                continue                      # strong
+            ra, rb = row_a["stage_rank"], row_b["stage_rank"]
+            if ra is None or rb is None or abs(ra - rb) != 1:
+                continue                      # adjacent
+            if row_a["team_id"] != b["team"] or row_b["team_id"] != a["team"]:
+                continue                      # team-bound
+            seen |= {k, partner}
+            out.append((a["year"], row_a["n"], row_a["stage_id"], row_a, row_b))
+            break
+    return out
+
+
+def db_apply(cur, plan):
+    sets = ", ".join(f"{c}=?" for c in ROW_COLUMNS)
+    for _, _, stage_id, ra, rb in plan:
+        for target, source in ((ra, rb), (rb, ra)):
+            cur.execute(f"UPDATE stage_results SET {sets} WHERE result_id=?",
+                        [source[c] for c in ROW_COLUMNS] + [target["result_id"]])
+        for row in (ra, rb):
+            record_provenance(
+                cur, "stage_results", stage_id, f"rider_id:{row['rider_id']}",
+                SOURCE_DERIVED,
+                source_ref="adjacent-row name swap; the bib's settled identity "
+                           "across the rest of the edition is the authority",
+                script="fix_name_swaps.py")
 
 
 if __name__ == "__main__":

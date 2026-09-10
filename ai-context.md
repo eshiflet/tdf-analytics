@@ -3697,6 +3697,30 @@ module-evaluation time.
 
 ---
 
+## The 17 modern name swaps, repaired in the database (2026-09-09)
+
+The other half of the same defect. 1976-2014 has no `tdf_YEAR_full.json`, and
+re-scraping cannot help — the artifact is durable on PCS's side. So
+`fix_name_swaps.py --from-db` applies the identical repair with the identical
+four criteria (mutual, strong majority, adjacent, team-bound) read from the
+database instead of a scrape file. All 17 pairs passed every one; the stage
+ranks are adjacent in every case.
+
+**In the database the ROW is what moves.** The file mode swaps name/slug/nat
+within a fixed row; here every column except `rider_id` moves between two fixed
+identities. The end state is the same, and this direction needs no sentinel to
+get past `UNIQUE(stage_id, rider_id)`.
+
+**GC swaps with the row here, unlike the pre-1960 repair.** A modern edition
+publishes a standing on every stage, so nothing is carried forward and nothing
+downstream is contaminated. That was verified per pair rather than assumed:
+each rider's GC on the swap stage is discontinuous with their own neighbours
+while the partner's value is the one that fits — 1992 Perini reads 8/57/8 and
+Louviot 58/8/57, and after the swap 8/8/8 and 58/57/57.
+
+**27 of 27 pairs are now fixed: 54 rider-editions -> 0.** Only the 34 affected
+riders moved in the exports.
+
 ## Bib "transpositions" were name swaps, and the Tour had never been checked (2026-09-09)
 
 54 rider-editions carried two different bib numbers inside one edition. All 54
