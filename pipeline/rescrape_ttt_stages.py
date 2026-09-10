@@ -154,7 +154,7 @@ def main():
         for race_arg, year in sorted(touched_years):
             if race_arg == "tdf":
                 print(f"  (TDF {year}: tdf_{year}_full.json updated — re-ingest via "
-                      "add_pre1960.py / the TDF ingest path)")
+                      "ingest_race.py --race tour)")
             else:
                 print(f"  python3 ingest_race.py --race {race_arg} {year}")
 

@@ -187,13 +187,18 @@ def main():
         print(f"  Deleted existing edition_id={edition_id}")
     conn.close()
 
+    # ingest_race.py --race tour, since 2026-09-10. This used to call
+    # add_pre1960.py, which existed only because the Tour's scrape files were
+    # laid out differently and could not use the ordinary ingest path. They can
+    # now, so that script was retired and this calls the shared one.
     result = subprocess.run(
-        [sys.executable, os.path.join(HERE, "add_pre1960.py"), str(year)],
+        [sys.executable, os.path.join(HERE, "ingest_race.py"),
+         "--race", "tour", str(year)],
         cwd=HERE, capture_output=True, text=True,
     )
     print(result.stdout.strip())
     if result.returncode != 0:
-        print(f"ERROR: add_pre1960.py failed:\n{result.stderr}")
+        print(f"ERROR: ingest_race.py --race tour failed:\n{result.stderr}")
         sys.exit(1)
 
     # ── 6. Run exports ──

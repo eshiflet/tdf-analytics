@@ -8,7 +8,8 @@ Does two things:
   1. Writes the final totals into the LAST stage entry of tour_kom_points.json
      so the bump chart shows the correct KOM ranking at the end of the race.
   2. Injects KOM classification rows into tdf_YEAR_full.json so that
-     add_pre1960.py will insert them into classification_standings.
+     scrape_classifications.py --race tour writes them to
+     classification_standings.
 
 Usage:
   python3 scrape_pcs_kom_finals.py              # all target years
