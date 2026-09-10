@@ -3697,6 +3697,36 @@ module-evaluation time.
 
 ---
 
+## The readers moved to tdf_scrapes/ (2026-09-09)
+
+Six tools now go through `race_common` instead of building
+`tdf_YEAR_full.json` paths of their own. New helpers keep the layout in one
+place: `stage_dir()`, `stage_path()`, `save_stage()`, and
+`sidecar_path()`/`load_sidecar()`/`save_sidecar()` for the per-year sidecars
+each race's source happens to publish.
+
+| tool | change |
+|---|---|
+| `scrape_pcs_stages.py` | writes per-stage files + a classifications sidecar |
+| `scrape_pcs_kom_finals.py` | reads the stage count from the year dir; KOM standings go to the sidecar |
+| `scrape_sprint_finals.py` | stage count from the year dir |
+| `rescrape_ttt_stages.py` | rewrites one stage file, not a slice of a bundle |
+| `add_stages.py` | the live-Tour path writes stage files |
+| `backfill_rider_team_provenance.py` | its `tdf_*_full.json` glob term was redundant — `*_scrapes/**` matches the Tour now |
+
+**`detect_name_swaps` gained coverage rather than just moving.**
+`check_bib_consistency_tdf2026()` checked 2026 and nothing else, because the
+Tour's other 46 years lived in a layout the module had no reader for — which is
+why ten name swaps sat undetected in 1924-1949. It is now
+`check_bib_consistency_tour()` over every year, like the other two races.
+
+**Three tools still read the originals, all of them due for retirement in step
+5:** `add_pre1960.py` and `reingest_tdf_stage.py` exist only because the Tour
+could not use the ordinary ingest path, and `fix_2026_name_swaps.py` is a
+completed one-off whose hardcoded swap list `fix_name_swaps.py --race tour` now
+covers generically. Migrating them would be work thrown away, so the originals
+stay until they go.
+
 ## The Tour's scrape files now match the Giro and Vuelta (2026-09-09)
 
 `tdf_YEAR_full.json` -> `tdf_scrapes/YEAR/stage_N.json`, and the flat 2026

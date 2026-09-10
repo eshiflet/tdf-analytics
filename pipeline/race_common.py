@@ -266,6 +266,55 @@ def load_stage_rows(race, key):
     return stages, save
 
 
+def stage_dir(race, year):
+    """The year's directory — the `key` year_sources() would hand you."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(here, RACES[race].scrapes_dirname, str(year))
+
+
+def stage_path(race, year, n):
+    """Path of one stage file, whether or not it exists yet."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(here, RACES[race].scrapes_dirname, str(year), f"stage_{n}.json")
+
+
+def save_stage(race, year, stage_json):
+    """Write one stage file, creating the year directory if needed."""
+    path = stage_path(race, year, stage_json["n"])
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(stage_json, f, ensure_ascii=False)
+    return path
+
+
+def sidecar_path(race, year, name):
+    """Path of a per-year sidecar — gc_standings.json, classifications.json.
+
+    Each race keeps whatever its source actually publishes: the Giro and Vuelta
+    a per-stage GC their stage pages omit, the Tour a dict of final KOM
+    standings for 1933-1959. The shape of the location is shared; the payload
+    is not, and should not be forced to be.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(here, RACES[race].scrapes_dirname, str(year), name)
+
+
+def load_sidecar(race, year, name):
+    path = sidecar_path(race, year, name)
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_sidecar(race, year, name, data):
+    path = sidecar_path(race, year, name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+    return path
+
+
 # ── Data provenance ─────────────────────────────────────────────────────────
 # Every write of a stored value should say where the value came from. See the
 # data_provenance table in schema.sql for the granularity rule (per-field on

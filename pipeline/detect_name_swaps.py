@@ -50,23 +50,24 @@ def parse_row(row):
 
 # ── Check 1: bib consistency from raw scrape files ───────────────────────────
 
-def check_bib_consistency_tdf2026():
-    """Check TDF 2026: tdf_2026_full.json + scrapes/stage_N.json."""
+def check_bib_consistency_tour(min_year=0):
+    """Bib consistency for EVERY Tour year, not just the live one.
+
+    This used to read tdf_2026_full.json and scrapes/ and check 2026 alone,
+    because the Tour's other 46 years lived one-to-a-file in a layout this
+    module had no reader for. Ten name swaps sat undetected in 1924-1949 as a
+    result. The Tour now shares the per-stage layout, so it is checked like the
+    other two races and the special case is gone.
+    """
+    from race_common import load_stage_rows, year_sources
+
     findings = []
-    stages_by_n = {}
-
-    full_path = os.path.join(HERE, "tdf_2026_full.json")
-    if os.path.exists(full_path):
-        data = load_json(full_path)
-        for s in data.get("stages", []):
-            stages_by_n[s["n"]] = s["rows"]
-
-    scrapes_dir = os.path.join(HERE, "scrapes")
-    for path in sorted(glob.glob(os.path.join(scrapes_dir, "stage_*.json"))):
-        s = load_json(path)
-        stages_by_n[s["n"]] = s["rows"]
-
-    findings.extend(_bib_check("tour", 2026, stages_by_n))
+    for year, key in year_sources("tour"):
+        if year < min_year:
+            continue
+        stages, _ = load_stage_rows("tour", key)
+        findings.extend(_bib_check("tour", year,
+                                   {n: j.get("rows", []) for n, j in stages.items()}))
     return findings
 
 
@@ -301,7 +302,7 @@ def main():
         # ── bib consistency ──
         if race == "tour":
             if not specific_year or specific_year == 2026:
-                all_findings.extend(check_bib_consistency_tdf2026())
+                all_findings.extend(check_bib_consistency_tour(min_year=min_year))
         elif race == "giro":
             d = os.path.join(HERE, "giro_scrapes")
             all_findings.extend(check_bib_consistency_dir(race, d, min_year=min_year))

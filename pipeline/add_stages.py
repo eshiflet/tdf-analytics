@@ -33,6 +33,8 @@ import sqlite3
 import subprocess
 import sys
 
+from race_common import load_stage_rows, save_stage, stage_dir
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRAPES_DIR = os.path.join(HERE, "scrapes")
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -100,27 +102,18 @@ def main():
 
     year_str = str(year)
 
-    # ── 1. Update tdf_YEAR_full.json ──
-    tdf_path = os.path.join(HERE, f"tdf_{year}_full.json")
-    tdf = load_json(tdf_path)
-    existing_nums = {s["n"] for s in tdf["stages"]}
+    # ── 1. Update the year's stage files ──
+    existing, _ = load_stage_rows("tour", stage_dir("tour", year))
     added = []
     for n in stage_nums:
-        if n in existing_nums:
-            print(f"  Stage {n} already in tdf_{year}_full.json, replacing")
-            tdf["stages"] = [s for s in tdf["stages"] if s["n"] != n]
-        tdf["stages"].append({
-            "n": n,
-            "info": scrapes[n]["info"],
-            "rows": scrapes[n]["rows"],
-        })
+        if n in existing:
+            print(f"  Stage {n} already scraped for {year}, replacing")
+        existing[n] = {"n": n, "info": scrapes[n]["info"], "rows": scrapes[n]["rows"]}
         added.append(n)
-    tdf["stages"].sort(key=lambda s: s["n"])
-    total_stages = len(tdf["stages"])
-
-    if not dry_run:
-        save_json(tdf_path, tdf)
-    print(f"  tdf_{year}_full.json: {total_stages} stages total")
+        if not dry_run:
+            save_stage("tour", year, existing[n])
+    total_stages = len(existing)
+    print(f"  {year}: {total_stages} stage file(s) total")
 
     # ── 2. Update tour_sprint_points.json ──
     sp_path = os.path.join(HERE, "tour_sprint_points.json")

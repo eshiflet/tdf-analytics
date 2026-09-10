@@ -19,6 +19,8 @@ import json
 import os
 import re
 import sys
+
+from race_common import load_sidecar, load_stage_rows, save_sidecar, stage_dir
 import time
 import urllib.request
 import urllib.error
@@ -176,15 +178,12 @@ def main():
         yr_str = str(year)
         stages_list = kom_pts.get(yr_str, [])
         if not stages_list:
-            # Load stage count from tdf_YEAR_full.json
-            full_path = os.path.join(HERE, f"tdf_{year}_full.json")
-            if os.path.exists(full_path):
-                with open(full_path) as f:
-                    bundle = json.load(f)
-                n_stages = len(bundle.get("stages", []))
+            n_stages = len(load_stage_rows("tour", stage_dir("tour", year))[0])
+            if n_stages:
                 stages_list = [{} for _ in range(n_stages)]
             else:
-                print(f"  Warning: no tdf_{year}_full.json, skipping kom_points update")
+                print(f"  Warning: no scraped stages for {year}, "
+                      "skipping kom_points update")
                 continue
 
         # Write totals to last stage
@@ -194,12 +193,8 @@ def main():
         stages_list[-1] = last_stage_dict
         kom_pts[yr_str] = stages_list
 
-        # ── 2. Inject classification rows into tdf_YEAR_full.json ─────────────
-        full_path = os.path.join(HERE, f"tdf_{year}_full.json")
-        if os.path.exists(full_path):
-            with open(full_path, encoding="utf-8") as f:
-                bundle = json.load(f)
-
+        # ── 2. Write the KOM standings to the year's sidecar ─────────────────
+        if load_stage_rows("tour", stage_dir("tour", year))[0]:
             # Format: [rnk, prev, rider_name, rider_slug, nat, team_name, team_slug,
             #          font_txt, span_txt, last_raw]
             # build_db.py reads: value_text = font_txt or span_txt or last_raw
@@ -210,13 +205,10 @@ def main():
                  str(r["pnt2"]), "", ""]
                 for r in riders
             ]
-            if "classifications" not in bundle:
-                bundle["classifications"] = {}
-            bundle["classifications"]["kom"] = kom_rows
-
-            with open(full_path, "w", encoding="utf-8") as f:
-                json.dump(bundle, f, ensure_ascii=False)
-            print(f"  Updated tdf_{year}_full.json classifications.kom")
+            cls = load_sidecar("tour", year, "classifications.json") or {}
+            cls["kom"] = kom_rows
+            save_sidecar("tour", year, "classifications.json", cls)
+            print(f"  Updated {year} classifications.json (kom)")
 
     # Save tour_kom_points.json
     kom_pts = dict(sorted(kom_pts.items(), key=lambda x: int(x[0])))

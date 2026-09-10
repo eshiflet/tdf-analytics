@@ -12,6 +12,7 @@ Usage:
   python3 scrape_pcs_stages.py --resume    # skip years already scraped
 """
 
+import glob
 import json
 import os
 import re
@@ -365,9 +366,9 @@ def main():
         all_icons = {}
 
     for year in years:
-        out_path = os.path.join(HERE, f"tdf_{year}_full.json")
+        year_dir = os.path.join(HERE, RACES["tour"].scrapes_dirname, str(year))
 
-        if resume and os.path.exists(out_path):
+        if resume and glob.glob(os.path.join(year_dir, "stage_*.json")):
             print(f"{year}: skipping (already scraped)")
             continue
 
@@ -377,10 +378,14 @@ def main():
 
         icons = data.pop("_icons", [])
 
-        # Save stage data
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False)
-        print(f"  Wrote {out_path}")
+        # Save stage data — one file per stage, like the Giro and Vuelta, with
+        # the edition's final classifications beside them as a sidecar.
+        for stage in data.get("stages", []):
+            save_stage("tour", year, stage)
+        if data.get("classifications"):
+            save_sidecar("tour", year, "classifications.json",
+                         data["classifications"])
+        print(f"  Wrote {len(data.get('stages', []))} stage file(s) to {year_dir}")
 
         # Update profile_icons
         all_icons[str(year)] = icons

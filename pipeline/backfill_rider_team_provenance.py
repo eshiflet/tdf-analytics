@@ -78,9 +78,10 @@ REF = {
 def attested_ids():
     """(road, gravel) sets of every rider/team id appearing in a scrape file."""
     road, gravel = set(), set()
+    # tdf_scrapes/ is matched by the *_scrapes glob like every other race now,
+    # so the Tour needs no term of its own.
     files = (glob.glob(os.path.join(HERE, "*_scrapes/**/*.json"), recursive=True)
-             + glob.glob(os.path.join(HERE, "scrapes/**/*.json"), recursive=True)
-             + glob.glob(os.path.join(HERE, "tdf_*_full.json")))
+             + glob.glob(os.path.join(HERE, "scrapes/**/*.json"), recursive=True))
     for path in files:
         try:
             with open(path, encoding="utf-8") as f:

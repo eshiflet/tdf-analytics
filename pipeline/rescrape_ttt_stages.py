@@ -28,6 +28,8 @@ import json
 import os
 import sqlite3
 import sys
+
+from race_common import load_stage_rows, stage_dir, stage_path
 import time
 
 import scrape_giro
@@ -86,21 +88,16 @@ def rewrite_race_file(scrapes_dir, year, n, record):
 
 
 def rewrite_tdf_file(year, n, record):
-    """TDF: stages live inside one tdf_YEAR_full.json."""
-    path = os.path.join(HERE, f"tdf_{year}_full.json")
-    with open(path, encoding="utf-8") as f:
-        full = json.load(f)
-    for s in full["stages"]:
-        if s["n"] == n:
-            s["rows"] = record["rows"]
-            s["info"] = record["info"]
-            s["is_ttt"] = record.get("is_ttt", False)
-            break
-    else:
+    """TDF: one file per stage, the same as every other stage race."""
+    stages, save = load_stage_rows("tour", stage_dir("tour", year))
+    s = stages.get(n)
+    if s is None:
         return None
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(full, f, ensure_ascii=False)
-    return path
+    s["rows"] = record["rows"]
+    s["info"] = record["info"]
+    s["is_ttt"] = record.get("is_ttt", False)
+    save({n})
+    return stage_path("tour", year, n)
 
 
 def main():

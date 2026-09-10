@@ -21,6 +21,8 @@ import json
 import os
 import re
 import sys
+
+from race_common import load_stage_rows, stage_dir
 import time
 import urllib.request
 import urllib.error
@@ -156,12 +158,9 @@ def main():
         yr_str = str(year)
         stages_list = sprint_pts.get(yr_str, [])
         if not stages_list:
-            # Build from tdf_YEAR_full.json stage count
-            full_path = os.path.join(HERE, f"tdf_{year}_full.json")
-            if os.path.exists(full_path):
-                with open(full_path) as f:
-                    bundle = json.load(f)
-                stages_list = [{} for _ in range(len(bundle.get('stages', [])))]
+            n_stages = len(load_stage_rows("tour", stage_dir("tour", year))[0])
+            if n_stages:
+                stages_list = [{} for _ in range(n_stages)]
             else:
                 print(f"  Warning: no stage count source for {year}")
                 continue
