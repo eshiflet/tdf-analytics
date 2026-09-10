@@ -3697,6 +3697,35 @@ module-evaluation time.
 
 ---
 
+## PCS was never blocking us, and its GC URL does not serve the GC (2026-09-09)
+
+Two things worth writing down, because both cost real work this week.
+
+**The 403 was a bad User-Agent, not a block.** A stub `Mozilla/5.0` is refused;
+`scrape_pcs_gravel.UA` — a full Chrome string — gets HTTP 200 on the same URL in
+the same second. Every scraper in the repo already sends the full one, so
+nothing was ever broken; the failures were hand-rolled fetches in ad-hoc checks.
+**Never conclude PCS is blocking from a fetch you wrote by hand — import UA.**
+That mistaken conclusion was used to scope the Giro/Vuelta classification work
+as blocked on network access. It is not blocked.
+
+**`/race/<race>/<year>/gc` serves the last stage's STAGE result.** Its title is
+literally "Stage 21 results"; `/race/<race>/<year>/result` returns HTTP 500. The
+classifications are not separate pages — all six live on that one page as
+`<div class="resTab" data-id=N>` blocks, 15 tables deep once per-sprint KOM
+tables are counted. Parsing "the first tbody" reports the stage winner as the
+race winner: Wout van Aert won the 2025 Tour's final stage, Pogačar won the Tour.
+
+**Select the table by its tab label, never by position or URL.** The page
+carries `<ul class="tabs tabnav resultTabs">` whose `<li data-id>` entries name
+each block — STAGE, GC, POINTS, KOM, YOUTH, TEAMS — and pair with the matching
+`resTab`. Position is not stable: the number of tables varies with how many KOM
+sprints a stage had.
+
+**All three Grand Tours expose the identical six tabs**, so one scraper covers
+them. Note YOUTH is present for the Giro and Vuelta as well — the frontend's
+`hasYouth: false` is a display choice, not an absence of data.
+
 ## The readers moved to tdf_scrapes/ (2026-09-09)
 
 Six tools now go through `race_common` instead of building

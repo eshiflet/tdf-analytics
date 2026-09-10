@@ -56,3 +56,9 @@ pipeline/gravel_scrapes/_raw/
 # every race publishes, and re-deriving it costs ten minutes of network.
 pipeline/gravel_scrapes/_scrape.log
 pipeline/gravel_scrapes/_survey.json
+
+# PCS classification page cache (regenerable: scrape_classifications.py re-fetches
+# with --force; the standings it derives live in cycling.db). One 650 KB page per
+# race-year, ~270 of them — a local cache so re-parsing costs no requests, on the
+# same footing as the bikeraceinfo and Athlinks caches above.
+pipeline/classification_scrapes/
