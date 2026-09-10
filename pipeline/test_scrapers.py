@@ -146,6 +146,60 @@ class TestResultsTable(unittest.TestCase):
         rows = SV.parse_rows(SV.find_results_table(require("giro_2022_stage_21")))
         self.assertEqual(StageRow.from_list(rows[0]).slug, "rider/matteo-sobrero")
 
+    def test_a_time_trial_carries_real_times_not_hundredths(self):
+        """Sobrero rode Verona in 22:24 and Affini finished 22 seconds down.
+
+        This fixture was recorded for the test above, which only ever asked who
+        won — so the parser could return "5" for that time (the ",54" hundredths
+        font, halved by dedup_time) and still pass. Every time trial from 2021
+        on landed in the database with no times and no gaps because of it.
+        """
+        rows = SV.parse_rows(SV.find_results_table(require("giro_2022_stage_21")))
+        winner = StageRow.from_list(rows[0])
+        self.assertEqual(winner.abs_time, "22:24")
+        self.assertEqual(winner.gap, "+0:00")
+        self.assertEqual(StageRow.from_list(rows[1]).gap, "0:22")
+        # And the whole field parses, not merely the podium.
+        self.assertTrue(all(StageRow.from_list(r).gap for r in rows))
+
+    def test_a_road_stage_still_reads_its_hidden_span(self):
+        """The time-trial branch must not shadow the ditto rule: a road stage's
+        authoritative value lives in <span class="hide">, and reading the
+        visible font instead is what erased the times of every tied rider.
+
+        Not every time trial uses the hundredths markup either — the 2021
+        Vuelta's opening TT is rendered exactly like a road stage — so the new
+        branch has to be the fallback it is, never the first thing tried."""
+        rows = SV.parse_rows(SV.find_results_table(require("tdf_1986_stage_8")))
+        self.assertEqual(StageRow.from_list(rows[0]).abs_time, "4:39:55")
+        self.assertEqual(SV.parse_hundredths_time(
+            '<font>4:39:55</font><span class="hide">4:39:55</span>'), "")
+        vuelta = SV.parse_rows(SV.find_results_table(require("vuelta_2021_stage_1")))
+        self.assertEqual(StageRow.from_list(vuelta[0]).abs_time, "8:32")
+
+    def test_the_2026_tours_time_trial_reads_as_a_race_not_a_fraction(self):
+        """Evenepoel won stage 16 in 32:19, 28 seconds up on Pogačar.
+
+        The whole 2026 Tour had no finishing times at all, and this stage was
+        the one that could not be fixed by re-scraping alone."""
+        rows = SV.parse_rows(SV.find_results_table(require("tdf_2026_stage_16_itt")))
+        winner = StageRow.from_list(rows[0])
+        self.assertEqual(winner.name, "Evenepoel Remco")
+        self.assertEqual(winner.abs_time, "32:19")
+        self.assertEqual(StageRow.from_list(rows[1]).gap, "0:28")
+        self.assertEqual(sum(1 for r in rows if not StageRow.from_list(r).gap), 0)
+
+    def test_hundredths_helper_only_claims_the_shape_it_knows(self):
+        for cell, want in (
+            ('32.19<font class="fs10">,33</font><span class="hide"></span>', "32:19"),
+            ('0.28<font class="fs10">,36</font><span class="hide"></span>', "0:28"),
+            ('1.02.33<font class="fs10">,10</font>', "1:02:33"),
+            ('<font>3:29:07</font><span class="hide">3:29:07</span>', ""),
+            ('<font>,,</font><span class="hide">0:00</span>', ""),
+            ("", ""),
+        ):
+            self.assertEqual(SV.parse_hundredths_time(cell), want, cell)
+
     def test_cancelled_stage_yields_no_rows(self):
         """scrape_stage must return None for these, not an empty stage — an
         empty stage would land in the DB as a raced stage with no finishers."""
@@ -215,8 +269,27 @@ class TestTeamTimeTrial(unittest.TestCase):
         self.assertIn("rider/pedro-delgado", {r.slug for r in banesto})
         self.assertIn("rider/miguel-indurain", {r.slug for r in banesto})
 
+    def test_a_ttt_timed_to_the_thousandth(self):
+        """Visma opened the 2026 Tour in 21:47.870, INEOS 8 seconds back.
+
+        The 2015 fixture reads a plain '8:10', so a time pattern that allowed
+        no fraction passed every test here while matching nothing on a modern
+        page — every rider on every team took an empty time."""
+        rows = [StageRow.from_list(r)
+                for r in SV.parse_ttt_rows(require("tdf_2026_stage_1_ttt"))]
+        self.assertEqual(len(rows), 184)
+        visma = [r for r in rows if r.team.startswith("Team Visma")]
+        self.assertEqual({r.rnk for r in visma}, {"1"})
+        self.assertEqual({r.abs_time for r in visma}, {"21:47"})
+        self.assertEqual({r.gap for r in visma}, {"0:00"})
+        ineos = [r for r in rows if r.team == "Netcompany INEOS"]
+        self.assertEqual({r.abs_time for r in ineos}, {"21:55"})
+        self.assertEqual({r.gap for r in ineos}, {"0:08"})
+        self.assertEqual(sum(1 for r in rows if not r.abs_time), 0)
+
     def test_rows_match_the_stage_row_schema(self):
-        for name in ("vuelta_1989_stage_3a", "vuelta_2015_stage_1_ttt"):
+        for name in ("vuelta_1989_stage_3a", "vuelta_2015_stage_1_ttt",
+                     "tdf_2026_stage_1_ttt"):
             for row in SV.parse_ttt_rows(require(name)):
                 self.assertEqual(len(row), STAGE_ROW_LEN, name)
                 StageRow.from_list(row)

@@ -55,6 +55,7 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **The white jersey for the Giro and Vuelta.** Their youth standings are in `classification_standings` as of 2026-09-09, but `yw` is still exported for the Tour alone and `hasYouth` is still false for the other two. Turning it on is a display decision, not a data gap.
 
 **Open work, ready to pick up:**
+- **11 time trials still have no times** — 6 Giro (2022 s2/s21, 2024 s7, 2025 s2/s10, 2026 s10) and 5 Vuelta (2022 s10, 2023 s10, 2024 s1/s21, 2025 s18). The parser defect behind them is fixed (see "Time trials had no times"); each stage needs re-scraping and re-ingesting. The Tour's 8 fall inside the 1960-2025 rescrape below.
 - **1960-2025 has no local scrape files** — 66 Tour editions. They cannot be re-ingested, only re-fetched one stage at a time via `reingest_tdf_stage.py --from-pcs`. This is the mirror of what was fixed for 1903-1959 in September 2026 and is the largest structural gap left.
 - **2026 Vuelta** has not been run (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
 - **Gravel elevation.** `coverage.py` now reports these gaps honestly, and `scrape_pcs_gravel.py` reads `Vertical meters`/`ProfileScore` where PCS publishes them — The Traka 2023-2025 remain unmeasured by PCS itself.
@@ -3722,6 +3723,94 @@ final classification to the second; `ingest_race --race tour` on 1949 is
 byte-identical to `reingest_edition_results`. **Coverage percentages are the
 claim to distrust** — several were wrong because a low number was read as a thin
 source rather than a parser dropping data.
+
+---
+
+## Time trials had no times (2026-09-10)
+
+The 2026 Tour held **3,611 results and not one finishing time** — the largest
+single gap `coverage.py` has ever reported, and not the one the docs predicted
+(they still named the 1950s Tour). Two independent defects, both in a Time cell
+that does not look the way the parser assumed.
+
+### A time trial's Time cell is shaped nothing like a road stage's
+
+```
+road stage:  <font>3:29:07</font><span class="hide">3:29:07</span>
+             <font>,,</font><span class="hide">0:00</span>          <- the ditto
+time trial:  32.19<font class="fs10">,33</font><span class="hide"></span>
+team TT:     <div class="w25 fs14 bold time">21:47.870</div>
+```
+
+PCS times a TT to the hundredth. It prints **MM.SS as bare text** with only the
+hundredths inside the `fs10` font, and leaves the hidden span **empty** — so
+rule 4 (read the span, never the visible ditto) has nothing to read and falls
+through. The old fallback then took the FIRST `<font>` in the cell, which here
+is the hundredths: Sobrero's 22:24 in the 2022 Giro's Verona TT parsed as
+`",54"`, and `dedup_time` halved that to `"5"`. `parse_time_to_seconds` rejects
+that shape, so ingest stored NULL rather than a wrong number — the failure was
+silent and total. `parse_hundredths_time` in scrape_race.py now reads the bare
+text and drops the fraction; the road-stage path is untouched, and it has to
+stay a *fallback* because plenty of time trials (the 2021 Vuelta's opening TT
+among them) are rendered exactly like road stages.
+
+A modern TTT prints its fraction differently again — `21:47.870`, one div, dot
+separator — and `_TTT_TIME_RE` in race_common.py allowed no fraction at all, so
+it matched nothing and all 184 riders on the 2026 Tour's opening TTT took an
+empty time.
+
+**Blast radius: 19 time trials, 2021-2026, across all three races.** Not one
+had a winner's time or a single gap. Fixed here: the 2026 Tour (both its TTT and
+its stage-16 ITT). Still outstanding at the time of writing: 6 Giro and 5
+Vuelta stages, listed by
+`coverage.py --field finish_time_seconds`; each needs a re-scrape of that
+stage plus `ingest_race.py --race {giro,vuelta} YEAR`.
+
+### The 2026 Tour's own rows were also shifted a column
+
+Independently of the above, every 2026 Tour row had been written by an
+extractor that never captured `uci_pnt`: UCI points landed in `pcs_points`, PCS
+points in `bonus_seconds`, and the bonus in the absolute-time slot. Stage
+winners carried a **100-second bonus**. Re-scraping through
+`scrape_race.parse_rows` — which asks PCS for the column by `data-code` rather
+than counting positions — put all five columns back:
+
+| column | NULL-filled | overwritten | unchanged |
+|---|---|---|---|
+| `finish_time_seconds` | 3,637 | 0 | 0 |
+| `gap_seconds` | 38 | 2,852 | 747 |
+| `uci_points` | 297 | 0 | 3,340 |
+| `pcs_points` | 3 | 297 | 3,337 |
+| `bonus_seconds` | 0 | 300 | 3,337 |
+
+All 3,637 rows matched their existing rider on slug and rank — no identity
+moved, and the swap gate passed clean. The re-scrape also brought the sprint
+and KOM points pages, which the old 2026 files did not have at all, and PCS's
+own profile icon, which corrected stage 5 from `H` to `F` (it had been
+`unknown`-provenance).
+
+### What did NOT change, and why that is correct
+
+`gcWinnerTimeSeconds` stayed at 73:56:26. **The sum of per-stage times is not a
+GC time and never was** — summing 2026 gives 74:53:52, and even 2023, whose
+stage times were already complete, sums 500s over its published GC. Bonuses,
+penalties and PCS's own reconciliation live in between. `export_gc.py` takes
+tier 2 (`tour_gc_winner_times.json` + `gc_gap_seconds`) for every modern year,
+so filling stage times moved no GC total, no summary and no riders index —
+`all_races_summary.json` and `riders_index.json` came out byte-identical. The
+only export change was 26 abandoning riders gaining a partial `totalTimeSeconds`
+from tier 3, which is what 2023 and 2025 already do.
+
+### Tests
+
+`test_scrapers.py` had a fixture for the 2022 Giro's closing ITT and a test
+that asked only **who won** — so the parser could return `"5"` for that time and
+still pass. It now asserts Sobrero's 22:24 and Affini's +0:22, and two new
+fixtures (`tdf_2026_stage_1_ttt`, `tdf_2026_stage_16_itt`) pin both fractional
+shapes. 92 scraper tests, 460 in the suite.
+
+---
+
 ## Scraping a live/in-progress race from PCS
 
 > **The `CF_CLEARANCE` cookie route is DEAD as of 2026-08-13.** `scrape_vuelta.py` and

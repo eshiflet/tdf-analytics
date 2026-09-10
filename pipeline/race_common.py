@@ -843,7 +843,12 @@ def record_provenance_bulk(cur, entity, entity_id, fields, source,
 _TTT_LIST_RE = re.compile(r'<ul class="list ttt-results">(.*?)</ul>', re.S)
 _TTT_TEAM_RE = re.compile(r'href="(team/[^"]+)"[^>]*>(.*?)</a>', re.S)
 _TTT_RANK_RE = re.compile(r'<div class="w10 fs14">\s*(\d+)\s*</div>')
-_TTT_TIME_RE = re.compile(r'<div[^>]*\btime\b[^>]*>\s*([\d:]+)\s*</div>')
+# A modern TTT is timed to the thousandth and PCS prints it: the 2026 Tour's
+# opening team time trial reads "21:47.870". The fraction is optional and gets
+# dropped (the database stores whole seconds), but a pattern that did not allow
+# for it matched nothing at all, and every rider on every team took an empty
+# time — which is how the 2026 Tour's stage 1 arrived with no times.
+_TTT_TIME_RE = re.compile(r'<div[^>]*\btime\b[^>]*>\s*(\d+(?::\d{2})+)(?:[.,]\d+)?\s*</div>')
 _TTT_GAP_RE = re.compile(r'</div>\s*<div class="w25 fs14">\s*([+\d:]+)\s*</div>')
 _TTT_RIDER_RE = re.compile(
     r'<span class="flag (\w+)"></span>\s*<a[^>]*href="(rider/[^"]+)"[^>]*>(.*?)</a>', re.S)

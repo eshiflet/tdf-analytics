@@ -188,6 +188,34 @@ def dedup_time(t: str) -> str:
     return s
 
 
+# A time trial's Time cell, which looks nothing like a road stage's:
+#
+#   road stage:  <font>3:29:07</font><span class="hide">3:29:07</span>
+#   time trial:  22.24<font class="fs10">,54</font><span class="hide"></span>
+#
+# PCS times a TT to the hundredth, prints MM.SS (or H.MM.SS) as bare text and
+# puts only the hundredths in the fs10 font — and leaves the hidden span EMPTY,
+# so the authoritative-value rule that road stages rely on has nothing to read.
+# The old fallback then took the FIRST <font> in the cell, which here is the
+# hundredths: Sobrero's 22:24 in the 2022 Giro's Verona TT became ",54", and
+# dedup_time halved that to "5". Every value ended up unparseable, so ingest
+# stored NULL — 19 time trials across the three races, 2021-2026, with no
+# winner's time and no gaps at all.
+_HUNDREDTHS_TIME_RE = re.compile(r'^\s*(\d{1,2}(?:\.\d{2}){1,2})\s*<font class="fs10">')
+
+
+def parse_hundredths_time(time_td: str) -> str:
+    """The MM.SS / H.MM.SS text of a time-trial Time cell, as H:MM:SS.
+
+    Returns "" for any cell that is not in that shape, so a road stage falls
+    through to the ordinary hidden-span/font handling untouched. The hundredths
+    themselves are dropped: the database stores whole seconds, and PCS's own
+    displayed seconds are the value to keep rather than one we re-round.
+    """
+    m = _HUNDREDTHS_TIME_RE.match(time_td)
+    return m.group(1).replace(".", ":") if m else ""
+
+
 def parse_profile_icon(html: str) -> str:
     m = re.search(r'class="[^"]*\bicon\b[^"]*\bprofile\b[^"]*\b(p[1-5])\b', html)
     if m:
@@ -346,6 +374,10 @@ def parse_rows(table_html: str) -> list[list]:
             hide_m = re.search(r'<span class="hide">([^<]*)</span>', time_td)
             if hide_m and hide_m.group(1).strip():
                 time_txt = hide_m.group(1).strip()
+            elif parse_hundredths_time(time_td):
+                # A time trial: the span is empty by design, and the first
+                # <font> holds hundredths rather than a time. See above.
+                time_txt = parse_hundredths_time(time_td)
             else:
                 font_m = re.search(r"<font[^>]*>([^<]*)</font>", time_td)
                 time_txt = dedup_time(font_m.group(1).strip() if font_m else td_text(time_td))

@@ -94,6 +94,20 @@ FIXTURES = {
         "/race/tour-de-france/1986/prologue",
         "Prologue: slug is 'prologue', never 'stage-0'.",
     ),
+    "tdf_2026_stage_1_ttt": (
+        "/race/tour-de-france/2026/stage-1",
+        "TEAM time trial timed to the THOUSANDTH: '21:47.870' where the 2015 "
+        "fixture above reads a plain '8:10'. The time pattern allowed no "
+        "fraction, so it matched nothing and all 184 riders took an empty time.",
+    ),
+    "tdf_2026_stage_16_itt": (
+        "/race/tour-de-france/2026/stage-16",
+        "INDIVIDUAL time trial, whose Time cell is shaped nothing like a road "
+        "stage's: '32.19<font class=\"fs10\">,33</font>' with an EMPTY hidden "
+        "span, so the authoritative-value rule has nothing to read and the "
+        "fallback took the hundredths for the time. 19 time trials across the "
+        "three races landed in the database with no times and no gaps.",
+    ),
 }
 
 
