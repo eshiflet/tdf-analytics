@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """
-Replace one TDF stage's results from tdf_YEAR_full.json, in place.
+Replace one TDF stage's results by scraping it from PCS.
+
+NARROWED 2026-09-10. Reading from local stage files is now ingest_race.py
+--race tour (a whole edition) or reingest_edition_results.py (one edition's
+results, with GC replayed from its gc_standings sidecar) — the Tour shares the
+per-stage layout and the ordinary ingest path, so this script's file mode did
+nothing the others do not do better. What survives is --from-pcs, and it is
+irreplaceable: 1960-2025 has NO local scrape files at all, 66 editions of them,
+so fetching the stage page is the only way to reach those results.
 
 The TDF ingest path (add_pre1960.py / add_stages.py) is additive: it skips any
 edition already in the DB, so there is no way to push a corrected stage back in

@@ -3792,6 +3792,39 @@ completed one-off whose hardcoded swap list `fix_name_swaps.py --race tour` now
 covers generically. Migrating them would be work thrown away, so the originals
 stay until they go.
 
+## Step 5: four ingest paths become two (2026-09-10)
+
+`ingest_race.py --race tour` now works, and the scripts that existed only
+because it did not are gone.
+
+**Why it was refused until now.** This path deliberately never carries GC
+across stages ("stale values are fabricated data"), while the Tour's GC WAS
+carried forward — so enabling it would have deleted 54,113 values with nothing
+to put back. The Tour now has `gc_standings.json` sidecars like the other two,
+so the same code applies to all three.
+
+**Verified rather than assumed:** re-ingesting 1949 through `ingest_race`
+produces a result byte-identical to `reingest_edition_results` — same
+distances, elevation, source slugs, result and GC counts across all 21 stages.
+The `preserved_by_slug` block protects the per-stage elevation and distances
+that live only in the database, which was the other reason to be careful.
+
+| retired | superseded by |
+|---|---|
+| `add_pre1960.py` | `ingest_race.py --race tour` — and it only ever knew 1939/1947-1959, and refused any edition already in the DB |
+| `fix_2026_name_swaps.py` | `fix_name_swaps.py --race tour`, which covers every year generically instead of a hardcoded 2026 list |
+
+**`reingest_tdf_stage.py` was narrowed, not retired.** Its file mode is
+superseded, but `--from-pcs` is irreplaceable: **1960-2025 has no local scrape
+files at all** — 66 editions — so fetching the page is the only way to reach
+those results. Deleting it would have removed the only route to two thirds of
+the Tour's history.
+
+The 47 `tdf_*_full.json` originals are deleted; `tour_scrapes/YEAR/stage_N.json`
+has replaced them and round-tripped exactly. The flat `scrapes/` directory
+stays — it is where `save_server.py` lands a live Tour's stages for
+`add_stages.py`, not a legacy layout.
+
 ## One parser for all three Grand Tours, and the Tour's GC rebuilt (2026-09-10)
 
 The Tour is no longer parsed differently. `scrape_race.parse_rows` is the single
