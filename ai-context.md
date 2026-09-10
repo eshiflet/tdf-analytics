@@ -3884,6 +3884,22 @@ pages carry GC for ~15 riders; the rest of the field reaches the database only
 through the sidecar. 1962 without it loses 130 rows on one stage; with it, the
 edition is identical.
 
+### Two editions the orphan guard will refuse, and should
+
+1978 and 1982 each contain a stage PCS never classified — stage-12a, abandoned
+to the Valence d'Agen riders' strike, and the 1982 team trial annulled after
+the farmers' protest. PCS labels both "Race/stage is cancelled", exactly as it
+labels the 1991 Vuelta's weather-cancelled stage, so the scraper writes no file
+and the orphan guard refuses the edition. That is correct: a stage file would
+land them in the database as raced days nobody finished. Both need a decision,
+not a flag — `insert_cancelled_stages.py` places such stages with
+`cancelled=1`.
+
+**And the database is wrong about one of them today**: TDF 1978 stage 13
+(`stage-12a`) is stored as `cancelled=0` with 99 GC-only rows, contradicting
+PCS. 1982 stage 5 is already `cancelled=1`. Not repaired here — it wants the
+same decision.
+
 ### What a re-ingest changes, and why
 
 Expect `gc_rank` and `gc_gap_seconds` to move on most pre-1998 years. Those are
