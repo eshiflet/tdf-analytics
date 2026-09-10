@@ -3811,6 +3811,91 @@ shapes. 92 scraper tests, 460 in the suite.
 
 ---
 
+## The 1960-2025 Tour backfill (2026-09-10, IN PROGRESS)
+
+66 editions with no local scrape files — the largest structural gap left. The
+tooling to close it already existed (`scrape_race.py --race tour` since the
+September unification), and trying it found four things that had to be fixed
+first. Each was a tool that could not do the job it claimed.
+
+### 1. `ingest_race.py` could not re-ingest 254 of the editions it serves
+
+It DELETEd the `race_editions` row and inserted a fresh one.
+`classification_standings` references `edition_id` with **no ON DELETE
+CASCADE**, so from the moment the September standings landed — 86 Tour, 88 Giro
+and 80 Vuelta editions — every re-ingest of those years raised `FOREIGN KEY
+constraint failed` and rolled back. Nothing was lost; nothing could be rebuilt
+either, which is the entire purpose of the script. The verification that this
+path matched `reingest_edition_results` on 1949 predates those rows by two
+commits, so it was true when written and false by the next morning.
+
+The edition ROW now stays, as `ingest_classics.replace_edition` has always done.
+That also keeps what no scrape file carries: the ordinal `edition_name`
+("72nd Tour de France", on 1,170 editions) and `uci_classification`, both of
+which the re-insert overwrote with a generated "YEAR Race". **Stage incidents**
+(1904's disqualifications, the Festina walkout) key on a `stage_id` the
+re-ingest replaces, so they are captured and handed back by stage number.
+
+### 2. `discover_stages` never asked PCS for the prologue
+
+It only ever probed `stage-N`. A prologue is slugged `prologue`, never
+`stage-0` — 82 in the database, **41 of them the Tour's, 1967-2012**. Those
+years would have come up a stage short each; not silently, because the orphan
+guard would then refuse the edition, but not usefully either.
+
+### 3. `backfill_bib_numbers.py` refused to write anything, anywhere
+
+Six rider-editions in the 1931 and 1933 Tours hold two bibs each, and the guard
+was global. The invariant it protects is per edition: 1931 being ambiguous says
+nothing about 1985. Those editions are now skipped and reported. This matters
+because **PCS leaves the per-rider cells empty on a team time trial** — no
+re-scrape can supply them — and a re-ingest of 1960-2025 clears 7,647 TTT bibs
+that only this tool can put back. 48 TTT stages across 44 of those years.
+
+### 4. A winner's time that is not a stage time
+
+See "Refuse a winner's time that no bike race could have ridden" in the log.
+PCS puts the GC TOTAL in the Time column on some split-day trials: the 1962
+Tour's 23 km stage-2b reads 10:45:17. Ingest bases every other rider on the
+winner's time, so one bad cell fabricates a field at 2.1 km/h. Guarded at
+12-70 km/h — deliberately far wider than any real stage.
+
+### What the pilot showed
+
+**1985 reproduces the database exactly**: 24 stages, identical slugs, dates,
+distances and row counts, prologue and split day included. The change table for
+re-ingesting it is 386 fills, **0 overwrites**, 438 clears — and the clears are
+right: 130 are carried-forward GC on `stage-18a`, where PCS itself publishes
+only 15 GC rows, and 178 are TTT bibs the backfill restores. **1962 ingests to
+a byte-for-byte identical edition** once its sidecar exists.
+
+### The per-year recipe (all four steps, in order)
+
+```bash
+python3 scrape_race.py --race tour YEAR                  # stage pages
+python3 scrape_vuelta_gc_pages.py --race tour YEAR       # per-stage GC pages
+python3 build_vuelta_gc_standings.py --race tour YEAR    # the sidecar
+python3 ingest_race.py --race tour YEAR
+python3 backfill_bib_numbers.py --apply                  # once, at the end
+```
+
+**Never ingest a year before its `gc_standings.json` exists.** Old PCS stage
+pages carry GC for ~15 riders; the rest of the field reaches the database only
+through the sidecar. 1962 without it loses 130 rows on one stage; with it, the
+edition is identical.
+
+### What a re-ingest changes, and why
+
+Expect `gc_rank` and `gc_gap_seconds` to move on most pre-1998 years. Those are
+carried-forward values being replaced by ones computed from real stage gaps and
+validated against PCS's published standings — the same swap the September pass
+made for 1903-1959, where 57,457 computed values replaced 66,673 carried ones.
+Neither the old nor the new figure is PCS-published for a mid-pack rider in
+1963: PCS publishes 15. The difference is that one is repeated and one is
+derived from that rider's own racing.
+
+---
+
 ## Scraping a live/in-progress race from PCS
 
 > **The `CF_CLEARANCE` cookie route is DEAD as of 2026-08-13.** `scrape_vuelta.py` and
