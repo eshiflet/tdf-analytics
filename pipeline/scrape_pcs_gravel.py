@@ -83,6 +83,32 @@ def _text(html):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
 
 
+# The parcours panel. Both patterns are scrape_stage_info.py's: a national-race
+# page carries the same PCS info list a stage page does.
+_VERT_RE = re.compile(r'Vertical meters:\s*</div>\s*<div[^>]*>\s*(\d[\d,]*)')
+_SCORE_RE = re.compile(r'ProfileScore:\s*</div>\s*<div[^>]*>\s*(\d+)')
+
+
+def parse_parcours(html):
+    """(vertical_meters, profile_score) from the info panel, or (None, None).
+
+    PCS prints "Vertical meters: -" for a course it has not measured, and puts
+    a ProfileScore of 0 beside it. **That 0 means unrated, not flat**, so the
+    score is only taken when the elevation is there to corroborate it. The
+    evidence for the rule is in the DB: 87 stages genuinely score 0, they are
+    prologues and short time trials, and every single one has real vertical
+    meters recorded next to it. Storing 0 for The Traka 2023-25 would be a
+    claim PCS is not making — the same reason parse_result treats a 0 km
+    distance as a gap rather than a zero.
+    """
+    m = _VERT_RE.search(html)
+    if not m:
+        return None, None
+    vertical = int(m.group(1).replace(",", ""))
+    m = _SCORE_RE.search(html)
+    return vertical, int(m.group(1)) if m else None
+
+
 def parse_result(html):
     """(rows, distance_km) from a PCS national-race result page.
 
@@ -202,6 +228,7 @@ def scrape_year(race_slug, pcs_slug, year, force=False):
     parsed, km = parse_result(html)
     if not parsed:
         return None
+    vertical, profile = parse_parcours(html)
     rows = to_rows(parsed)
     pro = sum(1 for r in rows if r["pcs_is_pro"])
     ranks = [r["rank"] for r in rows if r["rank"]]
@@ -217,6 +244,8 @@ def scrape_year(race_slug, pcs_slug, year, force=False):
         # is no mass-start tail to window, so FIELD_CAP does not apply.
         "rule": "pcs_field",
         "distance_km": km,
+        "vertical_meters": vertical,
+        "profile_score": profile,
         "discipline": GRAVEL[race_slug].discipline,
         "rank_type": "gun",
         "field_size_source": len(rows),

@@ -51,6 +51,13 @@ class CoverageTest(unittest.TestCase):
             f"VALUES ({','.join('?' * len(cols))})", vals)
         return self.cur.lastrowid
 
+    def sourced(self, stage_id, source):
+        """Record which upstream supplied a stage, as every ingest does."""
+        self.cur.execute(
+            "INSERT INTO data_provenance (entity, entity_id, field, source, "
+            "recorded_at) VALUES ('stages', ?, 'source_slug', ?, '2026-09-09')",
+            (stage_id, source))
+
     def result(self, stage_id, status="FINISHED", rider="r/a", **fields):
         cols = ["stage_id", "rider_id", "status"] + list(fields)
         vals = [stage_id, rider, status] + list(fields.values())
@@ -91,17 +98,95 @@ class CoverageTest(unittest.TestCase):
         self.assertEqual(coverage.denominator(row, "finish_time_seconds"), 1)
         self.assertEqual([g[3] for g in coverage.gaps(self.rows_for())], ["team_id"])
 
-    def test_a_field_with_no_upstream_is_not_reported(self):
-        """PCS has no gravel or MTB coverage — verified, not assumed — so those
+    def test_a_field_the_upstream_cannot_supply_is_not_reported(self):
+        """Athlinks is a timing platform: it publishes a finish list, not a
+        parcours, and records no trade team. For an edition it timed, those
         columns have nothing to scrape from and a NULL is the end state."""
         rid = self.race("Unbound Gravel", "gravel")
         eid = self.edition(rid, 2026)
-        self.stage(eid, 1, distance_km=320.0, stage_date="2026-05-30")
+        sid = self.stage(eid, 1, distance_km=320.0, stage_date="2026-05-30")
+        self.sourced(sid, "athlinks")
         self.assertEqual(coverage.gaps(self.rows_for()), [])
 
+    def test_the_same_gravel_fields_ARE_reported_when_PCS_covered_it(self):
+        """The exclusion is per UPSTREAM, not per race type — this is the bug
+        the whole per-stage denominator exists to prevent. PCS files gravel
+        under national-race/ and publishes all three there: The Traka 2026
+        carries "Vertical meters: 4198", "ProfileScore: 125", and a named team
+        for 29 of its 141 riders. Excluding the whole gravel set on the theory
+        that PCS has no gravel coverage hid ~325 fillable values."""
+        rid = self.race("The Traka 360", "gravel")
+        eid = self.edition(rid, 2026)
+        sid = self.stage(eid, 1, distance_km=325.0, stage_date="2026-05-01")
+        self.sourced(sid, "pcs")
+        self.result(sid, finish_time_seconds=35000, team_id=None)
+        found = {g[3] for g in coverage.gaps(self.rows_for())}
+        self.assertEqual(found, {"vertical_meters", "profile_score", "team_id"})
+
+    def test_one_year_of_a_set_can_mix_upstreams(self):
+        """Why the denominator is counted per stage and not per race-year: 2025
+        holds The Traka, which PCS covers, beside Big Sugar, which it does not.
+        Only the Traka's riders could have had a team recorded, so a shared
+        denominator would report Big Sugar's as missing forever."""
+        traka = self.stage(self.edition(self.race("The Traka 360", "gravel"), 2025),
+                           1, distance_km=360.0, stage_date="2025-05-02")
+        self.sourced(traka, "pcs")
+        self.cur.execute("INSERT INTO teams (team_id, name) VALUES ('t/x','X')")
+        self.result(traka, team_id="t/x")
+        big = self.stage(self.edition(self.race("Big Sugar Gravel", "gravel"), 2025),
+                         1, distance_km=160.0, stage_date="2025-10-25")
+        self.sourced(big, "athlinks")
+        self.result(big, rider="r/b")
+        row = self.rows_for()[("gravel", 2025)]
+        self.assertEqual(row["results"], 2)
+        self.assertEqual(coverage.denominator(row, "team_id"), 1)
+        self.assertEqual(coverage.denominator(row, "vertical_meters"), 1)
+
+    def test_a_classic_profile_score_is_a_real_gap(self):
+        """The other half of the same mistake. PCS does classify a one-day race
+        and ingest_classics.py has been storing it all along — 295 of 963
+        classic stages carry one — but the field was excluded on the theory
+        that a one-day race has no profile. That hid 668 fillable values."""
+        rid = self.race("Paris-Roubaix", "one_day")
+        sid = self.stage(self.edition(rid, 2026), 1, distance_km=259.0,
+                         stage_date="2026-04-12")
+        self.sourced(sid, "pcs")
+        self.assertIn("profile_score", {g[3] for g in coverage.gaps(self.rows_for())})
+
+    def test_a_computed_field_is_never_a_scrape_target(self):
+        """route_type is derived from profile_score for a classic, so it fills
+        exactly when profile_score does; listing it too would double-count the
+        same afternoon's work."""
+        rid = self.race("Paris-Roubaix", "one_day")
+        sid = self.stage(self.edition(rid, 2026), 1, distance_km=259.0,
+                         stage_date="2026-04-12")
+        self.sourced(sid, "pcs")
+        self.assertNotIn("route_type", {g[3] for g in coverage.gaps(self.rows_for())})
+
+    def test_a_one_stage_race_has_no_classification_to_be_missing(self):
+        """gc_rank is structural, not a sourcing question: there is no general
+        classification in a race of one stage, whoever covered it."""
+        rid = self.race("The Traka 360", "gravel")
+        sid = self.stage(self.edition(rid, 2026), 1, distance_km=325.0,
+                         stage_date="2026-05-01")
+        self.sourced(sid, "pcs")
+        self.result(sid, finish_time_seconds=35000, gc_rank=None)
+        self.assertNotIn("gc_rank", {g[3] for g in coverage.gaps(self.rows_for())})
+
+    def test_an_unrecognised_upstream_is_exempted_from_nothing(self):
+        """The fail-safe direction. This report's failure mode must be showing
+        work that turns out to be impossible, never hiding work that is
+        possible — that is the bug being fixed here."""
+        rid = self.race("Unbound Gravel", "gravel")
+        sid = self.stage(self.edition(rid, 2026), 1, distance_km=320.0,
+                         stage_date="2026-05-30")
+        self.sourced(sid, "some-new-timer")
+        found = {g[3] for g in coverage.gaps(self.rows_for())}
+        self.assertIn("vertical_meters", found)
+
     def test_the_same_field_IS_reported_for_a_race_that_has_a_source(self):
-        """The exemption has to be per race type, not global, or the report
-        goes quiet about the gaps it exists to find."""
+        """The exclusion has to be per race type and per upstream, never
+        global, or the report goes quiet about the gaps it exists to find."""
         rid = self.race("Tour de France")
         self.stage(self.edition(rid, 1971), 1, distance_km=100.0)
         found = {g[3] for g in coverage.gaps(self.rows_for())}

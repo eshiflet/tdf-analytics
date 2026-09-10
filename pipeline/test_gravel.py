@@ -742,3 +742,35 @@ class TestPCSGravelParsing(unittest.TestCase):
         # Big Sugar's page says (0km) — PCS does not know it. A gap, not a zero.
         html0 = '<b> &rsaquo; </b> (0km)<tbody></tbody>'
         self.assertIsNone(scrape_pcs_gravel.parse_result(html0)[1])
+
+
+class TestPCSGravelParcours(unittest.TestCase):
+    """PCS publishes elevation for the gravel it covers — the field that was
+    long assumed absent, and that coverage.py excluded on that assumption."""
+
+    PANEL = ('<li><div class="title ">Vertical meters: </div>'
+             '<div class=" value" >{vert}</div></li>\n'
+             '<li><div class="title ">ProfileScore: </div>'
+             '<div class=" value" >{score}</div></li>')
+
+    def test_a_measured_course_gives_both_figures(self):
+        """The Traka 2026, verbatim from its national-race page."""
+        html = self.PANEL.format(vert="4198", score="125")
+        self.assertEqual(scrape_pcs_gravel.parse_parcours(html), (4198, 125))
+
+    def test_a_profile_score_of_zero_beside_an_unmeasured_course_is_unrated(self):
+        """The Traka 2023-25: PCS prints "-" for the elevation and 0 for the
+        score. That 0 means it never rated the parcours, not that the parcours
+        is flat, so storing it would be a claim PCS is not making. Every one of
+        the 87 stages in the DB that genuinely scores 0 is a prologue or a short
+        TT with real vertical meters recorded beside it."""
+        html = self.PANEL.format(vert="-", score="0")
+        self.assertEqual(scrape_pcs_gravel.parse_parcours(html), (None, None))
+
+    def test_a_thousands_separator_is_not_a_truncation(self):
+        html = self.PANEL.format(vert="4,198", score="125")
+        self.assertEqual(scrape_pcs_gravel.parse_parcours(html)[0], 4198)
+
+    def test_a_page_with_no_panel_at_all_is_quiet(self):
+        self.assertEqual(scrape_pcs_gravel.parse_parcours("<tbody></tbody>"),
+                         (None, None))

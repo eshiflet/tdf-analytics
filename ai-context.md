@@ -658,8 +658,10 @@ string are the actual damage, and the two upstreams need opposite treatment:
 | classics team | `team/sefb-banque-d-a-pargne-1987` | **left exactly as PCS spells it** |
 
 The rider ids were minted by *our* `link_gravel_riders.slugify()` from the
-corrupted string — PCS covers no gravel, so no upstream id exists and we own
-them outright. `√Öberg` slugified to `emil-oberg`, which reads as `Ø` and is
+corrupted string — these editions came from Athlinks, which publishes no rider
+id, so we own them outright. (The reason is Athlinks, not PCS: PCS does cover
+some gravel, under `national-race/`, and where it does its slug is preferred —
+see "Source The Traka from PCS".) `√Öberg` slugified to `emil-oberg`, which reads as `Ø` and is
 wrong twice over.
 
 The team id came out of a **PCS href**. It is PCS's own identifier, generated
@@ -1804,8 +1806,8 @@ mistyped age cannot drag it.
 
 | field | why |
 |---|---|
-| `vertical_meters` | Athlinks publishes no elevation; PCS has nothing. Published figures disagree wildly — 11,586 ft and 14,517 ft for the same Leadville course, from two RideWithGPS traces. A NULL is a gap; a guess would be a claim. The Race Overview hides its elevation and difficulty metrics automatically (`hasElevationData`). |
-| `profile_score` | PCS's metric, and PCS has nothing here. |
+| `vertical_meters` | Athlinks publishes no elevation. PCS does, for the editions it covers, and **as of 2026-09-09 this IS stored** — The Traka 2026 holds 4,198 m. Only the Athlinks races are still NULL by necessity, and there the published figures disagree wildly — 11,586 ft and 14,517 ft for the same Leadville course, from two RideWithGPS traces. A NULL is a gap; a guess would be a claim. The Race Overview hides its elevation and difficulty metrics automatically (`hasElevationData`). |
+| `profile_score` | PCS's metric, **stored as of 2026-09-09** for the gravel editions PCS covers (The Traka 2026: 125). A printed 0 next to an unmeasured `-` elevation means unrated, not flat, and is deliberately NOT stored — see `parse_parcours`. Athlinks has no equivalent. |
 | `team_id` | Athlinks records no team. lifetimegrandprix.com does — but only ONE team per athlete, their current one, so attaching it to a 2022 result would be fiction. sportmaniacs DOES give a real per-edition club for The Traka; it is captured in the scrape files and still not ingested, because storing clubs for one race of seven would make the column mean something different per race. |
 | season points | Life Time's own 30-to-1 Grand Prix scale exists, but it scores a 25-rider invitational, not the race. `hasSeasonPoints: false`; the bump chart plots finishing position, as the classics' does. |
 | women's fields | Deliberate, and the next thing to do here. |
@@ -3695,6 +3697,96 @@ module-evaluation time.
 
 ---
 
+## coverage.py excluded work that was doable (2026-09-09)
+
+`coverage.py` is the report that decides what to scrape next, and it was
+hiding ~993 fillable values behind two exclusions that were asserted rather
+than checked. Both are fixed; `--worst` goes from 1,202 gap rows to 1,321.
+
+**The gravel exclusion.** The whole gravel set was exempt from elevation,
+profile score, route type, teams and source slugs, on the stated grounds that
+"PCS has no gravel or MTB coverage at all — verified, not assumed". That is the
+same claim commit `2d8cd2f` had already overturned: PCS files gravel under
+`national-race/`, which its own search does not index, so the one method used
+returned nothing and was written down as verified. PCS covers The Traka, and
+its 2026 page prints `Vertical meters: 4198` and `ProfileScore: 125` — values
+sitting in a cached page in `gravel_scrapes/_raw/`, unscraped and unreported
+because the report had been told not to look.
+
+**The classics exclusion**, on the same footing: profile score and route type
+were exempt because "a one-day race is not classified as flat/hilly/mountain".
+PCS does classify them and `ingest_classics.py` has been storing it all along —
+**295 of 963 classic stages already carry a profile score**, so the field was
+30.6% populated while being reported as having no source. 668 values.
+
+**The exclusion is now per stage, not per race type**, because a race set can
+mix upstreams inside one year: 2025 holds The Traka (PCS — elevation and teams
+are gettable) beside Big Sugar (Athlinks — they are not). A single per-year
+denominator cannot express that, so the denominator is accumulated per stage
+while collecting, and the result query groups by `stage_id` rather than by
+race-year to let the same rule reach `team_id`. Three tables replace one:
+
+| table | means | contents |
+|---|---|---|
+| `STRUCTURAL_EXEMPT` | cannot exist whatever covered it | `gc_rank` for one-day and gravel — no GC in a one-stage race |
+| `COMPUTED_EXEMPT` | pipeline computes it, no scrape fills it | `route_type` (fills when its input does); gravel `source_slug` |
+| `SOURCE_EXEMPT` | depends on the upstream | Athlinks/tretzesports publish a finish list, not a parcours, and name no team |
+
+Each stage's upstream is read from `data_provenance` (`field='source_slug'`,
+which every ingest writes and no patch rewrites), which is only reliable
+because the same day's backfill took `stages` to 100% coverage. **An
+unrecognised source is exempted from nothing** — this report's failure mode
+must be showing work that turns out to be impossible, never hiding work that
+is possible, which is exactly the bug being fixed.
+
+Newly visible: `one_day profile_score` 668 values over 107 race-years; gravel
+`team_id` 317 over the four PCS-covered Traka years; gravel elevation and
+profile score 4 each. Verified that no Grand Tour figure moved and that no row
+present before is absent now. `test_coverage.py` grew from 6 tests to 13.
+
+**Then the gaps it revealed were filled.** `scrape_pcs_gravel.py` now reads
+both fields (`parse_parcours`, the same two patterns `scrape_stage_info.py`
+uses — a national-race page carries the same info list a stage page does) and
+`ingest_gravel.py` stores them. The Traka 2026 holds **4,198 m / ProfileScore
+125**, sourced to its PCS URL. 12.9 m/km, which is plausible for Girona gravel.
+
+**A ProfileScore of 0 is not a zero.** PCS prints `Vertical meters: -` for a
+course it has not measured and puts `ProfileScore: 0` beside it, which means
+unrated. The score is therefore only taken when the elevation is there to
+corroborate it, and the evidence for that rule is in the DB: 87 stages
+genuinely score 0, they are prologues and short time trials, and every one has
+real vertical meters recorded next to it. So The Traka 2023-25 stay NULL and
+stay on the gap list — PCS covers the race but has not measured those courses,
+which is a gap rather than an absent source. Same rule as `parse_result`'s
+0 km distance.
+
+Provenance is recorded for both fields on the four PCS editions and on neither
+tretzesports one: PCS was asked and published nothing for 2023-25, whereas the
+timers were never in a position to say. 50 provenance rows for the six
+editions; rider and team counts unchanged by the rebuild.
+
+**Found while checking the re-export, NOT fixed — `bibNumber` is
+nondeterministic for gravel and the classics.** `export_gc.py` picks it with
+
+    SELECT sr.rider_id, sr.bib_number ... GROUP BY sr.rider_id
+
+over a bare column, on a comment asserting "bib number is stable per rider
+within an edition (verified: no rider has more than one distinct bib_number)".
+That holds for a stage race — one rider, one bib, three weeks — and does not
+hold for a set whose "edition" is a synthetic season of separate races that
+each number their own field. Mattia De Marchi rode 2022 as **110 at The Traka
+and 2399 at Unbound**; SQLite returns whichever row it scanned first, so
+re-ingesting one race silently flips the exported value. Re-ingesting The Traka
+changed the bib of 4 riders in 2022 and added one for 35 more across 2023-26,
+with no underlying data change.
+
+Neither value is wrong, which is the problem: there is no correct answer to
+"which bib does a rider have in a season of seven races that each issue their
+own". That is a product question, so it is left for Eric rather than settled by
+whichever `ORDER BY` makes the diff go away. Until it is settled, expect
+spurious churn in `gc_by_stage_*.json` for gravel and classics whenever a race
+is re-ingested.
+
 ## Provenance: `stages` finished, and the one-day gap in the backfill (2026-09-09)
 
 `backfill_provenance.py` had 2,934 stage rows pending and was run. It is the
@@ -4123,8 +4215,9 @@ noise, and noise is what made the per-field audits hard to read side by side:
 |---|---|
 | cancelled stages | never raced, so a NULL distance is the correct value — the same rule the race totals use |
 | `finish_time_seconds` / `gc_rank` for a **DNF** | no finishing time or GC standing exists; counting the whole startlist reported ~60% missing on years that are complete. Biggest single source of noise |
-| gravel: elevation, profile score, route type, teams, source slugs | PCS has no gravel or MTB coverage at all — verified, not assumed, so there is nothing to scrape from |
-| one-day: profile score, route type | a one-day race is not classified flat/hilly/mountain |
+| `gc_rank` for a one-day or gravel race | structural: a race of one stage has no general classification. 0 of 72,911 and 0 of 7,891 |
+| `route_type` anywhere it is computed; a gravel `source_slug` | derived or assigned at ingest, never fetched, so no scrape fills them. `route_type` fills exactly when its input does |
+| elevation, profile score and teams **only for the gravel editions Athlinks or tretzesports timed** | those are timing platforms: a finish list, no parcours, no trade team. **Corrected 2026-09-09** — this row used to exclude the whole gravel set because "PCS has no gravel or MTB coverage at all — verified, not assumed", and the one-day row excluded profile score because "a one-day race is not classified flat/hilly/mountain". Both were false and together hid ~993 fillable values. See "coverage.py excluded work that was doable" |
 
 Gaps rank by **values missing**, not by percentage: a year at 40% of 180 is a
 bigger afternoon than one at 0% of 3. As of 2026-08-22 the top of the list is

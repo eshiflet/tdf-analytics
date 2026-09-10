@@ -8,7 +8,7 @@
   "distance_km": 360.0,
   "event_id": "the-traka-360/2023",
   "event_name": "The Traka 360 2023",
-  "fetched_at": "2026-08-24T15:23:27+00:00",
+  "fetched_at": "2026-09-10T00:43:07+00:00",
   "field_size_men": 21,
   "field_size_selected": 21,
   "field_size_source": 21,
@@ -16,6 +16,7 @@
   "last_rank": 21,
   "pcs_national_only": 11,
   "pcs_pro_riders": 10,
+  "profile_score": null,
   "race_slug": "traka",
   "rank_type": "gun",
   "rule": "pcs_field",
@@ -23,6 +24,7 @@
   "source_url": "https://www.procyclingstats.com/national-race/the-traka-360/2023/result",
   "teams_named": 2,
   "truncated": false,
+  "vertical_meters": null,
   "year": 2023
  },
  "rows": [

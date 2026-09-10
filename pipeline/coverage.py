@@ -13,19 +13,38 @@ says a value is wrong — every number here is "how much of this exists". Use
 validate_db.py / validate_exports.py for correctness; use this to pick the next
 scrape target.
 
-WHAT IT DOES NOT COUNT. A gap that cannot be filled is noise, and noise is what
-made the per-field audits hard to read together:
+WHAT IT DOES NOT COUNT. A gap that cannot be filled is noise. But a gap wrongly
+declared unfillable is worse than noise — it is work this report will never show
+you again — so every exclusion below is checked against the database and against
+what the upstream actually publishes:
 
   * CANCELLED stages are excluded outright. They were never raced, so a NULL
     distance is the correct value, not a gap — the same rule the race totals
     use (see ai-context.md, "Race totals: cancelled stages").
-  * The gravel/MTB set is EXEMPT from elevation, profile score, route type,
-    teams and source slugs. PCS has no gravel or MTB coverage at all — verified,
-    not assumed — so those columns have no upstream to scrape from.
-  * The one-day classics are exempt from profile_score and route_type for the
-    same reason: a one-day race is not classified as flat/hilly/mountain.
+  * A one-stage race has no GC, so `gc_rank` is excluded for the classics and
+    the gravel/MTB set. Structural, and confirmed: 0 of 72,911 and 0 of 7,891.
+  * `route_type` is COMPUTED, never fetched — gravel_route_type(discipline) for
+    gravel, classic_route_type(profile_score) for a classic — so it fills
+    exactly when its input does, and listing it separately would double-count
+    the same afternoon's work. A gravel `source_slug` is likewise minted from
+    the timer's event id at ingest.
+  * Elevation, profile score and teams are excluded only for the gravel
+    editions whose upstream cannot supply them — see SOURCE_EXEMPT.
 
 Anything else that is NULL is reported, because in principle a source exists.
+
+WHAT THIS USED TO GET WRONG, because it is the failure mode to watch for. Every
+one of those columns was once excluded for the whole gravel set, on the stated
+grounds that "PCS has no gravel or MTB coverage at all — verified, not assumed".
+It was not verified; it rested on one method, a search of PCS's own index, which
+returns nothing because PCS files gravel under national-race/ and that namespace
+is not indexed. PCS covers The Traka, publishes "Vertical meters: 4198" and
+"ProfileScore: 125" for its 2026 edition, and names a trade team for 29 of that
+edition's 141 riders. The classics exclusion was wrong the same way: PCS does
+classify a one-day race, and ingest_classics.py has been storing it all along —
+295 of 963 classic stages carry a profile score. Roughly a thousand fillable
+values were invisible here. When an exclusion says a source does not exist, it
+needs a page checked, not a plausible reason.
 
 Usage:
   python3 coverage.py                      # every race set, worst gaps first
@@ -69,14 +88,45 @@ RESULT_FIELDS = ["team_id", "finish_time_seconds", "gc_rank"]
 # before it was split out.
 FINISHERS_ONLY = {"finish_time_seconds", "gc_rank"}
 
-# race_type -> fields with no upstream to scrape, so a NULL is the end state
-# rather than a gap. See the module docstring for why each one is here.
-EXEMPT = {
-    "gravel": {"vertical_meters", "profile_score", "route_type", "source_slug",
-               "team_id", "gc_rank"},
-    "one_day": {"profile_score", "route_type", "gc_rank"},
+# Fields a race type cannot have whatever covered it: facts about the shape of
+# the race, not about its source. A single-stage race has no classification to
+# rank anyone in.
+STRUCTURAL_EXEMPT = {
+    "gravel": {"gc_rank"},
+    "one_day": {"gc_rank"},
     "stage_race": set(),
 }
+
+# Fields this pipeline computes or assigns rather than fetching, so no scrape
+# will ever fill them and a gap here is not a scrape target. See the docstring.
+COMPUTED_EXEMPT = {
+    "gravel": {"route_type", "source_slug"},
+    "one_day": {"route_type"},
+    "stage_race": set(),
+}
+
+# Availability that depends on WHICH upstream covered the edition rather than
+# on the kind of race. Only the gravel set draws on more than one.
+#
+# Athlinks and tretzesports are timing platforms: they publish a finish list,
+# not a parcours, and they record no trade team — which is the real reason
+# gravel teams were once excluded, and it holds for those two. It does not hold
+# for PCS, which publishes all three (see the docstring). An edition whose
+# source is not recognised is exempted from NOTHING: this report's failure mode
+# must be showing work that turns out to be impossible, never hiding work that
+# is possible.
+SOURCE_EXEMPT = {
+    "athlinks": {"vertical_meters", "profile_score", "team_id"},
+    "tretzesports": {"vertical_meters", "profile_score", "team_id"},
+    "pcs": set(),
+}
+
+
+def exempt_fields(race_type, source):
+    """Fields that are not a gap for one stage, given its type and upstream."""
+    return (STRUCTURAL_EXEMPT.get(race_type, set())
+            | COMPUTED_EXEMPT.get(race_type, set())
+            | SOURCE_EXEMPT.get(source, set()))
 
 
 def race_scope(cur, race=None):
@@ -95,6 +145,32 @@ def race_scope(cur, race=None):
     return rows
 
 
+POSSIBLE = "__possible"          # row key suffix: how many a field COULD have
+
+
+def stage_sources(cur, race_ids):
+    """stage_id -> the upstream that supplied it.
+
+    Read out of data_provenance rather than parsed back out of source_slug:
+    recording where a value came from is that table's whole job, and since the
+    2026-09-09 stages backfill every stage carries a row. `source_slug` is the
+    field to read because every ingest writes it and no patch script rewrites
+    it, so it names the ingest's own upstream rather than some later
+    correction's — the same reason ingested_origin() reads it in
+    backfill_provenance.py.
+    """
+    placeholders = ",".join("?" * len(race_ids))
+    cur.execute(
+        f"""SELECT s.stage_id, dp.source
+            FROM stages s
+            JOIN race_editions e ON e.edition_id = s.edition_id
+            LEFT JOIN data_provenance dp
+                   ON dp.entity = 'stages' AND dp.entity_id = s.stage_id
+                  AND dp.field = 'source_slug'
+            WHERE e.race_id IN ({placeholders})""", tuple(race_ids))
+    return dict(cur.fetchall())
+
+
 def collect(cur, races):
     """One row per (race_set, year): totals and per-field non-NULL counts.
 
@@ -104,34 +180,46 @@ def collect(cur, races):
     unaffected by the grouping.
     """
     ids = {r[0] for r in races}
-    set_of = {}
+    set_of, type_of = {}, {}
     for race_id, name, race_type in races:
         set_of[race_id] = name if race_type == "stage_race" else race_type
+        type_of[race_id] = race_type
+
+    sources = stage_sources(cur, ids)
+    all_fields = STAGE_FIELDS + RESULT_FIELDS
 
     rows = defaultdict(lambda: {"stages": 0, "cancelled": 0, "results": 0,
                                 "finishers": 0, "race_type": None,
-                                **{f: 0 for f in STAGE_FIELDS + RESULT_FIELDS}})
+                                **{f: 0 for f in all_fields},
+                                **{f + POSSIBLE: 0 for f in all_fields}})
 
     placeholders = ",".join("?" * len(ids))
     # Cancelled stages are filtered in SQL rather than counted and subtracted:
     # they must not reach the denominator either, or a year that cancelled two
     # of its stages reads as permanently short of complete.
     cur.execute(
-        f"""SELECT r.race_id, e.year, s.cancelled,
+        f"""SELECT s.stage_id, r.race_id, e.year, s.cancelled,
                    {', '.join('s.' + f for f in STAGE_FIELDS)}
             FROM stages s
             JOIN race_editions e ON e.edition_id = s.edition_id
             JOIN races r ON r.race_id = e.race_id
             WHERE r.race_id IN ({placeholders})""", tuple(ids))
-    for race_id, year, cancelled, *values in cur.fetchall():
+    # Which race-year each stage feeds, and what may fairly be asked of it.
+    stage_key, stage_exempt = {}, {}
+    for stage_id, race_id, year, cancelled, *values in cur.fetchall():
         key = (set_of[race_id], year)
         row = rows[key]
-        row["race_type"] = next(t for i, _, t in races if i == race_id)
+        row["race_type"] = type_of[race_id]
         if cancelled:
             row["cancelled"] += 1
             continue
+        exempt = exempt_fields(type_of[race_id], sources.get(stage_id))
+        stage_key[stage_id], stage_exempt[stage_id] = key, exempt
         row["stages"] += 1
         for field, value in zip(STAGE_FIELDS, values):
+            if field in exempt:
+                continue
+            row[field + POSSIBLE] += 1
             if value is not None:
                 row[field] += 1
 
@@ -140,33 +228,46 @@ def collect(cur, races):
     counted = [f"COUNT(CASE WHEN sr.status = 'FINISHED' THEN sr.{f} END)"
                if f in FINISHERS_ONLY else f"COUNT(sr.{f})"
                for f in RESULT_FIELDS]
+    # Grouped per STAGE rather than per race-year, which is what lets a
+    # per-stage exemption reach the result fields at all: one gravel year holds
+    # races with different upstreams, so team_id is gettable for some of its
+    # stages and not others. ~7,300 groups instead of ~470 costs nothing.
     cur.execute(
-        f"""SELECT r.race_id, e.year, COUNT(*),
+        f"""SELECT sr.stage_id, COUNT(*),
                    SUM(CASE WHEN sr.status = 'FINISHED' THEN 1 ELSE 0 END),
                    {', '.join(counted)}
             FROM stage_results sr
             JOIN stages s ON s.stage_id = sr.stage_id
             JOIN race_editions e ON e.edition_id = s.edition_id
-            JOIN races r ON r.race_id = e.race_id
-            WHERE r.race_id IN ({placeholders}) AND s.cancelled = 0
-            GROUP BY r.race_id, e.year""", tuple(ids))
-    for race_id, year, total, finishers, *counts in cur.fetchall():
-        row = rows[(set_of[race_id], year)]
+            WHERE e.race_id IN ({placeholders}) AND s.cancelled = 0
+            GROUP BY sr.stage_id""", tuple(ids))
+    for stage_id, total, finishers, *counts in cur.fetchall():
+        key = stage_key.get(stage_id)
+        if key is None:                 # a cancelled stage that still has rows
+            continue
+        row, exempt = rows[key], stage_exempt[stage_id]
+        finishers = finishers or 0
         row["results"] += total
-        row["finishers"] += finishers or 0
+        row["finishers"] += finishers
         for field, count in zip(RESULT_FIELDS, counts):
+            if field in exempt:
+                continue
+            row[field + POSSIBLE] += finishers if field in FINISHERS_ONLY else total
             row[field] += count
 
     return rows
 
 
 def denominator(row, field):
-    """How many values this field COULD have for one race-year."""
-    if field in FINISHERS_ONLY:
-        return row["finishers"]
-    if field in RESULT_FIELDS:
-        return row["results"]
-    return row["stages"]
+    """How many values this field COULD have for one race-year.
+
+    Accumulated per stage while collecting rather than read off the race-year
+    total, because a race SET can mix upstreams inside one year: 2025 holds The
+    Traka, whose PCS page publishes elevation and names teams, alongside Big
+    Sugar, whose Athlinks feed does neither. A single per-year denominator
+    cannot say "70 of these 172 riders could have had a team recorded".
+    """
+    return row[field + POSSIBLE]
 
 
 def gaps(rows, only_field=None):
@@ -178,12 +279,11 @@ def gaps(rows, only_field=None):
     """
     out = []
     for (race_set, year), row in rows.items():
-        exempt = EXEMPT.get(row["race_type"], set())
         for field in STAGE_FIELDS + RESULT_FIELDS:
             if only_field and field != only_field:
                 continue
-            if field in exempt:
-                continue
+            # An exempt field never reached its denominator, so it falls out
+            # here as total == 0 rather than needing a second exemption check.
             total = denominator(row, field)
             if total == 0:
                 continue
@@ -211,9 +311,11 @@ def print_year_table(rows, race_set):
     years = sorted(y for s, y in rows if s == race_set)
     if not years:
         return
-    race_type = rows[(race_set, years[0])]["race_type"]
-    exempt = EXEMPT.get(race_type, set())
-    fields = [f for f in STAGE_FIELDS + RESULT_FIELDS if f not in exempt]
+    # A column is shown when any year of this set could hold it — a set whose
+    # upstream changed partway (gravel moved to PCS in 2023) has years that can
+    # and years that cannot, and the ones that cannot print "—" via pct().
+    fields = [f for f in STAGE_FIELDS + RESULT_FIELDS
+              if any(rows[(race_set, y)][f + POSSIBLE] for y in years)]
     print(f"\n{race_set}")
     header = f"  {'year':>5} {'stages':>7} {'results':>8}  " + \
              "  ".join(f"{f[:9]:>9}" for f in fields)

@@ -8,7 +8,7 @@
   "distance_km": 325.0,
   "event_id": "the-traka-360/2026",
   "event_name": "The Traka 360 2026",
-  "fetched_at": "2026-08-24T15:23:27+00:00",
+  "fetched_at": "2026-09-10T00:43:07+00:00",
   "field_size_men": 141,
   "field_size_selected": 141,
   "field_size_source": 141,
@@ -16,6 +16,7 @@
   "last_rank": 133,
   "pcs_national_only": 33,
   "pcs_pro_riders": 108,
+  "profile_score": 125,
   "race_slug": "traka",
   "rank_type": "gun",
   "rule": "pcs_field",
@@ -23,6 +24,7 @@
   "source_url": "https://www.procyclingstats.com/national-race/the-traka-360/2026/result",
   "teams_named": 29,
   "truncated": false,
+  "vertical_meters": 4198,
   "year": 2026
  },
  "rows": [

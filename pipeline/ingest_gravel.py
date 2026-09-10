@@ -13,13 +13,17 @@ re-run.
 
 What is deliberately NOT stored:
 
-  vertical_meters   Athlinks publishes no elevation and PCS does not cover
-                    these races. Every published figure for, say, Leadville
-                    disagrees with every other (11,586 ft and 14,517 ft for
-                    the same course, from two RideWithGPS traces), so the
-                    column stays NULL until a source is chosen per race-year.
-                    A NULL is a gap; a guess would be a claim.
-  profile_score     PCS's metric, and PCS has nothing here.
+  vertical_meters   STORED where PCS publishes it (The Traka 2026: 4198 m),
+                    read by scrape_pcs_gravel.parse_parcours. Athlinks
+                    publishes no elevation, so its six races stay NULL: every
+                    published figure for, say, Leadville disagrees with every
+                    other (11,586 ft and 14,517 ft for the same course, from
+                    two RideWithGPS traces), so the column waits until a
+                    source is chosen per race-year. A NULL is a gap; a guess
+                    would be a claim.
+  profile_score     PCS's metric, stored alongside the elevation. A 0 printed
+                    against an unmeasured "-" elevation means unrated rather
+                    than flat and is not stored. Athlinks has no equivalent.
   team_id           Athlinks records no team. lifetimegrandprix.com does, but
                     only ONE team per athlete — their current one — so
                     attaching it to a 2022 result would be fiction.
@@ -135,19 +139,28 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     cur.execute(
         """INSERT INTO stages
              (edition_id, stage_number, stage_label, stage_date, distance_km,
-              stage_type, route_type, cancelled, source_slug)
-           VALUES (?,1,?,?,?,?,?,?,?)""",
+              stage_type, route_type, cancelled, source_slug,
+              vertical_meters, profile_score)
+           VALUES (?,1,?,?,?,?,?,?,?,?,?)""",
         (edition_id, meta.name, info.get("date"), info.get("distance_km"),
          info.get("discipline"), route,
-         1 if data["cancelled"] else 0, source_slug),
+         1 if data["cancelled"] else 0, source_slug,
+         info.get("vertical_meters"), info.get("profile_score")),
     )
     stage_id = cur.lastrowid
 
     api = info.get("api_url") or info.get("source_url")
     # 'results' covers every stage_results row below: they come out of this same
     # fetch, so they are recorded here rather than per rider (see schema.sql).
-    for field in ("stage_date", "distance_km", "source_slug", "cancelled",
-                  "stage_type", "results"):
+    tracked = ["stage_date", "distance_km", "source_slug", "cancelled",
+               "stage_type", "results"]
+    # PCS is the only gravel upstream that publishes a parcours, and only for
+    # the editions it has actually measured (see parse_parcours). Claim an
+    # origin for what the source addressed — an Athlinks file carries neither
+    # key, and recording 'athlinks' against a NULL nobody looked for would
+    # assert something the timer never said.
+    tracked += [f for f in ("vertical_meters", "profile_score") if f in info]
+    for field in tracked:
         record_provenance(cur, "stages", stage_id, field, source,
                           source_ref=api)
     record_provenance(cur, "stages", stage_id, "route_type", SOURCE_DERIVED,
