@@ -3792,6 +3792,34 @@ completed one-off whose hardcoded swap list `fix_name_swaps.py --race tour` now
 covers generically. Migrating them would be work thrown away, so the originals
 stay until they go.
 
+## Tour KOM back to 1933, points back to 1947 (2026-09-10)
+
+`classification_standings` started at 1960 for the Tour because its only writer
+did. The pre-1960 KOM standings were sitting in `classifications.json` sidecars,
+scraped and committed and never ingested. `scrape_classifications.py --race
+tour` now covers them, through the same code path as the other two races.
+
+| | before | after |
+|---|---|---|
+| KOM | 2,897 (1960-2025) | **3,211 (1933-2025)** |
+| points | 4,044 (1960-2025) | **4,171 (1947-2025)** |
+
+Points beginning in 1947 is correct — it was not awarded before the war. KOM
+beginning in 1933 is the classification's own first year, won by Vicente Trueba.
+Spot-checked against history: Trueba 1933, Sylvère Maes 1939, Bartali 1948,
+Gaul 1955, Bahamontes 1959, all correct.
+
+The local sidecar and the live PCS page agree exactly where both exist (1933:
+Trueba 134, Magne 81, Martano 78), so the live scrape was used for consistency
+rather than because the sidecar was wrong.
+
+**111 riders' `komRank` changed in the export, and it is an upgrade rather than
+a correction.** Those years already had a rank computed from the per-stage
+`tour_kom_points.json` tallies; they now carry PCS's published placing instead.
+The two agree on POINTS — van Dijck 4 in 1948 either way, Bartali 62 winning —
+and differ only in how riders on equal points are ordered, where the official
+classification wins.
+
 ## Step 5: four ingest paths become two (2026-09-10)
 
 `ingest_race.py --race tour` now works, and the scripts that existed only
