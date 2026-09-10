@@ -155,14 +155,32 @@ def main():
     new_bad = row_gap_violations(rows)
     print(f"  gap violations: DB {db_bad}, source {new_bad}")
 
+    # A name-swap repair moves no counts at all — same rows, same ranks, same
+    # gaps — and changes only which rider each row names, so the three counters
+    # above are blind to it and the "nothing to gain" guard would reject the
+    # very fix fix_name_swaps.py just wrote. Compare identities too, keyed on
+    # the bib, which is the authority for whose ride a row is.
+    db_ident = {r["bib_number"]: r["rider_id"] for r in cur.execute(
+        "SELECT bib_number, rider_id FROM stage_results "
+        "WHERE stage_id=? AND bib_number IS NOT NULL", (st["stage_id"],))}
+    renamed = 0
+    for r in rows:
+        sr = StageRow.from_list(r)
+        bib = parse_int(sr.bib)
+        if bib is not None and sr.slug and db_ident.get(bib, sr.slug) != sr.slug:
+            renamed += 1
+    if renamed:
+        print(f"  rows naming a different rider than the DB: {renamed}")
+
     if new_ranked < db_ranked:
         sys.exit("refusing to replace: that would lose ranks")
     if len(rows) < st["res"] and not args.from_pcs:
         sys.exit("refusing to replace: that would lose rows")
     if new_bad > db_bad:
         sys.exit("refusing to replace: that would add gap violations")
-    if len(rows) == st["res"] and new_ranked == db_ranked and new_bad == db_bad:
-        sys.exit("nothing to gain: same rows, same ranks, same gaps")
+    if (len(rows) == st["res"] and new_ranked == db_ranked
+            and new_bad == db_bad and renamed == 0):
+        sys.exit("nothing to gain: same rows, same ranks, same gaps, same riders")
 
     if args.dry_run:
         print("\n[DRY RUN] would replace the stage's results. Sample:")

@@ -3697,6 +3697,58 @@ module-evaluation time.
 
 ---
 
+## Bib "transpositions" were name swaps, and the Tour had never been checked (2026-09-09)
+
+54 rider-editions carried two different bib numbers inside one edition. All 54
+turned out to be **27 mutual transpositions on a single stage** — and the bib
+was never the thing that moved. Age, team and the finishing row stay bound to
+the bib; only name/slug/nat shift to the neighbouring row. That is the
+name-swap artifact `fix_name_swaps.py` already repairs, with four corroboration
+criteria (mutual, adjacent, strong majority, team-bound).
+
+**It had never run against the Tour.** `SCRAPE_DIRS` named the Giro and the
+Vuelta only, because the Tour keeps a year per file (`tdf_YEAR_full.json`) and
+they keep a file per stage. Ten pairs across 1924-1949 sat unrepaired in files
+the script reads happily once pointed at them. All ten pass every criterion,
+0 unresolved, and `detect_name_swaps` now reports 0 across all 47 TDF years.
+
+**That layout split is now in one place.** `race_common.year_sources()` and
+`load_stage_rows()` are the single answer to "where are a stage race's scraped
+rows and how do I read them", covering all three races; callers no longer carry
+a per-race copy of the difference. This was the third tool in one day found
+covering only some races for no reason but the order they were written —
+`backfill_provenance.py` skipped the one-day races, `coverage.py` excluded
+gravel and the classics on an unchecked claim.
+
+**Recomputing GC is what makes the repair correct.** Carry-forward is keyed on
+the RIDER (`last_known_gc[rider_slug]`), so a row naming the wrong rider feeds
+the wrong standing forward until the next stage that publishes one. The ten
+swaps contaminated **81 further rider-stages** that way — 1938 st15 propagated
+through st28. No row-level patch can fix that.
+
+`reingest_edition_results.py` does it: rebuild one race-year's `stage_results`
+from its scrape files, replaying the carry-forward, touching the `stages` rows
+never. Every stage race, every year, one code path. The `stages` rows are
+excluded deliberately — 144 distances and 40 elevation figures across those six
+Tours are `unknown` provenance, present only in the DB, with no origin left to
+re-fetch from; a rebuild that dropped them could not put them back.
+
+**`reingest_tdf_stage.py` could not be used, and now says so.** It replaces one
+stage without recomputing GC, and NULLed 102 `gc_ranks` on 1924 st4 the one
+time it was tried (restored from backup). Its guard refused to lose rows, ranks
+or gaps but was blind to GC; it now counts identity changes too, so it stops
+rejecting a name-swap repair as "nothing to gain", and the new script guards on
+GC standings as well.
+
+Result: 54 -> 34 rider-editions. The remaining 34 are the 17 pairs in
+1976-2014, which have **no local scrape file at all** — and re-scraping will not
+help, the defect reproduces on every PCS request. Only 1924/1948/1949 changed
+in the exports: `byStage` carries `gcRank` but not `stage_rank`, and the other
+three years' GC was per-rider carried, so it was already right for each rider.
+
+**Still open:** the 17 modern pairs; the four TTT stages (1989 st2, 1992 st4,
+1994 st3, 2005 st4) where the TTT parser records no bib at all, 17 rows.
+
 ## coverage.py excluded work that was doable (2026-09-09)
 
 `coverage.py` is the report that decides what to scrape next, and it was

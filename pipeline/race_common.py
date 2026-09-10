@@ -211,6 +211,73 @@ CLASSICS: dict[str, ClassicInfo] = {
 }
 
 
+# ── Scrape-file layout ──────────────────────────────────────────────────────
+# ONE place that knows where a stage race's scraped rows live and how to read
+# them back. The Tour keeps a whole year in a single tdf_YEAR_full.json with
+# its stages inside; the Giro and Vuelta keep a directory of per-stage files.
+# That difference is an accident of which scraper came first, and every tool
+# that grew its own copy of it ended up quietly covering only some races —
+# fix_name_swaps.py skipped the Tour for exactly this reason. Callers should
+# not have to care, so they ask here instead.
+
+STAGE_RACES = ("giro", "tour", "vuelta")
+
+
+def year_sources(race):
+    """[(year, key)] for every year of `race` with scrape files on disk.
+
+    `key` is opaque — a directory for the Giro/Vuelta, a file for the Tour.
+    Pass it straight to load_stage_rows(); nothing else should read it.
+    """
+    import glob
+    here = os.path.dirname(os.path.abspath(__file__))
+    if race == "tour":
+        out = []
+        for p in glob.glob(os.path.join(here, "tdf_*_full.json")):
+            part = os.path.basename(p).split("_")[1]
+            if part.isdigit():
+                out.append((int(part), p))
+        return sorted(out)
+    base = os.path.join(here, RACES[race].scrapes_dirname)
+    return sorted((int(os.path.basename(d)), d)
+                  for d in glob.glob(os.path.join(base, "*"))
+                  if os.path.isdir(d) and os.path.basename(d).isdigit())
+
+
+def load_stage_rows(race, key):
+    """({stage_number: stage_dict}, save(touched_stage_numbers) -> files written).
+
+    The stage dicts are live: mutate their "rows" and call save() to persist,
+    whichever layout the race uses.
+    """
+    import glob
+    if race == "tour":
+        with open(key, encoding="utf-8") as f:
+            doc = json.load(f)
+        stages = {s["n"]: s for s in doc.get("stages", []) if "rows" in s}
+
+        def save(touched):
+            with open(key, "w", encoding="utf-8") as f:      # one file, all stages
+                json.dump(doc, f, ensure_ascii=False)
+            return 1
+        return stages, save
+
+    stages, paths = {}, {}
+    for p in sorted(glob.glob(os.path.join(key, "stage_*.json")),
+                    key=lambda q: int(os.path.basename(q)[6:-5])):
+        with open(p, encoding="utf-8") as f:
+            j = json.load(f)
+        n = j.get("n", int(os.path.basename(p)[6:-5]))
+        stages[n], paths[n] = j, p
+
+    def save(touched):
+        for n in touched:
+            with open(paths[n], "w", encoding="utf-8") as f:
+                json.dump(stages[n], f, ensure_ascii=False)
+        return len(touched)
+    return stages, save
+
+
 # ── Data provenance ─────────────────────────────────────────────────────────
 # Every write of a stored value should say where the value came from. See the
 # data_provenance table in schema.sql for the granularity rule (per-field on

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Repair adjacent-row name-swap artifacts in Giro/Vuelta stage scrape files.
+Repair adjacent-row name-swap artifacts in stage-race scrape files.
 
 The artifact: PCS renders two neighbouring result rows with their rider
 identities transposed. Everything else on the row — bib, team, age, times, GC —
@@ -24,6 +24,14 @@ Anything failing those is reported and left alone rather than guessed at.
 Duplicate-bib findings are ignored here — those are an upstream PCS defect
 where both riders and both results are correct (see detect_name_swaps._bib_check).
 
+The Tour was added 2026-09-09 and had never been covered: SCRAPE_DIRS named
+only the Giro and the Vuelta, so 10 pairs across 1924-1949 sat unrepaired in
+files this script reads happily once pointed at them. Its years live one to a
+file (tdf_YEAR_full.json, stages inside) rather than one per stage, which is
+the only reason it was left out. Note only 1903-1959 have such a file; from
+1960 there is none, so the 17 further pairs this finds in 1976-2014 cannot be
+repaired here — see ai-context.md.
+
 Usage:
   python3 fix_name_swaps.py --dry-run
   python3 fix_name_swaps.py --race giro --year 1973 --dry-run
@@ -36,41 +44,17 @@ import json
 import os
 from collections import Counter, defaultdict
 
-from ingest_race import check_swaps
-from race_common import StageRow, swap_identity
+from detect_name_swaps import _bib_check
+from race_common import (STAGE_RACES, StageRow, load_stage_rows,
+                         swap_identity, year_sources)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCRAPE_DIRS = {"giro": "giro_scrapes", "vuelta": "vuelta_scrapes"}
-
-
-def year_dirs(race):
-    base = os.path.join(HERE, SCRAPE_DIRS[race])
-    return sorted(
-        (int(os.path.basename(d)), d)
-        for d in glob.glob(os.path.join(base, "*"))
-        if os.path.isdir(d) and os.path.basename(d).isdigit()
-    )
-
-
-def stage_paths(year_dir):
-    return sorted(glob.glob(os.path.join(year_dir, "stage_*.json")),
-                  key=lambda p: int(os.path.basename(p)[6:-5]))
-
-
-def load_year(year_dir):
-    """{stage_n: (path, parsed_json)}"""
-    out = {}
-    for p in stage_paths(year_dir):
-        with open(p, encoding="utf-8") as f:
-            j = json.load(f)
-        out[j.get("n", int(os.path.basename(p)[6:-5]))] = (p, j)
-    return out
 
 
 def bib_profile(stages, bib):
     """Majority identity + support + team-by-stage for one bib."""
     idents, teams = Counter(), {}
-    for n, (_, j) in stages.items():
+    for n, j in stages.items():
         for row in j.get("rows", []):
             if len(row) != 15:
                 continue
@@ -92,14 +76,18 @@ def row_index(j, bib):
     return None
 
 
-def plan_year(race, year, year_dir):
+def plan_year(race, year, key):
     """Return (fixable_pairs, unfixable) for one race-year."""
-    findings = [f for f in check_swaps(race, year, stage_paths(year_dir))
+    stages, _ = load_stage_rows(race, key)
+    # _bib_check rather than ingest_race.check_swaps: that wrapper reads stage
+    # files off disk by path, which the Tour's one-file-per-year layout has
+    # none of. It builds exactly this mapping and calls _bib_check anyway.
+    findings = [f for f in _bib_check(race, year,
+                                      {n: j.get("rows", []) for n, j in stages.items()})
                 if f.get("type") == "bib_inconsistency"]
     if not findings:
         return [], []
 
-    stages = load_year(year_dir)
     by_stage = defaultdict(list)
     for f in findings:
         for st in f["outlier_stages"]:
@@ -113,7 +101,7 @@ def plan_year(race, year, year_dir):
             bib = f["bib"]
             if bib in handled:
                 continue
-            _, path_j = stages[st]
+            path_j = stages[st]
             shown_name = None
             i = row_index(path_j, bib)
             if i is not None:
@@ -153,24 +141,21 @@ def plan_year(race, year, year_dir):
     return fixable, unfixable
 
 
-def apply_year(year_dir, pairs):
-    """Apply swaps for one year; returns number of stage files rewritten."""
-    stages = load_year(year_dir)
-    touched = {}
+def apply_year(race, key, pairs):
+    """Apply swaps for one year; returns number of files rewritten."""
+    stages, save = load_stage_rows(race, key)
+    touched = set()
     for _, _, st, bib_a, bib_b, _, _ in pairs:
-        path, j = stages[st]
+        j = stages[st]
         ia, ib = row_index(j, bib_a), row_index(j, bib_b)
         swap_identity(j["rows"][ia], j["rows"][ib])
-        touched[path] = j
-    for path, j in touched.items():
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(j, f, ensure_ascii=False)
-    return len(touched)
+        touched.add(st)
+    return save(touched)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--race", choices=sorted(SCRAPE_DIRS), default=None)
+    ap.add_argument("--race", choices=list(STAGE_RACES), default=None)
     ap.add_argument("--year", type=int, default=None)
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
@@ -178,11 +163,11 @@ def main():
     if not args.apply:
         args.dry_run = True
 
-    races = [args.race] if args.race else sorted(SCRAPE_DIRS)
+    races = [args.race] if args.race else list(STAGE_RACES)
     all_fix, all_bad, files, years = [], [], 0, []
 
     for race in races:
-        for year, ydir in year_dirs(race):
+        for year, ydir in year_sources(race):
             if args.year and year != args.year:
                 continue
             fixable, unfixable = plan_year(race, year, ydir)
@@ -197,7 +182,7 @@ def main():
                     print(f"    stage {st:>2}: bib {a} <-> bib {b}   "
                           f"restore '{na}' / '{nb}'")
                 if args.apply:
-                    files += apply_year(ydir, fixable)
+                    files += apply_year(race, ydir, fixable)
 
     if all_bad:
         print(f"\nNOT fixed ({len(all_bad)}) — left alone rather than guessed:")
@@ -209,9 +194,19 @@ def main():
           f"{len(all_fix)} pair(s) across {len(years)} race-year(s); "
           f"{len(all_bad)} left unresolved")
     if args.apply:
-        print(f"Rewrote {files} stage file(s). Re-ingest the affected years:")
+        print(f"Rewrote {files} stage file(s). Push the fix into the database:")
         for race, year in years:
-            print(f"  python3 ingest_race.py --race {race} {year}")
+            if race == "tour":
+                # ingest_race.py covers the Giro and Vuelta only, and the TDF
+                # ingest is additive — it skips an edition already in the DB.
+                # reingest_tdf_stage.py is the one route that replaces a stage
+                # in place, per affected stage rather than per year.
+                for st in sorted({p[2] for p in all_fix
+                                  if p[0] == race and p[1] == year}):
+                    print(f"  python3 reingest_tdf_stage.py --year {year} "
+                          f"--stage {st} --apply")
+            else:
+                print(f"  python3 ingest_race.py --race {race} {year}")
 
 
 if __name__ == "__main__":
