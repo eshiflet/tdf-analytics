@@ -3697,6 +3697,42 @@ module-evaluation time.
 
 ---
 
+## The Giro and Vuelta have classification standings now (2026-09-09)
+
+`classification_standings` held 7,932 Tour rows and nothing else. Not a scope
+decision — both writers were hardcoded to the Tour and nobody had written the
+others. `scrape_classifications.py` covers all three:
+
+| race | points | KOM | youth |
+|---|---|---|---|
+| Tour | 4,044 (1960-2025) | 2,897 | 991 (1975+) |
+| **Giro** | **3,391 (1958+)** | **2,283 (1933+)** | **948 (1976+)** |
+| **Vuelta** | **2,911 (1945+)** | **1,987 (1935+)** | **321 (2019+)** |
+
+11,841 new rows. Spot-checked against cycling history across ninety years and
+every winner is right: Binda took the Giro's first KOM in 1933, Merckx both
+jerseys in 1968, Molinar the first Vuelta KOM in 1935, Kelly the 1985 Vuelta
+points. The scraper also reproduces the Tour's *existing* 2024 and 2010 rows
+exactly — same riders, ranks and totals — through a completely different code
+path from whatever wrote them, which is the strongest check available here.
+
+Storage matches the schema's intent: `points` for points/KOM, `time_seconds`
+for youth (929 of 948 Giro rows timed). The Vuelta's youth classification
+starting at 2019 is real — it lapsed and was reinstated.
+
+**What it changes downstream.** `riders_index` for the Giro and Vuelta now
+carries `sprintRank`/`komRank` in each rider-year, which it never could before:
+Binda's 1933 entry goes `[1, 385]` -> `[1, 385, 0, 1]`, recording that he won
+the race and its KOM. 1,915 Giro and 1,703 Vuelta riders gained ranks. The
+Vuelta index grew 4.2% gzipped, so the payload baseline is re-based in the same
+commit, as its own docs require.
+
+**Deliberately NOT changed: the white jersey.** `yw` is still exported for the
+Tour alone and `hasYouth` is still false for the other two. That was documented
+as "Giro/Vuelta don't track this classification", which is now simply untrue —
+the data is in the table. Turning it on is a display decision, so the comment
+was corrected and the behaviour left alone.
+
 ## PCS was never blocking us, and its GC URL does not serve the GC (2026-09-09)
 
 Two things worth writing down, because both cost real work this week.

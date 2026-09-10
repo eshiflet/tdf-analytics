@@ -17,8 +17,12 @@ Output: cycling-app/src/data/<slug>/riders_index.json
         "n": "<name>",
         "c": "<nationality or null>",
         "yw": [1984, 1989],                    # years rider won young-rider (white jersey)
-                                                # classification; omitted if never. TDF only —
-                                                # Giro/Vuelta don't track this classification.
+                                                # classification; omitted if never. TDF only,
+                                                # but only because the exporter and the frontend's
+                                                # hasYouth flag say so — since 2026-09-09 the DB
+                                                # holds youth standings for the Giro (1976+) and
+                                                # Vuelta (2019+) too. Wiring them up is a display
+                                                # decision, not a data gap.
         "y": { "<year>": [gcRank, teamIdx]                        # no points rankings
                | [gcRank, teamIdx, sprintRank, komRank], ... }    # 0 = that rank absent
       }
@@ -67,7 +71,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 def load_youth_winners(db_path=None):
     """Maps rider_id -> sorted list of years with a rank=1 finish in the
     youth (white jersey) classification, per cycling.db's
-    classification_standings table. TDF only."""
+    classification_standings table. TDF only — see the note on "yw" above:
+    the other two races have the data now, they are simply not asked for."""
     conn = sqlite3.connect(db_path or DB_PATH)
     cur = conn.cursor()
     cur.execute(
