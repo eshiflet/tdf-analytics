@@ -302,8 +302,12 @@ class TestFinishTimes(IngestHarness):
         # seconds and drags every later rider's time down with him.
         kirchen = self.other_row("41", "Kirchen", "1", "0:18")
         kirchen[13] = "0:18"
-        self.write_stage(1, rows=[self.winner_row("35:44"), kirchen,
-                                  self.other_row("198", "Millar", "2", "0:18")])
+        # The real stage: a 29.5 km time trial, so 35:44 is 49.5 km/h. It used
+        # to be written against the harness's default 100 km, which is 168 km/h
+        # — the implausible-speed guard rightly refuses that.
+        self.write_stage(1, distance="29.5 km",
+                         rows=[self.winner_row("35:44"), kirchen,
+                               self.other_row("198", "Millar", "2", "0:18")])
         self.ingest()
         t = self.times()
         self.assertEqual(t["rider/winner"], 2144)
@@ -391,6 +395,61 @@ class TestMalformedRows(IngestHarness):
         self.assertEqual(
             self.conn.execute("SELECT COUNT(*) FROM stage_results").fetchone()[0], 5)
         self.assertEqual(len(rows[0]), STAGE_ROW_LEN)
+
+
+class TestImplausibleWinnerTime(IngestHarness):
+    """A winner's time that no bike race could have ridden.
+
+    PCS puts the GC TOTAL in the Time column on some split-day time trials —
+    the 1962 Tour's 23 km stage-2b reads 10:45:17, Darrigade's cumulative time.
+    Ingest takes the winner's time as the base for every other rider on the
+    page, so one bad cell fabricates a whole field at 2.1 km/h.
+    """
+
+    def test_the_speed_check_itself(self):
+        self.assertTrue(ingest_race.implausible_speed(23.0, 38717))    # 2.1 km/h
+        self.assertTrue(ingest_race.implausible_speed(135.0, 243))     # 2000 km/h
+        self.assertFalse(ingest_race.implausible_speed(23.0, 1800))    # 46 km/h, a TT
+        self.assertFalse(ingest_race.implausible_speed(240.0, 28800))  # 30 km/h, a road stage
+        self.assertFalse(ingest_race.implausible_speed(468.0, 75600))  # 22 km/h, 1919
+        # Unknown distance or time is not evidence of anything.
+        for args in ((None, 3600), (0, 3600), (100.0, None), (100.0, 0)):
+            self.assertFalse(ingest_race.implausible_speed(*args), args)
+
+    def test_a_gc_total_is_refused_and_the_field_keeps_its_gaps(self):
+        rows = [result_row("1", "Darrigade André", "rider/a", rnk="1", gap=""),
+                result_row("2", "Altig Rudi", "rider/b", rnk="2", gap="0:36")]
+        rows[0][13] = "10:45:17"                       # the GC total PCS shows
+        self.write_stage(1, distance="23 km", rows=rows)
+        self.ingest()
+        times = {r["rider_id"]: (r["finish_time_seconds"], r["gap_seconds"])
+                 for r in self.conn.execute(
+                     "SELECT rider_id, finish_time_seconds, gap_seconds FROM stage_results")}
+        self.assertEqual(times["rider/a"], (None, 0))
+        self.assertEqual(times["rider/b"], (None, 36),
+                         "the gap is real even when the absolute time is not")
+        self.assertIn("km/h", self.last_output)
+
+    def test_a_real_winner_time_is_untouched(self):
+        rows = [result_row("1", "Winner", "rider/a", rnk="1", gap=""),
+                result_row("2", "Second", "rider/b", rnk="2", gap="0:36")]
+        rows[0][13] = "0:30:00"                        # 23 km at 46 km/h
+        self.write_stage(1, distance="23 km", rows=rows)
+        self.ingest()
+        times = {r["rider_id"]: r["finish_time_seconds"] for r in self.conn.execute(
+            "SELECT rider_id, finish_time_seconds FROM stage_results")}
+        self.assertEqual(times["rider/a"], 1800)
+        self.assertEqual(times["rider/b"], 1836)
+
+    def test_a_stage_with_no_distance_is_still_ingested(self):
+        """The check cannot run without a distance, and refusing on that basis
+        would throw away the times of every stage PCS never measured."""
+        rows = [result_row("1", "Winner", "rider/a", rnk="1", gap="")]
+        rows[0][13] = "10:45:17"
+        self.write_stage(1, distance="", rows=rows)
+        self.ingest()
+        self.assertEqual(self.conn.execute(
+            "SELECT finish_time_seconds FROM stage_results").fetchone()[0], 38717)
 
 
 class TestEditionScopedDataSurvives(IngestHarness):

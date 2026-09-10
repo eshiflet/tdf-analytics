@@ -61,6 +61,33 @@ def _stage_num(path: str) -> int:
     return int(re.search(r"stage_(\d+)\.json$", path).group(1))
 
 
+# A bike race is ridden between these speeds. The band is deliberately far
+# wider than any real stage — the slowest Tour ever averaged 24 km/h and the
+# fastest prologues touch 58 — because this is a guard against a value that is
+# not a stage time at all, not a judgement about a slow day in the mountains.
+# Anything subtler (a distance that is out by half, say) belongs in the
+# distance/time cross-check, which compares a stage against its own era.
+MIN_KMH, MAX_KMH = 12.0, 70.0
+
+
+def implausible_speed(distance_km, seconds) -> bool:
+    """Could no bike race have covered this distance in this time?
+
+    PCS puts the GC TOTAL in the Time column on some split-day time trials:
+    the 1962 Tour's 23 km stage-2b reads 10:45:17, which is Darrigade's
+    cumulative time and implies 2.1 km/h. Taken as a stage time it becomes the
+    base for every other rider on the page, so one bad cell fabricates a whole
+    field. 25 stages across the three races carry such a value today.
+
+    Returns False whenever the check cannot be made (no distance, no time) —
+    an unknown distance is not evidence of anything.
+    """
+    if not distance_km or not seconds or seconds <= 0:
+        return False
+    kmh = distance_km / (seconds / 3600)
+    return kmh < MIN_KMH or kmh > MAX_KMH
+
+
 def find_stage_files_for_year(scrapes_dir: str, year: int, flat_fallback: bool) -> list[str]:
     """Find stage files for a year, checking the year subdir first, then
     (for races with the legacy layout) the flat FLAT_FALLBACK_YEAR fallback.
@@ -268,6 +295,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     gc_standings = load_gc_standings(scrapes_dir, year)
     total_results = 0
     malformed: list[tuple] = []   # (stage_n, field_count, first_fields)
+    implausible: list[tuple] = []  # (stage_n, distance_km, refused_seconds)
 
     for sf in stage_files:
         with open(sf, encoding="utf-8") as f:
@@ -489,13 +517,23 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             is_winner_row = False
             if (status == "FINISHED" and abs_secs is not None and rnk == "1"
                     and winner_seconds is None):
-                winner_seconds = abs_secs
-                is_winner_row = True
                 # ...and that duplicated value is not a gap either. Storing it
                 # says the winner finished his own time behind himself, and a
                 # re-ingest would put it straight back after the DB was
                 # repaired. He is by definition zero behind the winner.
                 gap_secs = 0
+                if implausible_speed(distance_km, abs_secs):
+                    # Not a stage time at all. On some split-day time trials
+                    # PCS puts the GC TOTAL in the Time column — the 1962
+                    # Tour's 23 km stage-2b reads 10:45:17, Darrigade's
+                    # cumulative time, which would have the whole field riding
+                    # at 2.1 km/h. Storing nothing beats storing a number that
+                    # fails its own check, and the gaps on such a page are
+                    # still real, so only the absolute time is refused.
+                    implausible.append((n, distance_km, abs_secs))
+                else:
+                    winner_seconds = abs_secs
+                    is_winner_row = True
 
             finish_secs = None
             if status == "FINISHED" and winner_seconds is not None:
@@ -559,6 +597,17 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         if len(malformed) > 10:
             print(f"    ... and {len(malformed) - 10} more")
         print("    These are dropped results. Re-scrape the stage(s) to recover them.")
+
+    if implausible:
+        print(f"\n  {len(implausible)} stage(s) had a winner's time that is not one: "
+              f"stored NULL rather than a fabricated field.")
+        for stage_n, km, secs in implausible[:10]:
+            h, rem = divmod(secs, 3600)
+            print(f"    stage {stage_n}: {km} km in {h}:{rem // 60:02d}:{rem % 60:02d} "
+                  f"= {km / (secs / 3600):.1f} km/h. PCS is showing the GC total here. "
+                  "The gaps on the page are still real and were kept.")
+        if len(implausible) > 10:
+            print(f"    ... and {len(implausible) - 10} more")
 
     filled = backfill_edition_slugs(cur, edition_id)
     if filled:
