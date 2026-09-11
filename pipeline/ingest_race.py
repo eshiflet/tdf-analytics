@@ -39,6 +39,9 @@ from race_common import (
     parse_bonus_seconds,
     parse_int,
     parse_time_to_seconds,
+    implausible_speed,
+    MIN_KMH,
+    MAX_KMH,
     parse_year_args,
     to_iso_date,
     COUNTRY_NAMES,
@@ -62,31 +65,10 @@ def _stage_num(path: str) -> int:
     return int(re.search(r"stage_(\d+)\.json$", path).group(1))
 
 
-# A bike race is ridden between these speeds. The band is deliberately far
-# wider than any real stage — the slowest Tour ever averaged 24 km/h and the
-# fastest prologues touch 58 — because this is a guard against a value that is
-# not a stage time at all, not a judgement about a slow day in the mountains.
-# Anything subtler (a distance that is out by half, say) belongs in the
-# distance/time cross-check, which compares a stage against its own era.
-MIN_KMH, MAX_KMH = 12.0, 70.0
-
-
-def implausible_speed(distance_km, seconds) -> bool:
-    """Could no bike race have covered this distance in this time?
-
-    PCS puts the GC TOTAL in the Time column on some split-day time trials:
-    the 1962 Tour's 23 km stage-2b reads 10:45:17, which is Darrigade's
-    cumulative time and implies 2.1 km/h. Taken as a stage time it becomes the
-    base for every other rider on the page, so one bad cell fabricates a whole
-    field. 25 stages across the three races carry such a value today.
-
-    Returns False whenever the check cannot be made (no distance, no time) —
-    an unknown distance is not evidence of anything.
-    """
-    if not distance_km or not seconds or seconds <= 0:
-        return False
-    kmh = distance_km / (seconds / 3600)
-    return kmh < MIN_KMH or kmh > MAX_KMH
+# implausible_speed lives in race_common so every writer can reach it.
+# It was defined here once, and derive_ttt_rider_times.py then wrote 130
+# fabricated prologue times at 10 km/h because the guard was in the module
+# that did not run. A guard is only where you put it.
 
 
 def find_stage_files_for_year(scrapes_dir: str, year: int, flat_fallback: bool) -> list[str]:

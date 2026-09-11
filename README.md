@@ -6,7 +6,7 @@ classics, and seven gravel and mountain-bike races.
 
 **Live: [ericshiflet.com/tdf-analytics](https://ericshiflet.com/tdf-analytics/)**
 
-21 races · 1,365 race-years · 1892–2026 · 19,023 riders · 786,787 stage results
+21 races · 1,365 race-years · 1892–2026 · 19,023 riders · 786,870 stage results
 
 ## What it shows
 

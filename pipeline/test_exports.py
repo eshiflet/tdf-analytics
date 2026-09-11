@@ -468,6 +468,82 @@ class TestAbandonedRidersLeaveTheClassifications(unittest.TestCase):
         self.assertEqual(self.ranks(riders["rider/stayer"])[2], 1)
 
 
+class TestPartialStageSumIsNotATotalTime(unittest.TestCase):
+    """export_gc.resolve_total_time — the summed-stage-times fallback.
+
+    The sum is only a race total if every stage contributed one. Where most
+    stage times are NULL it adds up a handful and the site prints the answer as
+    the winner's time: the 1948 Giro read 4:51:45 over 3,000 km (854 km/h) and
+    the 1904 Tour read zero, both on rank-1 riders, so both reached the GC
+    tooltip. Storing nothing beats storing a number that fails its own check.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.db = os.path.join(self.tmp, "t.db")
+        conn = sqlite3.connect(self.db)
+        with open(os.path.join(HERE, "schema.sql"), encoding="utf-8") as f:
+            conn.executescript(f.read())
+        cur = conn.cursor()
+        cur.execute("INSERT INTO races (name, race_type) VALUES ('Giro d''Italia','stage_race')")
+        self.race_id = cur.lastrowid
+        cur.execute("INSERT INTO race_editions (race_id, year) VALUES (?, 1948)", (self.race_id,))
+        eid = cur.lastrowid
+        for name in ("partial", "zeroed", "honest"):
+            cur.execute("INSERT INTO riders (rider_id, full_name) VALUES (?,?)",
+                        (f"rider/{name}", name))
+        # Ten 300 km stages: 3,000 km, so a real total is ~100 hours.
+        sids = []
+        for n in range(1, 11):
+            cur.execute("""INSERT INTO stages (edition_id, stage_number, stage_date, distance_km)
+                           VALUES (?,?,?,300.0)""", (eid, n, f"1948-05-{n:02d}"))
+            sids.append(cur.lastrowid)
+        for i, sid in enumerate(sids):
+            # honest: 10 h a stage, a believable 30 km/h
+            cur.execute("""INSERT INTO stage_results (stage_id, rider_id, status, gc_rank,
+                           finish_time_seconds) VALUES (?, 'rider/honest', 'FINISHED', ?, 36000)""",
+                        (sid, i + 1))
+            # partial: only the first two stages have a time at all
+            cur.execute("""INSERT INTO stage_results (stage_id, rider_id, status, gc_rank,
+                           finish_time_seconds) VALUES (?, 'rider/partial', 'FINISHED', 1, ?)""",
+                        (sid, 36000 if i < 2 else None))
+            # zeroed: blank PCS time cells stored as 0 rather than NULL
+            cur.execute("""INSERT INTO stage_results (stage_id, rider_id, status, gc_rank,
+                           finish_time_seconds) VALUES (?, 'rider/zeroed', 'FINISHED', 1, 0)""",
+                        (sid,))
+        conn.commit()
+        conn.close()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def totals(self):
+        import io as _io
+        out = os.path.join(self.tmp, "out.json")
+        buf, sys.stdout = sys.stdout, _io.StringIO()
+        try:
+            export_gc.export_year(1948, out, race_id=self.race_id, db_path=self.db)
+        finally:
+            sys.stdout = buf
+        with open(out, encoding="utf-8") as f:
+            return {r["id"]: r["totalTimeSeconds"] for r in json.load(f)["riders"]}
+
+    def test_a_believable_total_survives(self):
+        # 3,000 km in 100 h is 30 km/h. Nothing to refuse.
+        self.assertEqual(self.totals()["rider/honest"], 360000)
+
+    def test_two_stages_summed_is_not_a_race_total(self):
+        # 20 h over 3,000 km is 150 km/h — a partial sum wearing a total's hat.
+        self.assertIsNone(self.totals()["rider/partial"])
+
+    def test_a_zero_total_is_refused_even_though_it_fails_no_speed_check(self):
+        # implausible_speed answers False for a zero time, because at a stage
+        # "no time" means "cannot judge". Here every contributing stage DID
+        # contribute, and contributed 0. This needs its own line, and did not
+        # have one until Maurice Garin's 1904 Tour total reached the site.
+        self.assertIsNone(self.totals()["rider/zeroed"])
+
+
 class TestRidersIndex(unittest.TestCase):
     """export_riders_index.build_index — now pure, no file or DB access."""
 

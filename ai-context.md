@@ -4536,7 +4536,7 @@ python3 validate_exports.py
 python3 validate_db.py               # 0 errors, 10 warnings expected (2026-09-11)
                                      # Warnings are a standing worklist, not noise —
                                      # read them. Two were added 2026-09-11 and name
-                                     # 5,027 rows that are still wrong; see
+                                     # 4,310 rows that are still wrong; see
                                      # "Times that no race produced" below.
 
 # Cross-race rider membership — the `x` bitmask the rider detail page uses to
@@ -4620,7 +4620,7 @@ still wrong. Both are absences that arrived wearing a time column's clothes,
 which is the same defect the README opens with — and both were found by
 asking the chart a physical question rather than by reading the data.
 
-**43 individual time trials credit 4,363 riders with the winner's exact time.**
+**42 individual time trials credit 4,211 riders with the winner's exact time.**
 An ITT is ridden alone against the clock; the field cannot share a time. Where
 PCS has no per-rider times for an old ITT it publishes a filler gap of `+0:00`
 against every rider, and ingest's `winner_seconds + gap_secs` reads that as a
@@ -4639,13 +4639,13 @@ and that set is a strict subset of the 48 with zero overlap with the 49. The
 winner accounts for the difference. Most of these pages are half-and-half like
 that — PCS records gaps down to some position and fills the rest.
 
-So **a re-ingest does not fix these**, and 21 of the 43 stages have scrape files
+So **a re-ingest does not fix these**, and 21 of the 42 stages have scrape files
 whose partial real gaps are already in the database. Only a re-scrape that
 finds data PCS did not previously publish helps: the 2002 and 2003 Vuelta
 openers gained full per-rider gaps that way on 2026-09-11. Where PCS still
 shows filler, the honest value is NULL.
 
-Nothing was written. Replacing 4,363 derived times with NULL is a decision
+Nothing was written. Replacing 4,211 derived times with NULL is a decision
 about what the site should show where the source is silent, not a cleanup, and
 it belongs to Eric. The check exists so the number stays visible until then.
 
@@ -4659,7 +4659,7 @@ Do not reach for a re-ingest here: today's code reads that same page's `+0:00`
 filler and would credit all 46 with the winner's time, trading this defect for
 the ITT tie above. NULL is right either way.
 
-**10 team time trials hold 565 fewer riders than the stage after them.** Nobody
+**9 team time trials hold 536 fewer riders than the stage after them.** Nobody
 joins a race mid-way, so each of these is missing riders who were in the race.
 
 The first guess was that PCS lists the riders dropped by their team outside the
@@ -4669,7 +4669,7 @@ both parses compared:
 
 | stage | in DB | team blocks | results table | recoverable |
 |---|---|---|---|---|
-| Vuelta 2003 st1 | 168 | 168 | **197** | +29 |
+| Vuelta 2003 st1 | 168 | 168 | **197** | +29, done |
 | Giro 1956 st2b | 69 | 69 | 1 | — |
 | Giro 1988 st4b | 117 | 117 | 20 | — |
 | Giro 1985 st2 | 135 | 135 | 10 | — |

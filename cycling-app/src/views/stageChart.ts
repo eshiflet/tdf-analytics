@@ -509,7 +509,16 @@ export function drawChart() {
         const lastStage = r.byStage[r.byStage.length - 1];
         const gcRank = lastStage?.gcRank ?? r.finalRank;
         const gap = lastStage?.gcGapSeconds ?? null;
-        const gcWinner = state.dataset.riders.find((rd) => rd.finalRank === 1);
+        // A disqualification leaves TWO riders at rank 1 — PCS lists the
+        // stripped rider and the promoted one — and find() took whichever came
+        // first in the array. That is the stripped rider in both the cases
+        // that reach this tooltip, and his total time is the one nobody
+        // recomputed: the 1904 Tour showed Garin's, the 1948 Giro showed
+        // Coppi's 4:51:45 for a 3,000 km race. Prefer the rank-1 rider who
+        // actually carries a total; that is the rider whose time is the
+        // official winning time.
+        const gcWinner = state.dataset.riders.find((rd) => rd.finalRank === 1 && rd.totalTimeSeconds != null)
+          ?? state.dataset.riders.find((rd) => rd.finalRank === 1);
         const winnerTime = fmtTotalTime(gcWinner?.totalTimeSeconds ?? null);
         const timeStr = gap === 0 || gcRank === 1
           ? winnerTime

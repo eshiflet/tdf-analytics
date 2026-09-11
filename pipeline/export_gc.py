@@ -21,7 +21,7 @@ import sqlite3
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from race_common import resolve_race_arg
+from race_common import resolve_race_arg, implausible_speed
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -349,6 +349,13 @@ def export_year(year, out_path, race_id, db_path=None, supplements=None):
     )
     stage_sum_by_rider = {r["rider_id"]: r["total_seconds"] for r in cur.fetchall()}
 
+    # Total raced distance, for the sanity check on the summed fallback below.
+    # Cancelled stages were never ridden, so they contribute nothing — the same
+    # rule the race totals use.
+    edition_distance_km = sum(
+        (s["distance_km"] or 0) for s in stages if not s["cancelled"]
+    ) or None
+
     def resolve_total_time(rider_id):
         """
         Priority: Wikipedia official time > winner_time + last_stage_gap
@@ -361,7 +368,29 @@ def export_year(year, out_path, race_id, db_path=None, supplements=None):
             gap = last_stage_gap.get(rider_id)
             if gap is not None:
                 return winner_time + gap
-        return stage_sum_by_rider.get(rider_id)
+
+        # The sum is only a total if every stage contributed one. Where most
+        # stage times are NULL it adds up a handful of them and calls the
+        # result a race, and the site prints that as the winner's time: the
+        # 1948 Giro read 4:51:45 over 3,000 km (854 km/h) and the 1904 Tour
+        # read zero. Both were rank-1 riders, so both reached the GC tooltip.
+        #
+        # Same guard the ingest uses on a stage time, applied to the whole
+        # edition. It cannot catch a total that is merely a bit short, but it
+        # does catch a partial sum presented as a finishing time — and None is
+        # what the site already renders when a total is unknown.
+        total = stage_sum_by_rider.get(rider_id)
+        # A zero sum needs its own line, because implausible_speed answers
+        # False for it: that function treats a missing time as "cannot judge",
+        # which is right at a stage and wrong here. This query already excludes
+        # NULL times, so a sum of zero means every stage that DID contribute
+        # contributed 0 — the blank-cell-stored-as-0 defect. Maurice Garin's
+        # 1904 Tour total was the last one of these on the site.
+        if not total:
+            return None
+        if implausible_speed(edition_distance_km, total):
+            return None
+        return total
 
     riders_out = []
     for rider_id, info in all_riders.items():
