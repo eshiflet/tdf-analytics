@@ -68,6 +68,13 @@ SKIP_SWAP_GATE = "--skip-swap-gate" in sys.argv
 # kind of race. See race_common.load_route_type_overrides.
 ROUTE_TYPE_OVERRIDES = load_route_type_overrides()
 
+# Above this many non-winners sharing the winner's exact second, an individual
+# time trial's times are PCS filler rather than results. Matches validate_db's
+# ITT-tie check and comes from the same measured distribution: across 607 ITT
+# stages, genuine ties at second resolution run 1-20 a stage and the defect 21+,
+# with nothing in between. See "Times that no race produced".
+ITT_TIE_LIMIT = 20
+
 
 def _stage_num(path: str) -> int:
     return int(re.search(r"stage_(\d+)\.json$", path).group(1))
@@ -287,6 +294,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     total_results = 0
     malformed: list[tuple] = []   # (stage_n, field_count, first_fields)
     implausible: list[tuple] = []  # (stage_n, distance_km, refused_seconds)
+    itt_filler: list[tuple] = []   # (stage_n, riders_whose_ITT_time_was_filler)
 
     for sf in stage_files:
         with open(sf, encoding="utf-8") as f:
@@ -581,6 +589,50 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             )
             total_results += 1
 
+        # ── An individual time trial the clock never recorded ──────────────
+        # A rider alone against the clock cannot finish on the winner's exact
+        # second. PCS fills the gap cell of a rider it never timed with
+        # "+0:00" on older pages and "-0:00" on current ones;
+        # parse_time_to_seconds rejects the second spelling but reads the
+        # first as a real zero gap, so winner + 0 credited the whole untimed
+        # field with the winning time. That is where the 4,040 rows across 41
+        # stages came from, and a re-ingest put them straight back until this
+        # guard existed.
+        #
+        # Deliberately scoped to ITTs. On a mass-start stage a zero gap is the
+        # ORDINARY case -- Giro 1979 stage 5 ("Sprint of large group") has 115
+        # riders legitimately on the winner's time -- so an unscoped rule
+        # would destroy far more than it fixed. route_type here is already
+        # override-corrected, which is why Giro 1985 stage-8a, a circuit race
+        # PCS labels "Time trial", is not caught by it.
+        #
+        # stage_rank and status are left alone: PCS publishes a finishing
+        # order for these riders even where it has no time for them, and
+        # dropping the placing would trade one defect for another.
+        if route_type == "TT":
+            winner_row = cur.execute(
+                """SELECT MIN(finish_time_seconds) FROM stage_results
+                    WHERE stage_id = ? AND stage_rank = 1
+                      AND finish_time_seconds IS NOT NULL""", (stage_id,)).fetchone()
+            wsecs = winner_row[0] if winner_row else None
+            if wsecs is not None:
+                tied = cur.execute(
+                    """SELECT result_id FROM stage_results
+                        WHERE stage_id = ? AND status = 'FINISHED'
+                          AND finish_time_seconds = ?
+                          AND (stage_rank IS NULL OR stage_rank <> 1)""",
+                    (stage_id, wsecs)).fetchall()
+                if len(tied) > ITT_TIE_LIMIT:
+                    for (rid,) in tied:
+                        cur.execute(
+                            "UPDATE stage_results SET finish_time_seconds = NULL "
+                            "WHERE result_id = ?", (rid,))
+                        record_provenance(
+                            cur, "stage_results", rid, "finish_time_seconds",
+                            SOURCE_PCS, source_ref=f"{ref} — gap cell is filler "
+                            "(no time published for this rider on an ITT)")
+                    itt_filler.append((n, len(tied)))
+
         # Supplement with gc_standings entries for riders absent from result rows.
         # Old PCS stage pages often omit mid-pack riders entirely; gc_standings has
         # computed GC positions for them. INSERT OR IGNORE skips existing rows.
@@ -624,6 +676,16 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                   "The gaps on the page are still real and were kept.")
         if len(implausible) > 10:
             print(f"    ... and {len(implausible) - 10} more")
+
+    if itt_filler:
+        n_rows = sum(c for _, c in itt_filler)
+        print(f"\n  {len(itt_filler)} time trial(s) had no per-rider times: "
+              f"{n_rows:,} finisher(s) stored NULL rather than the winner's second.")
+        for stage_n, count in itt_filler[:10]:
+            print(f"    stage {stage_n}: {count} rider(s) on the winner's exact time. "
+                  "PCS publishes their placing but not their time.")
+        if len(itt_filler) > 10:
+            print(f"    ... and {len(itt_filler) - 10} more")
 
     filled = backfill_edition_slugs(cur, edition_id)
     if filled:

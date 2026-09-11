@@ -61,11 +61,11 @@ class IngestHarness(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def write_stage(self, n, *, slug=None, distance="100 km", rows=None,
-                    cancelled=False, date=None):
+                    cancelled=False, date=None, won_how=""):
         data = {
             "n": n,
             "info": {"Date": date or f"1990-05-{n:02d}", "Distance": distance,
-                     "Start": f"Town{n}", "Finish": f"Town{n+1}", "Won how": ""},
+                     "Start": f"Town{n}", "Finish": f"Town{n+1}", "Won how": won_how},
             "profile_icon": "p1",
             "rows": rows if rows is not None else [result_row("1", "Rider A", "rider/a")],
             "sprint_points": {}, "kom_points": {},
@@ -652,3 +652,101 @@ class TestEditionScopedDataSurvives(IngestHarness):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestTimeTrialFillerGaps(IngestHarness):
+    """A rider alone against the clock cannot finish on the winner's second.
+
+    PCS fills the gap cell of a rider it never timed with "+0:00" on older
+    pages and "-0:00" on current ones. parse_time_to_seconds rejects the
+    second spelling, but reads the first as a real zero gap -- so winner + 0
+    credited the whole untimed field with the winning time. 4,040 riders
+    across 41 stages, and a re-ingest reinstated every one of them until the
+    guard in ingest_race went in.
+
+    The hard part is not detecting it, it is NOT over-reaching: on a
+    mass-start stage a zero gap is the ordinary case.
+    """
+
+    def winner_row(self, time_txt):
+        return result_row("1", "Winner", "rider/winner", rnk="1", gap=time_txt)[:13] \
+            + [time_txt, time_txt]
+
+    def other_row(self, bib, name, rnk, gap):
+        return result_row(bib, name, f"rider/{name.lower()}", rnk=rnk, gap=gap)[:13] + ["", gap]
+
+    def field(self, count, gap, start=2):
+        return [self.other_row(str(i), f"R{i}", str(i), gap)
+                for i in range(start, start + count)]
+
+    def times(self):
+        return {r["rider_id"]: r["finish_time_seconds"] for r in self.conn.execute(
+            "SELECT rider_id, finish_time_seconds FROM stage_results")}
+
+    def test_untimed_itt_field_is_null_not_the_winners_time(self):
+        # 30 riders on "+0:00" over a 40 km time trial: PCS filler, not a result.
+        self.write_stage(1, distance="40 km", won_how="Time trial",
+                         rows=[self.winner_row("50:00")] + self.field(30, "+0:00"))
+        self.ingest()
+        t = self.times()
+        self.assertEqual(t["rider/winner"], 3000, "the winner's own time is real")
+        untimed = [v for k, v in t.items() if k != "rider/winner"]
+        self.assertEqual(untimed, [None] * 30,
+                         "no rider may be credited with the winner's second on an ITT")
+
+    def test_placings_and_status_survive(self):
+        """PCS publishes a finishing order for these riders even where it has
+        no time. Dropping the placing would trade one defect for another."""
+        self.write_stage(1, distance="40 km", won_how="Time trial",
+                         rows=[self.winner_row("50:00")] + self.field(30, "+0:00"))
+        self.ingest()
+        rows = list(self.conn.execute(
+            "SELECT stage_rank, status FROM stage_results WHERE rider_id != 'rider/winner'"))
+        self.assertEqual(len(rows), 30)
+        self.assertTrue(all(r["stage_rank"] is not None for r in rows),
+                        "a rider PCS ranked must keep the placing")
+        self.assertTrue(all(r["status"] == "FINISHED" for r in rows))
+
+    def test_a_mass_start_bunch_finish_is_untouched(self):
+        """THE regression this guard must never cause. Giro 1979 stage 5 is a
+        'Sprint of large group' with 115 riders legitimately on the winner's
+        time. An unscoped rule destroys every one of them."""
+        self.write_stage(1, distance="180 km", won_how="Sprint of large group",
+                         rows=[self.winner_row("4:30:00")] + self.field(115, "+0:00"))
+        self.ingest()
+        t = self.times()
+        self.assertEqual(t["rider/winner"], 16200)
+        bunch = [v for k, v in t.items() if k != "rider/winner"]
+        self.assertEqual(bunch, [16200] * 115,
+                         "a bunch finish really does share the winner's time")
+
+    def test_a_genuine_dead_heat_survives(self):
+        """Ties at second resolution do happen on an ITT -- measured at 1-20 a
+        stage, against 21+ for the defect. A pair must not be erased."""
+        self.write_stage(1, distance="40 km", won_how="Time trial",
+                         rows=[self.winner_row("50:00")] + self.field(2, "+0:00")
+                              + self.field(10, "1:12", start=50))
+        self.ingest()
+        t = self.times()
+        self.assertEqual(t["rider/r2"], 3000, "a real dead heat is a result")
+        self.assertEqual(t["rider/r3"], 3000)
+        self.assertEqual(t["rider/r50"], 3000 + 72)
+
+    def test_team_time_trial_is_not_touched(self):
+        """A TTT is ridden as a team and the squad SHARES a time by design."""
+        self.write_stage(1, distance="40 km", won_how="Team time trial",
+                         rows=[self.winner_row("50:00")] + self.field(30, "+0:00"))
+        self.ingest()
+        t = self.times()
+        shared = [v for k, v in t.items() if k != "rider/winner"]
+        self.assertEqual(shared, [3000] * 30,
+                         "a team time trial's riders share a time legitimately")
+
+    def test_provenance_is_recorded_for_every_nulled_value(self):
+        self.write_stage(1, distance="40 km", won_how="Time trial",
+                         rows=[self.winner_row("50:00")] + self.field(30, "+0:00"))
+        self.ingest()
+        n = self.conn.execute(
+            "SELECT COUNT(*) FROM data_provenance WHERE entity='stage_results' "
+            "AND field='finish_time_seconds'").fetchone()[0]
+        self.assertEqual(n, 30, "every written value needs its provenance row")

@@ -4761,11 +4761,37 @@ those riders did finish, and dropping the placing trades one defect for
 another. It is idempotent and dry-run by default. **Not applied as of
 2026-09-11.**
 
-**A re-ingest reintroduces every one of these**, because ingest still reads the
-same filler. Re-run the patch after re-ingesting any affected edition, the way
-`backfill_bib_numbers` is re-run. Tour 1937 stage-17b also sits in the
-**99 zero-second finishers** set — its winner time is 0 — so the two warnings
-overlap by exactly one stage.
+**Fixed at the source 2026-09-11 — a re-ingest no longer reintroduces them.**
+`ingest_race.py` now refuses to credit an untimed ITT rider with the winner's
+second: after a stage's rows are inserted, if `route_type == 'TT'` and more
+than `ITT_TIE_LIMIT` (20) non-winners hold the winner's exact time, those
+`finish_time_seconds` are NULLed and each gets `SOURCE_PCS` provenance. The
+run reports what it refused. `null_itt_filler_times.py` is therefore a
+one-time repair, not a recurring chore — it stays in the tree because the
+values it wrote predate the guard.
+
+**Why the rule is scoped to ITTs and not to the filler string.** On a
+mass-start stage a zero gap is the ORDINARY case: Giro 1979 stage 5, "Sprint
+of large group", has 115 riders legitimately on the winner's time. A rule
+keyed on `+0:00` alone would erase every bunch finish in the database.
+`route_type` at that point is already override-corrected, so Giro 1985
+stage-8a — a circuit race PCS labels "Time trial" — is correctly not caught.
+A TTT is excluded too, since a squad shares a time by design.
+
+The threshold is the same 20 `validate_db` uses, from the same measured
+distribution (genuine ties 1-20 a stage, the defect 21+, nothing between), so
+ingest now stops producing exactly what the validator flags, and a real dead
+heat still survives.
+
+Proven end to end rather than by inspection: re-ingesting Giro 1979 against a
+scratch copy of the DB left all four of its time trials at 10/24/26/24 timed
+riders — identical to the patched state — while its non-TT stages stayed at
+1,825 of 1,845, unchanged. `TestTimeTrialFillerGaps` covers it, and the two
+assertions that matter were confirmed to FAIL with the guard disabled; the
+other four assert the guard does NOT over-reach and pass either way.
+
+Tour 1937 stage-17b also sits in the **99 zero-second finishers** set — its
+winner time is 0 — so the two warnings overlap by exactly one stage.
 
 
 Two `validate_db.py` warnings added on 2026-09-11 name 4,623 rows that are
