@@ -588,16 +588,23 @@ def check_results(c):
                          for t in itt_tied[:3]))
 
     # A team time trial cannot have been ridden by fewer people than the stage
-    # after it: nobody joins a race mid-way. Where this trips, PCS's TTT page
-    # carries riders OUTSIDE the per-team blocks — the ones dropped by their
-    # team, who finish on their own time — and the parser reads only the blocks.
-    # Vuelta 2003 st1 is the worked example: 168 riders in 22 team blocks, team
-    # sizes of 5 to 9, while the page itself links 209 riders and stage 2 has
-    # 197. The 29 missing all rode 6 to 20 later stages, so they were there.
+    # after it: nobody joins a race mid-way. So every stage listed here is
+    # missing riders who were demonstrably in the race.
     #
-    # This is the same shape as the Tour TTT recovery: "upstream limitation"
-    # was wrong there too, and 25 of 28 stages did have per-rider results once
-    # somebody looked at the page instead of the parse.
+    # WHY it is missing them was measured on 2026-09-11, by re-fetching all ten
+    # by source_slug and comparing both parses, and the answer is NOT what it
+    # looks like. Only Vuelta 2003 st1 is a parser gap: PCS publishes a full
+    # 197-rider results table there alongside 22 team blocks holding 168, and
+    # scrape_race.py now keeps whichever is fuller. The other nine gain
+    # nothing — PCS itself has only the team blocks (Giro 1956 st2b, Giro 1988
+    # st4b, Vuelta 1960/1961/1992) or only a handful of riders at all (Tour
+    # 1954 st4a has 10, Tour 1957 st3a has 15, on PCS as in the DB).
+    #
+    # So treat this as a coverage report, not a queue of parser bugs. Check the
+    # page before assuming there is anything to recover — and fetch it by
+    # source_slug, since 6 of these 10 are split days whose PCS slug is not
+    # "stage-<n>" (DB stage 3 of the 1992 Vuelta is stage-2b; fetching stage-3
+    # returns a 205 km road stage with 188 finishers and looks like a fix).
     ttt_short = c.execute("""
         SELECT ra.name, re.year, s.stage_number, COUNT(*) AS riders,
                COUNT(DISTINCT sr.team_id) AS teams,
@@ -615,9 +622,10 @@ def check_results(c):
     if ttt_short:
         missing = sum(t[5] - t[3] for t in ttt_short)
         warn(f"{len(ttt_short)} team time trial(s) hold {missing:,} fewer riders than the "
-             "stage immediately after them. Nobody joins a race mid-way — these are riders "
-             "dropped by their team, whom PCS lists outside the per-team blocks and the "
-             "parser does not read. e.g. "
+             "stage immediately after them, so each is missing riders who were in the race. "
+             "Measured 2026-09-11: 1 of 10 is recoverable (Vuelta 2003 st1, a full results "
+             "table beside the team blocks); on the rest PCS has no more than we do. Check "
+             "the page by source_slug before treating one as a parser bug. e.g. "
              + ", ".join(f"{t[0][:6]} {t[1]} st{t[2]} ({t[3]} in {t[4]} teams, next has {t[5]})"
                          for t in ttt_short[:3]))
 

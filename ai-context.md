@@ -4650,18 +4650,48 @@ filler and would credit all 46 with the winner's time, trading this defect for
 the ITT tie above. NULL is right either way.
 
 **10 team time trials hold 565 fewer riders than the stage after them.** Nobody
-joins a race mid-way, so a TTT cannot have been ridden by fewer people than the
-next stage. PCS's TTT pages carry the riders dropped by their team — who finish
-on their own time — *outside* the per-team blocks, and the parser reads only
-the blocks. Vuelta 2003 stage 1 is the worked example: 168 riders in 22 team
-blocks with team sizes of 5 to 9, while the page itself links 209 riders and
-stage 2 holds 197. The 29 missing all rode between 6 and 20 later stages of
-that same Vuelta, so they were unquestionably there.
+joins a race mid-way, so each of these is missing riders who were in the race.
 
-This is the same shape as the Tour TTT recovery, where "upstream limitation"
-was also wrong and 25 of 28 stages turned out to have per-rider results once
-somebody read the page instead of the parse. Worth fixing in the parser; the
-`reingest_tdf_stage.py --from-pcs` path is the precedent.
+The first guess was that PCS lists the riders dropped by their team outside the
+per-team blocks and the parser reads only the blocks. **That is true for one
+stage out of ten.** All ten were re-fetched by `source_slug` on 2026-09-11 and
+both parses compared:
+
+| stage | in DB | team blocks | results table | recoverable |
+|---|---|---|---|---|
+| Vuelta 2003 st1 | 168 | 168 | **197** | +29 |
+| Giro 1956 st2b | 69 | 69 | 1 | — |
+| Giro 1988 st4b | 117 | 117 | 20 | — |
+| Giro 1985 st2 | 135 | 135 | 10 | — |
+| Giro 1989 st3 | 185 | 185 | 20 | — |
+| Vuelta 1960 st1 | 30 | 30 | 1 | — |
+| Vuelta 1961 st1a | 30 | 30 | 1 | — |
+| Vuelta 1992 st2b | 108 | 108 | 20 | — |
+| Tour 1954 st4a | 10 | 0 | 10 | — |
+| Tour 1957 st3a | 15 | 0 | 15 | — |
+
+Only the Vuelta 2003 opener publishes a full results table beside its team
+blocks; `scrape_race.py` now parses both shapes and keeps whichever is fuller,
+which recovers those 29. On the rest PCS has no more riders than we do — the
+1954 and 1957 Tour stages really are 10 and 15 riders on the page. So this
+warning is a coverage report, not a queue of parser bugs.
+
+The same fix caught a worse case that this check could never have flagged,
+because the damage was in the scrape file rather than the database. A 2026-09-11
+re-scrape of the **2006 Vuelta** wrote a stage-1 file with **9 rows, starting at
+rank 6** — `parse_ttt_rows` matching a fragment of that page — against 189 in
+the DB. Ingesting it would have deleted 180 riders from a stage that has them.
+The full results table on the same page has all 189 with real per-rider times,
+which also clears the 153 riders that stage had sitting on the winner's time.
+
+Two lessons, both already written down and both worth repeating here: run
+`preview_reingest.py` before a re-ingest (that is what caught the 180), and a
+row count that DROPS after a re-scrape is a question, never a result.
+
+Fetch by `source_slug` when checking one. Six of the ten are split days whose
+PCS slug is not `stage-<n>`: the 1992 Vuelta's DB stage 3 is `stage-2b`, and
+fetching `stage-3` returns a 205 km road stage with 188 finishers, which looks
+exactly like a fix and is a different race day.
 
 Note the direction of the 2026-09-11 Vuelta re-ingest on this stage: it
 *replaced* 197 rows carrying 151 fabricated ties with 168 rows carrying real

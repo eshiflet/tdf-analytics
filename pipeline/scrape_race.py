@@ -512,19 +512,40 @@ def scrape_stage(race, year: int, slug: str, stage_num: int) -> dict | None:
     if not html:
         return None
 
-    # A TTT is grouped by team and needs its own parser; check for it first,
-    # because find_results_table picks up an unrelated table on those pages and
-    # parse_rows then returns a single stray row that looks like a valid result.
-    rows = parse_ttt_rows(html)
-    is_ttt = bool(rows)
-    if rows:
-        print("TTT ", end="")
+    # A TTT is grouped by team and needs its own parser, because on many of
+    # these pages find_results_table picks up an unrelated table and parse_rows
+    # returns a single stray row that looks like a valid result.
+    #
+    # But not on all of them. Where PCS also publishes an ordinary per-rider
+    # results table for a team trial, that table is strictly better: it holds
+    # the riders DROPPED by their team, who finish on their own time and are
+    # absent from the per-team blocks entirely. Vuelta 2003 stage 1 has 22 team
+    # blocks totalling 168 riders and a results table with all 197 — the 29
+    # missing each rode between 6 and 20 later stages of that same Vuelta.
+    #
+    # So parse both and keep the fuller one, rather than trusting either shape
+    # to be the right one everywhere. The comparison is what makes this safe:
+    # on a page where the ordinary path really does return one stray row, 1 is
+    # not greater than the team blocks' count and the TTT rows still win.
+    # is_ttt stays true either way — it records what the PAGE was, and drives
+    # route_type='TTT' downstream regardless of which table the rows came from.
+    ttt_rows = parse_ttt_rows(html)
+    is_ttt = bool(ttt_rows)
+    table_html = find_results_table(html)
+    normal_rows = parse_rows(table_html) if table_html else []
+
+    if is_ttt:
+        if len(normal_rows) > len(ttt_rows):
+            rows = normal_rows
+            print(f"TTT+{len(normal_rows) - len(ttt_rows)} ", end="")
+        else:
+            rows = ttt_rows
+            print("TTT ", end="")
     else:
-        table_html = find_results_table(html)
         if not table_html:
             print("NO TABLE", end=" ")
             return None
-        rows = parse_rows(table_html)
+        rows = normal_rows
         if not rows:
             # An empty results table is not a stage this scraper can write.
             # PCS says "Race/stage is cancelled" on every one found so far —
