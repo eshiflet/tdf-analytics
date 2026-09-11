@@ -4632,12 +4632,22 @@ Across 607 ITT stages the tie counts are bimodal — 497 with none, a tail of
 1–20 that is genuine ties at second resolution (66 stages, 226 rows), then 44
 stages with 21 or more, and nothing between 20 and 21.
 
-It is a WARN because the fix is a re-scrape, not an edit. PCS has since
-published real per-rider gaps for some of these: scrapes taken 2026-09-11 of
-the 2002 and 2003 Vuelta openers both carry them, so a re-ingest recovers
-those. Vuelta 1992 stage 8 is the mixed case — real gaps for part of the field
-and 126 `+0:00` rows for the rest. Where PCS still has nothing, NULL is the
-honest value; that is a decision, not a cleanup, so nothing was written.
+The tied rows are *exactly* the filler rows, which was checked rather than
+assumed. On the Giro's 1957 stage 2: 97 rows in the scrape file, 49 carrying a
+real gap and 48 carrying `+0:00`; the database ties 47 riders to the winner,
+and that set is a strict subset of the 48 with zero overlap with the 49. The
+winner accounts for the difference. Most of these pages are half-and-half like
+that — PCS records gaps down to some position and fills the rest.
+
+So **a re-ingest does not fix these**, and 21 of the 43 stages have scrape files
+whose partial real gaps are already in the database. Only a re-scrape that
+finds data PCS did not previously publish helps: the 2002 and 2003 Vuelta
+openers gained full per-rider gaps that way on 2026-09-11. Where PCS still
+shows filler, the honest value is NULL.
+
+Nothing was written. Replacing 4,363 derived times with NULL is a decision
+about what the site should show where the source is silent, not a cleanup, and
+it belongs to Eric. The check exists so the number stays visible until then.
 
 **99 finishers carry `finish_time_seconds = 0`**, across 11 stages. Zero is a
 value, not an absence, and nobody finishes a bike race in no time. PCS gives
