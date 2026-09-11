@@ -10,10 +10,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Least privilege, per job rather than workflow-wide: only the deploy job
+# publishes, so only it gets pages:write and id-token:write. The build job runs
+# the tests and builds the bundle, and reads. Set at the top this used to hand
+# a write-to-Pages token to every step of the build, including npm ci.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   # Per-PR on pull_request so two open PRs do not cancel each other, and so a PR
@@ -25,6 +27,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # The whole job is ~3 minutes. A cap means a hung step fails in ten rather
+    # than sitting on a runner for the default six hours.
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -82,6 +89,10 @@ jobs:
     # PRs run the checks above and stop there.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
