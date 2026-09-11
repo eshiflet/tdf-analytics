@@ -513,6 +513,50 @@ def check_results(c):
              "stripped and the promoted rider, both stored as status='FINISHED'. "
              f"e.g. {', '.join(f'{m[0][:6]} {m[1]} st{m[2]}' for m in non_ttt[:4])}")
 
+    # An individual time trial is ridden alone against the clock: the field
+    # does not share a time. Where PCS has no per-rider times for an old ITT it
+    # publishes a filler gap of "+0:00" against every rider, and ingest's
+    # winner_seconds + gap_secs turns that absence into "everyone tied with the
+    # winner" — 172 riders credited with the same 53:52 over the Giro 1985
+    # stage-8 45 km ITT. Same shape as the cumulative-team-time defect: a
+    # number that looks like data because it arrived in a time column.
+    #
+    # Threshold 20, from the distribution rather than taste: across 607 ITT
+    # stages the tie counts are bimodal — 497 with none, a tail of 1-20 that is
+    # genuine ties at second resolution (66 stages, 226 rows), then 44 stages
+    # with 21 or more (4,524 rows) and nothing in between. WARN because the fix
+    # is a re-scrape, not an edit: where PCS has since published real gaps a
+    # re-ingest recovers them (the 2002 and 2003 Vuelta openers both did), and
+    # where it has not, the honest value is NULL.
+    itt_tied = c.execute("""
+        WITH itt AS (
+          SELECT s.stage_id, s.stage_number, s.edition_id, s.distance_km,
+                 (SELECT MIN(finish_time_seconds) FROM stage_results
+                  WHERE stage_id = s.stage_id AND stage_rank = 1
+                    AND finish_time_seconds IS NOT NULL) AS wtime
+          FROM stages s
+          WHERE (s.stage_type = 'itt' OR s.route_type = 'TT') AND s.cancelled = 0)
+        SELECT ra.name, re.year, itt.stage_number, itt.distance_km,
+               SUM(sr.finish_time_seconds = itt.wtime
+                   AND (sr.stage_rank IS NULL OR sr.stage_rank <> 1)) AS n_tied
+        FROM itt
+        JOIN stage_results sr ON sr.stage_id = itt.stage_id AND sr.status = 'FINISHED'
+        JOIN race_editions re ON re.edition_id = itt.edition_id
+        JOIN races ra ON ra.race_id = re.race_id
+        WHERE itt.wtime IS NOT NULL
+        GROUP BY itt.stage_id HAVING n_tied > 20
+        ORDER BY n_tied DESC""").fetchall()
+    if itt_tied:
+        rows = sum(t[4] for t in itt_tied)
+        warn(f"{len(itt_tied)} individual time trial(s) credit {rows:,} riders with the "
+             "winner's exact time. Nobody shares a time in an ITT — this is PCS's "
+             "'+0:00' filler gap read as a real one. Re-scrape the stage: where PCS now "
+             "has per-rider gaps the re-ingest recovers them, and where it does not the "
+             "value should be NULL. e.g. "
+             + ", ".join(f"{t[0][:6]} {t[1]} st{t[2]} ({t[4]} of them"
+                         + (f", {t[3]:.0f} km)" if t[3] else ")")
+                         for t in itt_tied[:3]))
+
     rankless = c.execute("""
         SELECT COUNT(*) FROM stages s WHERE s.cancelled=0
           AND EXISTS(SELECT 1 FROM stage_results WHERE stage_id=s.stage_id)
