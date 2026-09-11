@@ -7,7 +7,7 @@
 //
 // Runs as an npm "prebuild"/"predev" step (see package.json) so none of this
 // drifts out of sync with index.html by hand.
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -76,6 +76,21 @@ for (const [race, meta] of Object.entries(RACES)) {
 // THIRD place the race list lives (after this file and vite.config.ts's input
 // map) and it drifted exactly like the others: classics was missing from it
 // too, so the one new section of the site was never advertised to crawlers.
+// lastmod is the date the DATA changed, not the date this script ran: taking
+// today would tell a crawler the site is new every time anyone rebuilds, which
+// is the fastest way to have the signal ignored. The newest exported race-year
+// file is the honest answer — that IS what changed.
+const dataDir = join(__dirname, "src", "data");
+let newestData = 0;
+for (const race of readdirSync(dataDir, { withFileTypes: true })) {
+  if (!race.isDirectory()) continue;
+  for (const f of readdirSync(join(dataDir, race.name))) {
+    const { mtimeMs } = statSync(join(dataDir, race.name, f));
+    if (mtimeMs > newestData) newestData = mtimeMs;
+  }
+}
+const lastmod = new Date(newestData || Date.now()).toISOString().slice(0, 10);
+
 const urls = [
   { loc: `${SITE}/`, priority: "1.0" },
   ...Object.keys(RACES).map((race) => ({ loc: `${SITE}/${race}/`, priority: "0.9" })),
@@ -84,6 +99,7 @@ const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map(({ loc, priority }) => `  <url>
     <loc>${loc}</loc>
+    <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>${priority}</priority>
   </url>`).join("\n")}
