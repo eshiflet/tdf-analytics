@@ -4692,6 +4692,17 @@ distance, so population 2 is not a fringe case. **Check the stage against an
 outside source before touching a value.** 1987's Giri-sprint (stage 20, ten
 laps of 4 km at Como) is already typed as a road stage and is not affected.
 
+**Fixing one, when you find one: `route_type_overrides.json`.** Not a DB
+patch — `route_type` is not among the columns a re-ingest preserves, so a
+direct UPDATE is reverted by the next rebuild with nothing to say it had gone.
+The file is keyed by PCS `source_slug` (stable across the renumbering split
+days cause), records the override's own source in `data_provenance` rather than
+`pcs`, and carries `was` so that an entry whose reason has expired — PCS
+starting to report the right type — is refused and reported rather than
+silently applied. `won_how` is left as PCS wrote it; the classification is what
+is being corrected, not the record of what the page said. 1985 stage-8a is the
+seed entry and the worked example.
+
 So **a re-ingest does not fix these**, and 21 of the 42 stages have scrape files
 whose partial real gaps are already in the database. Only a re-scrape that
 finds data PCS did not previously publish helps: the 2002 and 2003 Vuelta
