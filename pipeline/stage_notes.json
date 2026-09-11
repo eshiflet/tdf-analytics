@@ -113,5 +113,15 @@
     "source": "ai-context.md 'Gravel & MTB' (2026-08-21)"
    }
   }
+ },
+ "Tour de France": {
+  "1982": {
+   "5": {
+    "slug": "stage-5",
+    "route": "Orchies -> Fontaine-au-Pire",
+    "note": "Team time trial cancelled after local farmers blockaded the course. PCS serves the page with the route and an empty results table, so no stage file is written and a re-ingest of 1982 needs --allow-drop. The stage previously carried 160 rows that were GC standings, with no stage rank and no finish time; they were removed with this repair.",
+    "source": "procyclingstats.com/race/tour-de-france/1982/stage-5: \"Team Time Trial was cancelled due to a protest of local farmers.\""
+   }
+  }
  }
 }

@@ -24,6 +24,13 @@
   ],
   [
    "Tour de France",
+   1905,
+   1,
+   "results",
+   "manual"
+  ],
+  [
+   "Tour de France",
    1983,
    22,
    "distance_km",
@@ -178,10 +185,11 @@
   ]
  ],
  "value_counts": {
+  "gravel.team_id": 55,
   "one_day.team_id": 84800,
-  "stage_race.team_id": 632428,
-  "gravel.finish_time_seconds": 7389,
+  "stage_race.team_id": 632268,
+  "gravel.finish_time_seconds": 7878,
   "one_day.finish_time_seconds": 72911,
-  "stage_race.finish_time_seconds": 583353
+  "stage_race.finish_time_seconds": 642648
  }
 }
