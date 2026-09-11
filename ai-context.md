@@ -42,7 +42,7 @@ The frontend is race-aware via the `RACES` registry in raceRegistry.ts (see "Rac
 
 ---
 
-## Open items as of 2026-09-10
+## Open items as of 2026-09-11
 
 Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 
@@ -55,9 +55,11 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **The white jersey for the Giro and Vuelta.** Their youth standings are in `classification_standings` as of 2026-09-09, but `yw` is still exported for the Tour alone and `hasYouth` is still false for the other two. Turning it on is a display decision, not a data gap.
 
 **Open work, ready to pick up:**
-- **11 time trials still have no times** — 6 Giro (2022 s2/s21, 2024 s7, 2025 s2/s10, 2026 s10) and 5 Vuelta (2022 s10, 2023 s10, 2024 s1/s21, 2025 s18). The parser defect behind them is fixed (see "Time trials had no times"); each stage needs re-scraping and re-ingesting. The Tour's 8 fall inside the 1960-2025 rescrape below.
-- **1960-2025 has no local scrape files** — 66 Tour editions. They cannot be re-ingested, only re-fetched one stage at a time via `reingest_tdf_stage.py --from-pcs`. This is the mirror of what was fixed for 1903-1959 in September 2026 and is the largest structural gap left.
+- ~~**11 time trials have no times**~~ and ~~**1960-2025 has no local scrape files**~~ — both **CLOSED 2026-09-11**, see "The 1960-2025 Tour backfill". All 66 editions are scraped and 64 are ingested; 1978 and 1982 refuse, each holding a stage PCS never classified, and both want a decision rather than a fix.
 - **2026 Vuelta** has not been run (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
+- **20 Tour team time trials have no rider times**, 1954-1982, and none is safely fillable — see "Team time trials with no rider times".
+- **26 editions list a rider under two teams** — PCS's own data, not a defect: Alfredo Irusta rides for `deportpublic-1994` on stages 1-6 of the Vuelta and `castellblanch-1994` on 7-21. Never rewrite these; the guard in `backfill_bib_numbers --field team_id` skips their editions, which is why 4,223 Giro/Vuelta team fills are still unapplied.
+- **Giro 2011 and 2013** hold a stage with no scrape file, the same shape as the 1982 Tour. 2013's stage 2 has a corrected TTT file waiting on that decision.
 - **Gravel elevation.** `coverage.py` now reports these gaps honestly, and `scrape_pcs_gravel.py` reads `Vertical meters`/`ProfileScore` where PCS publishes them — The Traka 2023-2025 remain unmeasured by PCS itself.
 
 **Known-unfixable / explained, leave alone:**
@@ -65,7 +67,7 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **Tour 1904–1912, Giro 1909–13** — points-classification era, no time GC ever existed.
 - **19 editions diverge >3% from Wikipedia on distance** — all investigated, none is a missing stage.
 - **8 of 19 cancelled stages have no recorded reason.** Add a *sourced* reason or leave them; never invent a cause.
-- **10 duplicate-bib collisions in TDF 1931/1932** — upstream PCS, both riders and both results correct. The repair tools ignore them by design.
+- **10 duplicate-bib collisions in TDF 1931/1932** — upstream PCS, both riders and both results correct. The repair tools ignore them by design. NOT to be confused with a rider holding TWO bibs in one edition, which is a name swap: six such riders in 1931 and 1933 blocked `backfill_bib_numbers` entirely until the swaps behind them were repaired on 2026-09-11.
 
 **Cost/quality items worth revisiting:**
 - **Social cards are ~1.8 MB committed** across 6 PNGs; `pngquant` would roughly halve them.
@@ -79,7 +81,7 @@ A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen olde
 **Data safety (pipeline):**
 - All raw scraped data (`pipeline/tour_scrapes/`, `giro_scrapes/`, `vuelta_scrapes/` — one directory per race, `YEAR/stage_N.json` inside each) is now **tracked in git** — it used to be gitignored with the only copy on one machine.
 - `cycling.db` is NOT regenerable; back it up with `python3 pipeline/db_backup.py` (rotating snapshots in `pipeline/db_backups/`). `add_stages.py` snapshots automatically before its destructive delete.
-- `ingest_race.py --race {giro,vuelta}` (merged from `ingest_giro.py`/`ingest_vuelta.py` 2026-07-18 — see below): `--dry-run` is truly read-only (it used to delete the edition!), delete+reinsert is atomic, `vertical_meters`/`profile_score` are preserved across re-ingest, and a bare no-arg run is refused without `--all`.
+- `ingest_race.py --race {tour,giro,vuelta}` (merged from `ingest_giro.py`/`ingest_vuelta.py` 2026-07-18 — see below; the Tour joined 2026-09-10): `--dry-run` is truly read-only (it used to delete the edition!), the rebuild is atomic, `vertical_meters`/`profile_score` are preserved across re-ingest, and a bare no-arg run is refused without `--all`. **The edition ROW is kept, not deleted and re-inserted** — it carries `classification_standings` (no ON DELETE CASCADE, so deleting it raised FOREIGN KEY constraint failed on 254 editions), the ordinal `edition_name` and `uci_classification`; stage incidents are carried across by stage number. **`--all` aborts at the first refusal rather than skipping it**, so a race with any refusal wants a year-by-year loop. Use `preview_reingest.py` first.
 - All TDF-only scripts filter `race_editions` by the TDF race_id (year-only lookups could silently hit a Giro/Vuelta edition of the same year).
 - `build_db.py` was deleted (stale, dangerous). `validate_exports.py` validates **all three races** (302 files).
 - Exports write compact JSON (`separators=(",", ":")`) — ~10% smaller payloads.
@@ -3726,6 +3728,92 @@ source rather than a parser dropping data.
 
 ---
 
+## What the September 2026 repair pass established (2026-09-11)
+
+Eight rules, each bought with a defect. They generalise past the stage that
+found them, which is why they are here rather than only in a commit message.
+
+### 1. A dot is part of a slug
+
+`iBanesto.com`, `O.N.C.E.`, `FDJ.fr`, `R.M.O.`, `Vini Caldirola - So.di`. The
+slug pattern's class was `[a-z0-9-]`, so on those teams it could not reach the
+closing quote and matched **nothing at all** — the row arrived with a team NAME
+and no team. 4,118 Tour rows, 3,847 Giro, 3,793 Vuelta. The rider pattern has
+the same shape and fails worse: a row whose slug will not parse is dropped
+outright.
+
+### 2. A re-scrape silently undoes a name-swap repair
+
+The fix lives in the scrape file and PCS reproduces the transposition on every
+request, so re-fetching a repaired stage writes the swap straight back. Every
+applied pair is now recorded in `name_swaps_applied.json`, `--replay --apply`
+restores any a scrape reverted, and **`scrape_race.py` runs it automatically**
+over each year it scrapes. Any OTHER scraper that rewrites a stage file needs
+`fix_name_swaps.py --replay --apply` run after it by hand.
+
+### 3. A guard is only where you put it
+
+`implausible_speed` (12-70 km/h, deliberately far wider than any real stage)
+has guarded `ingest_race` since 2026-09-10. `derive_ttt_rider_times.py` did not
+call it, and duly wrote 130 riders a 1:05:16 time for an 11 km prologue before
+the run was reverted from a backup. Both call it now, and so does
+`clear_impossible_stage_times.py`, which applied the same rule to 2,115 values
+already stored.
+
+### 4. PCS puts a CUMULATIVE time where a stage time belongs
+
+Found in four different places, and it always looks like an impossibly slow
+rider: in the Time column of a split-day trial (1962 Tour stage-2b, 10:45:17
+for 23 km), in a TTT block (the 1971 prologue, 1:05:16 for 11 km), as a whole
+team's time on an ordinary parse (2013 Giro stage 2, 3:20:43 shared by ranks 1
+to 5 — five riders on different teams cannot share a stage time, but they can
+share a race total), and on the GC tab of a page whose Stage tab has the real
+figure. **Ranks 1-5 carrying one identical time is the fastest way to spot it.**
+
+### 5. An impossibly FAST winner is usually a doping annulment
+
+The stripped winner keeps his real time and the promoted rider's row carries
+his GAP to the man who was disqualified — read as a finishing time, it makes
+the whole field absurd. The 2008 Tour's stage 6 has Riccò at 4:57:52 and
+Valverde at "0:01". Ten stages carry this: Riccò, Vinokourov, Landis,
+Schumacher, Astarloza, Contador, Zoetemelk. `ingest_race` takes the FIRST
+rank-1 row with an absolute time and never overwrites it, so these repair
+themselves on re-ingest — the data is not lost, it is two rows down.
+
+### 6. Read "rows gone" before anything else in a change table
+
+`preview_reingest.py --race X [years]` copies the database, ingests into the
+copy and diffs, counting NULL-fills, overwrites and clears apart. A rebuild
+that loses rows is the one to stop for: the 1982 Tour's `--allow-drop` looked
+like a one-stage cleanup and cost 145 real placings on stage 9, where PCS now
+serves ten rows for a field of 155. Where rows DO go, account for them —
+the 1960-2025 ingest lost 508 and 153 were individual placings on team time
+trials, which a team trial does not produce, and 39 were one rider under a
+renamed slug.
+
+### 7. A rider carries one number and rides for one team for a whole edition
+
+Both obey the same edition-scoped invariant, so `backfill_bib_numbers.py` fills
+either: `--field bib_number` (default) or `--field team_id`. Bib gaps come from
+the TTT, whose per-rider cells PCS leaves empty; team gaps come from the GC
+sidecar supplying a rider for a stage PCS does not list him on. The guard skips
+any edition where the rider holds two values — but check WHY first: two bibs is
+a name swap and repairing it removes the block, while two teams is often PCS
+itself and must be left alone.
+
+### 8. PCS renames things, and the database does not notice
+
+Team slugs (`kelme-1980` -> `kelme-gios-1980`, `rokado-1972` ->
+`rokado-colders-1972`) and rider slugs (`julius-thallmann` ->
+`julius-thalmann`). Nothing is wrong with the scrape files — each is internally
+consistent, one slug per team per edition — the database is simply behind. A
+re-ingest catches it up; a "canonicaliser" would be guessing at something the
+file already states. A renamed RIDER leaves the old id holding the editions not
+yet rebuilt, so merge the rows and delete the orphan — and clear its
+`data_provenance`, which `validate_db` will otherwise report.
+
+---
+
 ## Time trials had no times (2026-09-10)
 
 The 2026 Tour held **3,611 results and not one finishing time** — the largest
@@ -3856,7 +3944,7 @@ everyone else has a gap.
 
 ---
 
-## The 1960-2025 Tour backfill (2026-09-10, IN PROGRESS)
+## The 1960-2025 Tour backfill (2026-09-10/11, DONE — 64 of 66)
 
 66 editions with no local scrape files — the largest structural gap left. The
 tooling to close it already existed (`scrape_race.py --race tour` since the
