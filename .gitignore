@@ -21,6 +21,11 @@ ai-context.md
 architecture.md
 
 # Database (large binary — NOT regenerable; back up with pipeline/db_backup.py)
+# The database lives at pipeline/cycling.db. A 0-byte cycling.db was once
+# committed at the repo root as well (2026-07-24, removed 2026-09-11): any
+# script run from the root would have opened the empty one and reported a
+# schema with no tables rather than failing.
+cycling.db
 pipeline/cycling.db
 pipeline/cycling.db.bak*
 pipeline/db_backups/

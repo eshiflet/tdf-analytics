@@ -150,6 +150,9 @@ export function filteredRiders(): RiderEntry[] {
 // handlers are torn down here instead of piling up on document, each one
 // holding a detached panel alive.
 const closeDropdownHandlers: ((e: MouseEvent) => void)[] = [];
+// Listeners on `window` rather than on the view's own DOM: those survive
+// ridersChartEl being emptied, so every redraw would stack another one.
+const ridersViewTeardown: (() => void)[] = [];
 function registerCloseOnOutsideClick(handler: (e: MouseEvent) => void) {
   document.addEventListener("click", handler);
   closeDropdownHandlers.push(handler);
@@ -161,6 +164,8 @@ export async function drawRidersPage() {
   ridersChartEl.innerHTML = "";
   for (const handler of closeDropdownHandlers) document.removeEventListener("click", handler);
   closeDropdownHandlers.length = 0;
+  for (const teardown of ridersViewTeardown) teardown();
+  ridersViewTeardown.length = 0;
 
   const racesToLoad = selectedRacesForRiders();
   // TWO PHASES. With no race filter set this page shows all five races, and it
@@ -462,32 +467,110 @@ export async function drawRidersPage() {
   // letting a partial answer look like a complete one.
   let stillLoading = racesToLoad.some((r) => !riderIndexBuilt[r]);
 
+  // ── Windowed rendering ────────────────────────────────────────────────────
+  // Building every result cost 628 ms with all five races selected (measured
+  // 2026-09-11 on the production build, median of 3, layout forced): 18,114
+  // buttons and 44,188 DOM nodes, for the ~120 a 1200x900 window can show. The
+  // indexes are fetched by 118 ms and parsed by 166, so that was the whole of
+  // the remaining wait.
+  //
+  // The CSS makes this cheap to do properly rather than by chunking: the grid
+  // is `repeat(N, 1fr)` with `grid-auto-rows: 29px`, so a row's height is fixed
+  // and the row a rider sits on is just index/columns. Only the visible rows
+  // plus OVERSCAN are built; the space above and below is held open by two
+  // spacers that span whole rows, which is why the scrollbar stays honest.
+  //
+  // KNOWN TRADE: the browser's own Ctrl+F no longer finds an off-screen rider,
+  // because he is not in the DOM. The page's search box covers that and always
+  // has — it filters the full result set, not the rendered window.
+  const ROW_H = 29;                 // keep in sync with .riders-grid grid-auto-rows
+  const OVERSCAN = 4;               // rows above and below, so a flick never shows blank
+  let results: RiderEntry[] = [];
+  let windowFirst = -1, windowLast = -1;
+
+  function columnCount(): number {
+    const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length;
+    return Math.max(1, cols);
+  }
+
+  function buildButton(entry: RiderEntry): HTMLButtonElement {
+    const btn = document.createElement("button");
+    btn.className = "rider-name-btn";
+    // displayName is called twice per rider otherwise — once for the label,
+    // once for the tooltip.
+    const label = displayName(entry);
+    btn.appendChild(document.createTextNode(label));
+    const flag = nationalityFlagEl(entry.nationality);
+    if (flag) btn.appendChild(flag);
+    for (const jersey of jerseyIconsElMultiRace(entry, racesToLoad, state.ridersFilterYears)) {
+      btn.appendChild(jersey);
+    }
+    btn.title = label;
+    // setAttribute rather than `btn.dataset.id`: the DOMStringMap proxy is
+    // measurably slower.
+    btn.setAttribute("data-id", entry.id);
+    return btn;
+  }
+
+  function spacer(rows: number): HTMLDivElement {
+    const el = document.createElement("div");
+    el.className = "riders-grid-spacer";
+    el.style.gridColumn = "1 / -1";
+    el.style.gridRow = `span ${rows}`;
+    el.setAttribute("aria-hidden", "true");
+    return el;
+  }
+
+  /** Render the rows in view, or nothing if the window has not moved. */
+  function renderWindow(force = false) {
+    const cols = columnCount();
+    const totalRows = Math.ceil(results.length / cols);
+    const viewRows = Math.ceil(grid.clientHeight / ROW_H);
+    const first = Math.max(0, Math.floor(grid.scrollTop / ROW_H) - OVERSCAN);
+    const last = Math.min(totalRows, first + viewRows + OVERSCAN * 2);
+    if (!force && first === windowFirst && last === windowLast) return;
+    windowFirst = first; windowLast = last;
+
+    const frag = document.createDocumentFragment();
+    if (first > 0) frag.appendChild(spacer(first));
+    for (let i = first * cols; i < Math.min(last * cols, results.length); i++) {
+      frag.appendChild(buildButton(results[i]));
+    }
+    if (last < totalRows) frag.appendChild(spacer(totalRows - last));
+
+    // Replacing a scroll container's children resets its scrollTop, and this
+    // renders FROM scrollTop — so without restoring it the first scroll snaps
+    // back to the top, re-renders row 0, and every subsequent scroll does the
+    // same. The spacers keep the total height constant across the swap, so
+    // putting the offset back is invisible rather than a correction.
+    const keep = grid.scrollTop;
+    grid.replaceChildren(frag);
+    if (grid.scrollTop !== keep) grid.scrollTop = keep;
+  }
+
   function refreshGrid() {
-    const results = filteredRiders();
+    results = filteredRiders();
     countLabel.textContent = `${results.length.toLocaleString()} rider${results.length !== 1 ? "s" : ""}`
       + (stillLoading ? " · loading more…" : "");
-    grid.innerHTML = "";
-    const frag = document.createDocumentFragment();
-    for (const entry of results) {
-      const btn = document.createElement("button");
-      btn.className = "rider-name-btn";
-      // displayName is called twice per rider otherwise — once for the label,
-      // once for the tooltip.
-      const label = displayName(entry);
-      btn.appendChild(document.createTextNode(label));
-      const flag = nationalityFlagEl(entry.nationality);
-      if (flag) btn.appendChild(flag);
-      for (const jersey of jerseyIconsElMultiRace(entry, racesToLoad, state.ridersFilterYears)) {
-        btn.appendChild(jersey);
-      }
-      btn.title = label;
-      // setAttribute rather than `btn.dataset.id`: the DOMStringMap proxy is
-      // measurably slower, and this runs 14,260 times per rebuild.
-      btn.setAttribute("data-id", entry.id);
-      frag.appendChild(btn);
-    }
-    grid.appendChild(frag);
+    // A new result set is a new list: start at the top, and force the render
+    // even when the window indices happen to be unchanged.
+    grid.scrollTop = 0;
+    renderWindow(true);
   }
+
+  // Scroll and resize both change which rows belong on screen. rAF-coalesced so
+  // a fast scroll renders once per frame rather than once per event, and the
+  // resize case matters because the column count changes at 1100px and 800px.
+  let frameQueued = false;
+  const onViewportChange = () => {
+    if (frameQueued) return;
+    frameQueued = true;
+    requestAnimationFrame(() => { frameQueued = false; renderWindow(); });
+  };
+  grid.addEventListener("scroll", onViewportChange, { passive: true });
+  const onResize = () => { windowFirst = windowLast = -1; onViewportChange(); };
+  window.addEventListener("resize", onResize);
+  ridersViewTeardown.push(() => window.removeEventListener("resize", onResize));
 
   // One delegated listener instead of one closure per button (~5,400 of them).
   grid.addEventListener("click", (e) => {

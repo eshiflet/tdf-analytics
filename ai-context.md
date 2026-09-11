@@ -55,7 +55,7 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **The white jersey for the Giro and Vuelta.** Their youth standings are in `classification_standings` as of 2026-09-09, but `yw` is still exported for the Tour alone and `hasYouth` is still false for the other two. Turning it on is a display decision, not a data gap.
 
 **Open work, ready to pick up:**
-- **THE BIG ONE: the Riders grid builds 18,114 buttons eagerly and costs 628 ms** every time you enter the page, measured on the production build with layout forced — see "The grid is the last second". The data is ready at 118 ms; all the rest is DOM construction. Virtualising the grid is the single largest user-facing win left, and the 141 ms figure quoted elsewhere in this file understates it.
+- ~~**THE BIG ONE: the Riders grid builds 18,114 buttons eagerly and costs 628 ms**~~ — **DONE 2026-09-11. 628 ms -> 48 ms** by virtualising the grid; see "The grid is the last second".
 - ~~**11 time trials have no times**~~ and ~~**1960-2025 has no local scrape files**~~ — both **CLOSED 2026-09-11**, see "The 1960-2025 Tour backfill". All 66 editions are scraped and 64 are ingested; 1978 and 1982 refuse, each holding a stage PCS never classified, and both want a decision rather than a fix.
 - **2026 Vuelta** has not been run (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
 - **20 Tour team time trials have no rider times**, 1954-1982, and none is safely fillable — see "Team time trials with no rider times".
@@ -3548,12 +3548,39 @@ The data is ready at 118 ms and the rest is JavaScript. The cost is building
 **18,114 buttons and 44,188 DOM nodes** eagerly, every rider whether or not he
 is on screen.
 
-**The fix is virtualisation** — render the rows in view, fill in on scroll.
-That should take the build to tens of milliseconds and shrink the DOM by an
-order of magnitude. It is not a tweak: it has to keep the filters, both search
-boxes, the jersey icons, the deep links into rider detail, and the
-phase-one/phase-two staging working, and it needs an A/B that forces layout on
-both sides or the win will be imaginary.
+**Virtualised 2026-09-11, and it did what it promised: 628 ms -> 48 ms**
+(median of 3, production build, layout forced, five columns). The DOM went from
+18,114 buttons and 44,188 nodes to **160 and 207**.
+
+The CSS is what makes it honest rather than approximate: `repeat(N, 1fr)` with
+`grid-auto-rows: 29px` means a row's height is fixed and a rider's row is just
+`index / columns`. Only the visible rows plus four of overscan are built; the
+space above and below is held by two spacers that span whole rows, so
+`scrollHeight` comes out at exactly `ceil(riders / cols) * 29` — measured at
+104,980 px for 18,097 riders in five columns, to the pixel.
+
+**Two things that will bite whoever touches this next.**
+
+`grid.replaceChildren()` RESETS `scrollTop`. Since the render reads `scrollTop`
+to decide which rows to build, not restoring it makes the first scroll snap
+back to row 0 and re-render the top, forever. The spacers keep total height
+constant across the swap, so putting the offset back is invisible.
+
+**Programmatic `grid.scrollTop = n` fires no scroll event in an automated
+browser, and `requestAnimationFrame` does not run while the pane is hidden** —
+so the obvious test reports that scrolling is broken when it is fine. Verify
+with a real wheel scroll on a visible pane. The first three attempts here all
+measured the harness rather than the code.
+
+**KNOWN TRADE: the browser's own Ctrl+F no longer finds an off-screen rider**,
+because he is not in the DOM. The page's search box covers it and always has —
+it filters the whole result set, not the rendered window.
+
+`verify-views.mjs` counted `.rider-name-btn` as a proxy for "how many riders
+match", which a window breaks by design. It now reads the count label — what
+the user is actually told — and separately asserts the DOM holds a window
+rather than the field. The independent source-file oracle for the team filter
+is unchanged and still agrees: 98 vs 98, 209 vs 209.
 
 **Measure on the production build.** `npm run dev` serves 250 unbundled modules
 and reports 35 SECONDS to first grid; localhost dev is not evidence of

@@ -177,14 +177,27 @@ function check(name, cond, detail) {
 // 3. Riders grid (exercises riders_index.json loading + team table).
 {
   const doc = await boot("#riders");
-  const btns = doc.querySelectorAll(".rider-name-btn").length;
+  // The grid is VIRTUALISED (2026-09-11): only the rows in view plus a little
+  // overscan are in the DOM, so counting buttons no longer answers "how many
+  // riders match". The count label does, and it is what the user reads — a
+  // better oracle than a node count, not merely a substitute for one.
+  const matched = () => {
+    const label = doc.querySelector(".riders-count-label")?.textContent ?? "";
+    return Number((label.match(/^([\d,]+)/)?.[1] ?? "0").replace(/,/g, ""));
+  };
+  const rendered = () => doc.querySelectorAll(".rider-name-btn").length;
+  const btns = matched();
   // By id, not by position among .riders-filter-select: this check silently
   // moved to the nationality select (and failed at 70 options) when the year
   // filter became a multi-select dropdown and left that class behind.
   const teamOptions = doc.querySelector("#riders-team-filter")?.options.length ?? 0;
   const natOptions = doc.querySelector("#riders-nationality-filter")?.options.length ?? 0;
   const filterBoxes = doc.querySelectorAll(".filter-panel input[type=checkbox]").length;
-  check("riders grid renders all riders", btns > 5000, `${btns} rider buttons`);
+  check("riders grid reports every rider", btns > 5000, `${btns} riders matched`);
+  // ...and renders a window rather than all of them. Both halves matter: the
+  // first says nobody is missing, the second is the whole point of the change.
+  check("riders grid renders a window, not the whole field",
+    rendered() > 0 && rendered() < 2000, `${rendered()} buttons in the DOM for ${btns} riders`);
   check("team filter populated from team table", teamOptions > 600, `${teamOptions} team options`);
   check("nationality filter populated", natOptions > 50, `${natOptions} nationality options`);
   // Years and races are both checkbox panels now; every year plus 4 races.
@@ -201,7 +214,7 @@ function check(name, cond, detail) {
     teamSel.value = v;
     teamSel.dispatchEvent(new (globalThis.window.Event)("change", { bubbles: true }));
     await new Promise((r) => setTimeout(r, 50));   // the redraw is async
-    return doc.querySelectorAll(".rider-name-btn").length;
+    return matched();
   };
 
   // Independent oracle: count the riders carrying a team in the SOURCE index
@@ -291,8 +304,7 @@ function check(name, cond, detail) {
     `grid ${bigCount} vs source ${bigExpected.size} for ${JSON.stringify(bigTeam)}`);
 
   check("clearing the team filter restores the whole grid",
-    (await setTeam("")) === btns,
-    `${doc.querySelectorAll(".rider-name-btn").length} vs ${btns}`);
+    (await setTeam("")) === btns, `${matched()} vs ${btns}`);
 }
 
 // 4. Rider detail deep link (career chart, teams resolved from string table).
