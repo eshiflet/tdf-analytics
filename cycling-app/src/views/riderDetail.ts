@@ -629,5 +629,29 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
 
   // Only now can "no such rider" be distinguished from "not loaded yet".
   if (state.currentView !== "riders" || state.currentRiderId !== riderId) return;
-  if (byRace.size === 0) ridersChartEl.innerHTML = "";
+  if (byRace.size === 0) renderUnknownRider();
+}
+
+/** Every built index has been searched and none has heard of this slug. An
+ *  empty panel is indistinguishable from one still loading, so say so and
+ *  offer the way back — this is reachable from a shared link to a rider whose
+ *  slug has since been renamed, not only from a typo. */
+function renderUnknownRider() {
+  ridersChartEl.innerHTML = "";
+
+  const msg = document.createElement("div");
+  msg.className = "stage-table-empty";
+  msg.textContent = "No rider matches this link.";
+
+  const backBtn = document.createElement("button");
+  backBtn.className = "rider-back-btn";
+  backBtn.textContent = "\u2190 All Riders";
+  backBtn.addEventListener("click", () => drawRidersPage());
+
+  const backWrap = document.createElement("div");
+  backWrap.style.textAlign = "center";
+  backWrap.appendChild(backBtn);
+
+  ridersChartEl.appendChild(msg);
+  ridersChartEl.appendChild(backWrap);
 }

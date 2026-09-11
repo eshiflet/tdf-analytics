@@ -746,5 +746,36 @@ function check(name, cond, detail) {
         `${doc.querySelectorAll(".stage-table-controls").length} control blocks`);
 }
 
+// 8. An unrecognized hash must not leave a stale view under a URL that
+//    describes something else. 1915 is a war year with no Tour, so applying
+//    #1915 renders nothing — and the URL has to snap back to the 1914 chart
+//    that is still on screen rather than keep claiming 1915.
+{
+  const doc = await boot("#1914/stage/gc");
+  const win = doc.defaultView;
+  const yearBefore = doc.querySelector("#year-select").value;
+  win.location.hash = "#1915/stage/gc";
+  const deadline = Date.now() + 3000;
+  while (win.location.hash !== "#1914/stage/gc" && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  check("a year the race never ran snaps the URL back to what is displayed",
+        win.location.hash === "#1914/stage/gc"
+          && doc.querySelector("#year-select").value === yearBefore,
+        `hash=${win.location.hash} year=${doc.querySelector("#year-select").value}`);
+}
+
+// 8b. A slug no index has heard of must SAY so. An empty panel is
+//     indistinguishable from one still loading, and this is reachable from a
+//     shared link to a rider whose slug has since been renamed.
+{
+  const doc = await boot("#riders/no-such-rider-xyz");
+  const panel = doc.querySelector("#riders-chart");
+  check("an unknown rider slug reports itself instead of rendering blank",
+        /No rider matches this link/.test(panel.textContent)
+          && panel.querySelector(".rider-back-btn") !== null,
+        `"${panel.textContent.replace(/\s+/g, " ").trim().slice(0, 60)}"`);
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);

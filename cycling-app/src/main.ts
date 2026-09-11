@@ -526,7 +526,17 @@ function init() {
       else if (state.currentView === "allraces") drawCrossYear();
     }, 200));
     window.addEventListener("hashchange", () => {
-      applyHash().catch(showLoadError);
+      applyHash()
+        .then((handled) => {
+          // An unrecognized hash renders nothing, which leaves whatever was
+          // already drawn on screen underneath a URL that now describes
+          // something else. Hand-editing #1914/stage/gc to #1915 (a war year,
+          // no Tour) used to leave the 1914 chart up, labelled 1915. Snap the
+          // URL back to what is actually displayed; replaceState so the dead
+          // hash does not become a back-button stop.
+          if (!handled) window.history.replaceState(null, "", computeHash());
+        })
+        .catch(showLoadError);
     });
     applyHash()
       .then((handled) => {
