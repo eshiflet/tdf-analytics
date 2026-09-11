@@ -513,6 +513,31 @@ def check_results(c):
              "stripped and the promoted rider, both stored as status='FINISHED'. "
              f"e.g. {', '.join(f'{m[0][:6]} {m[1]} st{m[2]}' for m in non_ttt[:4])}")
 
+    # Zero is a value, not an absence, and no rider finishes a bike race in
+    # no time. These are the residue of an older ingest: PCS gives only the
+    # winner's time on these pages and leaves every other time cell blank, and
+    # the blank became 0 instead of NULL. Tour 1937's 37 km stage-25 ITT holds
+    # 45 of them, ranks 1 through 46 alongside a winner with a real 1:06:27.
+    #
+    # Re-ingesting does NOT fix them: today's code reads the same page's
+    # "+0:00" filler gaps and would credit all 46 with the winner's time
+    # instead, trading this defect for the ITT tie flagged below. The honest
+    # value is NULL either way.
+    zero_time = c.execute("""
+        SELECT ra.name, re.year, s.stage_number, COUNT(*) n
+        FROM stage_results sr
+        JOIN stages s ON s.stage_id = sr.stage_id
+        JOIN race_editions re ON re.edition_id = s.edition_id
+        JOIN races ra ON ra.race_id = re.race_id
+        WHERE sr.status = 'FINISHED' AND sr.finish_time_seconds = 0
+        GROUP BY sr.stage_id ORDER BY n DESC""").fetchall()
+    if zero_time:
+        warn(f"{sum(z[3] for z in zero_time)} finisher(s) across {len(zero_time)} stage(s) "
+             "have a finish time of exactly 0 seconds. Nobody finishes in no time — these "
+             "are blank PCS time cells stored as 0 rather than NULL, and a re-ingest turns "
+             "them into the ITT tie below rather than fixing them. e.g. "
+             + ", ".join(f"{z[0][:6]} {z[1]} st{z[2]} ({z[3]})" for z in zero_time[:4]))
+
     # An individual time trial is ridden alone against the clock: the field
     # does not share a time. Where PCS has no per-rider times for an old ITT it
     # publishes a filler gap of "+0:00" against every rider, and ingest's
