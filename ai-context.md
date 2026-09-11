@@ -3810,6 +3810,34 @@ source rather than a parser dropping data.
 
 ---
 
+## Time trials where the whole field shows no gap (audited 2026-09-11)
+
+An individual time trial in which most riders carry `+0:00` is either a stale
+scrape or PCS having nothing — and the two look identical in the database. 41
+such stages exist across the three races (Tour 1937; Giro 1951-1991, 29 stages;
+Vuelta 1971-2006, 11). **Each was fetched and re-parsed to tell them apart, and
+only THREE are recoverable:**
+
+| stage | riders with no gap, stored -> re-parsed today |
+|---|---|
+| Vuelta 2002 stage 1 | 162/206 -> 7/206 |
+| Vuelta 2003 stage 1 | 151/197 -> 7/197 |
+| Vuelta 2006 stage 1 | 153/189 -> 8/189 |
+
+The other 37 are genuinely sparse at source: the 1989 Giro's stage 10 gives
+Breukink 0:25 and Roche 0:33 and then `+0:00` for 161 riders, on PCS, today.
+Nothing to fix, and re-scraping them would be a wasted afternoon.
+
+**The detector that found these, and the one that did not.** "Riders sharing an
+identical time in a time trial" finds 1,009 groups and means nothing — with
+whole-second timing and a compressed field, ties are ordinary, and a 4.6 km
+prologue spreads 200 riders across a minute. The signal is riders sharing **the
+WINNER's exact time**: 172 of 172 in the 1985 Giro's stage 8, which is a lost
+gap rather than a tie. Sharpen a detector until its hits are real before
+believing a count.
+
+---
+
 ## What the September 2026 repair pass established (2026-09-11)
 
 Eight rules, each bought with a defect. They generalise past the stage that
