@@ -4587,9 +4587,20 @@ stages, 786,858 results; 1,308 race-year/field combinations incomplete,
 | `finish_time_seconds` | 149 race-years incomplete | the late-40s/early-50s Giro — 1951 is 179 of 1,611 (11%), 1947 and 1948 under 7% |
 | `birthday` | 6,326 of 19,023 riders | — |
 
-Per-stage `gc_rank` for the 1980s Giro and Vuelta is far and away the biggest
-single body of missing data in the project, and has been through two repair
-passes without moving much. Worth a plan of its own rather than another pass.
+**The `gc_rank` line is not a worklist, and this is the trap in the table.** It
+is the biggest number here and the least actionable one: PCS embeds per-stage
+GC standings for only about 1-30 riders before 1998, and the July 2026 rebuild
+deliberately emits a rank only where at least 85% of the active field is known
+that day. The rest are null *because* the alternative was the carry-forward
+that fabricated them. So the 87,852 are mostly values that cannot honestly
+exist, not values nobody has fetched yet — see "Vuelta & Giro per-stage GC
+standings" above before planning anything against this row.
+
+That also means the usual "distrust a low number" reflex cuts the other way
+here. It is the one field in this table where a low number is the correct
+answer, and two repair passes have not moved it for exactly that reason.
+`vertical_meters` and the late-40s Giro's `finish_time_seconds` are the rows
+with real fetchable work behind them.
 
 `test_coverage.py` pins each exclusion above, because each one is a case where
 a naive `COUNT` reported a gap that does not exist.
