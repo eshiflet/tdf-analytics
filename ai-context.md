@@ -47,6 +47,7 @@ The frontend is race-aware via the `RACES` registry in raceRegistry.ts (see "Rac
 Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 
 **Decisions waiting on Eric (do not guess):**
+- **There is no mobile layout, and that looks deliberate rather than broken.** The whole stylesheet holds two media queries, both setting the Riders grid's column count; nothing stacks. At 375px the viewport meta is correct and the page does NOT scroll sideways, but `nav.view-nav` is 487px and clipped, and the chart starts 280px in behind a 310px rider sidebar — so the picture is mostly off-screen. Measured 2026-09-11. Fixing it is a design question (stack the sidebar, collapse it behind a toggle, or declare the site desktop-only and say so), not a bug fix, and the site deploys on push — so it wants a decision before anyone builds one.
 - **Project rename** — analysed and **deferred**; see "Renaming the project". If revived, take the subdomain step first.
 - **Landing pages have identical visible body content.** The four `<race>/index.html` pages differ only in `<title>`/meta. Distinct copy would help them rank separately, but it is a UI/content decision.
 - **Duplicate ranks + same-team bib collisions** in 13 classics race-years — upstream PCS, how to model it is Eric's call. See "Known-open".
