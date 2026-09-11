@@ -41,7 +41,23 @@ for card in "${CARDS[@]}"; do
   "$CHROME" --headless --disable-gpu --no-sandbox --hide-scrollbars \
     --window-size=1200,630 --virtual-time-budget=22000 \
     --screenshot="$OUT/$name.png" "$url" >/dev/null 2>&1
-  printf '%-16s %s\n' "$name.png" "$(du -h "$OUT/$name.png" | cut -f1)"
+  before=$(du -k "$OUT/$name.png" | cut -f1)
+
+  # Chrome writes 24-bit PNG, which is 300-430 KB of mostly antialiasing on a
+  # dark chart — 1.87 MB across the six, committed. pngquant takes them to a
+  # 256-colour palette for about a third of that, and at 3x magnification the
+  # dense line area shows no banding and no colour shift (checked 2026-09-11).
+  # Lossless indexing is not an option: og-classics alone holds ~19,000
+  # distinct colours.
+  if command -v pngquant >/dev/null; then
+    pngquant --quality=65-90 --speed 1 --force --output "$OUT/$name.png" \
+             "$OUT/$name.png" 2>/dev/null \
+      || echo "  (pngquant could not hold 65-90 on $name — left unquantised)"
+  else
+    echo "  (pngquant not installed — $name.png stays ~3x larger than it needs to be)"
+  fi
+  after=$(du -k "$OUT/$name.png" | cut -f1)
+  printf '%-16s %4s KB -> %4s KB\n' "$name.png" "$before" "$after"
 done
 
-echo "Wrote 5 cards to public/. Commit them — they are served as static assets."
+echo "Wrote ${#CARDS[@]} cards to public/. Commit them — they are served as static assets."
