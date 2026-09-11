@@ -147,6 +147,19 @@ COUNTRY_NAMES = {
     "se": "Sweden", "sk": "Slovakia", "tn": "Tunisia", "ua": "Ukraine",
     "uz": "Uzbekistan", "ve": "Venezuela", "cl": "Chile", "uy": "Uruguay",
     "bg": "Bulgaria", "mt": "Malta",
+    # Added 2026-09-11: 28 codes that reached `countries` with a NULL name or
+    # the uppercased code standing in for one. Two are historical states whose
+    # riders are still in the results under the code of the country that no
+    # longer exists, which is correct — Soviet and Yugoslav riders rode.
+    "ad": "Andorra", "ae": "United Arab Emirates", "al": "Albania",
+    "ao": "Angola", "bj": "Benin", "cu": "Cuba", "cw": "Curaçao",
+    "cy": "Cyprus", "gr": "Greece", "gt": "Guatemala", "hk": "Hong Kong",
+    "hn": "Honduras", "is": "Iceland", "ke": "Kenya", "mn": "Mongolia",
+    "mu": "Mauritius", "na": "Namibia", "pa": "Panama",
+    "pf": "French Polynesia", "ph": "Philippines", "pr": "Puerto Rico",
+    "rs": "Serbia", "rw": "Rwanda", "sd": "Sudan", "sv": "El Salvador",
+    "tr": "Turkey", "tw": "Taiwan", "zw": "Zimbabwe",
+    "su": "Soviet Union", "yu": "Yugoslavia",
 }
 
 # Stage-file layout predates the per-year-subdir convention for this one
