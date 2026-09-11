@@ -4533,7 +4533,11 @@ python3 -m unittest discover -p "test_*.py"
 # 90 warnings is the expected clean result as of 2026-08-18 — compare the
 # COUNT against that baseline rather than expecting zero.
 python3 validate_exports.py
-python3 validate_db.py               # 0 errors, 3 warnings expected
+python3 validate_db.py               # 0 errors, 9 warnings expected (2026-09-11)
+                                     # Warnings are a standing worklist, not noise —
+                                     # read them. Two were added 2026-09-11 and name
+                                     # 4,623 rows that are still wrong; see
+                                     # "Times that no race produced" below.
 
 # Cross-race rider membership — the `x` bitmask the rider detail page uses to
 # decide which indexes it can skip. The exporters re-stamp it themselves; this
@@ -4608,6 +4612,48 @@ unranked rather than keeping a derived rank.
 - **1939**: A DNF rider (Jaminet, rank 64 mid-race) appears in the last stage with no gap; correctly excluded from "slowest finisher" calculation by `status = 'FINISHED'` filter.
 - **1990 Stage 21** (Paris): Was stored as 45.5 km (duplicate of TT distance). Corrected to 182.5 km.
 - **1905–1912 gc_gap_seconds**: All zeros at last stage for points-system years — PCS stored intra-stage gaps, not cumulative race time gaps. Not usable for time calculations.
+
+### Times that no race produced (2026-09-11)
+
+Two `validate_db.py` warnings added on 2026-09-11 name 4,623 rows that are
+still wrong. Both are absences that arrived wearing a time column's clothes,
+which is the same defect the README opens with — and both were found by
+asking the chart a physical question rather than by reading the data.
+
+**44 individual time trials credit 4,524 riders with the winner's exact time.**
+An ITT is ridden alone against the clock; the field cannot share a time. Where
+PCS has no per-rider times for an old ITT it publishes a filler gap of `+0:00`
+against every rider, and ingest's `winner_seconds + gap_secs` reads that as a
+real zero gap. The Giro's 1985 stage-8 45 km ITT has 172 riders on 53:52; the
+2002 Vuelta opener 161 on 26:21.
+
+The threshold is 20, and it comes from the distribution rather than taste.
+Across 607 ITT stages the tie counts are bimodal — 497 with none, a tail of
+1–20 that is genuine ties at second resolution (66 stages, 226 rows), then 44
+stages with 21 or more, and nothing between 20 and 21.
+
+It is a WARN because the fix is a re-scrape, not an edit. PCS has since
+published real per-rider gaps for some of these: scrapes taken 2026-09-11 of
+the 2002 and 2003 Vuelta openers both carry them, so a re-ingest recovers
+those. Vuelta 1992 stage 8 is the mixed case — real gaps for part of the field
+and 126 `+0:00` rows for the rest. Where PCS still has nothing, NULL is the
+honest value; that is a decision, not a cleanup, so nothing was written.
+
+**99 finishers carry `finish_time_seconds = 0`**, across 11 stages. Zero is a
+value, not an absence, and nobody finishes a bike race in no time. PCS gives
+only the winner's time on these pages and leaves every other time cell blank;
+an older ingest stored the blank as 0. Tour 1937's 37 km stage-25 ITT holds 45
+of them, ranks 1–46 at zero beside a winner with a real 1:06:27.
+
+Do not reach for a re-ingest here: today's code reads that same page's `+0:00`
+filler and would credit all 46 with the winner's time, trading this defect for
+the ITT tie above. NULL is right either way.
+
+**"Dorsal 71" is not a parser bug.** 21 riders in the DB are named `Dorsal
+<n>` — Catalan/Spanish for bib number — all from The Traka 360, and 9 of them
+carry a DNS row. The raw timing feed really does publish `Nom: "DORSAL 71 "`:
+the timing company recorded a bib and no name. Genuine upstream, already
+checked; leave them alone.
 
 ### GC validation results
 `validate_gc.py` against bikeraceinfo: 40/42 years pass at ≥70% GC leader match (1960–2005). The 2 failures (1979, 1998) are alignment issues around short TT stages, not real data errors.
