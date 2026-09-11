@@ -31,6 +31,7 @@ from backfill_source_slugs import slugs_for_edition
 from detect_name_swaps import _bib_check
 from race_common import (
     StageRow,
+    to_iso_date,
     assign_stage_numbers,
     detect_route_type,
     parse_bonus_seconds,
@@ -472,6 +473,37 @@ class TestStageNotes(unittest.TestCase):
         for key, entry in rc.load_stage_notes().items():
             self.assertGreater(len(entry.get("note", "")), 20, key)
             self.assertTrue(entry.get("source"), key)
+
+class TestIsoDates(unittest.TestCase):
+    """race_common.to_iso_date — one date format in the database, not three.
+
+    PCS writes "30 June 1949" on older pages. Ingest tried an ISO strptime,
+    failed, and stored the raw string, so 68 stages across the 1931, 1933 and
+    1949 Tours held a date that sorts as text: "01 July" before "30 June".
+    backfill_source_slugs derives split-day slugs from these dates, so the
+    format is not cosmetic.
+    """
+
+    def test_the_format_pcs_uses_on_old_pages(self):
+        self.assertEqual(to_iso_date("30 June 1949"), "1949-06-30")
+        self.assertEqual(to_iso_date("27 Jun 1933"), "1933-06-27")
+
+    def test_an_iso_date_passes_through(self):
+        self.assertEqual(to_iso_date("1949-06-30"), "1949-06-30")
+
+    def test_an_unparseable_date_is_None_not_the_raw_string(self):
+        """None on purpose: a date nobody can parse is not a date, and storing
+        it anyway is what produced a column that cannot be ordered."""
+        for junk in ("nonsense", "", None, "June 1949", "30/06/1949"):
+            self.assertIsNone(to_iso_date(junk), junk)
+
+    def test_normalised_dates_sort_chronologically(self):
+        """The property that was actually broken."""
+        raw = ["30 June 1931", "01 July 1931", "02 July 1931"]
+        iso = [to_iso_date(d) for d in raw]
+        self.assertEqual(iso, sorted(iso))
+        self.assertNotEqual(raw, sorted(raw), "the raw strings sort wrongly, which was the bug")
+
 
 class TestSwapManifest(unittest.TestCase):
     """fix_name_swaps.record_swaps — the record that survives a re-scrape.

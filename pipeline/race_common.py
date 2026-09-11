@@ -437,6 +437,34 @@ def classic_route_type(profile_score):
     return "M"
 
 
+# PCS writes a stage date as "30 June 1949" on older pages and as an ISO date on
+# newer ones, and the scrape file keeps whatever it was given. Three Tour
+# editions reached the database holding "30 June 1949" verbatim because ingest
+# tried ISO, failed, and stored the raw string — which then sorts as a string,
+# putting 01 July before 30 June. backfill_source_slugs derives split-day slugs
+# from these dates, so the format is not cosmetic.
+_DATE_FORMATS = ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%d-%m-%Y", "%Y/%m/%d")
+
+
+def to_iso_date(text):
+    """'30 June 1949' -> '1949-06-30'. Returns None if nothing parses.
+
+    None rather than the raw string on purpose: a date nobody can parse is not
+    a date, and storing it anyway is what produced a column that cannot be
+    ordered.
+    """
+    if not text:
+        return None
+    raw = str(text).strip()
+    from datetime import datetime
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return None
+
+
 def parse_time_to_seconds(text):
     if not text:
         return None

@@ -40,6 +40,7 @@ from race_common import (
     parse_int,
     parse_time_to_seconds,
     parse_year_args,
+    to_iso_date,
     COUNTRY_NAMES,
     FLAT_FALLBACK_YEAR,
 )
@@ -308,12 +309,11 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         profile_icon = stage_data.get("profile_icon", "p1")
 
         date_iso = None
+        # to_iso_date, not a bare ISO strptime: an older PCS page writes
+        # "30 June 1949", and storing that verbatim is how 68 stages across
+        # three Tour editions ended up with a date that sorts as a string.
         if info.get("Date"):
-            try:
-                from datetime import datetime
-                date_iso = datetime.strptime(info["Date"], "%Y-%m-%d").strftime("%Y-%m-%d")
-            except ValueError:
-                date_iso = info.get("Date")
+            date_iso = to_iso_date(info["Date"])
 
         distance_km = None
         if info.get("Distance"):
