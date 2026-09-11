@@ -4692,6 +4692,34 @@ distance, so population 2 is not a fringe case. **Check the stage against an
 outside source before touching a value.** 1987's Giri-sprint (stage 20, ten
 laps of 4 km at Como) is already typed as a road stage and is not affected.
 
+**All five 1980s Giri-sprints, checked 2026-09-11 — only one needed fixing.**
+Eric supplied the list; each was verified against our own data by its winner,
+which is a strong check when the names are this obscure.
+
+| stage | route | km | winner (ours) | route_type | action |
+|---|---|---|---|---|---|
+| 1985 st8a | Foggia → Foggia | 45.0 | Allocchio Stefano | was `TT` | **overridden to `F`** |
+| 1986 st22 | Merano → Merano | 108.6 | Van Lancker Eric | `F` | already right |
+| 1988 st21a | Jesolo → Vittorio Veneto | 73.0 | Freuler Urs | `F` | already right |
+| 1989 st15b | Trento → Trento | 83.0 | Piasecki Lech | `F` | already right |
+| 1987 st20 | Madesimo → Como | 156.0 | Rosola Paolo | `F` | already right |
+
+Only 1985 was ever wrong, because it is the only one PCS labelled `Won how:
+Time trial` — at 45 km it is short enough to read as one, while a 108 km or
+156 km "time trial" never would. **The lesson is the length**: the format is
+invisible to us on a long stage and indistinguishable from an ITT on a short
+one.
+
+The 1987 entry is the unsure one. A list circulated to Eric gave it as "stage
+2a, San Remo, 16 km, won by Domenico Podenzana", and that fails three checks
+here: 1987 has no `stage-2a` (the San Remo opening is prologue + `stage-1a`
+31 km + `stage-1b` 8 km), no 16 km stage at all, and Podenzana — who did ride
+that Giro and abandoned around stage 13 — placed no better than 5th in 1987,
+taking his first Giro stage win in 1988. The
+[1987 Giro article](https://en.wikipedia.org/wiki/1987_Giro_d%27Italia) names
+stage 20 instead, "ten laps of 4 km around Como", which matches what we hold.
+Either way the stage is already typed `F`, so nothing turns on it.
+
 **Fixing one, when you find one: `route_type_overrides.json`.** Not a DB
 patch — `route_type` is not among the columns a re-ingest preserves, so a
 direct UPDATE is reverted by the next rebuild with nothing to say it had gone.
