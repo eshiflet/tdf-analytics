@@ -174,7 +174,7 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `audit_stage_counts.py` | reconciles editions against PCS's stage list by route; `--fix-slugs`, `--confirm-slugs` |
 | `patch_missing_distances.py` | fills 0 km distances from the headline; refuses a neighbour's value |
 | `fix_tt_route_types.py` | reclassifies TTs mis-stored as flat; `ADJUDICATED_NOT_TT` holds 34 Eric ruled on |
-| `reingest_tdf_stage.py --from-pcs` | replaces one TDF stage's results; the only route for 1960+, which has no local scrape files at all |
+| `reingest_tdf_stage.py --from-pcs` | replaces one TDF stage's results by fetching the page. Was the only route to 1960+ until 2026-09-11; those years now have scrape files, so `ingest_race.py --race tour YEAR` is the ordinary path and this is for one-off single-stage repairs |
 | `derive_ttt_rider_times.py` | team time → each rider, for TTTs where PCS's rider tables are empty |
 | `rescrape_ditto_stages.py` | re-scrapes stale-ditto files; rewrites only on strictly fewer violations |
 | `fix_doubled_winner_times.py` | the 3,377-row winner repair (arithmetic, no re-scrape) |
@@ -4001,10 +4001,17 @@ everyone else has a gap.
 
 ## The 1960-2025 Tour backfill (2026-09-10/11, DONE — 64 of 66)
 
-66 editions with no local scrape files — the largest structural gap left. The
-tooling to close it already existed (`scrape_race.py --race tour` since the
-September unification), and trying it found four things that had to be fixed
-first. Each was a tool that could not do the job it claimed.
+66 editions with no local scrape files — the largest structural gap left, and
+now closed: **all 66 scraped, 64 ingested.** The tooling existed already
+(`scrape_race.py --race tour` since the September unification), and trying it
+found four things that had to be fixed first. Each was a tool that could not do
+the job it claimed.
+
+**Outcome (2026-09-11):** +3,132 finishing times, +3,533 gaps, and 8,720
+carried-forward `gc_rank`s replaced by computed ones. 1978 and 1982 refuse, each
+holding a stage PCS never classified. 508 rows went and 48 arrived: 153 of the
+192 carrying a placing were individual placings on TEAM time trials, which a
+team trial does not produce, and 39 were one rider under a slug PCS renamed.
 
 ### 1. `ingest_race.py` could not re-ingest 254 of the editions it serves
 
@@ -4505,9 +4512,13 @@ noise, and noise is what made the per-field audits hard to read side by side:
 | elevation, profile score and teams **only for the gravel editions Athlinks or tretzesports timed** | those are timing platforms: a finish list, no parcours, no trade team. **Corrected 2026-09-09** — this row used to exclude the whole gravel set because "PCS has no gravel or MTB coverage at all — verified, not assumed", and the one-day row excluded profile score because "a one-day race is not classified flat/hilly/mountain". Both were false and together hid ~993 fillable values. See "coverage.py excluded work that was doable" |
 
 Gaps rank by **values missing**, not by percentage: a year at 40% of 180 is a
-bigger afternoon than one at 0% of 3. As of 2026-08-22 the top of the list is
+bigger afternoon than one at 0% of 3. As of 2026-08-22 the top of the list was
 per-stage `gc_rank` for the 1980s Giro and Vuelta and `finish_time_seconds` for
 the 1950s Tour, with 3,618 stage elevations outstanding across 340 race-years.
+**Those figures predate the September 10-11 repair pass, which re-ingested the
+Tour's 1960-2025, every Giro edition and 79 of 80 Vuelta ones — re-run it
+before planning from them.** Distrust a low number either way: it usually means
+the parser is dropping data, not that the source is thin.
 
 `test_coverage.py` pins each exclusion above, because each one is a case where
 a naive `COUNT` reported a gap that does not exist.

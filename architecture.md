@@ -14,9 +14,9 @@ flowchart TD
 
     subgraph PIPELINE["Data Pipeline — pipeline/ (not deployed)"]
         direction TB
-        SCRAPE["Scrapers<br/>scrape_giro.py / scrape_vuelta.py<br/>add_pre1960.py / add_stages.py (TDF)<br/>scrape_rider_details.py"]
+        SCRAPE["Scrapers<br/>scrape_race.py --race {tour,giro,vuelta}<br/>add_stages.py (in-progress TDF)<br/>scrape_rider_details.py"]
         RAW[("Raw scrape JSON<br/>{race}_scrapes/YEAR/stage_N.json<br/>tracked in git")]
-        INGEST["Ingest<br/>ingest_race.py --race {giro,vuelta}<br/>add_pre1960.py / add_stages.py (TDF)"]
+        INGEST["Ingest<br/>ingest_race.py --race {tour,giro,vuelta}<br/>preview_reingest.py (dry diff)"]
         DB[("cycling.db<br/>SQLite — gitignored,<br/>NOT regenerable")]
         EXPORT["Exporters<br/>export_gc.py · export_riders_index.py<br/>export_race_summary.py · export_all_races_summary.py<br/>(each re-stamps link_rider_race_sets.py)"]
         VALIDATE{{"validate_exports.py<br/>sanity checks"}}
@@ -63,9 +63,12 @@ flowchart TD
   and bikeraceinfo.com fill a handful of gaps (official total race distance, some GC winner
   times) where PCS's own numbers are unreliable or absent for historical editions.
 
-- **Scrapers** (`scrape_giro.py`, `scrape_vuelta.py`, `add_pre1960.py`/`add_stages.py` for
-  TDF, plus one-off scripts like `scrape_rider_details.py`, `scrape_vuelta_gc_pages.py`,
-  `scrape_kom_points.py`) — fetch PCS pages and write raw per-stage JSON. PCS blocks plain
+- **Scrapers** (`scrape_race.py --race {tour,giro,vuelta}` — `scrape_giro.py` and
+  `scrape_vuelta.py` are thin wrappers on it; `add_stages.py` for an in-progress Tour;
+  plus one-off scripts like `scrape_rider_details.py`, `scrape_vuelta_gc_pages.py`,
+  `scrape_kom_points.py`) — fetch PCS pages and write raw per-stage JSON. `add_pre1960.py`
+  was retired in the September 2026 unification. A scrape finishes by replaying any
+  recorded name-swap repair it just overwrote (`fix_name_swaps.py --replay`). PCS blocks plain
   HTTP scraping with a Cloudflare challenge for live/recent data, so in-progress-race
   scraping goes through a browser + local save-server instead (see `ai-context.md`'s
   "Scraping a live/in-progress race" section). `scrape_vuelta.py`/`scrape_giro.py`
@@ -86,10 +89,13 @@ flowchart TD
   `race_common.StageRow` schema (added 2026-07-25) instead of raw positional indexing — a
   malformed row now raises a clear error instead of silently corrupting or dropping data.
 
-- **Ingest** (`ingest_race.py --race {giro,vuelta}`, `add_pre1960.py`/`add_stages.py` for
-  TDF) — parses the raw scrape JSON and writes rows into `cycling.db`. Re-ingesting a year
-  deletes and re-creates that edition atomically, preserving fields (`vertical_meters`,
-  `profile_score`) that come from separate scrapers, not the main stage scrape.
+- **Ingest** (`ingest_race.py --race {tour,giro,vuelta}`) — parses the raw scrape JSON
+  and writes rows into `cycling.db`. Re-ingesting a year rebuilds that edition's stages and
+  results atomically, preserving fields (`vertical_meters`, `profile_score`) that come from
+  separate scrapers. **The `race_editions` ROW is kept, not deleted**: it carries
+  `classification_standings`, which has no ON DELETE CASCADE, so deleting it raised FOREIGN
+  KEY constraint failed on 254 editions between the September standings landing and
+  2026-09-10. `preview_reingest.py` shows what a re-ingest would change before it runs.
   `add_stages.py` (TDF) additionally gates on `detect_name_swaps.py`'s bib-consistency
   check before touching anything — it aborts if any bib maps to more than one rider
   identity anywhere in the on-disk year, catching the PCS-side "adjacent-row swap"
@@ -438,7 +444,9 @@ Rider  → Country                  (riders.nationality_code → countries.code)
 - **`data_provenance` records where every stored fact came from**, at (entity, entity_id,
   field) granularity, with the exact URL in `source_ref`. `entity_id` is polymorphic
   across tables, so there is no foreign key and `ingest_race.py` must delete an edition's
-  rows itself on re-ingest or they orphan. A `source` of `unknown` means "patched by
+  rows itself on re-ingest or they orphan. The same applies to a renamed rider: merging one
+  into another leaves provenance rows naming an id that no longer exists, which
+  `validate_db.py` reports. A `source` of `unknown` means "patched by
   something nobody recorded" and is a real signal — it is how six Paris finales carrying
   the *previous* stage's distance were found. As of 2026-08-23 `riders` and `teams` are
   at 100% coverage; `entity_id` holds a TEXT slug for both, which works because the
