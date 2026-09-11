@@ -16,9 +16,17 @@ of tests covers both.
 Produces per-stage JSON in <race>_scrapes/YEAR/stage_N.json, compatible with
 ingest_race.py and build_<race>_points.py.
 
+Every scraped year is run through fix_name_swaps --replay before this exits.
+PCS reproduces its adjacent-row name swaps on every request, so a re-scrape
+transposes any previously-repaired pair again — and since the scrape file is
+the source of truth, nothing downstream would know. Recorded repairs go
+straight back; it prints only when it actually restores something. --no-replay
+opts out.
+
 Usage:
   python3 scrape_race.py --race vuelta 2025
   python3 scrape_race.py --race giro 1990-2000 --resume
+  python3 scrape_race.py --race tour 1985 --no-replay   # leave PCS's rows as-is
 
 scrape_giro.py and scrape_vuelta.py remain as thin wrappers, so every recipe in
 ai-context.md keeps working.
@@ -643,6 +651,7 @@ def main(argv=None):
     race = RACES[race_key]
 
     resume = "--resume" in args
+    no_replay = "--no-replay" in args
     years = parse_year_args(args)
     if not years:
         print(f"Usage: python3 scrape_race.py --race {race_key} YEAR [YEAR...] "
@@ -663,6 +672,17 @@ def main(argv=None):
                 continue
 
         scrape_year(race, year, out_dir)
+
+    # PCS reproduces its adjacent-row name swaps on every request, so the years
+    # just written have any previously-repaired pair transposed again — and the
+    # scrape file is the source of truth, so nothing downstream would know. The
+    # repairs are recorded, so put them straight back; this is the same bargain
+    # as re-applying DB patches across a re-ingest, and for the same reason.
+    # Idempotent, and it refuses to touch a row showing neither recorded name.
+    if not no_replay and years:
+        from fix_name_swaps import replay
+        for year in years:
+            replay(race_key, year, apply=True, quiet=True)
 
     print(f"\n{'='*60}")
     print("Done. Next steps:")

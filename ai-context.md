@@ -3872,12 +3872,25 @@ a byte-for-byte identical edition** once its sidecar exists.
 ### The per-year recipe (all four steps, in order)
 
 ```bash
-python3 scrape_race.py --race tour YEAR                  # stage pages
+python3 scrape_race.py --race tour YEAR                  # stage pages (replays swaps itself)
 python3 scrape_vuelta_gc_pages.py --race tour YEAR       # per-stage GC pages
 python3 build_vuelta_gc_standings.py --race tour YEAR    # the sidecar
+python3 fix_name_swaps.py --race tour --year YEAR --dry-run   # any NEW swaps
 python3 ingest_race.py --race tour YEAR
 python3 backfill_bib_numbers.py --apply                  # once, at the end
 ```
+
+**A re-scrape undoes a name-swap repair.** The fix lives in the scrape file and
+PCS reproduces the transposition on every request, so re-fetching a repaired
+stage writes the swap straight back — silently, the file being the source of
+truth. `scrape_race.py` therefore runs `fix_name_swaps --replay --apply` over
+every year it scrapes before it exits, restoring anything recorded in
+`name_swaps_applied.json`; it prints only when it actually restores something,
+and `--no-replay` opts out. The dry-run line above is still worth running,
+because replay only knows the pairs already recorded — a year scraped for the
+first time may hold new ones. Any scraper OTHER than `scrape_race.py` that
+rewrites a stage file needs `python3 fix_name_swaps.py --replay --apply` run
+after it by hand.
 
 Before the ingest step, see what it would do:
 

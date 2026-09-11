@@ -218,11 +218,14 @@ def record_swaps(pairs):
     return added
 
 
-def replay(race_filter, year_filter, apply):
+def replay(race_filter, year_filter, apply, quiet=False):
     """Re-apply recorded swaps to any file that has reverted to PCS's order.
 
     Idempotent by construction: a pair whose rows already read correctly is
-    left alone, so this is safe to run after every scrape.
+    left alone, so this is safe to run after every scrape — which is exactly
+    where scrape_race.py calls it from. `quiet` suppresses the summary when
+    there was nothing to do, so a clean scrape stays readable; anything
+    actually restored, or skipped, still prints.
     """
     man = load_manifest()
     by_year = defaultdict(list)
@@ -233,7 +236,8 @@ def replay(race_filter, year_filter, apply):
             continue
         by_year[(s["race"], s["year"])].append(s)
     if not by_year:
-        print("no recorded swaps match")
+        if not quiet:
+            print("no recorded swaps match")
         return 0
 
     reverted, intact, missing, files = [], 0, [], 0
@@ -271,6 +275,8 @@ def replay(race_filter, year_filter, apply):
         if apply and touched:
             files += save(touched)
 
+    if quiet and not reverted and not missing:
+        return 0
     print(f"{len(man['swaps'])} recorded pair(s); {intact} already correct, "
           f"{len(reverted)} reverted by a re-scrape")
     for race, year, st, a, b, na, nb in reverted:
