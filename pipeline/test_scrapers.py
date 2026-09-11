@@ -227,6 +227,30 @@ class TestResultsTable(unittest.TestCase):
         self.assertEqual(info["Finish"], "Valence d'Agen")
         self.assertEqual(info["Distance"], "158 km")
 
+    def test_a_dotted_slug_is_still_a_slug(self):
+        """iBanesto.com, O.N.C.E., FDJ.fr, R.M.O. — a PCS slug carries a dot
+        wherever the team's name does, and the pattern's character class did
+        not. It then could not reach the closing quote, matched nothing, and
+        the row landed with a team name and no team: 4,118 rows across the
+        Tour's scrape files. The rider pattern fails the same way and worse,
+        because a row whose slug will not parse is dropped outright."""
+        rows = SV.parse_rows(
+            '<table><thead>'
+            '<tr><th data-code="rnk">Rnk</th><th data-code="gc">GC</th>'
+            '<th data-code="bib">BIB</th><th data-code="age">Age</th>'
+            '<th data-code="ridername">Rider</th><th data-code="teamnamelink">Team</th>'
+            '<th data-code="time">Time</th></tr></thead><tbody>'
+            '<tr><td>1</td><td>1</td><td>15</td><td>25</td>'
+            '<td><span class="flag es"></span>'
+            '<a href="rider/j.-a.-flecha">Flecha Juan Antonio</a></td>'
+            '<td><a href="team/ibanesto.com-2003">iBanesto.com</a></td>'
+            '<td><font>4:10:45</font></td></tr></tbody></table>')
+        self.assertEqual(len(rows), 1, "a dotted rider slug must not drop the row")
+        row = StageRow.from_list(rows[0])
+        self.assertEqual(row.slug, "rider/j.-a.-flecha")
+        self.assertEqual(row.team_slug, "team/ibanesto.com-2003")
+        self.assertEqual(row.team, "iBanesto.com")
+
     def test_sparse_historical_page(self):
         """The ordinary row parser finds exactly ONE row on this page — and
         that is the bug, not the truth. It is a team time trial: the results

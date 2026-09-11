@@ -353,7 +353,7 @@ def parse_rows(table_html: str) -> list[list]:
 
             if rider_col >= 0:
                 rtd = tds[rider_col]
-                slug_m = re.search(r'href="/?([^"]*rider/[a-z0-9-]+)"', rtd)
+                slug_m = re.search(r'href="/?([^"]*rider/[a-z0-9.-]+)"', rtd)
                 rider_slug = slug_m.group(1) if slug_m else ""
                 if rider_slug.startswith("/"):
                     rider_slug = rider_slug[1:]
@@ -369,7 +369,16 @@ def parse_rows(table_html: str) -> list[list]:
 
             if team_col >= 0:
                 ttd = tds[team_col]
-                ts_m = re.search(r'href="/?([^"]*team/[a-z0-9-]+)"', ttd)
+                # The dot matters. A PCS slug carries one wherever the team's
+                # name does — iBanesto.com, O.N.C.E., FDJ.fr, R.M.O., Vini
+                # Caldirola - So.di — and without it in the class the pattern
+                # cannot reach the closing quote, so it matches nothing at all
+                # and the row lands with a team NAME and no team. 4,118 rows
+                # across the Tour's scrape files, every one of them a real
+                # rider on a real team. The rider pattern above has the same
+                # shape and a worse failure: a row whose slug will not parse is
+                # dropped entirely, a few lines below.
+                ts_m = re.search(r'href="/?([^"]*team/[a-z0-9.-]+)"', ttd)
                 team_slug = ts_m.group(1) if ts_m else ""
                 if team_slug.startswith("/"):
                     team_slug = team_slug[1:]
@@ -476,7 +485,7 @@ def parse_points_page(html: str, point_type: str) -> dict:
             slug = ""
             points = 0
             for td in tds:
-                slug_m = re.search(r'href="/?([^"]*rider/[a-z0-9-]+)"', td)
+                slug_m = re.search(r'href="/?([^"]*rider/[a-z0-9.-]+)"', td)
                 if slug_m:
                     s = slug_m.group(1)
                     slug = s[1:] if s.startswith("/") else s
