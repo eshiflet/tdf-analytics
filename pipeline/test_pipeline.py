@@ -16,7 +16,9 @@ incident it says so, so the case isn't "simplified" away later.
 """
 
 import os
+import shutil
 import sqlite3
+import tempfile
 import sys
 import unittest
 
@@ -470,6 +472,55 @@ class TestStageNotes(unittest.TestCase):
         for key, entry in rc.load_stage_notes().items():
             self.assertGreater(len(entry.get("note", "")), 20, key)
             self.assertTrue(entry.get("source"), key)
+
+class TestSwapManifest(unittest.TestCase):
+    """fix_name_swaps.record_swaps — the record that survives a re-scrape.
+
+    The repair is written into the scrape file, and PCS reproduces the swap on
+    every request, so re-fetching a repaired stage undoes it silently. The
+    manifest is what makes that recoverable.
+    """
+
+    def setUp(self):
+        import fix_name_swaps
+        self.mod = fix_name_swaps
+        self.tmp = tempfile.mkdtemp()
+        self._orig = fix_name_swaps.MANIFEST
+        fix_name_swaps.MANIFEST = os.path.join(self.tmp, "swaps.json")
+
+    def tearDown(self):
+        self.mod.MANIFEST = self._orig
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    PAIR = ("tour", 2009, 19, "156", "192", "Pineau Jérôme", "Beppu Fumiyuki")
+
+    def test_a_pair_is_recorded_with_the_names_it_should_end_up_with(self):
+        self.assertEqual(self.mod.record_swaps([self.PAIR]), 1)
+        swaps = self.mod.load_manifest()["swaps"]
+        self.assertEqual(len(swaps), 1)
+        self.assertEqual((swaps[0]["year"], swaps[0]["stage"], swaps[0]["bib_a"],
+                          swaps[0]["name_a"]), (2009, 19, "156", "Pineau Jérôme"))
+
+    def test_reapplying_does_not_duplicate(self):
+        self.mod.record_swaps([self.PAIR])
+        self.assertEqual(self.mod.record_swaps([self.PAIR]), 0)
+        self.assertEqual(len(self.mod.load_manifest()["swaps"]), 1)
+
+    def test_the_same_pair_named_from_the_other_side_is_the_same_pair(self):
+        """Which bib the detector calls A depends on row order, and a re-scrape
+        can reverse it. Recording both would replay the swap twice — back to
+        where it started."""
+        self.mod.record_swaps([self.PAIR])
+        mirrored = ("tour", 2009, 19, "192", "156", "Beppu Fumiyuki", "Pineau Jérôme")
+        self.assertEqual(self.mod.record_swaps([mirrored]), 0)
+        self.assertEqual(len(self.mod.load_manifest()["swaps"]), 1)
+
+    def test_a_different_stage_is_a_different_pair(self):
+        self.mod.record_swaps([self.PAIR])
+        other = ("tour", 2009, 20, "156", "192", "Pineau Jérôme", "Beppu Fumiyuki")
+        self.assertEqual(self.mod.record_swaps([other]), 1)
+        self.assertEqual(len(self.mod.load_manifest()["swaps"]), 2)
+
 
 class TestBibBackfillScope(unittest.TestCase):
     """backfill_bib_numbers — the guard, and how far it reaches.

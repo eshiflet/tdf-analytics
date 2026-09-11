@@ -32,10 +32,25 @@ the only reason it was left out. Note only 1903-1959 have such a file; from
 1960 there is none, so the 17 further pairs this finds in 1976-2014 cannot be
 repaired here — see ai-context.md.
 
+THE REPAIR LIVES IN THE FILE, SO A RE-SCRAPE UNDOES IT. The defect reproduces
+on every PCS request, so re-fetching a repaired stage writes the transposed
+rows straight back — silently, since the file is the source of truth. Every
+applied pair is therefore recorded in name_swaps_applied.json, and
+
+  python3 fix_name_swaps.py --replay --apply
+
+puts back any that a scrape has reverted. It is idempotent (a pair already
+reading correctly is left alone) and refuses to act when a row shows neither
+of the two recorded names, so run it after every scrape. The ingest swap gate
+is the backstop: a reverted pair blocks its edition rather than reaching the
+database.
+
 Usage:
   python3 fix_name_swaps.py --dry-run
   python3 fix_name_swaps.py --race giro --year 1973 --dry-run
   python3 fix_name_swaps.py --apply
+  python3 fix_name_swaps.py --replay                 # what a re-scrape undid
+  python3 fix_name_swaps.py --replay --apply         # put it back
 """
 
 import argparse
@@ -44,6 +59,7 @@ import sqlite3
 import json
 import os
 from collections import Counter, defaultdict
+from datetime import date
 
 from detect_name_swaps import _bib_check
 from race_common import (DB_PATH, SOURCE_DERIVED, STAGE_RACES, StageRow,
@@ -155,6 +171,119 @@ def apply_year(race, key, pairs):
     return save(touched)
 
 
+MANIFEST = os.path.join(HERE, "name_swaps_applied.json")
+
+MANIFEST_README = (
+    "Name swaps repaired in the scrape files. The repair is written INTO the "
+    "file, so re-scraping that stage fetches PCS's transposed rows again and "
+    "silently undoes it. This records every pair so it can be replayed: "
+    "python3 fix_name_swaps.py --replay --apply. Nothing here is a judgement "
+    "call — each entry was a mutual, adjacent, team-corroborated transposition "
+    "that the detector resolved on its own."
+)
+
+
+def load_manifest():
+    if not os.path.exists(MANIFEST):
+        return {"_README": MANIFEST_README, "swaps": []}
+    with open(MANIFEST, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def record_swaps(pairs):
+    """Add applied pairs to the manifest, keyed so re-applying cannot duplicate."""
+    man = load_manifest()
+    man["_README"] = MANIFEST_README
+    seen = {(s["race"], s["year"], s["stage"], s["bib_a"], s["bib_b"])
+            for s in man["swaps"]}
+    added = 0
+    for race, year, st, bib_a, bib_b, name_a, name_b in pairs:
+        key = (race, year, st, bib_a, bib_b)
+        if key in seen or (race, year, st, bib_b, bib_a) in seen:
+            continue
+        man["swaps"].append({
+            "race": race, "year": year, "stage": st,
+            "bib_a": bib_a, "bib_b": bib_b,
+            # The names as they should stand AFTER the repair: bib_a carries
+            # name_a. That is what replay compares against.
+            "name_a": name_a, "name_b": name_b,
+            "recorded": date.today().isoformat(),
+        })
+        seen.add(key)
+        added += 1
+    man["swaps"].sort(key=lambda s: (s["race"], s["year"], s["stage"], s["bib_a"]))
+    with open(MANIFEST, "w", encoding="utf-8") as f:
+        json.dump(man, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+    return added
+
+
+def replay(race_filter, year_filter, apply):
+    """Re-apply recorded swaps to any file that has reverted to PCS's order.
+
+    Idempotent by construction: a pair whose rows already read correctly is
+    left alone, so this is safe to run after every scrape.
+    """
+    man = load_manifest()
+    by_year = defaultdict(list)
+    for s in man["swaps"]:
+        if race_filter and s["race"] != race_filter:
+            continue
+        if year_filter and s["year"] != year_filter:
+            continue
+        by_year[(s["race"], s["year"])].append(s)
+    if not by_year:
+        print("no recorded swaps match")
+        return 0
+
+    reverted, intact, missing, files = [], 0, [], 0
+    for (race, year), swaps in sorted(by_year.items()):
+        keys = {y: ydir for y, ydir in year_sources(race)}
+        if year not in keys:
+            missing.append(f"{race} {year}: no scrape files")
+            continue
+        stages, save = load_stage_rows(race, keys[year])
+        touched = set()
+        for s in swaps:
+            j = stages.get(s["stage"])
+            if not j:
+                missing.append(f"{race} {year} st{s['stage']}: stage file gone")
+                continue
+            ia, ib = row_index(j, s["bib_a"]), row_index(j, s["bib_b"])
+            if ia is None or ib is None:
+                missing.append(f"{race} {year} st{s['stage']}: bib "
+                               f"{s['bib_a']}/{s['bib_b']} not on the stage")
+                continue
+            shown_a = StageRow.from_list(j["rows"][ia]).name
+            if shown_a == s["name_a"]:
+                intact += 1
+                continue
+            if shown_a != s["name_b"]:
+                missing.append(f"{race} {year} st{s['stage']}: bib {s['bib_a']} "
+                               f"shows '{shown_a}', expected '{s['name_a']}' or "
+                               f"'{s['name_b']}' — not replaying blind")
+                continue
+            reverted.append((race, year, s["stage"], s["bib_a"], s["bib_b"],
+                             s["name_a"], s["name_b"]))
+            if apply:
+                swap_identity(j["rows"][ia], j["rows"][ib])
+                touched.add(s["stage"])
+        if apply and touched:
+            files += save(touched)
+
+    print(f"{len(man['swaps'])} recorded pair(s); {intact} already correct, "
+          f"{len(reverted)} reverted by a re-scrape")
+    for race, year, st, a, b, na, nb in reverted:
+        print(f"    {race} {year} st{st}: bib {a} <-> bib {b}   restore '{na}' / '{nb}'")
+    for m in missing:
+        print(f"    SKIPPED {m}")
+    if apply:
+        print(f"\nRewrote {files} stage file(s).")
+    elif reverted:
+        print("\n[DRY RUN] re-run with --apply to restore these.")
+    return len(reverted)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--race", choices=list(STAGE_RACES), default=None)
@@ -163,7 +292,14 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--from-db", action="store_true",
                     help="repair in the database, for editions with no scrape file")
+    ap.add_argument("--replay", action="store_true",
+                    help="re-apply swaps recorded in name_swaps_applied.json, for "
+                         "files a re-scrape has reverted. Run after every scrape.")
     args = ap.parse_args()
+
+    if args.replay:
+        replay(args.race, args.year, args.apply)
+        return
 
     if args.from_db:
         conn = sqlite3.connect(DB_PATH)
@@ -217,6 +353,10 @@ def main():
     print(f"\n{'[DRY RUN] ' if not args.apply else ''}"
           f"{len(all_fix)} pair(s) across {len(years)} race-year(s); "
           f"{len(all_bad)} left unresolved")
+    if args.apply and all_fix:
+        recorded = record_swaps(all_fix)
+        print(f"Recorded {recorded} pair(s) in {os.path.basename(MANIFEST)} — "
+              "replay them after any re-scrape with --replay --apply.")
     if args.apply:
         print(f"Rewrote {files} stage file(s). Push the fix into the database:")
         for race, year in years:

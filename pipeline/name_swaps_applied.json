@@ -1,0 +1,205 @@
+{
+ "_README": "Name swaps repaired in the scrape files. The repair is written INTO the file, so re-scraping that stage fetches PCS's transposed rows again and silently undoes it. This records every pair so it can be replayed: python3 fix_name_swaps.py --replay --apply. Nothing here is a judgement call — each entry was a mutual, adjacent, team-corroborated transposition that the detector resolved on its own.",
+ "swaps": [
+  {
+   "race": "tour",
+   "year": 1960,
+   "stage": 15,
+   "bib_a": "14",
+   "bib_b": "49",
+   "name_a": "Suárez Antonio",
+   "name_b": "Mastrotto Raymond",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1960,
+   "stage": 15,
+   "bib_a": "29",
+   "bib_b": "161",
+   "name_a": "Planckaert Joseph",
+   "name_b": "Beuffeuil Pierre",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1962,
+   "stage": 11,
+   "bib_a": "81",
+   "bib_b": "147",
+   "name_a": "Claes Jean-Baptiste",
+   "name_b": "Melckenbeeck Frans",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1964,
+   "stage": 11,
+   "bib_a": "12",
+   "bib_b": "124",
+   "name_a": "Aerenhouts Frans",
+   "name_b": "Haast Cees",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1964,
+   "stage": 11,
+   "bib_a": "73",
+   "bib_b": "114",
+   "name_a": "Sels Ward",
+   "name_b": "Fantinato Bruno",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1977,
+   "stage": 1,
+   "bib_a": "18",
+   "bib_b": "21",
+   "name_a": "Rouxel Charly",
+   "name_b": "Thévenet Bernard",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1977,
+   "stage": 1,
+   "bib_a": "63",
+   "bib_b": "41",
+   "name_a": "Agostinho Joaquim",
+   "name_b": "Ocaña Luis",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1977,
+   "stage": 1,
+   "bib_a": "88",
+   "bib_b": "54",
+   "name_a": "Thurau Dietrich",
+   "name_b": "Chalmel André",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1978,
+   "stage": 19,
+   "bib_a": "47",
+   "bib_b": "93",
+   "name_a": "Nilsson Sven-Åke",
+   "name_b": "Agostinho Joaquim",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1978,
+   "stage": 19,
+   "bib_a": "91",
+   "bib_b": "44",
+   "name_a": "Maertens Freddy",
+   "name_b": "Martin Raymond",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1978,
+   "stage": 19,
+   "bib_a": "98",
+   "bib_b": "46",
+   "name_a": "Muselet Christian",
+   "name_b": "Mollet André",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1988,
+   "stage": 9,
+   "bib_a": "109",
+   "bib_b": "34",
+   "name_a": "Yates Sean",
+   "name_b": "Garde Dominique",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1988,
+   "stage": 9,
+   "bib_a": "126",
+   "bib_b": "147",
+   "name_a": "Duclos-Lassalle Gilbert",
+   "name_b": "Sanders Gilles",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2008,
+   "stage": 7,
+   "bib_a": "37",
+   "bib_b": "27",
+   "name_a": "Pereiro Óscar",
+   "name_b": "Sánchez Samuel",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2009,
+   "stage": 19,
+   "bib_a": "156",
+   "bib_b": "192",
+   "name_a": "Pineau Jérôme",
+   "name_b": "Beppu Fumiyuki",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2019,
+   "stage": 12,
+   "bib_a": "92",
+   "bib_b": "64",
+   "name_a": "Bettiol Alberto",
+   "name_b": "Erviti Imanol",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2019,
+   "stage": 12,
+   "bib_a": "93",
+   "bib_b": "124",
+   "name_a": "Clarke Simon",
+   "name_b": "Costa Rui",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2023,
+   "stage": 9,
+   "bib_a": "161",
+   "bib_b": "26",
+   "name_a": "Yates Simon",
+   "name_b": "Pidcock Tom",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2023,
+   "stage": 9,
+   "bib_a": "198",
+   "bib_b": "22",
+   "name_a": "Tejada Harold",
+   "name_b": "Castroviejo Jonathan",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2023,
+   "stage": 9,
+   "bib_a": "46",
+   "bib_b": "195",
+   "name_a": "Powless Neilson",
+   "name_b": "Lutsenko Alexey",
+   "recorded": "2026-09-10"
+  }
+ ]
+}
