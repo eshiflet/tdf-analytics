@@ -4545,7 +4545,7 @@ python3 validate_db.py               # 0 errors, 10 warnings expected (2026-09-1
 python3 link_rider_race_sets.py --check     # report drift, write nothing
 ```
 
-### coverage.py — what is missing, and where (2026-08-22)
+### coverage.py — what is missing, and where (re-run 2026-09-11)
 
 ```bash
 python3 coverage.py                    # every race set, worst gaps first
@@ -4572,13 +4572,24 @@ noise, and noise is what made the per-field audits hard to read side by side:
 | elevation, profile score and teams **only for the gravel editions Athlinks or tretzesports timed** | those are timing platforms: a finish list, no parcours, no trade team. **Corrected 2026-09-09** — this row used to exclude the whole gravel set because "PCS has no gravel or MTB coverage at all — verified, not assumed", and the one-day row excluded profile score because "a one-day race is not classified flat/hilly/mountain". Both were false and together hid ~993 fillable values. See "coverage.py excluded work that was doable" |
 
 Gaps rank by **values missing**, not by percentage: a year at 40% of 180 is a
-bigger afternoon than one at 0% of 3. As of 2026-08-22 the top of the list was
-per-stage `gc_rank` for the 1980s Giro and Vuelta and `finish_time_seconds` for
-the 1950s Tour, with 3,618 stage elevations outstanding across 340 race-years.
-**Those figures predate the September 10-11 repair pass, which re-ingested the
-Tour's 1960-2025, every Giro edition and 79 of 80 Vuelta ones — re-run it
-before planning from them.** Distrust a low number either way: it usually means
-the parser is dropping data, not that the source is thin.
+bigger afternoon than one at 0% of 3. Distrust a low number either way — it
+usually means the parser is dropping data, not that the source is thin.
+
+**Re-run 2026-09-11**, after the September 10-11 repair pass (the Tour's
+1960-2025, every Giro edition, 79 of 80 Vuelta ones). 469 race-years, 7,268
+stages, 786,858 results; 1,308 race-year/field combinations incomplete,
+169,434 values:
+
+| field | outstanding | where it is worst |
+|---|---|---|
+| `gc_rank` | 87,852 across 214 race-years | the 1980s Giro and Vuelta — Giro 1989 is 563 of 3,977 (14%), and the next five are the same era |
+| `vertical_meters` | 3,334 across 343 race-years | the pre-war Tour, whole editions at zero (1937, 1938) |
+| `finish_time_seconds` | 149 race-years incomplete | the late-40s/early-50s Giro — 1951 is 179 of 1,611 (11%), 1947 and 1948 under 7% |
+| `birthday` | 6,326 of 19,023 riders | — |
+
+Per-stage `gc_rank` for the 1980s Giro and Vuelta is far and away the biggest
+single body of missing data in the project, and has been through two repair
+passes without moving much. Worth a plan of its own rather than another pass.
 
 `test_coverage.py` pins each exclusion above, because each one is a case where
 a naive `COUNT` reported a gap that does not exist.
