@@ -16,6 +16,13 @@
    "wikipedia"
   ],
   [
+   "Giro d'Italia",
+   1985,
+   8,
+   "route_type",
+   "wikipedia"
+  ],
+  [
    "Milan-San Remo",
    2013,
    1,
@@ -187,9 +194,9 @@
  "value_counts": {
   "gravel.team_id": 55,
   "one_day.team_id": 84800,
-  "stage_race.team_id": 631807,
+  "stage_race.team_id": 639164,
   "gravel.finish_time_seconds": 7878,
   "one_day.finish_time_seconds": 72911,
-  "stage_race.finish_time_seconds": 643847
+  "stage_race.finish_time_seconds": 641287
  }
 }
