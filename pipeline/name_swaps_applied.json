@@ -200,6 +200,116 @@
    "name_a": "Powless Neilson",
    "name_b": "Lutsenko Alexey",
    "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2001,
+   "stage": 15,
+   "bib_a": "78",
+   "bib_b": "61",
+   "name_a": "Mayo Iban",
+   "name_b": "Virenque Richard",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2001,
+   "stage": 15,
+   "bib_a": "81",
+   "bib_b": "29",
+   "name_a": "Casero Ángel Luis",
+   "name_b": "Mercado Juan Miguel",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2001,
+   "stage": 15,
+   "bib_a": "87",
+   "bib_b": "209",
+   "name_a": "Rebollo José Luis",
+   "name_b": "Sgambelluri Roberto",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2009,
+   "stage": 5,
+   "bib_a": "109",
+   "bib_b": "202",
+   "name_a": "Viganò Davide",
+   "name_b": "Božič Borut",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2009,
+   "stage": 5,
+   "bib_a": "179",
+   "bib_b": "164",
+   "name_a": "Sieberg Marcel",
+   "name_b": "Delage Mickaël",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2016,
+   "stage": 20,
+   "bib_a": "131",
+   "bib_b": "133",
+   "name_a": "Brambilla Gianluca",
+   "name_b": "de la Cruz David",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2016,
+   "stage": 20,
+   "bib_a": "51",
+   "bib_b": "213",
+   "name_a": "Chaves Esteban",
+   "name_b": "Calmejane Lilian",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2018,
+   "stage": 18,
+   "bib_a": "138",
+   "bib_b": "212",
+   "name_a": "van Poppel Danny",
+   "name_b": "Aberasturi Jon",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2020,
+   "stage": 13,
+   "bib_a": "12",
+   "bib_b": "141",
+   "name_a": "Bagioli Andrea",
+   "name_b": "Wellens Tim",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2020,
+   "stage": 13,
+   "bib_a": "174",
+   "bib_b": "42",
+   "name_a": "Mas Enric",
+   "name_b": "Arensman Thymen",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2020,
+   "stage": 13,
+   "bib_a": "72",
+   "bib_b": "13",
+   "name_a": "Carapaz Richard",
+   "name_b": "Cattaneo Mattia",
+   "recorded": "2026-09-10"
   }
  ]
 }
