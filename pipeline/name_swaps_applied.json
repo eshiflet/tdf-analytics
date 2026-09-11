@@ -2,6 +2,76 @@
  "_README": "Name swaps repaired in the scrape files. The repair is written INTO the file, so re-scraping that stage fetches PCS's transposed rows again and silently undoes it. This records every pair so it can be replayed: python3 fix_name_swaps.py --replay --apply. Nothing here is a judgement call — each entry was a mutual, adjacent, team-corroborated transposition that the detector resolved on its own.",
  "swaps": [
   {
+   "race": "giro",
+   "year": 1957,
+   "stage": 5,
+   "bib_a": "115",
+   "bib_b": "71",
+   "name_a": "Calvi Giuseppe",
+   "name_b": "Accordi Renzo",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "giro",
+   "year": 1957,
+   "stage": 5,
+   "bib_a": "19",
+   "bib_b": "67",
+   "name_a": "Bobet Louison",
+   "name_b": "Fornara Pasquale",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "giro",
+   "year": 1957,
+   "stage": 5,
+   "bib_a": "38",
+   "bib_b": "36",
+   "name_a": "Poblet Miguel",
+   "name_b": "Galdeano Jesús",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "giro",
+   "year": 1999,
+   "stage": 1,
+   "bib_a": "147",
+   "bib_b": "87",
+   "name_a": "Rebellin Davide",
+   "name_b": "Noè Andrea",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "giro",
+   "year": 1999,
+   "stage": 1,
+   "bib_a": "7",
+   "bib_b": "53",
+   "name_a": "Fontanelli Fabiano",
+   "name_b": "Edo Ángel",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "giro",
+   "year": 2003,
+   "stage": 3,
+   "bib_a": "154",
+   "bib_b": "64",
+   "name_a": "Sabaliauskas Marius",
+   "name_b": "Frigo Dario",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "giro",
+   "year": 2003,
+   "stage": 3,
+   "bib_a": "41",
+   "bib_b": "8",
+   "name_a": "Honchar Serhiy",
+   "name_b": "Noè Andrea",
+   "recorded": "2026-09-11"
+  },
+  {
    "race": "tour",
    "year": 1931,
    "stage": 21,
