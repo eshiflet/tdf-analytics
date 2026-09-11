@@ -97,6 +97,107 @@ class IngestHarness(unittest.TestCase):
             "SELECT * FROM stages ORDER BY stage_number")}
 
 
+class TestRouteTypeOverrides(IngestHarness):
+    """route_type_overrides.json — for stages where PCS itself names the wrong
+    kind of race.
+
+    Every path that sets route_type reads PCS, so a re-scrape reproduces the
+    error and a DB patch does not survive (route_type is not one of the columns
+    ingest preserves). Giro 1985 stage-8a is reported "Won how: Time trial" and
+    was a mass-start circuit race, a 5 km lap at Foggia ridden 9 times.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self._saved = ingest_race.ROUTE_TYPE_OVERRIDES
+
+    def tearDown(self):
+        ingest_race.ROUTE_TYPE_OVERRIDES = self._saved
+        super().tearDown()
+
+    def write_tt(self, n=1, slug="stage-1a"):
+        """A stage PCS calls a time trial, which detect_route_type reads as TT."""
+        p = self.write_stage(n, slug=slug)
+        import json as _json
+        with open(p, encoding="utf-8") as f:
+            d = _json.load(f)
+        d["info"]["Won how"] = "Time trial"
+        with open(p, "w", encoding="utf-8") as f:
+            _json.dump(d, f)
+        return p
+
+    def test_without_an_override_pcs_decides(self):
+        ingest_race.ROUTE_TYPE_OVERRIDES = {}
+        self.write_tt()
+        self.ingest()
+        row = self.stages()[1]
+        self.assertEqual(row["route_type"], "TT")
+        self.assertEqual(row["stage_type"], "itt")
+
+    def test_an_override_wins_and_stage_type_follows(self):
+        ingest_race.ROUTE_TYPE_OVERRIDES = {
+            (self.RACE, 1990, "stage-1a"): {
+                "route_type": "F", "was": "TT", "source": "wikipedia",
+                "source_ref": "https://example.invalid/giri-sprint"},
+        }
+        self.write_tt()
+        self.ingest()
+        row = self.stages()[1]
+        self.assertEqual(row["route_type"], "F")
+        self.assertEqual(row["stage_type"], "road", "stage_type follows route_type")
+        # PCS's own words are left alone — we correct the classification, not
+        # the record of what the page said.
+        self.assertEqual(row["won_how"], "Time trial")
+
+    def test_it_survives_a_reingest(self):
+        """The whole point. A DB patch would be reverted by the next re-ingest,
+        because route_type is not preserved across the delete-and-reinsert."""
+        ingest_race.ROUTE_TYPE_OVERRIDES = {
+            (self.RACE, 1990, "stage-1a"): {"route_type": "F", "was": "TT"},
+        }
+        self.write_tt()
+        self.ingest()
+        self.ingest()
+        self.assertEqual(self.stages()[1]["route_type"], "F")
+
+    def test_provenance_names_the_override_not_pcs(self):
+        """Recording 'pcs' here would claim the page says what it does not."""
+        ingest_race.ROUTE_TYPE_OVERRIDES = {
+            (self.RACE, 1990, "stage-1a"): {
+                "route_type": "F", "was": "TT", "source": "wikipedia",
+                "source_ref": "https://example.invalid/giri-sprint"},
+        }
+        self.write_tt()
+        self.ingest()
+        sid = self.stages()[1]["stage_id"]
+        rows = self.conn.execute(
+            "SELECT source, source_ref FROM data_provenance "
+            "WHERE entity='stages' AND entity_id=? AND field='route_type'", (sid,)).fetchall()
+        self.assertEqual([r["source"] for r in rows], ["wikipedia"])
+        self.assertIn("giri-sprint", rows[0]["source_ref"])
+
+    def test_a_stale_override_is_refused_not_applied(self):
+        """If PCS starts reporting the right type, `was` no longer matches and
+        the entry has outlived its reason. Refuse it and say so, rather than
+        quietly overriding a value that is now correct on its own."""
+        ingest_race.ROUTE_TYPE_OVERRIDES = {
+            (self.RACE, 1990, "stage-1a"): {"route_type": "F", "was": "TTT"},
+        }
+        self.write_tt()
+        self.ingest()
+        self.assertEqual(self.stages()[1]["route_type"], "TT", "left as PCS gives it")
+        self.assertIn("not applied", self.last_output)
+
+    def test_the_shipped_file_is_loadable_and_sourced(self):
+        from race_common import load_route_type_overrides
+        loaded = load_route_type_overrides()
+        self.assertIn(("Giro d'Italia", 1985, "stage-8a"), loaded)
+        for key, entry in loaded.items():
+            self.assertIn(entry["route_type"], ("F", "H", "M", "TT", "TTT"), key)
+            self.assertTrue(entry.get("source_ref"), f"{key} has no source_ref")
+            self.assertTrue(entry.get("note"), f"{key} has no note")
+
+
 class TestPreservationAcrossReingest(IngestHarness):
 
     def test_elevation_survives_reingest(self):

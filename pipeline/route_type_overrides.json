@@ -1,0 +1,40 @@
+{
+  "_README": [
+    "route_type for stages where PCS's own metadata describes the wrong kind of race.",
+    "",
+    "ingest derives route_type from the stage page: is_ttt from the page structure, then",
+    "PCS's TitleTT marker, then detect_route_type() on the profile icon and 'Won how'.",
+    "All three read PCS. When PCS itself is wrong about what kind of race was ridden,",
+    "there is nothing in the scrape to correct it from, and a re-scrape reproduces the",
+    "error exactly.",
+    "",
+    "Lives outside the DB on purpose. ingest_race.py deletes and re-inserts a whole",
+    "edition, and only vertical_meters, profile_score, distance_km, cancelled and",
+    "source_slug survive that. route_type does NOT, so a direct DB patch is reverted by",
+    "the next re-ingest with nothing to say it had gone.",
+    "",
+    "Keyed by PCS source_slug, not by stage_number: the slug names the PAGE whose",
+    "metadata is wrong, and it is stable across the renumbering that split days cause",
+    "(the DB stage 3 of the 1992 Vuelta is the page stage-2b). stage_number is carried in",
+    "the entry for humans and for cross-checking, never as the lookup key.",
+    "",
+    "stage_type follows route_type automatically ('itt' for TT/TTT, else 'road').",
+    "",
+    "Every entry needs a source. This file overrides a real source with another real",
+    "source; it is not a place to record a hunch.",
+    "",
+    "Race keys are the DB race name (\"Giro d'Italia\"), matching stage_notes.json."
+  ],
+  "Giro d'Italia": {
+    "1985": {
+      "stage-8a": {
+        "stage_number": 8,
+        "route_type": "F",
+        "was": "TT",
+        "source": "wikipedia",
+        "source_ref": "https://en.wikipedia.org/wiki/1985_Giro_d%27Italia (stage table; footnote 2)",
+        "note": "Not a time trial. A 'Giri-sprint': a 5 km circuit at Foggia ridden 9 times, with time bonuses to the first three riders across the line on lap 1 and the first four on lap 9. One of five such stages in the 1980s. PCS reports 'Won how: Time trial', which is what produced route_type='TT'. Wikipedia types it a plain stage; Allocchio won it from the bunch and the DB already has him at rank 1 on 53:52 with the peloton on the same time, so the 171 shared times are correct and only the label was wrong. The tell is in our own numbers: 45 km at 50.1 km/h, Foggia to Foggia, in 1985 - faster than Moser's hour record, and no time trial of that length has been ridden at that speed."
+      }
+    }
+  }
+}

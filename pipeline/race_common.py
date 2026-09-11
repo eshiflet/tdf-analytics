@@ -129,6 +129,44 @@ def load_stage_notes(path=STAGE_NOTES_PATH):
     }
 
 
+ROUTE_TYPE_OVERRIDES_PATH = os.path.join(HERE, "route_type_overrides.json")
+
+
+def load_route_type_overrides(path=ROUTE_TYPE_OVERRIDES_PATH):
+    """
+    route_type_overrides.json as {(race_name, year, source_slug): entry}.
+
+    For stages where PCS's own metadata describes the wrong kind of race.
+    ingest derives route_type from the page — is_ttt from its structure, then
+    PCS's TitleTT marker, then detect_route_type() on the profile icon and
+    "Won how" — and all three read PCS. When PCS is wrong about what was
+    ridden there is nothing in the scrape to correct it from, and a re-scrape
+    reproduces the error exactly. Giro 1985 stage-8a is reported "Won how:
+    Time trial" and was a mass-start circuit race.
+
+    Lives outside the DB for the same reason stage_notes.json does:
+    ingest_race.py deletes and re-inserts a whole edition, and route_type is
+    not one of the columns that survives, so a direct patch is reverted by the
+    next re-ingest with nothing to warn that it had gone.
+
+    Keyed by PCS source_slug rather than stage_number. The slug names the PAGE
+    whose metadata is wrong and is stable across the renumbering split days
+    cause — the DB's stage 3 of the 1992 Vuelta is the page stage-2b — so a
+    stage_number key would silently move to a different race day. The entry
+    carries stage_number for humans and cross-checking, never as the key.
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    return {
+        (race, int(year), slug): entry
+        for race, years in raw.items() if not race.startswith("_")
+        for year, slugs in years.items()
+        for slug, entry in slugs.items()
+    }
+
+
 ICON_TO_ROUTE = {"p1": "F", "p2": "H", "p3": "H", "p4": "M", "p5": "M"}
 
 COUNTRY_NAMES = {

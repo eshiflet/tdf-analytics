@@ -29,6 +29,8 @@ from race_common import (
     RACES,
     STAGE_ROW_LEN,
     SOURCE_PCS,
+    SOURCE_WIKIPEDIA,
+    SOURCE_MANUAL,
     SOURCE_DERIVED,
     fix_mojibake,
     record_provenance,
@@ -36,6 +38,7 @@ from race_common import (
     DB_PATH,
     StageRow,
     detect_route_type,
+    load_route_type_overrides,
     parse_bonus_seconds,
     parse_int,
     parse_time_to_seconds,
@@ -59,6 +62,11 @@ ALLOW_DROP = "--allow-drop" in sys.argv
 # a flagged swap is nearly always real (the first run of this check
 # surfaced 7 genuine swap pairs), so bypassing should be a decision.
 SKIP_SWAP_GATE = "--skip-swap-gate" in sys.argv
+
+
+# Loaded once: a handful of stages where PCS's own metadata names the wrong
+# kind of race. See race_common.load_route_type_overrides.
+ROUTE_TYPE_OVERRIDES = load_route_type_overrides()
 
 
 def _stage_num(path: str) -> int:
@@ -320,6 +328,24 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         else:
             route_type = detect_route_type(profile_icon, won_how)
 
+        # Last word goes to route_type_overrides.json, because every branch
+        # above reads PCS and this file exists for the stages PCS is wrong
+        # about. Giro 1985 stage-8a is reported "Won how: Time trial" and was a
+        # mass-start circuit race, so a re-scrape cannot fix it and a DB patch
+        # would not survive the next re-ingest.
+        route_override = ROUTE_TYPE_OVERRIDES.get((race_name, year, slug)) if slug else None
+        if route_override:
+            # Refuse an override that has stopped describing what it corrects.
+            # If PCS changes its mind and starts reporting the right type, the
+            # entry is stale and should be deleted rather than silently kept.
+            if route_override.get("was") not in (None, route_type):
+                print(f"    stage {n}: route_type override for {slug} expects "
+                      f"{route_override['was']!r}, scrape now gives {route_type!r} — "
+                      "not applied; check whether the entry is still needed")
+                route_override = None
+            else:
+                route_type = route_override["route_type"]
+
         if slug and slug in preserved_by_slug:
             preserved_vm, preserved_ps, preserved_d, preserved_c, preserved_slug = \
                 preserved_by_slug[slug]
@@ -377,7 +403,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # is deliberately NOT claimed here — it was carried over from whatever
         # previously populated it, whose own provenance row already stands.
         ref = f"{os.path.relpath(sf, HERE)} ({slug})" if slug else os.path.relpath(sf, HERE)
-        scraped_fields = ["route_type", "source_slug"]
+        scraped_fields = ["source_slug"] if route_override else ["route_type", "source_slug"]
         if distance_from_scrape:
             scraped_fields.append("distance_km")
         record_provenance_bulk(cur, "stages", stage_id, scraped_fields,
@@ -387,6 +413,14 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # provenance would be millions of copies of a single fact.
         record_provenance(cur, "stages", stage_id, "results",
                           SOURCE_PCS, source_ref=ref)
+        if route_override:
+            # The override's OWN source, not PCS — claiming pcs here would say
+            # the page reports what it does not, and hide the correction.
+            src = (SOURCE_WIKIPEDIA if route_override.get("source") == "wikipedia"
+                   else SOURCE_MANUAL)
+            record_provenance(cur, "stages", stage_id, "route_type", src,
+                              source_ref=route_override.get("source_ref")
+                              or "route_type_overrides.json")
 
         winner_seconds = None
 
