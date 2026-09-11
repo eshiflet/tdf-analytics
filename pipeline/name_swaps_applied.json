@@ -483,6 +483,66 @@
   },
   {
    "race": "vuelta",
+   "year": 1965,
+   "stage": 1,
+   "bib_a": "56",
+   "bib_b": "95",
+   "name_a": "Leméteyer Paul",
+   "name_b": "Verbeeck Frans",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "vuelta",
+   "year": 1965,
+   "stage": 1,
+   "bib_a": "58",
+   "bib_b": "57",
+   "name_a": "Quesne Jean-Louis",
+   "name_b": "Novak Anatole",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "vuelta",
+   "year": 1972,
+   "stage": 14,
+   "bib_a": "39",
+   "bib_b": "86",
+   "name_a": "Coulon Michel",
+   "name_b": "López Vicente",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "vuelta",
+   "year": 1972,
+   "stage": 14,
+   "bib_a": "61",
+   "bib_b": "85",
+   "name_a": "Labourdette Bernard",
+   "name_b": "Lasa Miguel María",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "vuelta",
+   "year": 1989,
+   "stage": 12,
+   "bib_a": "53",
+   "bib_b": "133",
+   "name_a": "Hermans Mathieu",
+   "name_b": "Hernández Joaquín",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "vuelta",
+   "year": 1994,
+   "stage": 15,
+   "bib_a": "78",
+   "bib_b": "119",
+   "name_a": "Pierobon Gianluca",
+   "name_b": "Petito Giuseppe",
+   "recorded": "2026-09-11"
+  },
+  {
+   "race": "vuelta",
    "year": 2001,
    "stage": 15,
    "bib_a": "78",
