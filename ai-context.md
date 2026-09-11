@@ -3299,10 +3299,30 @@ rider") go through it.
 ### Still open
 
 The ~415ms JS half of a rebuild is now ~305ms; the remainder is spread across
-the per-rider helpers and has not been attributed further. The bigger prize is
-the ~2.7s first paint — deferring the classics index until a classics filter is
-touched, or streaming the grid after the first index resolves, is worth more
-than anything left in the rebuild loop.
+the per-rider helpers and has not been attributed further.
+
+~~The bigger prize is the ~2.7s first paint~~ — **MEASURED AND CLOSED
+2026-09-11.** Streaming the grid after the first index resolves was the other
+half of that suggestion and it landed on 2026-08-22; between them the number no
+longer exists. On the live site:
+
+| scenario | time to the first grid button |
+|---|---|
+| warm SPA, switching into Riders | **207 ms** |
+| cold page load straight to `#tour/riders` | **1,194 ms** (DOMContentLoaded 50 ms) |
+
+**Deferring the classics index is not the remaining win it looks like.** All
+five indexes start fetching at `riders.ts:187`, but first paint only WAITS for
+the primary — the rest are parallel, and a cache-bypassing fetch of each on a
+10 Mbps / 150 ms-RTT connection costs 179 ms for the 2,271 KB classics index
+and 95-248 ms for the others. Deferring it would free bandwidth that is not the
+bottleneck, and would cost behaviour: the default grid spans every race, so
+11,934 of the 17,736 riders would be missing until someone touched a filter.
+
+What is left of the cold load is JS parse and building 18,114 buttons, not
+waiting on data. Anyone attacking it again should start there and should
+measure a COLD load — a warm SPA hides the whole cost, and localhost hides it
+completely (295 ms there, with every index arriving in under 20 ms).
 
 ---
 
