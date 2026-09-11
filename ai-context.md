@@ -4642,7 +4642,9 @@ still wrong. Both are absences that arrived wearing a time column's clothes,
 which is the same defect the README opens with — and both were found by
 asking the chart a physical question rather than by reading the data.
 
-**42 individual time trials credit 4,211 riders with the winner's exact time.**
+**42 stages typed as individual time trials have 4,211 riders on the winner's
+exact time** — some fabricated, some correct under a wrong label; see the
+correction below before acting on this.
 An ITT is ridden alone against the clock; the field cannot share a time. Where
 PCS has no per-rider times for an old ITT it publishes a filler gap of `+0:00`
 against every rider, and ingest's `winner_seconds + gap_secs` reads that as a
@@ -4654,12 +4656,41 @@ Across 607 ITT stages the tie counts are bimodal — 497 with none, a tail of
 1–20 that is genuine ties at second resolution (66 stages, 226 rows), then 44
 stages with 21 or more, and nothing between 20 and 21.
 
-The tied rows are *exactly* the filler rows, which was checked rather than
-assumed. On the Giro's 1957 stage 2: 97 rows in the scrape file, 49 carrying a
-real gap and 48 carrying `+0:00`; the database ties 47 riders to the winner,
-and that set is a strict subset of the 48 with zero overlap with the 49. The
-winner accounts for the difference. Most of these pages are half-and-half like
-that — PCS records gaps down to some position and fills the rest.
+**Corrected 2026-09-11, same day, by Eric.** The paragraph below originally
+read this as proof the times were fabricated. It is not, and the reasoning had
+a hole in it.
+
+The tied rows are exactly the `+0:00` rows — that part is checked, not assumed.
+On the Giro's 1957 stage 2: 97 rows in the scrape file, 49 carrying a real gap
+and 48 carrying `+0:00`; the database ties 47 riders to the winner, a strict
+subset of the 48 with zero overlap with the 49. But "half the field on the
+winner's time, half with real gaps" is *also exactly what an ordinary road
+stage looks like* — a bunch finish plus the riders who lost time. The pattern
+does not distinguish a filler gap from a real one, and I used it as though it
+did.
+
+What forced the correction: **Giro 1985 stage 8a is not a time trial at all.**
+PCS says `Won how: Time trial` and we derived `route_type='TT'` from it, but it
+was a "Giri-sprint" — a 5 km circuit at Foggia ridden 9 times, with time
+bonuses at the first and ninth crossings, one of five such stages in the 1980s
+([1985 Giro, footnote 2](https://en.wikipedia.org/wiki/1985_Giro_d%27Italia)).
+Wikipedia types it "Plain stage"; Allocchio won it from the bunch and our DB
+has him correctly at rank 1 on 53:52, with the peloton on the same time. **The
+171 shared times are correct data under a wrong label.** The tell was in our
+own numbers: 45 km at 50.1 km/h, Foggia to Foggia, in 1985 — faster than
+Moser's hour record, which no time trial of that length has ever been ridden at.
+
+So this warning covers two populations that look identical in our data:
+
+1. a genuine ITT where PCS's `+0:00` is filler — the derived times are wrong;
+2. a mass-start stage PCS mislabelled in `won_how` — the times are right and
+   `route_type` is wrong.
+
+Across the flagged stages, the 30 km-and-longer ones average 45.6 km/h and
+reach 56.2. No era rode an individual time trial at those speeds over that
+distance, so population 2 is not a fringe case. **Check the stage against an
+outside source before touching a value.** 1987's Giri-sprint (stage 20, ten
+laps of 4 km at Como) is already typed as a road stage and is not affected.
 
 So **a re-ingest does not fix these**, and 21 of the 42 stages have scrape files
 whose partial real gaps are already in the database. Only a re-scrape that

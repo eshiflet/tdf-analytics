@@ -578,11 +578,15 @@ def check_results(c):
         ORDER BY n_tied DESC""").fetchall()
     if itt_tied:
         rows = sum(t[4] for t in itt_tied)
-        warn(f"{len(itt_tied)} individual time trial(s) credit {rows:,} riders with the "
-             "winner's exact time. Nobody shares a time in an ITT — this is PCS's "
-             "'+0:00' filler gap read as a real one. Re-scrape the stage: where PCS now "
-             "has per-rider gaps the re-ingest recovers them, and where it does not the "
-             "value should be NULL. e.g. "
+        warn(f"{len(itt_tied)} stage(s) typed as an individual time trial have {rows:,} "
+             "riders on the winner's exact time. TWO different faults look like this and "
+             "our data cannot tell them apart: PCS's '+0:00' filler gap read as a real "
+             "gap (the times are fabricated), or a mass-start stage PCS mislabelled "
+             "'Time trial' in won_how (the times are RIGHT and route_type is wrong). "
+             "Giro 1985 stage-8a is the second kind — a 9x5 km 'Giri-sprint' circuit "
+             "race, Foggia to Foggia, won by Allocchio from the bunch. Check the stage "
+             "before touching a value: 30+ km of these average 45.6 km/h, which no era "
+             "rode an ITT at. e.g. "
              + ", ".join(f"{t[0][:6]} {t[1]} st{t[2]} ({t[4]} of them"
                          + (f", {t[3]:.0f} km)" if t[3] else ")")
                          for t in itt_tied[:3]))
