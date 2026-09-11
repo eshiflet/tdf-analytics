@@ -36,17 +36,17 @@
         <div class="topbar-row">
           <h1>
             <!-- Options populated from the race registry in main.ts -->
-            <select id="race-select" class="race-select"></select>
-            <select id="year-select" class="year-select"></select>
+            <select id="race-select" class="race-select" aria-label="Race"></select>
+            <select id="year-select" class="year-select" aria-label="Year"></select>
           </h1>
           <nav class="view-nav">
             <button id="view-stage" class="view-btn active">
-              <select id="metric-select" class="metric-inline">
+              <select id="metric-select" class="metric-inline" aria-label="Classification: general, points or mountains">
                 <option value="gc">GC</option>
                 <option value="points">Sprint</option>
                 <option value="kom">KOM</option>
               </select>
-              <select id="stage-view-select" class="metric-inline">
+              <select id="stage-view-select" class="metric-inline" aria-label="View: graph or table">
                 <option value="" disabled hidden></option>
                 <option value="graph">by Stage Graph</option>
                 <option value="table">by Stage Table</option>

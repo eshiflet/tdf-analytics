@@ -224,11 +224,26 @@ export function drawChart() {
     .domain(isGcTime ? [0, maxRank] : (isSprintPoints || isKomPoints) ? [maxRank, 0] : [1, maxRank])
     .range([0, innerHeight]);
 
+  // A screen reader announces an unlabelled <svg> as nothing at all, and this
+  // one IS the page. role="img" plus a name at least says what is being shown
+  // and for which race and year; the per-rider detail stays in the legend and
+  // the Table sub-view, which are ordinary DOM.
+  // Read currentMetric, NOT the isSprintPoints/isKomPoints flags above: those
+  // mean "this metric AND its points display mode", so viewing the points
+  // classification by RANK would have announced it as the general
+  // classification. Caught by reading the label back on a /kom URL.
+  const metricName =
+    state.currentMetric === "points" ? `points classification by ${isSprintPoints ? "points" : "position"}`
+    : state.currentMetric === "kom" ? `mountains classification by ${isKomPoints ? "points" : "position"}`
+    : `general classification by ${isGcTime ? "time" : "position"}`;
   const svg = d3
     .select(chartEl)
     .append("svg")
     .attr("width", width)
     .attr("height", height)
+    .attr("role", "img")
+    .attr("aria-label",
+      `${state.currentYear} ${raceConfig().name}: ${metricName}, stage by stage`)
     .attr("viewBox", `0 0 ${width} ${height}`);
 
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
