@@ -2025,6 +2025,42 @@ Likely a PCS re-measurement. Eric chose to leave these and investigate separatel
 right shape for that is a mode auditing route-page vs stored across *every* edition, not
 just ones with gaps.
 
+### Extended back past 1990 (2026-09-11)
+
+The August pass filled 1990-2012 and stopped, because that was the range the 1990
+Tour's missing total had pointed at. The hole was never 1990-specific. Running the
+same tool at every earlier year filled **73 more stages**, all NULL-fills, all
+`SOURCE_PCS`, nothing overwritten:
+
+| race | stages | years | what they are |
+|---|---|---|---|
+| Tour | 33 | 1948-1989 | every one a Paris finale |
+| Giro | 22 | 1993, 2001-2022 | 21 finales + 2011 st20 Verbania-Sestriere |
+| Vuelta | 18 | 1985-2000 | 14 Madrid finales + 4 prologues |
+
+All 33 Tour editions had been storing N-1 of N stages and undercounting their
+total by exactly one finale — 1982 charted 45,134 m against PCS's own 47,314 m.
+Every total moved up, by 200 m to 2,633 m, one stage each.
+
+**Six values a human should still glance at.** Each was inside the m/km band its
+own year's flat stages occupy, which is why they were written; each is also the
+kind of coincidence worth knowing about rather than discovering later:
+
+- **Tour 1981 and 1982** both return exactly **2180 m**, over 186.8 and 186.0 km,
+  both Fontenay-sous-Bois→Paris. Plausibly the same route twice, but it is the
+  repeated-round-number shape `validate_db` flags for distances.
+- **Vuelta 1988 and 1989** both **2500 m**; **1998 and 1999** both **944 m**.
+- **Three near-zero circuit finales** — Giro 2020 st21 at **3 m**, 2008 st21 at
+  12 m, Vuelta 1995 prologue at 19 m. A pan-flat Milan circuit really is near
+  zero, and these are not the `0` that means a blank PCS field (see the
+  `vertical_meters = 0` trap below) — but 3 m is worth one look.
+
+**Genuinely absent from PCS, checked directly rather than assumed** — the route
+page carries no figures at all for any of these, so no scrape will fill them:
+the **pre-war Tour**, the **1954-1962 Tour block** (1954, 1955, 1956, 1957,
+1959, 1962 — 141 stages), and **Giro 1992-1999** (167 stages across 8
+consecutive editions). That is 308 stages that are not work.
+
 ### The lesson
 
 This is the case where the scrape-from-PCS rule looked inapplicable but wasn't. The
@@ -4625,8 +4661,17 @@ standings" above before planning anything against this row.
 That also means the usual "distrust a low number" reflex cuts the other way
 here. It is the one field in this table where a low number is the correct
 answer, and two repair passes have not moved it for exactly that reason.
-`vertical_meters` and the late-40s Giro's `finish_time_seconds` are the rows
-with real fetchable work behind them.
+The late-40s Giro's `finish_time_seconds` is the row with real fetchable work
+behind it.
+
+**`vertical_meters` was also on that line until 2026-09-11, and the correction is
+worth keeping.** It does have fetchable work — but 73 values of 3,334, and *not*
+where this table points. The years named above as worst (the pre-war Tour, whole
+editions at zero) are exactly the ones PCS has nothing for at all. The 73 that
+could be filled were Paris/Milan/Madrid finales scattered through years that
+already looked almost complete, and so never surfaced as a "worst gap" at all.
+See "Extended back past 1990". The general lesson: this table ranks by *count*,
+and a field's biggest gap and its fetchable gap can be disjoint sets.
 
 `test_coverage.py` pins each exclusion above, because each one is a case where
 a naive `COUNT` reported a gap that does not exist.
