@@ -20,6 +20,7 @@ import {
 } from "../riderIndexData";
 import type { JerseyCategory } from "../jerseyIcons";
 import { jerseyCategoriesForRace, jerseyIconSvgForRace, jerseyIconTitle, jerseyIconsElMultiRace, jerseyYearsWon } from "../jerseyIcons";
+import { cssEscape } from "./stageChart";
 import { drawRiderDetail } from "./riderDetail";
 
 export function selectedRacesForRiders(): RaceId[] {
@@ -546,9 +547,30 @@ export async function drawRidersPage() {
     // back to the top, re-renders row 0, and every subsequent scroll does the
     // same. The spacers keep the total height constant across the swap, so
     // putting the offset back is invisible rather than a correction.
+    //
+    // Focus needs the same treatment, and for a sharper reason. Tabbing down
+    // the grid scrolls each newly focused button into view, which fires the
+    // scroll handler, which lands here and destroys the very button the user
+    // is on — dropping focus to <body>. A keyboard user could not get past the
+    // first window: every attempt threw them back to the top of the document.
+    // Re-focusing by data-id puts them back where they were, and
+    // preventScroll is required or the focus call re-scrolls and undoes the
+    // offset restored just above.
+    const activeEl = document.activeElement;
+    const activeId = activeEl instanceof HTMLElement && grid.contains(activeEl)
+      ? activeEl.getAttribute("data-id")
+      : null;
+
     const keep = grid.scrollTop;
     grid.replaceChildren(frag);
     if (grid.scrollTop !== keep) grid.scrollTop = keep;
+
+    if (activeId !== null) {
+      const again = grid.querySelector<HTMLButtonElement>(`[data-id="${cssEscape(activeId)}"]`);
+      // Null when the scroll carried that rider out of the window entirely —
+      // a mouse scroll, not a tab. Losing focus with the element is correct there.
+      if (again) again.focus({ preventScroll: true });
+    }
   }
 
   function refreshGrid() {

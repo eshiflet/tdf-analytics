@@ -777,5 +777,34 @@ function check(name, cond, detail) {
         `"${panel.textContent.replace(/\s+/g, " ").trim().slice(0, 60)}"`);
 }
 
+// 8c. Virtualisation must not eject a keyboard user. Tabbing down the grid
+//     scrolls each focused button into view, which re-renders the window and
+//     used to destroy the focused node, dropping focus to <body> — so Tab
+//     could never get past the first window.
+{
+  const doc = await boot("#riders");
+  const grid = doc.querySelector(".riders-grid");
+  const before = [...doc.querySelectorAll(".rider-name-btn")];
+  const target = before[Math.floor(before.length / 2)];
+  const targetId = target.getAttribute("data-id");
+  target.focus();
+  const focusedBefore = doc.activeElement === target;
+
+  // Far enough to move the window by a row, near enough that this rider is
+  // still in it — which is exactly the tab-into-the-next-row case. (The first
+  // version of this check scrolled 58px, which under JSDOM's zero clientHeight
+  // left `first` at 0: renderWindow returned early, nothing was replaced, and
+  // the check passed against the unfixed build. A scroll that does not move
+  // the window proves nothing here.)
+  grid.scrollTop = 145;
+  grid.dispatchEvent(new (globalThis.window.Event)("scroll", { bubbles: false }));
+  await new Promise((r) => setTimeout(r, 300));
+
+  const active = doc.activeElement;
+  check("scrolling the riders grid keeps keyboard focus on the same rider",
+    focusedBefore && active !== doc.body && active.getAttribute("data-id") === targetId,
+    `focused ${targetId} → ${active === doc.body ? "<body>" : active.getAttribute("data-id")}`);
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);
