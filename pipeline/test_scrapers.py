@@ -51,6 +51,28 @@ from race_common import RACES, STAGE_ROW_LEN, StageRow, assign_stage_numbers
 from record_fixtures import FIXTURES, load, path_for
 
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def networked_clis():
+    """Every pipeline script that opens the network AND can be run directly.
+
+    Derived from the source rather than listed, so a new scraper is covered the
+    day it lands. A module with no `main()` is a library (athlinks_api,
+    traka_api) and has no --help to get wrong.
+    """
+    import glob
+    found = []
+    for path in sorted(glob.glob(os.path.join(HERE, "*.py"))):
+        name = os.path.basename(path)[:-3]
+        if name.startswith("test_"):
+            continue
+        text = open(path, encoding="utf-8").read()
+        if "urlopen(" in text and "__main__" in text and re.search(r"^def main\(", text, re.M):
+            found.append(name)
+    return found
+
+
 def require(name):
     if not os.path.exists(path_for(name)):
         raise unittest.SkipTest(
@@ -1006,14 +1028,12 @@ class HelpNeverScrapesTest(unittest.TestCase):
     wrapper exporting only main().
     """
 
-    NETWORKED = [
-        "patch_kom_wikipedia", "patch_route_types_wikipedia", "scrape_bri_stages",
-        "scrape_gc_all_times", "scrape_gc_winner_times", "scrape_kom_points",
-        "scrape_kom_totals", "scrape_pcs_kom_finals", "scrape_pcs_stages",
-        "scrape_race", "scrape_rider_details", "scrape_sprint_finals",
-        "scrape_sprint_per_stage", "scrape_stage_info", "scrape_vuelta_gc_pages",
-        "scrape_wiki_distances", "validate_kom",
-    ]
+    # DERIVED, not maintained. The previous hand-written list named 17 scripts
+    # while 31 on disk open the network from a CLI — so the guard covered just
+    # over half of what it was written for, and a new scraper joined nothing.
+    # Deriving it is the same lesson as the layout split: a list somebody has to
+    # remember to update is a list that silently stops being true.
+    NETWORKED = networked_clis()
 
     def test_every_networked_script_still_imports(self):
         import importlib
@@ -1022,20 +1042,55 @@ class HelpNeverScrapesTest(unittest.TestCase):
                 importlib.import_module(name)
 
     def test_every_networked_script_guards_help(self):
-        """main() must call exit_on_help() before anything that touches the
-        network. Asserted against the source rather than by running them,
-        because running them is the thing being prevented."""
+        """A script that calls exit_on_help() must call it FIRST.
+
+        Only those: argparse handles --help on its own, and eleven of the
+        thirty-one use it. What matters is the outcome, and the test below
+        asserts that directly by running them."""
         import importlib
         import inspect
         for name in self.NETWORKED:
             with self.subTest(script=name):
                 mod = importlib.import_module(name)
                 self.assertTrue(hasattr(mod, "main"), name + " has no main()")
+                if "exit_on_help" not in inspect.getsource(mod):
+                    continue
                 lines = inspect.getsource(mod.main).splitlines()[1:]
                 code = [ln.strip() for ln in lines
                         if ln.strip() and not ln.strip().startswith(('"""', "'''", "#"))]
                 self.assertTrue(any("exit_on_help" in ln for ln in code[:3]),
                                 name + ".main() does not call exit_on_help() up front")
+
+    def test_help_never_touches_the_network(self):
+        """Run every one of them with --help and no network, for real.
+
+        The source check above can only see a convention. This sees the
+        outcome: each script is run in a subprocess with socket.connect and
+        create_connection replaced by a raise, so a --help that reaches the
+        network fails loudly instead of quietly spending five minutes on PCS —
+        which is what check_giro_gc_times.py once did before anyone noticed.
+
+        1.3 s for all 31, measured, which is why it runs by default.
+        """
+        import subprocess
+        shim = (
+            "import socket,sys,runpy\n"
+            "def _no(*a,**k): raise RuntimeError('NETWORK TOUCHED BY --help')\n"
+            "socket.socket.connect=_no\n"
+            "socket.create_connection=_no\n"
+            "sys.argv=[{name!r},'--help']\n"
+            "runpy.run_module({mod!r},run_name='__main__')\n"
+        )
+        for name in self.NETWORKED:
+            with self.subTest(script=name):
+                r = subprocess.run(
+                    [sys.executable, "-c", shim.format(name=name + ".py", mod=name)],
+                    capture_output=True, text=True, timeout=60, cwd=HERE)
+                self.assertNotIn("NETWORK TOUCHED", r.stderr,
+                                 name + " --help opened a connection")
+                self.assertEqual(r.returncode, 0,
+                                 f"{name} --help exited {r.returncode}: "
+                                 + (r.stderr.strip().splitlines() or [""])[-1][:120])
 
     def test_the_guard_exits_zero_and_prints_the_docstring(self):
         from race_common import exit_on_help
