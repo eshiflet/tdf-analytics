@@ -58,6 +58,9 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 **Open work, ready to pick up:**
 - ~~**THE BIG ONE: the Riders grid builds 18,114 buttons eagerly and costs 628 ms**~~ — **DONE 2026-09-11. 628 ms -> 48 ms** by virtualising the grid; see "The grid is the last second".
 - ~~**11 time trials have no times**~~ and ~~**1960-2025 has no local scrape files**~~ — both **CLOSED 2026-09-11**, see "The 1960-2025 Tour backfill". All 66 editions are scraped and 64 are ingested; 1978 and 1982 refuse, each holding a stage PCS never classified, and both want a decision rather than a fix.
+- **41 stages typed ITT hold 4,040 riders on the winner's exact time** (2026-09-11, a `validate_db` warning). Two faults look identical in our data: PCS's `+0:00` filler read as a real gap (times fabricated), or a mass-start stage PCS mislabelled `Won how: Time trial` (times correct, `route_type` wrong — Giro 1985 stage-8a was this, and is fixed). **Needs a source per stage; there is no rule.** Nothing written. See "Times that no race produced".
+- **99 finishers carry a 0-second finish time** across 11 stages (same warning block). Do NOT reach for a re-ingest: today's code reads the same pages' `+0:00` filler and would credit all of them with the winner's time, trading one defect for the other. NULL is the honest value, and that is a decision.
+- **9 team time trials hold 536 fewer riders than the stage after them.** Measured: only 1 of the original 10 was recoverable (Vuelta 2003 st1, done). On the rest PCS has no more riders than we store — Tour 1954 st4a really is 10 riders. Coverage report, not a worklist.
 - **2026 Vuelta** has not been run (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
 - **20 Tour team time trials have no rider times**, 1954-1982, and none is safely fillable — see "Team time trials with no rider times".
 - **26 editions list a rider under two teams** — PCS's own data, not a defect: Alfredo Irusta rides for `deportpublic-1994` on stages 1-6 of the Vuelta and `castellblanch-1994` on 7-21. Never rewrite these; the guard in `backfill_bib_numbers --field team_id` skips their editions, which is why 4,223 Giro/Vuelta team fills are still unapplied.
@@ -3573,6 +3576,29 @@ so the obvious test reports that scrolling is broken when it is fine. Verify
 with a real wheel scroll on a visible pane. The first three attempts here all
 measured the harness rather than the code.
 
+**The second thing `renderWindow()` has to restore is FOCUS, and that one
+shipped broken** (fixed 2026-09-11). `scrollTop` was handled from the start;
+focus was not, and it is the half that locks people out. Tabbing down the grid
+scrolls each newly focused button into view, which fires the scroll handler,
+which lands in `renderWindow` and destroys the very button the user is standing
+on — focus falls to `<body>`. A keyboard user could not get past the first
+window: every attempt threw them back to the top of the document. Mouse users
+saw nothing wrong, which is why it shipped.
+
+Re-focus by `data-id` after the swap, with **`preventScroll: true`** — without
+that flag the focus call re-scrolls and undoes the offset restored one line
+above. A null lookup means the scroll carried that rider out of the window
+entirely (a mouse scroll, not a tab), and losing focus with the element is
+correct there.
+
+The regression test for it took two attempts, and the first one is the
+cautionary half. It scrolled 58px, which under JSDOM's zero `clientHeight` left
+the window index at 0 — `renderWindow` returned early, nothing was replaced,
+and the check passed against the *unfixed* build. It asserted nothing. It now
+scrolls to 145px, which moves the window by exactly one row while keeping the
+target inside it, and fails as it should: `focused rider/dorsal-73 -> <body>`.
+**Run every new regression test once against the unfixed code.**
+
 **KNOWN TRADE: the browser's own Ctrl+F no longer finds an off-screen rider**,
 because he is not in the DOM. The page's search box covers it and always has —
 it filters the whole result set, not the rendered window.
@@ -4719,6 +4745,27 @@ taking his first Giro stage win in 1988. The
 [1987 Giro article](https://en.wikipedia.org/wiki/1987_Giro_d%27Italia) names
 stage 20 instead, "ten laps of 4 km around Como", which matches what we hold.
 Either way the stage is already typed `F`, so nothing turns on it.
+
+**And the 1987 Giro is not missing a stage — checked 2026-09-11, do not redo
+this.** The obvious follow-up to "a 16 km San Remo stage we do not have" is
+that we dropped one. We did not. Five independent checks agree:
+
+- our slugs run unbroken (`prologue`, `1a`, `1b`, `2`–`22`), stage numbers 0-23
+  are contiguous, and the dates run 21 May - 13 June with one rest day (31 May);
+- Wikipedia's infobox says **"22 + Prologue, including one split stage"** — our
+  24 files exactly, the split being stage 1;
+- PCS's own route page lists the identical 24 slugs, with no `stage-2a`;
+- 23 of 24 stage distances match Wikipedia to the kilometre;
+- `export_race_summary.py`'s distance reconciliation reports nothing, and its
+  own docstring names the signal — *"a large NEGATIVE gap is the missing-stages
+  signature"*. Ours is -0.10%.
+
+The whole 4 km gap (3,911 ours vs 3,915 published) is one stage: **21, Como →
+Pila**, PCS 248 km against Wikipedia's 252. Left alone deliberately. PCS is the
+primary source and provenance says so, the Giro's median PCS/Wikipedia
+disagreement is 0.13%, and `export_race_summary.py` exports the DB sum rather
+than Wikipedia's total on purpose — showing Wikipedia's figure would mask a
+real missing-stage defect behind a correct-looking number.
 
 **Fixing one, when you find one: `route_type_overrides.json`.** Not a DB
 patch — `route_type` is not among the columns a re-ingest preserves, so a

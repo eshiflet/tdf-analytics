@@ -222,12 +222,12 @@ flowchart TD
   | `jerseyIcons.ts` | Jersey SVG builders, per-classification win-year lookups (memoized), the per-race jersey capability helpers, and `RIDERS_WITH_REVOKED_RESULTS` |
   | `dataLoading.ts` | Pure fetch + LRU cache for per-year datasets (`getDataset`) |
   | `riderIndexData.ts` | Loads/caches the compact `riders_index.json` per race; dedupes concurrent loads, builds `constituents` lazily, and decodes the cross-race `x` bitmask that `crossRaceFor()` answers from |
-  | `hashRouting.ts` | `computeHash`/`updateHash` only — `applyHash()` stays in `main.ts` (see below) |
+  | `hashRouting.ts` | `computeHash`/`updateHash` only — `applyHash()` stays in `main.ts` (see below). An unrecognized hash at RUNTIME snaps the URL back to `computeHash()` via `replaceState`: `applyHash()` returns false and renders nothing, so without that the previous view stays on screen under a URL describing something else (editing `#1914` to `#1915`, a war year, left the 1914 chart up labelled 1915) |
   | `views/overview.ts` | Race Overview (per-stage distance/elevation/difficulty bars) |
   | `views/allRaces.ts` | All Races Overview (4-panel cross-year comparison) |
   | `views/stageChart.ts` | By Stage bump chart + its legend and Team/Nation filters — the app's biggest, most state-coupled view, kept as one file since ranking computation, rendering, legend, and filters are genuinely one unit |
   | `views/stageTable.ts` | By Stage spreadsheet grid (riders x stages), its per-column colour ramp, and — for aggregate races only — the Top 10 / Top 20 / All / Nation row filters in the column to its left |
-  | `views/riders.ts` | Riders grid: search/filter, and the merged-index cache — which tracks which races have been **folded in**, not just which are selected, so the grid can draw before every index has landed |
+  | `views/riders.ts` | Riders grid: search/filter, and the merged-index cache — which tracks which races have been **folded in**, not just which are selected, so the grid can draw before every index has landed. **Virtualised** (2026-09-11): only the rows in view plus overscan are in the DOM, held open by row-spanning spacers. `renderWindow()` restores both `scrollTop` *and* keyboard focus across its `replaceChildren` — losing focus ejected tab users to the top of the document and locked them out of the grid entirely |
   | `views/riderDetail.ts` | Cross-race rider career chart (446 lines — was the single largest function in the old `main.ts`) |
   | `views/classicsHistory.ts` | Race History small multiples for either aggregate race set — classics or gravel (one panel per race across its own lifetime) |
   | `main.ts` | Orchestration only: `init()`, `wireControls()`, `setRace()`, `switchView()`, `loadDataset()`, `applyHash()` — the last two stay here rather than in `dataLoading.ts`/`hashRouting.ts` because both call into nearly every view module to trigger redraws. `switchView(view, { draw: false })` swaps the chrome without drawing, used only by a `#riders/<slug>` deep link so the grid does not start loading every race's index ahead of a rider detail |
@@ -465,6 +465,17 @@ Rider  → Country                  (riders.nationality_code → countries.code)
   distances, the cancelled flag, `source_slug`, and (August 2026) three entire stages.
   `ingest_race.py` now preserves the first four and refuses to drop a stage the incoming
   files do not cover without `--allow-drop`.
+
+  The carried set on `stages` is exactly, and only:
+  **`vertical_meters`, `profile_score`, `distance_km`, `cancelled`, `source_slug`**
+  (`ingest_year`'s `preserved_by_slug` / `preserved_by_number`). Everything else on the
+  row is rebuilt from the scrape. **`route_type` is not in that list**, so a hand-patched
+  route type looks like it worked right up until the next rebuild silently reverts it,
+  with nothing to say it had gone. Stages where PCS itself names the wrong kind of race
+  go in `route_type_overrides.json`, which ingest applies last — see the Giri-sprint case
+  in ai-context.md. `bib_number` on results is not carried either; it comes back by
+  re-running `backfill_bib_numbers.py --race X --apply`, which is why the re-ingest
+  scripts always call it afterwards.
 - **Indexes** exist on the hot lookup paths: `stage_results(stage_id)`,
   `stage_results(rider_id)`, `stage_results(team_id)`, `stages(edition_id)`,
   `classification_standings(edition_id, classification)`.
@@ -475,7 +486,15 @@ Rider  → Country                  (riders.nationality_code → countries.code)
 
 Trigger: every push to `main`, or a manual `workflow_dispatch`. The `concurrency` group
 (`pages`, `cancel-in-progress: true`) means a new push cancels any in-flight deploy for an
-older commit rather than letting them race each other.
+older commit rather than letting them race each other — so several pushes in quick
+succession leave earlier runs marked `cancelled`, which is the intended behaviour and not
+a failure.
+
+**Permissions are per job** (2026-09-11), not workflow-wide: `build` gets `contents: read`,
+and only `deploy` gets `pages: write` + `id-token: write`. Set at the top, every step of
+the build — `npm ci` included — ran holding a token that could publish to Pages. Both jobs
+carry `timeout-minutes` (15 / 10) so a hung step fails in minutes rather than holding a
+runner for the six-hour default.
 
 ```mermaid
 flowchart TD
@@ -486,7 +505,7 @@ flowchart TD
         S1["1. actions/checkout@v4<br/>clone the repo"]
         S2["2. actions/setup-node@v4<br/>Node 20, npm cache keyed on package-lock.json"]
         S3["3. npm ci<br/>(in cycling-app/)<br/>clean install of exact locked deps"]
-        STEST{{"4. python3 -m unittest discover -p 'test_*.py'<br/>(in pipeline/)<br/>401 pipeline regression tests"}}
+        STEST{{"4. python3 -m unittest discover -p 'test_*.py'<br/>(in pipeline/)<br/>512 pipeline regression tests"}}
         S4{{"5. python3 validate_exports.py<br/>(in pipeline/)<br/>sanity-check all 469 exported JSON files"}}
         S5["6. npm run build<br/>(in cycling-app/)<br/>tsc -b (typecheck) + vite build → build/"]
         S6{{"7. node verify.mjs && node verify-views.mjs<br/>(in cycling-app/)<br/>smoke-test the BUILT bundle in jsdom"}}
