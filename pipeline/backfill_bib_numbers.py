@@ -44,22 +44,30 @@ from race_common import (
 RACE_NAME = {"tour": "Tour de France", "giro": "Giro d'Italia",
              "vuelta": "Vuelta a España"}
 
+# Both columns obey the same edition-scoped invariant, so they share this whole
+# implementation: a rider carries one number and rides for one team from the
+# grand départ to Paris. team_id's gaps have a different origin from bib's —
+# the GC sidecar supplies riders for stages PCS does not list them on, and
+# inserts a classification position with no team (Indurain is absent from the
+# 1994 stage 3 file entirely) — but the repair is identical.
+FIELDS = {"bib_number": "bib", "team_id": "team"}
 
-def violations(cur):
-    """Riders holding more than one bib inside one edition — the invariant."""
-    return cur.execute("""
+
+def violations(cur, col="bib_number"):
+    """Riders holding more than one value inside one edition — the invariant."""
+    return cur.execute(f"""
         SELECT st.edition_id, e.year, r.name AS race, sr.rider_id,
-               COUNT(DISTINCT sr.bib_number) n
+               COUNT(DISTINCT sr.{col}) n
           FROM stage_results sr
           JOIN stages st ON st.stage_id = sr.stage_id
           JOIN race_editions e ON e.edition_id = st.edition_id
           JOIN races r ON r.race_id = e.race_id
-         WHERE sr.bib_number IS NOT NULL AND r.race_type = 'stage_race'
+         WHERE sr.{col} IS NOT NULL AND r.race_type = 'stage_race'
          GROUP BY st.edition_id, sr.rider_id
         HAVING n > 1""").fetchall()
 
 
-def fillable(cur, race=None, skip_editions=()):
+def fillable(cur, race=None, skip_editions=(), col="bib_number"):
     """[(result_id, stage_id, rider_id, bib, race, year, route_type)] to write.
 
     `known` collapses each (edition, rider) to their single bib. MIN() is not
@@ -81,25 +89,28 @@ def fillable(cur, race=None, skip_editions=()):
         args = args + tuple(skip_editions)
     return cur.execute(f"""
         WITH known AS (
-            SELECT st.edition_id, sr.rider_id, MIN(sr.bib_number) AS bib
+            SELECT st.edition_id, sr.rider_id, MIN(sr.{col}) AS val
               FROM stage_results sr
               JOIN stages st ON st.stage_id = sr.stage_id
-             WHERE sr.bib_number IS NOT NULL
+             WHERE sr.{col} IS NOT NULL
              GROUP BY st.edition_id, sr.rider_id)
-        SELECT sr.result_id, sr.stage_id, sr.rider_id, k.bib,
+        SELECT sr.result_id, sr.stage_id, sr.rider_id, k.val,
                r.name AS race, e.year, s.route_type
           FROM stage_results sr
           JOIN stages s ON s.stage_id = sr.stage_id
           JOIN race_editions e ON e.edition_id = s.edition_id
           JOIN races r ON r.race_id = e.race_id
           JOIN known k ON k.edition_id = e.edition_id AND k.rider_id = sr.rider_id
-         WHERE sr.bib_number IS NULL AND r.race_type = 'stage_race' {where}
+         WHERE sr.{col} IS NULL AND r.race_type = 'stage_race' {where}
     """, args).fetchall()
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--race", choices=list(STAGE_RACES))
+    ap.add_argument("--field", choices=list(FIELDS), default="bib_number",
+                    help="bib_number (default) or team_id — the same invariant, "
+                         "a rider carries one of each for a whole edition")
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
@@ -108,25 +119,27 @@ def main(argv=None):
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    bad = violations(cur)
+    col = args.field
+    noun = FIELDS[col]
+    bad = violations(cur, col)
     skip = sorted({b["edition_id"] for b in bad})
     if bad:
         print(f"SKIPPING {len(skip)} edition(s): {len(bad)} rider-edition(s) hold "
-              "more than one bib, so 'the rider's bib elsewhere' is not a single "
+              f"more than one {noun}, so 'the rider's {noun} elsewhere' is not a single "
               "value there. Nothing is written to these; every other edition is "
               "unaffected.")
         for b in bad[:10]:
-            print(f"    {b['race']} {b['year']} {b['rider_id']} ({b['n']} bibs)")
+            print(f"    {b['race']} {b['year']} {b['rider_id']} ({b['n']} {noun}s)")
         if len(bad) > 10:
             print(f"    ... and {len(bad) - 10} more")
         print("  Run fix_name_swaps.py --from-db --dry-run; these are usually "
               "adjacent-row name swaps. Some are upstream PCS collisions that "
               "must NOT be renamed — see ai-context.md.")
 
-    rows = fillable(cur, args.race, skip)
+    rows = fillable(cur, args.race, skip, col)
     by_race = Counter(r["race"] for r in rows)
     ttt = sum(1 for r in rows if r["route_type"] == "TTT")
-    print(f"{'[DRY RUN] ' if not args.apply else ''}{len(rows):,} bib(s) fillable "
+    print(f"{'[DRY RUN] ' if not args.apply else ''}{len(rows):,} {noun}(s) fillable "
           f"({ttt:,} on TTT stages)")
     for name, n in sorted(by_race.items()):
         t = sum(1 for r in rows if r["race"] == name and r["route_type"] == "TTT")
@@ -137,9 +150,9 @@ def main(argv=None):
           JOIN stages s ON s.stage_id = sr.stage_id
           JOIN race_editions e ON e.edition_id = s.edition_id
           JOIN races r ON r.race_id = e.race_id
-         WHERE sr.bib_number IS NULL AND r.race_type = 'stage_race'""").fetchone()[0]
+         WHERE sr.{col} IS NULL AND r.race_type = 'stage_race'""".format(col=col)).fetchone()[0]
     print(f"  ({still - len(rows):,} will stay NULL — the rider appears on no "
-          "bibbed stage in that edition)")
+          f"stage of that edition carrying a {noun})")
 
     if not args.apply:
         conn.close()
@@ -149,17 +162,17 @@ def main(argv=None):
     # shares one origin, and per-rider rows would add ~13,000 copies of one fact.
     stages = set()
     for r in rows:
-        cur.execute("UPDATE stage_results SET bib_number=? WHERE result_id=?",
-                    (r["bib"], r["result_id"]))
+        cur.execute(f"UPDATE stage_results SET {col}=? WHERE result_id=?",
+                    (r["val"], r["result_id"]))
         stages.add(r["stage_id"])
     for stage_id in stages:
-        record_provenance(cur, "stages", stage_id, "bib_number", SOURCE_DERIVED,
-                          source_ref="the rider's own bib on another stage of "
-                                     "the same edition; a stage race issues one "
-                                     "number per rider for the whole race",
+        record_provenance(cur, "stages", stage_id, col, SOURCE_DERIVED,
+                          source_ref=f"the rider's own {noun} on another stage of "
+                                     "the same edition; a rider carries one number "
+                                     "and rides for one team for the whole race",
                           script="backfill_bib_numbers.py")
     conn.commit()
-    print(f"\nfilled {len(rows):,} bib(s) across {len(stages):,} stage(s)")
+    print(f"\nfilled {len(rows):,} {noun}(s) across {len(stages):,} stage(s)")
     conn.close()
     return 0
 

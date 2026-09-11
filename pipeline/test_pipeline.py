@@ -575,7 +575,7 @@ class TestBibBackfillScope(unittest.TestCase):
     def test_a_clean_edition_is_filled_even_so(self):
         skip = {b["edition_id"] for b in backfill_bib_numbers.violations(self.cur)}
         rows = backfill_bib_numbers.fillable(self.cur, "tour", sorted(skip))
-        self.assertEqual([(r["year"], r["rider_id"], r["bib"]) for r in rows],
+        self.assertEqual([(r["year"], r["rider_id"], r["val"]) for r in rows],
                          [(1985, "rider/clean", 55)])
 
     def test_nothing_is_written_to_the_ambiguous_edition(self):
@@ -585,6 +585,37 @@ class TestBibBackfillScope(unittest.TestCase):
                        for b in backfill_bib_numbers.violations(self.cur)})
         rows = backfill_bib_numbers.fillable(self.cur, "tour", skip)
         self.assertNotIn(1931, [r["year"] for r in rows])
+
+    def test_the_same_machinery_fills_a_team(self):
+        """A rider carries one number and rides for one team for a whole
+        edition, so both columns obey the same edition-scoped invariant. The
+        gaps differ in origin — team_id's come from the GC sidecar supplying a
+        rider for a stage PCS does not list him on, which inserts a position
+        with no team — but the repair is the same one."""
+        cur = self.cur
+        sid = cur.execute("SELECT stage_id FROM stages WHERE edition_id=2 AND "
+                          "stage_number=2").fetchone()[0]
+        cur.execute("UPDATE stage_results SET team_id=NULL WHERE stage_id=?", (sid,))
+        cur.execute("INSERT INTO teams (team_id, name) VALUES ('team/x-1985','X')")
+        cur.execute("UPDATE stage_results SET team_id='team/x-1985' WHERE stage_id="
+                    "(SELECT stage_id FROM stages WHERE edition_id=2 AND stage_number=1)")
+        rows = backfill_bib_numbers.fillable(self.cur, "tour", (), "team_id")
+        self.assertEqual([(r["year"], r["rider_id"], r["val"]) for r in rows],
+                         [(1985, "rider/clean", "team/x-1985")])
+
+    def test_a_rider_with_two_teams_in_one_edition_is_refused(self):
+        """kelme-1980 and kelme-gios-1980 are PCS spelling the same team two
+        ways inside one race. Nothing says which is canonical, so the edition is
+        skipped rather than resolved by MIN()."""
+        cur = self.cur
+        cur.execute("INSERT INTO teams (team_id, name) VALUES ('team/kelme-1980','K')")
+        cur.execute("INSERT INTO teams (team_id, name) VALUES ('team/kelme-gios-1980','K')")
+        for n, team in ((1, "team/kelme-1980"), (2, "team/kelme-gios-1980")):
+            cur.execute("UPDATE stage_results SET team_id=? WHERE stage_id="
+                        "(SELECT stage_id FROM stages WHERE edition_id=1 AND stage_number=?)",
+                        (team, n))
+        bad = backfill_bib_numbers.violations(self.cur, "team_id")
+        self.assertIn(1931, [b["year"] for b in bad])
 
     def test_without_the_skip_list_the_ambiguous_bib_would_be_guessed(self):
         """Why the skip list exists rather than nothing at all: MIN() would
