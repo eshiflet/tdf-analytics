@@ -214,6 +214,7 @@ export async function drawRidersPage() {
   controls.className = "riders-controls";
 
   const searchInput = document.createElement("input");
+  searchInput.setAttribute("aria-label", "Search riders by name");
   searchInput.type = "text";
   searchInput.placeholder = "Search rider name…";
   searchInput.className = "riders-search-input";
@@ -367,6 +368,7 @@ export async function drawRidersPage() {
 
   const teamSel = document.createElement("select");
   teamSel.className = "riders-filter-select";
+  teamSel.setAttribute("aria-label", "Filter by team");
   // Stable hooks for verify-views.mjs. It used to index .riders-filter-select
   // positionally, which silently pointed at the nationality select the moment
   // the year filter stopped being a plain <select>.
@@ -374,6 +376,7 @@ export async function drawRidersPage() {
 
   const nationalitySel = document.createElement("select");
   nationalitySel.className = "riders-filter-select";
+  nationalitySel.setAttribute("aria-label", "Filter by nationality");
   nationalitySel.id = "riders-nationality-filter";
 
   /** (Re)fills one filter <select>. Called again when the remaining indexes
