@@ -3811,6 +3811,51 @@ shapes. 92 scraper tests, 460 in the suite.
 
 ---
 
+## Team time trials with no rider times — 20 Tour stages, none safely fixable (2026-09-10)
+
+`derive_ttt_rider_times.py` discovers its own targets now instead of the three
+stages it was written for, and finds **20 Tour TTTs where not one rider holds a
+finishing time**, 1954 to 1982. It writes to none of them, and the reasons are
+worth keeping because each is a different upstream problem wearing the same
+shape.
+
+**7 — the published team time is not a stage time.** The winning team's figure
+implies 9-10 km/h on every one: 1966 st3 8,370s over 21 km, 1967 st6 6,512s
+over 17 km, 1968 st3 8,841s over 22 km, 1969 st2 5,865s over 16 km, 1971
+prologue 3,916s over 11 km. That consistency is the tell — these are CUMULATIVE
+RACE TIMES after the stage, the same defect as the GC total in a Time cell, one
+level up. Either that or the stored distances are wrong; nothing on the page
+says which, so the script refuses.
+
+**This was nearly written into the database.** The 1971 prologue passed every
+check the script had — 13 teams on both sides, ranks increasing with time,
+riders already carrying their team's placing — and 130 fabricated times were
+applied before `implausible_speed` was added here and the work reverted from a
+backup. A guard is only where you put it: it had been in `ingest_race` since
+that morning and this path never called it.
+
+**7 — riders hold individual placings.** 1978 st5 has 106 riders with 106
+DISTINCT ranks across 11 teams; 1977 st9, 1979 st4 and st8 likewise. A team
+time trial does not produce individual placings, so either the route_type is
+wrong or those ranks came from somewhere else. Writing team times on top would
+bury the contradiction.
+
+**6 — the team sets disagree.** Mostly PCS renaming a team: `team/rokado-1972`
+vs `team/rokado-colders-1972`, `team/rokado-1973` vs
+`team/rokado-de-gribaldy-1973`. Those two resolve themselves when 1972 and 1973
+are re-ingested, since the change table already shows the slugs updating. 1954
+and 1957 are different — PCS lists 11 and 12 national teams against 7 in the
+database, on stages holding 10 and 15 riders.
+
+**What is NOT wrong:** 46 further stages flagged by a first pass on the theory
+that "database says TTT + file is not is_ttt + one timed row" meant a bad parse.
+It does not. PCS publishes the 1927 and 1928 team-format stages as ordinary
+result tables with no ttt-results block at all, and **one absolute time in a
+field of 142 is the normal shape of a road stage** — the winner has a time,
+everyone else has a gap.
+
+---
+
 ## The 1960-2025 Tour backfill (2026-09-10, IN PROGRESS)
 
 66 editions with no local scrape files — the largest structural gap left. The
