@@ -3,6 +3,36 @@
  "swaps": [
   {
    "race": "tour",
+   "year": 1931,
+   "stage": 21,
+   "bib_a": "30",
+   "bib_b": "31",
+   "name_a": "Buse Hermann",
+   "name_b": "Sieronski Herbert",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1931,
+   "stage": 21,
+   "bib_a": "6",
+   "bib_b": "5",
+   "name_a": "Schepers Alfons",
+   "name_b": "Vervaecke Julien",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1933,
+   "stage": 8,
+   "bib_a": "35",
+   "bib_b": "11",
+   "name_a": "Archambaud Maurice",
+   "name_b": "Camusso Francesco",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
    "year": 1960,
    "stage": 15,
    "bib_a": "14",
@@ -133,6 +163,96 @@
   },
   {
    "race": "tour",
+   "year": 1992,
+   "stage": 13,
+   "bib_a": "27",
+   "bib_b": "169",
+   "name_a": "Perini Giancarlo",
+   "name_b": "Unzaga Jon",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1992,
+   "stage": 13,
+   "bib_a": "5",
+   "bib_b": "131",
+   "name_a": "Delgado Pedro",
+   "name_b": "Rooks Steven",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1993,
+   "stage": 19,
+   "bib_a": "114",
+   "bib_b": "3",
+   "name_a": "Ekimov Viatcheslav",
+   "name_b": "Bernard Jean-François",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1994,
+   "stage": 10,
+   "bib_a": "179",
+   "bib_b": "128",
+   "name_a": "Zamana Cezary",
+   "name_b": "Theunisse Gert-Jan",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1994,
+   "stage": 10,
+   "bib_a": "78",
+   "bib_b": "102",
+   "name_a": "Svorada Ján",
+   "name_b": "Abduzhaparov Djamolidine",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1996,
+   "stage": 14,
+   "bib_a": "191",
+   "bib_b": "29",
+   "name_a": "Piccoli Mariano",
+   "name_b": "Zabel Erik",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1996,
+   "stage": 14,
+   "bib_a": "39",
+   "bib_b": "72",
+   "name_a": "Tafi Andrea",
+   "name_b": "Boscardin Bruno",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 1999,
+   "stage": 9,
+   "bib_a": "69",
+   "bib_b": "113",
+   "name_a": "Virenque Richard",
+   "name_b": "Contreras Carlos Alberto",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2000,
+   "stage": 5,
+   "bib_a": "117",
+   "bib_b": "114",
+   "name_a": "McEwen Robbie",
+   "name_b": "Koerts Jans",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
    "year": 2008,
    "stage": 7,
    "bib_a": "37",
@@ -149,6 +269,96 @@
    "bib_b": "192",
    "name_a": "Pineau Jérôme",
    "name_b": "Beppu Fumiyuki",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 2,
+   "bib_a": "169",
+   "bib_b": "81",
+   "name_a": "Zubeldia Haimar",
+   "name_b": "Peraud Jean-Christophe",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 2,
+   "bib_a": "182",
+   "bib_b": "91",
+   "name_a": "Albasini Michael",
+   "name_b": "Talansky Andrew",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 2,
+   "bib_a": "201",
+   "bib_b": "29",
+   "name_a": "König Leopold",
+   "name_b": "Trofimov Yuri",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 10,
+   "bib_a": "169",
+   "bib_b": "161",
+   "name_a": "Zubeldia Haimar",
+   "name_b": "Schleck Fränk",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 10,
+   "bib_a": "64",
+   "bib_b": "172",
+   "name_a": "Kruijswijk Steven",
+   "name_b": "Edet Nicolas",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 10,
+   "bib_a": "7",
+   "bib_b": "141",
+   "name_a": "Porte Richie",
+   "name_b": "van Garderen Tejay",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 19,
+   "bib_a": "141",
+   "bib_b": "64",
+   "name_a": "van Garderen Tejay",
+   "name_b": "Kruijswijk Steven",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 19,
+   "bib_a": "56",
+   "bib_b": "19",
+   "name_a": "Marcato Marco",
+   "name_b": "Visconti Giovanni",
+   "recorded": "2026-09-10"
+  },
+  {
+   "race": "tour",
+   "year": 2014,
+   "stage": 19,
+   "bib_a": "84",
+   "bib_b": "76",
+   "name_a": "Dumoulin Samuel",
+   "name_b": "Petacchi Alessandro",
    "recorded": "2026-09-10"
   },
   {
