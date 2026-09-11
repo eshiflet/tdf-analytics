@@ -55,6 +55,7 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **The white jersey for the Giro and Vuelta.** Their youth standings are in `classification_standings` as of 2026-09-09, but `yw` is still exported for the Tour alone and `hasYouth` is still false for the other two. Turning it on is a display decision, not a data gap.
 
 **Open work, ready to pick up:**
+- **THE BIG ONE: the Riders grid builds 18,114 buttons eagerly and costs 628 ms** every time you enter the page, measured on the production build with layout forced — see "The grid is the last second". The data is ready at 118 ms; all the rest is DOM construction. Virtualising the grid is the single largest user-facing win left, and the 141 ms figure quoted elsewhere in this file understates it.
 - ~~**11 time trials have no times**~~ and ~~**1960-2025 has no local scrape files**~~ — both **CLOSED 2026-09-11**, see "The 1960-2025 Tour backfill". All 66 editions are scraped and 64 are ingested; 1978 and 1982 refuse, each holding a stage PCS never classified, and both want a decision rather than a fix.
 - **2026 Vuelta** has not been run (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
 - **20 Tour team time trials have no rider times**, 1954-1982, and none is safely fillable — see "Team time trials with no rider times".
@@ -3523,6 +3524,40 @@ A full grid is 17,736 buttons and costs **141 ms** to rebuild (measured, median
 of 7, forcing layout). Rebuilding once per arriving index would spend more than
 drawing early saves — the point of drawing early is the first screen, not a
 five-step animation of the count going up.
+
+**That 141 ms is wrong, or measures something narrower than a full grid
+(re-measured 2026-09-11).** Against the PRODUCTION build served locally, with
+layout forced and waiting for all 18,114 buttons rather than the first one,
+switching into Riders costs **628 ms** (median of 3: 482, 628, 632). The
+conclusion above still holds — one rebuild beats five — but the figure should
+not be quoted as the cost of building the grid.
+
+### The grid is the last second, and it is CPU (measured 2026-09-11)
+
+Everything else has been ruled out. On the production build, served locally so
+there is no network to blame:
+
+| | |
+|---|---|
+| all five indexes fetched | **118 ms** |
+| `JSON.parse` + Map build, all five | **166 ms** |
+| switching into Riders, warm, forcing layout | **628 ms** |
+| cold first load to first grid button | **1,147 ms** |
+
+The data is ready at 118 ms and the rest is JavaScript. The cost is building
+**18,114 buttons and 44,188 DOM nodes** eagerly, every rider whether or not he
+is on screen.
+
+**The fix is virtualisation** — render the rows in view, fill in on scroll.
+That should take the build to tens of milliseconds and shrink the DOM by an
+order of magnitude. It is not a tweak: it has to keep the filters, both search
+boxes, the jersey icons, the deep links into rider detail, and the
+phase-one/phase-two staging working, and it needs an A/B that forces layout on
+both sides or the win will be imaginary.
+
+**Measure on the production build.** `npm run dev` serves 250 unbundled modules
+and reports 35 SECONDS to first grid; localhost dev is not evidence of
+anything. `npx vite preview --outDir build` is.
 
 ---
 
