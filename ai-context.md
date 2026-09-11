@@ -58,7 +58,7 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 **Open work, ready to pick up:**
 - ~~**THE BIG ONE: the Riders grid builds 18,114 buttons eagerly and costs 628 ms**~~ — **DONE 2026-09-11. 628 ms -> 48 ms** by virtualising the grid; see "The grid is the last second".
 - ~~**11 time trials have no times**~~ and ~~**1960-2025 has no local scrape files**~~ — both **CLOSED 2026-09-11**, see "The 1960-2025 Tour backfill". All 66 editions are scraped and 64 are ingested; 1978 and 1982 refuse, each holding a stage PCS never classified, and both want a decision rather than a fix.
-- **41 stages typed ITT hold 4,040 riders on the winner's exact time** (2026-09-11, a `validate_db` warning). Two faults look identical in our data: PCS's `+0:00` filler read as a real gap (times fabricated), or a mass-start stage PCS mislabelled `Won how: Time trial` (times correct, `route_type` wrong — Giro 1985 stage-8a was this, and is fixed). **Needs a source per stage; there is no rule.** Nothing written. See "Times that no race produced".
+- **41 stages typed ITT hold 4,040 riders on the winner's exact time** (a `validate_db` warning). **Resolved 2026-09-11 — there IS a rule, and all 41 are the same fault.** Each stage was fetched by its own `source_slug` and read: a non-winner whose `Time` cell matches `^[-+]?0:00$` has no published time, and all 4,040 are that. None is a mislabelled mass-start (Giro 1985 stage-8a was the genuine one, already fixed via `route_type_overrides.json`, which is why it is not in the set). NULL is the honest value; `null_itt_filler_times.py` writes it and is **not yet applied**. See "Times that no race produced".
 - **99 finishers carry a 0-second finish time** across 11 stages (same warning block). Do NOT reach for a re-ingest: today's code reads the same pages' `+0:00` filler and would credit all of them with the winner's time, trading one defect for the other. NULL is the honest value, and that is a decision.
 - **9 team time trials hold 536 fewer riders than the stage after them.** Measured: only 1 of the original 10 was recoverable (Vuelta 2003 st1, done). On the rest PCS has no more riders than we store — Tour 1954 st4a really is 10 riders. Coverage report, not a worklist.
 - **2026 Vuelta** has not been run (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
@@ -189,6 +189,7 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `scrape_traka.py` | The Traka → the standard gravel scrape-file shape, men only |
 | `backfill_rider_team_provenance.py` | provenance for pre-tracking `riders`/`teams` rows; companion to `backfill_provenance.py` (which covers `stages`) |
 | `patch_cyclingflash_elevation.py` | 2001/2006 s20 from cyclingflash.com; guards on distance before writing |
+| `null_itt_filler_times.py` | NULLs the 4,040 fabricated ITT finish times; re-run after any re-ingest of those editions |
 
 ### State as of 2026-08-11
 
@@ -4707,6 +4708,65 @@ unranked rather than keeping a derived rank.
 - **1905–1912 gc_gap_seconds**: All zeros at last stage for points-system years — PCS stored intra-stage gaps, not cumulative race time gaps. Not usable for time calculations.
 
 ### Times that no race produced (2026-09-11)
+
+> **Resolved later the same day.** The subsections below were written while the
+> 41 ITT stages still looked undecidable from inside this database. They are
+> not: PCS distinguishes the two faults, and every one of the 41 is the same
+> kind. What follows the rule is kept as the reasoning that got there.
+
+#### The rule, and why "there is no rule" was wrong
+
+A non-winner whose PCS `Time` cell matches `^[-+]?0:00$` **has no published
+time**. That is the entire test, and it settles all 41 stages.
+
+It holds regardless of rank, which is what made it hard to see. The filler
+appears on two different kinds of row:
+
+- **39 stages** — on rows PCS marks `DF` (no integer rank). Giro 1979 stage-3
+  is the type case: 26 real times, then 91 `DF` rows at `-0:00`, which is
+  exactly our 91 tied riders.
+- **2 stages** — on rows carrying a **real integer rank**. Tour 1937
+  stage-17b ranks 1-45 with only the winner timed; Vuelta 1995 prologue shows
+  ranks 2-35 all at `0:00` over 7 km, which no prologue produces.
+
+A genuine bunch finish never looks like this: riders who really share a time
+share an actual duplicated value (`2:06`), not the filler. So the discriminator
+the earlier note said did not exist is just this one regex, and **no stage in
+this set is a mislabelled mass-start**.
+
+#### Two traps, both hit while establishing that
+
+- **`Timelag` is the GC gap, not the stage gap.** It is the obvious-looking
+  column on a PCS results table and it is *non-monotonic with rank* (1979
+  stage-3: rank 2 at `+0:30`, rank 3 at `+0:29`). The stage gap is in `Time`.
+  Reading the wrong one gives wrong-but-plausible values — the same shape as
+  parsing "Hardest stages" for vertical metres.
+- **The filler has three spellings**: `0:00`, `+0:00` and `-0:00`. A filter
+  catching only `0:00` reported **40 of 41 stages as recoverable by a
+  re-scrape**. They are not — PCS has no more than we already store. The
+  earlier note naming only `+0:00` is why this was worth re-checking.
+
+Also worth recording: **speed is not a discriminator.** An m/km-style test on
+winner speed flagged Giro 1979 stage-3 (31 km at 49.6 km/h) as too fast to be
+an ITT. PCS's own page gives the same 49.556 km/h and a real gap column — it
+was simply Moser. Worse, a baseline built from *all* ITT stages is contaminated
+by these 41; it has to be built from stages with no mass tie.
+
+#### What to do about it
+
+`null_itt_filler_times.py` sets those 4,040 `finish_time_seconds` to NULL,
+records `SOURCE_PCS` provenance on every row with the citing URL, and leaves
+`stage_rank` and `status` alone — where PCS publishes an order without times
+those riders did finish, and dropping the placing trades one defect for
+another. It is idempotent and dry-run by default. **Not applied as of
+2026-09-11.**
+
+**A re-ingest reintroduces every one of these**, because ingest still reads the
+same filler. Re-run the patch after re-ingesting any affected edition, the way
+`backfill_bib_numbers` is re-run. Tour 1937 stage-17b also sits in the
+**99 zero-second finishers** set — its winner time is 0 — so the two warnings
+overlap by exactly one stage.
+
 
 Two `validate_db.py` warnings added on 2026-09-11 name 4,623 rows that are
 still wrong. Both are absences that arrived wearing a time column's clothes,
