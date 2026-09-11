@@ -560,7 +560,12 @@ def check_results(c):
                   WHERE stage_id = s.stage_id AND stage_rank = 1
                     AND finish_time_seconds IS NOT NULL) AS wtime
           FROM stages s
-          WHERE (s.stage_type = 'itt' OR s.route_type = 'TT') AND s.cancelled = 0)
+          WHERE (s.stage_type = 'itt' OR s.route_type = 'TT') AND s.cancelled = 0
+            -- stage_type can be a stale 'itt' on a stage route_type has since
+            -- corrected to TTT (Vuelta 2003 st1 was both at once). A team time
+            -- trial SHOULD have riders sharing a time, so exclude it by the
+            -- column the re-ingest actually maintains.
+            AND COALESCE(s.route_type, '') <> 'TTT')
         SELECT ra.name, re.year, itt.stage_number, itt.distance_km,
                SUM(sr.finish_time_seconds = itt.wtime
                    AND (sr.stage_rank IS NULL OR sr.stage_rank <> 1)) AS n_tied
@@ -581,6 +586,40 @@ def check_results(c):
              + ", ".join(f"{t[0][:6]} {t[1]} st{t[2]} ({t[4]} of them"
                          + (f", {t[3]:.0f} km)" if t[3] else ")")
                          for t in itt_tied[:3]))
+
+    # A team time trial cannot have been ridden by fewer people than the stage
+    # after it: nobody joins a race mid-way. Where this trips, PCS's TTT page
+    # carries riders OUTSIDE the per-team blocks — the ones dropped by their
+    # team, who finish on their own time — and the parser reads only the blocks.
+    # Vuelta 2003 st1 is the worked example: 168 riders in 22 team blocks, team
+    # sizes of 5 to 9, while the page itself links 209 riders and stage 2 has
+    # 197. The 29 missing all rode 6 to 20 later stages, so they were there.
+    #
+    # This is the same shape as the Tour TTT recovery: "upstream limitation"
+    # was wrong there too, and 25 of 28 stages did have per-rider results once
+    # somebody looked at the page instead of the parse.
+    ttt_short = c.execute("""
+        SELECT ra.name, re.year, s.stage_number, COUNT(*) AS riders,
+               COUNT(DISTINCT sr.team_id) AS teams,
+               (SELECT COUNT(*) FROM stage_results sr2
+                JOIN stages s2 ON s2.stage_id = sr2.stage_id
+                WHERE s2.edition_id = s.edition_id
+                  AND s2.stage_number = s.stage_number + 1) AS next_stage
+        FROM stages s
+        JOIN stage_results sr ON sr.stage_id = s.stage_id
+        JOIN race_editions re ON re.edition_id = s.edition_id
+        JOIN races ra ON ra.race_id = re.race_id
+        WHERE s.route_type = 'TTT' AND s.cancelled = 0
+        GROUP BY s.stage_id HAVING next_stage > riders + 5
+        ORDER BY next_stage - riders DESC""").fetchall()
+    if ttt_short:
+        missing = sum(t[5] - t[3] for t in ttt_short)
+        warn(f"{len(ttt_short)} team time trial(s) hold {missing:,} fewer riders than the "
+             "stage immediately after them. Nobody joins a race mid-way — these are riders "
+             "dropped by their team, whom PCS lists outside the per-team blocks and the "
+             "parser does not read. e.g. "
+             + ", ".join(f"{t[0][:6]} {t[1]} st{t[2]} ({t[3]} in {t[4]} teams, next has {t[5]})"
+                         for t in ttt_short[:3]))
 
     rankless = c.execute("""
         SELECT COUNT(*) FROM stages s WHERE s.cancelled=0

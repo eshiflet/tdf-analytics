@@ -4533,10 +4533,10 @@ python3 -m unittest discover -p "test_*.py"
 # 90 warnings is the expected clean result as of 2026-08-18 — compare the
 # COUNT against that baseline rather than expecting zero.
 python3 validate_exports.py
-python3 validate_db.py               # 0 errors, 9 warnings expected (2026-09-11)
+python3 validate_db.py               # 0 errors, 10 warnings expected (2026-09-11)
                                      # Warnings are a standing worklist, not noise —
                                      # read them. Two were added 2026-09-11 and name
-                                     # 4,623 rows that are still wrong; see
+                                     # 5,027 rows that are still wrong; see
                                      # "Times that no race produced" below.
 
 # Cross-race rider membership — the `x` bitmask the rider detail page uses to
@@ -4620,7 +4620,7 @@ still wrong. Both are absences that arrived wearing a time column's clothes,
 which is the same defect the README opens with — and both were found by
 asking the chart a physical question rather than by reading the data.
 
-**44 individual time trials credit 4,524 riders with the winner's exact time.**
+**43 individual time trials credit 4,363 riders with the winner's exact time.**
 An ITT is ridden alone against the clock; the field cannot share a time. Where
 PCS has no per-rider times for an old ITT it publishes a filler gap of `+0:00`
 against every rider, and ingest's `winner_seconds + gap_secs` reads that as a
@@ -4648,6 +4648,25 @@ of them, ranks 1–46 at zero beside a winner with a real 1:06:27.
 Do not reach for a re-ingest here: today's code reads that same page's `+0:00`
 filler and would credit all 46 with the winner's time, trading this defect for
 the ITT tie above. NULL is right either way.
+
+**10 team time trials hold 565 fewer riders than the stage after them.** Nobody
+joins a race mid-way, so a TTT cannot have been ridden by fewer people than the
+next stage. PCS's TTT pages carry the riders dropped by their team — who finish
+on their own time — *outside* the per-team blocks, and the parser reads only
+the blocks. Vuelta 2003 stage 1 is the worked example: 168 riders in 22 team
+blocks with team sizes of 5 to 9, while the page itself links 209 riders and
+stage 2 holds 197. The 29 missing all rode between 6 and 20 later stages of
+that same Vuelta, so they were unquestionably there.
+
+This is the same shape as the Tour TTT recovery, where "upstream limitation"
+was also wrong and 25 of 28 stages turned out to have per-rider results once
+somebody read the page instead of the parse. Worth fixing in the parser; the
+`reingest_tdf_stage.py --from-pcs` path is the precedent.
+
+Note the direction of the 2026-09-11 Vuelta re-ingest on this stage: it
+*replaced* 197 rows carrying 151 fabricated ties with 168 rows carrying real
+team times. Row count went down and correctness went up. That is why "rows
+gone" is a question to ask rather than a verdict.
 
 **"Dorsal 71" is not a parser bug.** 21 riders in the DB are named `Dorsal
 <n>` — Catalan/Spanish for bib number — all from The Traka 360, and 9 of them
