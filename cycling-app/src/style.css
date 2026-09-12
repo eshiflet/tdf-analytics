@@ -1471,6 +1471,21 @@ svg text {
     cursor: pointer;
   }
 
+  /* 2b. Tap targets for the selects.
+         .metric-inline renders at 19px because it is a bare inline <select>
+         with padding 0 — fine for a mouse, fiddly for a thumb, and it is the
+         control you reach for most on the main view. 36px is short of Apple's
+         44px guidance but keeps the topbar from dominating a 375px screen;
+         raising the floor is a one-line change here if it still feels small.
+         Only the selects: the surrounding buttons sit at 27-28px and are
+         wider, so they are easier to hit than their height suggests. */
+  .metric-inline,
+  .race-select,
+  .year-select,
+  .riders-filter-select {
+    min-height: 36px;
+  }
+
   /* 3. Give the chart the width it just gained — and let it SCROLL.
         stageChart.ts floors the SVG at 600px wide (Math.max(rect.width, 600))
         so the picture stays readable in a small desktop window. At 375px that
