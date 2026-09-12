@@ -519,21 +519,38 @@
    1994
   ]
  },
+ "adam hockley": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Adam",
+  "homonym_suspect": false,
+  "last_name": "Hockley",
+  "name": "Adam Hockley",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/adam-hockley",
+  "years": [
+   2023
+  ]
+ },
  "adam jordan": {
   "birth_year_approx": null,
   "countries": [
    "si"
   ],
   "country": "si",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/adam-jordan",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Adam",
   "homonym_suspect": false,
   "last_name": "Jordan",
   "name": "Adam Jordan",
-  "pcs_slug": [
-   "rider/adam-jordan"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/adam-jordan",
   "years": [
@@ -615,6 +632,25 @@
   "rider_id": "rider/adam-oliver",
   "years": [
    2024
+  ]
+ },
+ "adam ossowski": {
+  "birth_year_approx": null,
+  "countries": [
+   "pl"
+  ],
+  "country": "pl",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Adam",
+  "homonym_suspect": false,
+  "last_name": "Ossowski",
+  "name": "Adam Ossowski",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/adam-ossowski",
+  "years": [
+   2023
   ]
  },
  "adam p pick": {
@@ -932,6 +968,25 @@
    2010
   ]
  },
+ "aday sanchez parrilli": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Aday Sánchez",
+  "homonym_suspect": false,
+  "last_name": "Parrilli",
+  "name": "Aday Sánchez Parrilli",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/aday-sanchez-parrilli",
+  "years": [
+   2023
+  ]
+ },
  "addison zawada": {
   "birth_year_approx": 1992,
   "countries": [
@@ -973,6 +1028,25 @@
   "years": [
    2025,
    2026
+  ]
+ },
+ "adolfo tannenbaum": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Adolfo",
+  "homonym_suspect": false,
+  "last_name": "Tannenbaum",
+  "name": "Adolfo Tannenbaum",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/adolfo-tannenbaum",
+  "years": [
+   2023
   ]
  },
  "adolfo tannenbaum embeita": {
@@ -1382,8 +1456,10 @@
  },
  "albert canellas mas": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Albert Cañellas",
@@ -1391,10 +1467,11 @@
   "last_name": "Mas",
   "name": "Albert Cañellas Mas",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/albert-canellas-mas",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "albert esteve salvany": {
@@ -1668,17 +1745,15 @@
    "es"
   ],
   "country": "es",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/alejandro-gomez1",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Alejandro",
   "homonym_suspect": false,
   "last_name": "Gomez",
   "name": "Alejandro Gomez",
-  "pcs_slug": [
-   "rider/alejandro-gomez1"
-  ],
+  "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/alejandro-gomez1",
+  "rider_id": "rider/alejandro-gomez",
   "years": [
    2024
   ]
@@ -1712,8 +1787,8 @@
   "evidence": "no existing rider with this name",
   "first_name": "Alejandro",
   "homonym_suspect": false,
-  "last_name": "Martinez",
-  "name": "Alejandro Martinez",
+  "last_name": "Martínez",
+  "name": "Alejandro Martínez",
   "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/alejandro-martinez",
@@ -1777,21 +1852,39 @@
    2026
   ]
  },
+ "alessandro tomaiuolo": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Alessandro",
+  "homonym_suspect": false,
+  "last_name": "Tomaiuolo",
+  "name": "Alessandro Tomaiuolo",
+  "pcs_slug": null,
+  "results": 2,
+  "rider_id": "rider/alessandro-tomaiuolo",
+  "years": [
+   2023,
+   2024
+  ]
+ },
  "alessio camilli": {
   "birth_year_approx": null,
   "countries": [
    "it"
   ],
   "country": "it",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/alessio-camilli",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Alessio",
   "homonym_suspect": false,
   "last_name": "Camilli",
   "name": "Alessio Camilli",
-  "pcs_slug": [
-   "rider/alessio-camilli"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/alessio-camilli",
   "years": [
@@ -2053,23 +2146,21 @@
    2022
   ]
  },
- "alex ruiz": {
+ "alex ruiz roldan": {
   "birth_year_approx": null,
   "countries": [
    "es"
   ],
   "country": "es",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/alex-ruiz",
-  "first_name": "Alex",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Alex Ruiz",
   "homonym_suspect": false,
-  "last_name": "Ruiz",
-  "name": "Alex Ruiz",
-  "pcs_slug": [
-   "rider/alex-ruiz"
-  ],
+  "last_name": "Roldan",
+  "name": "Alex Ruiz Roldan",
+  "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/alex-ruiz",
+  "rider_id": "rider/alex-ruiz-roldan",
   "years": [
    2024
   ]
@@ -2293,13 +2384,31 @@
   "pcs_slug": [
    "rider/alexis-roche"
   ],
-  "results": 4,
+  "results": 3,
   "rider_id": "rider/alexis-roche",
   "years": [
-   2023,
    2024,
    2025,
    2026
+  ]
+ },
+ "alexis rochr": {
+  "birth_year_approx": null,
+  "countries": [
+   "ie"
+  ],
+  "country": "ie",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Alexis",
+  "homonym_suspect": false,
+  "last_name": "Rochr",
+  "name": "Alexis Rochr",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/alexis-rochr",
+  "years": [
+   2023
   ]
  },
  "alexis texier": {
@@ -2346,15 +2455,13 @@
    "fr"
   ],
   "country": "fr",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/alexys-brunel",
+  "decision": "matched",
+  "evidence": "Brunel Alexys (fr), road 2020-2026, gravel 2024-2024",
   "first_name": "Alexys",
   "homonym_suspect": false,
   "last_name": "Brunel",
   "name": "Alexys Brunel",
-  "pcs_slug": [
-   "rider/alexys-brunel"
-  ],
+  "pcs_slug": null,
   "results": 2,
   "rider_id": "rider/alexys-brunel",
   "years": [
@@ -2496,6 +2603,25 @@
   "rider_id": "rider/alonzo-jimenez",
   "years": [
    2022
+  ]
+ },
+ "alvaro jimenez": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Álvaro",
+  "homonym_suspect": false,
+  "last_name": "Jiménez",
+  "name": "Álvaro Jiménez",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/alvaro-jimenez",
+  "years": [
+   2023
   ]
  },
  "amir danel": {
@@ -2708,6 +2834,25 @@
    2021
   ]
  },
+ "andrea galanti": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Andrea",
+  "homonym_suspect": false,
+  "last_name": "Galanti",
+  "name": "Andrea Galanti",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/andrea-galanti",
+  "years": [
+   2023
+  ]
+ },
  "andreas ohldieck": {
   "birth_year_approx": null,
   "countries": [
@@ -2721,9 +2866,10 @@
   "last_name": "Ohldieck",
   "name": "Andreas Ohldieck",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/andreas-ohldieck",
   "years": [
+   2023,
    2024
   ]
  },
@@ -3668,9 +3814,10 @@
   "last_name": "Jukna",
   "name": "Andrius Jukna",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/andrius-jukna",
   "years": [
+   2024,
    2026
   ]
  },
@@ -3926,6 +4073,25 @@
    2010
   ]
  },
+ "angel gregorio barrancos": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Angel Gregorio",
+  "homonym_suspect": false,
+  "last_name": "Barrancos",
+  "name": "Angel Gregorio Barrancos",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/angel-gregorio-barrancos",
+  "years": [
+   2023
+  ]
+ },
  "anthony ferrara": {
   "birth_year_approx": 1978,
   "countries": [
@@ -4120,7 +4286,7 @@
    2019
   ]
  },
- "antonio ortiz": {
+ "antonio ortiz barranco": {
   "birth_year_approx": null,
   "countries": [
    "es"
@@ -4128,32 +4294,16 @@
   "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "Antonio",
-  "homonym_suspect": false,
-  "last_name": "Ortiz",
-  "name": "Antonio Ortiz",
-  "pcs_slug": null,
-  "results": 1,
-  "rider_id": "rider/antonio-ortiz",
-  "years": [
-   2023
-  ]
- },
- "antonio ortiz barranco": {
-  "birth_year_approx": null,
-  "countries": [],
-  "country": null,
-  "decision": "new_no_candidate",
-  "evidence": "no existing rider with this name",
   "first_name": "Antonio Ortiz",
   "homonym_suspect": false,
   "last_name": "Barranco",
   "name": "Antonio Ortiz Barranco",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/antonio-ortiz-barranco",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "antonio torres": {
@@ -4338,15 +4488,13 @@
    "is"
   ],
   "country": "is",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/arnthor-gustavsson",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Arnþór",
   "homonym_suspect": false,
   "last_name": "Gústavsson",
   "name": "Arnþór Gústavsson",
-  "pcs_slug": [
-   "rider/arnthor-gustavsson"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/arnthor-gustavsson",
   "years": [
@@ -4468,6 +4616,25 @@
    2025
   ]
  },
+ "asier irigoyen indave": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Asier Irigoyen",
+  "homonym_suspect": false,
+  "last_name": "Indave",
+  "name": "Asier Irigoyen Indave",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/asier-irigoyen-indave",
+  "years": [
+   2024
+  ]
+ },
  "austin boardman": {
   "birth_year_approx": 1992,
   "countries": [
@@ -4544,7 +4711,7 @@
    2017
   ]
  },
- "axel pol": {
+ "barend derriks": {
   "birth_year_approx": null,
   "countries": [
    "nl"
@@ -4552,15 +4719,15 @@
   "country": "nl",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "Axel",
+  "first_name": "Barend",
   "homonym_suspect": false,
-  "last_name": "Pol",
-  "name": "Axel Pol",
+  "last_name": "Derriks",
+  "name": "Barend Derriks",
   "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/axel-pol",
+  "rider_id": "rider/barend-derriks",
   "years": [
-   2024
+   2023
   ]
  },
  "barrett brandon": {
@@ -4675,6 +4842,25 @@
   "rider_id": "rider/bart-brentjens",
   "years": [
    2011
+  ]
+ },
+ "bart postma": {
+  "birth_year_approx": null,
+  "countries": [
+   "nl"
+  ],
+  "country": "nl",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Bart",
+  "homonym_suspect": false,
+  "last_name": "Postma",
+  "name": "Bart Postma",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/bart-postma",
+  "years": [
+   2024
   ]
  },
  "beckett ledger": {
@@ -4868,6 +5054,25 @@
   "rider_id": "rider/ben-c-raby",
   "years": [
    2000
+  ]
+ },
+ "ben chadourne": {
+  "birth_year_approx": null,
+  "countries": [
+   "fr"
+  ],
+  "country": "fr",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Ben",
+  "homonym_suspect": false,
+  "last_name": "Chadourne",
+  "name": "Ben Chadourne",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/ben-chadourne",
+  "years": [
+   2024
   ]
  },
  "ben delaney": {
@@ -5423,15 +5628,13 @@
    "fr"
   ],
   "country": "fr",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/benjamin-pascual",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Benjamin",
   "homonym_suspect": false,
   "last_name": "Pascual",
   "name": "Benjamin Pascual",
-  "pcs_slug": [
-   "rider/benjamin-pascual"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/benjamin-pascual",
   "years": [
@@ -9455,15 +9658,13 @@
    "fr"
   ],
   "country": "fr",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/bruno-morel",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Bruno",
   "homonym_suspect": false,
   "last_name": "Morel",
   "name": "Bruno Morel",
-  "pcs_slug": [
-   "rider/bruno-morel"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/bruno-morel",
   "years": [
@@ -9807,6 +10008,25 @@
   "years": [
    1999,
    2002
+  ]
+ },
+ "bryn davies": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Bryn",
+  "homonym_suspect": false,
+  "last_name": "Davies",
+  "name": "Bryn Davies",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/bryn-davies",
+  "years": [
+   2023
   ]
  },
  "bryson perry": {
@@ -10728,8 +10948,10 @@
  },
  "carles ruiz alvarez": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Carles Ruiz",
@@ -10737,10 +10959,30 @@
   "last_name": "Alvarez",
   "name": "Carles Ruiz Alvarez",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/carles-ruiz-alvarez",
   "years": [
-   2022
+   2022,
+   2023
+  ]
+ },
+ "carles sabater pascual": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Carles Sabater",
+  "homonym_suspect": false,
+  "last_name": "Pascual",
+  "name": "Carles Sabater Pascual",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/carles-sabater-pascual",
+  "years": [
+   2023
   ]
  },
  "carlos conesa tomas": {
@@ -12888,6 +13130,25 @@
    2022
   ]
  },
+ "chris mehlman": {
+  "birth_year_approx": null,
+  "countries": [
+   "us"
+  ],
+  "country": "us",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Chris",
+  "homonym_suspect": false,
+  "last_name": "Mehlman",
+  "name": "Chris Mehlman",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/chris-mehlman",
+  "years": [
+   2024
+  ]
+ },
  "chris memelink": {
   "birth_year_approx": null,
   "countries": [
@@ -13816,7 +14077,7 @@
   "last_name": "Mehlman",
   "name": "Christopher Mehlman",
   "pcs_slug": null,
-  "results": 4,
+  "results": 3,
   "rider_id": "rider/christopher-mehlman",
   "years": [
    2024,
@@ -15897,8 +16158,10 @@
  },
  "daan timo van meeuwen": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "nl"
+  ],
+  "country": "nl",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Daan Timo",
@@ -15906,10 +16169,11 @@
   "last_name": "Van Meeuwen",
   "name": "Daan Timo Van Meeuwen",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/daan-timo-van-meeuwen",
   "years": [
-   2021
+   2021,
+   2024
   ]
  },
  "daan van meeuwen": {
@@ -15927,10 +16191,9 @@
   "pcs_slug": [
    "rider/daan-van-meeuwen"
   ],
-  "results": 2,
+  "results": 1,
   "rider_id": "rider/daan-van-meeuwen",
   "years": [
-   2024,
    2025
   ]
  },
@@ -16056,27 +16319,6 @@
    2011,
    2012,
    2013
-  ]
- },
- "damia palafoix": {
-  "birth_year_approx": null,
-  "countries": [
-   "es"
-  ],
-  "country": "es",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/damia-palafoix",
-  "first_name": "Damiá",
-  "homonym_suspect": false,
-  "last_name": "Palafoix",
-  "name": "Damiá Palafoix",
-  "pcs_slug": [
-   "rider/damia-palafoix"
-  ],
-  "results": 1,
-  "rider_id": "rider/damia-palafoix",
-  "years": [
-   2024
   ]
  },
  "damian budzinski": {
@@ -16672,10 +16914,31 @@
    2022
   ]
  },
+ "dani talavera verdaguer": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Dani Talavera",
+  "homonym_suspect": false,
+  "last_name": "Verdaguer",
+  "name": "Dani Talavera Verdaguer",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/dani-talavera-verdaguer",
+  "years": [
+   2023
+  ]
+ },
  "dani vila ramirez": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Dani Vilà",
@@ -16683,10 +16946,11 @@
   "last_name": "Ramirez",
   "name": "Dani Vilà Ramirez",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/dani-vila-ramirez",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "daniel arden": {
@@ -16706,6 +16970,25 @@
   "rider_id": "rider/daniel-arden",
   "years": [
    2018
+  ]
+ },
+ "daniel bra fernandez": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Daniel Bra",
+  "homonym_suspect": false,
+  "last_name": "Fernandez",
+  "name": "Daniel Bra Fernandez",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/daniel-bra-fernandez",
+  "years": [
+   2023
   ]
  },
  "daniel deetz": {
@@ -18132,7 +18415,7 @@
    2019
   ]
  },
- "david coma": {
+ "david coma cases": {
   "birth_year_approx": null,
   "countries": [
    "es"
@@ -18140,13 +18423,13 @@
   "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "David",
+  "first_name": "David Coma",
   "homonym_suspect": false,
-  "last_name": "Coma",
-  "name": "David Coma",
+  "last_name": "Cases",
+  "name": "David Coma Cases",
   "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/david-coma",
+  "rider_id": "rider/david-coma-cases",
   "years": [
    2023
   ]
@@ -18749,19 +19032,21 @@
  "david millar": {
   "birth_year_approx": 1977,
   "countries": [
-   "es"
+   "es",
+   "gb"
   ],
   "country": "es",
   "decision": "matched",
-  "evidence": "Millar David (gb), road 1998-2014, gravel 2025-2025",
+  "evidence": "Millar David (gb), road 1998-2014, gravel 2023-2025",
   "first_name": "David",
   "homonym_suspect": false,
   "last_name": "Millar",
   "name": "David Millar",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/david-millar",
   "years": [
+   2023,
    2025
   ]
  },
@@ -20360,15 +20645,13 @@
    "us"
   ],
   "country": "us",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/dillon-hollinger",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Dillon",
   "homonym_suspect": false,
   "last_name": "Hollinger",
   "name": "Dillon Hollinger",
-  "pcs_slug": [
-   "rider/dillon-hollinger"
-  ],
+  "pcs_slug": null,
   "results": 8,
   "rider_id": "rider/dillon-hollinger",
   "years": [
@@ -20480,25 +20763,6 @@
    2009,
    2010,
    2011
-  ]
- },
- "dixon watts": {
-  "birth_year_approx": null,
-  "countries": [
-   "us"
-  ],
-  "country": "us",
-  "decision": "new_no_candidate",
-  "evidence": "no existing rider with this name",
-  "first_name": "Dixon",
-  "homonym_suspect": false,
-  "last_name": "Watts",
-  "name": "Dixon Watts",
-  "pcs_slug": null,
-  "results": 1,
-  "rider_id": "rider/dixon-watts",
-  "years": [
-   2024
   ]
  },
  "dj waskow": {
@@ -22379,6 +22643,25 @@
    2026
   ]
  },
+ "elijus civilis": {
+  "birth_year_approx": null,
+  "countries": [
+   "lt"
+  ],
+  "country": "lt",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Elijus",
+  "homonym_suspect": false,
+  "last_name": "Civilis",
+  "name": "Elijus Civilis",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/elijus-civilis",
+  "years": [
+   2023
+  ]
+ },
  "elliot bach": {
   "birth_year_approx": 1993,
   "countries": [
@@ -22549,6 +22832,25 @@
   "rider_id": "rider/elliott-rodda",
   "years": [
    2014
+  ]
+ },
+ "elmar petrisor": {
+  "birth_year_approx": null,
+  "countries": [
+   "de"
+  ],
+  "country": "de",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Elmar",
+  "homonym_suspect": false,
+  "last_name": "Petrisor",
+  "name": "Elmar Petrisor",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/elmar-petrisor",
+  "years": [
+   2023
   ]
  },
  "elmer henson": {
@@ -22861,6 +23163,25 @@
   "years": [
    2017,
    2019
+  ]
+ },
+ "enzo bergamo": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Enzo",
+  "homonym_suspect": false,
+  "last_name": "Bergamo",
+  "name": "Enzo Bergamo",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/enzo-bergamo",
+  "years": [
+   2023
   ]
  },
  "erez falkenstein": {
@@ -23818,8 +24139,8 @@
   "evidence": "no existing rider with this name",
   "first_name": "Erno",
   "homonym_suspect": false,
-  "last_name": "Mccrae",
-  "name": "Erno Mccrae",
+  "last_name": "McCrae",
+  "name": "Erno McCrae",
   "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/erno-mccrae",
@@ -24097,6 +24418,25 @@
    2019
   ]
  },
+ "evan wangai": {
+  "birth_year_approx": null,
+  "countries": [
+   "ke"
+  ],
+  "country": "ke",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Evan",
+  "homonym_suspect": false,
+  "last_name": "Wangai",
+  "name": "Evan Wangai",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/evan-wangai",
+  "years": [
+   2023
+  ]
+ },
  "ezra taylor": {
   "birth_year_approx": 1981,
   "countries": [
@@ -24175,25 +24515,6 @@
    2026
   ]
  },
- "fausto bertin": {
-  "birth_year_approx": null,
-  "countries": [
-   "it"
-  ],
-  "country": "it",
-  "decision": "new_no_candidate",
-  "evidence": "no existing rider with this name",
-  "first_name": "Fausto",
-  "homonym_suspect": false,
-  "last_name": "Bertin",
-  "name": "Fausto Bertin",
-  "pcs_slug": null,
-  "results": 1,
-  "rider_id": "rider/fausto-bertin",
-  "years": [
-   2024
-  ]
- },
  "federico amador": {
   "birth_year_approx": 1966,
   "countries": [
@@ -24215,8 +24536,10 @@
  },
  "federico bassis": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Federico",
@@ -24224,10 +24547,11 @@
   "last_name": "Bassis",
   "name": "Federico Bassis",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/federico-bassis",
   "years": [
-   2021
+   2021,
+   2023
   ]
  },
  "federico damiani": {
@@ -25043,6 +25367,25 @@
    2015
   ]
  },
+ "frank pasche": {
+  "birth_year_approx": null,
+  "countries": [
+   "ch"
+  ],
+  "country": "ch",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Frank",
+  "homonym_suspect": false,
+  "last_name": "Pasche",
+  "name": "Frank Pasche",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/frank-pasche",
+  "years": [
+   2023
+  ]
+ },
  "frank r lundeen": {
   "birth_year_approx": 1981,
   "countries": [
@@ -25478,6 +25821,25 @@
   "rider_id": "rider/gabriele-pettenuzzo",
   "years": [
    2022
+  ]
+ },
+ "gabriele sirtori": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Gabriele",
+  "homonym_suspect": false,
+  "last_name": "Sirtori",
+  "name": "Gabriele Sirtori",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/gabriele-sirtori",
+  "years": [
+   2023
   ]
  },
  "gage hect": {
@@ -25924,6 +26286,25 @@
    2003
   ]
  },
+ "gautier bonnecarrere": {
+  "birth_year_approx": null,
+  "countries": [
+   "fr"
+  ],
+  "country": "fr",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Gautier",
+  "homonym_suspect": false,
+  "last_name": "Bonnecarrère",
+  "name": "Gautier Bonnecarrère",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/gautier-bonnecarrere",
+  "years": [
+   2023
+  ]
+ },
  "gavin mannion": {
   "birth_year_approx": 1991,
   "countries": [
@@ -26292,6 +26673,25 @@
   "rider_id": "rider/gerard-nolan",
   "years": [
    1994
+  ]
+ },
+ "gerard trias": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Gerard",
+  "homonym_suspect": false,
+  "last_name": "Trias",
+  "name": "Gerard Trias",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/gerard-trias",
+  "years": [
+   2023
   ]
  },
  "gerard trias alsina": {
@@ -27799,27 +28199,6 @@
    2024
   ]
  },
- "hafsteinn aegir geirsson": {
-  "birth_year_approx": null,
-  "countries": [
-   "is"
-  ],
-  "country": "is",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/hafsteinn-aegir-geirsson",
-  "first_name": "Hafsteinn Ægir",
-  "homonym_suspect": false,
-  "last_name": "Geirsson",
-  "name": "Hafsteinn Ægir Geirsson",
-  "pcs_slug": [
-   "rider/hafsteinn-aegir-geirsson"
-  ],
-  "results": 1,
-  "rider_id": "rider/hafsteinn-aegir-geirsson",
-  "years": [
-   2024
-  ]
- },
  "hafsteinn geirsson": {
   "birth_year_approx": 1981,
   "countries": [
@@ -27833,11 +28212,12 @@
   "last_name": "Geirsson",
   "name": "Hafsteinn Geirsson",
   "pcs_slug": null,
-  "results": 2,
+  "results": 3,
   "rider_id": "rider/hafsteinn-geirsson",
   "years": [
    2019,
-   2022
+   2022,
+   2024
   ]
  },
  "hank campbell": {
@@ -28131,6 +28511,25 @@
    2008
   ]
  },
+ "harry ashman": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Harry",
+  "homonym_suspect": false,
+  "last_name": "Ashman",
+  "name": "Harry Ashman",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/harry-ashman",
+  "years": [
+   2023
+  ]
+ },
  "harry elworthy": {
   "birth_year_approx": 1996,
   "countries": [
@@ -28191,6 +28590,25 @@
   "years": [
    2025,
    2026
+  ]
+ },
+ "harry walton": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Harry",
+  "homonym_suspect": false,
+  "last_name": "Walton",
+  "name": "Harry Walton",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/harry-walton",
+  "years": [
+   2023
   ]
  },
  "hart robinson": {
@@ -28357,15 +28775,13 @@
    "de"
   ],
   "country": "de",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/henning-bommel",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Henning",
   "homonym_suspect": false,
   "last_name": "Bommel",
   "name": "Henning Bommel",
-  "pcs_slug": [
-   "rider/henning-bommel"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/henning-bommel",
   "years": [
@@ -28516,8 +28932,10 @@
  },
  "herve loy": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "fr"
+  ],
+  "country": "fr",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Hervé",
@@ -28525,10 +28943,11 @@
   "last_name": "Loy",
   "name": "Hervé Loy",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/herve-loy",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "holden krizek": {
@@ -28712,27 +29131,6 @@
   "rider_id": "rider/hugo-scala-jr",
   "years": [
    2021
-  ]
- },
- "hugo simon": {
-  "birth_year_approx": null,
-  "countries": [
-   "fr"
-  ],
-  "country": "fr",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/hugo-simon",
-  "first_name": "Hugo",
-  "homonym_suspect": false,
-  "last_name": "Simon",
-  "name": "Hugo Simon",
-  "pcs_slug": [
-   "rider/hugo-simon"
-  ],
-  "results": 1,
-  "rider_id": "rider/hugo-simon",
-  "years": [
-   2024
   ]
  },
  "hunter bell": {
@@ -29144,8 +29542,8 @@
   "evidence": "PCS publishes this rider as rider/ingvar-omarsson",
   "first_name": "Ingvar",
   "homonym_suspect": false,
-  "last_name": "Ómarsson",
-  "name": "Ingvar Ómarsson",
+  "last_name": "Omarsson",
+  "name": "Ingvar Omarsson",
   "pcs_slug": [
    "rider/ingvar-omarsson"
   ],
@@ -29170,17 +29568,18 @@
   "last_name": "Bravo",
   "name": "Iñigo Bravo",
   "pcs_slug": null,
-  "results": 2,
+  "results": 1,
   "rider_id": "rider/inigo-bravo",
   "years": [
-   2024,
    2026
   ]
  },
  "inigo bravo saez": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Iñigo Bravo",
@@ -29188,10 +29587,12 @@
   "last_name": "Saez",
   "name": "Iñigo Bravo Saez",
   "pcs_slug": null,
-  "results": 1,
+  "results": 3,
   "rider_id": "rider/inigo-bravo-saez",
   "years": [
-   2022
+   2022,
+   2023,
+   2024
   ]
  },
  "innokenty zavyalov": {
@@ -29214,6 +29615,25 @@
    2022,
    2023,
    2024
+  ]
+ },
+ "ino serra vicente": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Ino Serra",
+  "homonym_suspect": false,
+  "last_name": "Vicente",
+  "name": "Ino Serra Vicente",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/ino-serra-vicente",
+  "years": [
+   2023
   ]
  },
  "ipar martinez": {
@@ -29494,6 +29914,44 @@
   "rider_id": "rider/ivan-jimenez-centella",
   "years": [
    2021
+  ]
+ },
+ "ivan raboso": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Ivan",
+  "homonym_suspect": false,
+  "last_name": "Raboso",
+  "name": "Ivan Raboso",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/ivan-raboso",
+  "years": [
+   2023
+  ]
+ },
+ "ivan sadurni": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Ivan",
+  "homonym_suspect": false,
+  "last_name": "Sadurni",
+  "name": "Ivan Sadurni",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/ivan-sadurni",
+  "years": [
+   2023
   ]
  },
  "ivar slik": {
@@ -29864,18 +30322,16 @@
  "jack thompson": {
   "birth_year_approx": null,
   "countries": [
-   "gb"
+   "ie"
   ],
-  "country": "gb",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/jack-thompson",
+  "country": "ie",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Jack",
   "homonym_suspect": false,
   "last_name": "Thompson",
   "name": "Jack Thompson",
-  "pcs_slug": [
-   "rider/jack-thompson"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/jack-thompson",
   "years": [
@@ -30192,9 +30648,10 @@
   "last_name": "Vaughan",
   "name": "Jacob Vaughan",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/jacob-vaughan",
   "years": [
+   2023,
    2024
   ]
  },
@@ -30313,6 +30770,25 @@
   "rider_id": "rider/jaedon-terlouw",
   "years": [
    2024
+  ]
+ },
+ "jaime cabada cervera": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Jaime Cabada",
+  "homonym_suspect": false,
+  "last_name": "Cervera",
+  "name": "Jaime Cabada Cervera",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/jaime-cabada-cervera",
+  "years": [
+   2023
   ]
  },
  "jake boyce": {
@@ -31473,9 +31949,10 @@
  "jan willem groeneveld": {
   "birth_year_approx": 1990,
   "countries": [
+   "nl",
    "us"
   ],
-  "country": "us",
+  "country": "nl",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Jan-Willem",
@@ -31483,13 +31960,14 @@
   "last_name": "Groeneveld",
   "name": "Jan-Willem Groeneveld",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/jan-willem-groeneveld",
   "years": [
-   2021
+   2021,
+   2023
   ]
  },
- "jannik frank christ": {
+ "jannik christ": {
   "birth_year_approx": null,
   "countries": [
    "de"
@@ -31497,13 +31975,13 @@
   "country": "de",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "Jannik Frank",
+  "first_name": "Jannik",
   "homonym_suspect": false,
   "last_name": "Christ",
-  "name": "Jannik Frank Christ",
+  "name": "Jannik Christ",
   "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/jannik-frank-christ",
+  "rider_id": "rider/jannik-christ",
   "years": [
    2023
   ]
@@ -32642,6 +33120,25 @@
    2021
   ]
  },
+ "javier martin andreu": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Javier Martín",
+  "homonym_suspect": false,
+  "last_name": "Andreu",
+  "name": "Javier Martín Andreu",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/javier-martin-andreu",
+  "years": [
+   2024
+  ]
+ },
  "javier miguel benedited": {
   "birth_year_approx": null,
   "countries": [],
@@ -32657,6 +33154,25 @@
   "rider_id": "rider/javier-miguel-benedited",
   "years": [
    2021
+  ]
+ },
+ "javier pascual torres": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Javier Pascual",
+  "homonym_suspect": false,
+  "last_name": "Torres",
+  "name": "Javier Pascual Torres",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/javier-pascual-torres",
+  "years": [
+   2023
   ]
  },
  "jaxon pascal": {
@@ -34598,6 +35114,25 @@
    2010
   ]
  },
+ "jeremy hunt": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "matched",
+  "evidence": "Hunt Jeremy (gb), road 1996-2012, gravel 2024-2024",
+  "first_name": "Jeremy",
+  "homonym_suspect": false,
+  "last_name": "Hunt",
+  "name": "Jeremy Hunt",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/jeremy-hunt",
+  "years": [
+   2024
+  ]
+ },
  "jeremy kroto": {
   "birth_year_approx": 1978,
   "countries": [
@@ -34777,15 +35312,13 @@
    "nl"
   ],
   "country": "nl",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/jeroen-rombouts",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Jeroen",
   "homonym_suspect": false,
   "last_name": "Rombouts",
   "name": "Jeroen Rombouts",
-  "pcs_slug": [
-   "rider/jeroen-rombouts"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/jeroen-rombouts",
   "years": [
@@ -35304,22 +35837,39 @@
  "jesus alberto rubio": {
   "birth_year_approx": null,
   "countries": [
-   "es"
+   "de"
   ],
-  "country": "es",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/jesus-albert-rubio",
+  "country": "de",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Jesús Alberto",
   "homonym_suspect": false,
   "last_name": "Rubio",
   "name": "Jesús Alberto Rubio",
-  "pcs_slug": [
-   "rider/jesus-albert-rubio"
-  ],
+  "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/jesus-albert-rubio",
+  "rider_id": "rider/jesus-alberto-rubio",
   "years": [
    2024
+  ]
+ },
+ "jesus ramon lopez": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Jesus Ramon",
+  "homonym_suspect": false,
+  "last_name": "Lopez",
+  "name": "Jesus Ramon Lopez",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/jesus-ramon-lopez",
+  "years": [
+   2023
   ]
  },
  "jesus sanchez bas": {
@@ -36142,23 +36692,23 @@
    2021
   ]
  },
- "joao miguel nunes": {
+ "joaquim jorquera donoso": {
   "birth_year_approx": null,
   "countries": [
-   "pt"
+   "es"
   ],
-  "country": "pt",
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "João Miguel",
+  "first_name": "Joaquim Jorquera",
   "homonym_suspect": false,
-  "last_name": "Nunes",
-  "name": "João Miguel Nunes",
+  "last_name": "Donoso",
+  "name": "Joaquim Jorquera Donoso",
   "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/joao-miguel-nunes",
+  "rider_id": "rider/joaquim-jorquera-donoso",
   "years": [
-   2024
+   2023
   ]
  },
  "jochen de vocht": {
@@ -36473,9 +37023,10 @@
   "last_name": "Pitt",
   "name": "Joe Pitt",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/joe-pitt",
   "years": [
+   2024,
    2025
   ]
  },
@@ -36771,27 +37322,6 @@
   "rider_id": "rider/joey-hassett",
   "years": [
    2025
-  ]
- },
- "johan bart postma": {
-  "birth_year_approx": null,
-  "countries": [
-   "nl"
-  ],
-  "country": "nl",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/bart-postma",
-  "first_name": "Johan-Bart",
-  "homonym_suspect": false,
-  "last_name": "Postma",
-  "name": "Johan-Bart Postma",
-  "pcs_slug": [
-   "rider/bart-postma"
-  ],
-  "results": 1,
-  "rider_id": "rider/bart-postma",
-  "years": [
-   2024
   ]
  },
  "johannes faessler": {
@@ -38433,6 +38963,25 @@
    2013
   ]
  },
+ "john wasserman": {
+  "birth_year_approx": null,
+  "countries": [
+   "us"
+  ],
+  "country": "us",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "John",
+  "homonym_suspect": false,
+  "last_name": "Wasserman",
+  "name": "John Wasserman",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/john-wasserman",
+  "years": [
+   2023
+  ]
+ },
  "john weirath": {
   "birth_year_approx": 1975,
   "countries": [
@@ -39112,6 +39661,25 @@
    2013
   ]
  },
+ "jonathan homberg": {
+  "birth_year_approx": null,
+  "countries": [
+   "de"
+  ],
+  "country": "de",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Jonathan",
+  "homonym_suspect": false,
+  "last_name": "Homberg",
+  "name": "Jonathan Homberg",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/jonathan-homberg",
+  "years": [
+   2024
+  ]
+ },
  "jonathan hornbeck   mavic": {
   "birth_year_approx": 1990,
   "countries": [
@@ -39309,27 +39877,6 @@
    2023
   ]
  },
- "jonathan van den berg": {
-  "birth_year_approx": null,
-  "countries": [
-   "nl"
-  ],
-  "country": "nl",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/jonathan-van-den-berg",
-  "first_name": "Jonathan",
-  "homonym_suspect": false,
-  "last_name": "van den Berg",
-  "name": "Jonathan van den Berg",
-  "pcs_slug": [
-   "rider/jonathan-van-den-berg"
-  ],
-  "results": 1,
-  "rider_id": "rider/jonathan-van-den-berg",
-  "years": [
-   2024
-  ]
- },
  "jonathan w lawrence": {
   "birth_year_approx": 1969,
   "countries": [
@@ -39456,15 +40003,13 @@
    "fi"
   ],
   "country": "fi",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/joonas-henttala",
+  "decision": "matched",
+  "evidence": "Henttala Joonas (fi), road 2015-2019, gravel 2024-2024",
   "first_name": "Joonas",
   "homonym_suspect": false,
   "last_name": "Henttala",
   "name": "Joonas Henttala",
-  "pcs_slug": [
-   "rider/joonas-henttala"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/joonas-henttala",
   "years": [
@@ -39642,6 +40187,25 @@
    2022
   ]
  },
+ "jordi domenech navalon": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Jordi Domenech",
+  "homonym_suspect": false,
+  "last_name": "Navalon",
+  "name": "Jordi Domenech Navalon",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/jordi-domenech-navalon",
+  "years": [
+   2024
+  ]
+ },
  "jordi meeus": {
   "birth_year_approx": 1998,
   "countries": [
@@ -39716,6 +40280,25 @@
    2026
   ]
  },
+ "jorge diaz lopez": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Jorge Díaz",
+  "homonym_suspect": false,
+  "last_name": "López",
+  "name": "Jorge Díaz López",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/jorge-diaz-lopez",
+  "years": [
+   2024
+  ]
+ },
  "jorge gonzalez": {
   "birth_year_approx": null,
   "countries": [
@@ -39754,25 +40337,6 @@
   "rider_id": "rider/jorge-munoz",
   "years": [
    2023,
-   2024
-  ]
- },
- "jorge padrones": {
-  "birth_year_approx": null,
-  "countries": [
-   "es"
-  ],
-  "country": "es",
-  "decision": "new_no_candidate",
-  "evidence": "no existing rider with this name",
-  "first_name": "Jorge",
-  "homonym_suspect": false,
-  "last_name": "Padrones",
-  "name": "Jorge Padrones",
-  "pcs_slug": null,
-  "results": 1,
-  "rider_id": "rider/jorge-padrones",
-  "years": [
    2024
   ]
  },
@@ -40509,6 +41073,25 @@
    2014
   ]
  },
+ "josh ibbett": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Josh",
+  "homonym_suspect": false,
+  "last_name": "Ibbett",
+  "name": "Josh Ibbett",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/josh-ibbett",
+  "years": [
+   2023
+  ]
+ },
  "josh molnar": {
   "birth_year_approx": 1985,
   "countries": [
@@ -40828,6 +41411,25 @@
    2025
   ]
  },
+ "joshua reid": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Joshua",
+  "homonym_suspect": false,
+  "last_name": "Reid",
+  "name": "Joshua Reid",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/joshua-reid",
+  "years": [
+   2023
+  ]
+ },
  "joshua shively": {
   "birth_year_approx": 1972,
   "countries": [
@@ -40906,6 +41508,25 @@
    2014
   ]
  },
+ "josue albarral lopez": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Josue Albarral",
+  "homonym_suspect": false,
+  "last_name": "Lopez",
+  "name": "Josue Albarral Lopez",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/josue-albarral-lopez",
+  "years": [
+   2023
+  ]
+ },
  "jouko haapanen": {
   "birth_year_approx": 1965,
   "countries": [
@@ -40947,8 +41568,10 @@
  },
  "juan antonio flecha giannoni": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Juan Antonio Flecha",
@@ -40956,10 +41579,11 @@
   "last_name": "Giannoni",
   "name": "Juan Antonio Flecha Giannoni",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/juan-antonio-flecha-giannoni",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "juan carlos alvarado": {
@@ -41029,6 +41653,25 @@
   "rider_id": "rider/juan-jose-madarnas",
   "years": [
    2021
+  ]
+ },
+ "juan manuel paez ramiro": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Juan Manuel Páez",
+  "homonym_suspect": false,
+  "last_name": "Ramiro",
+  "name": "Juan Manuel Páez Ramiro",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/juan-manuel-paez-ramiro",
+  "years": [
+   2023
   ]
  },
  "judah gustafson": {
@@ -41245,6 +41888,25 @@
    2023
   ]
  },
+ "julien flachon": {
+  "birth_year_approx": null,
+  "countries": [
+   "fr"
+  ],
+  "country": "fr",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Julien",
+  "homonym_suspect": false,
+  "last_name": "Flachon",
+  "name": "Julien Flachon",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/julien-flachon",
+  "years": [
+   2023
+  ]
+ },
  "julien gagne": {
   "birth_year_approx": 1995,
   "countries": [
@@ -41381,6 +42043,25 @@
   "years": [
    1999,
    2000
+  ]
+ },
+ "jurgen sander": {
+  "birth_year_approx": null,
+  "countries": [
+   "na"
+  ],
+  "country": "na",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Jürgen",
+  "homonym_suspect": false,
+  "last_name": "Sander",
+  "name": "Jürgen Sander",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/jurgen-sander",
+  "years": [
+   2023
   ]
  },
  "justin abbott": {
@@ -41919,6 +42600,25 @@
   "rider_id": "rider/karl-klinge",
   "years": [
    2026
+  ]
+ },
+ "karl oskar olsen": {
+  "birth_year_approx": null,
+  "countries": [
+   "dk"
+  ],
+  "country": "dk",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Karl Oskar",
+  "homonym_suspect": false,
+  "last_name": "Olsen",
+  "name": "Karl Oskar Olsen",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/karl-oskar-olsen",
+  "years": [
+   2024
   ]
  },
  "karl waak": {
@@ -42800,17 +43500,15 @@
    "ke"
   ],
   "country": "ke",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/kenneth-mungai",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Kenneth Karaya",
   "homonym_suspect": false,
   "last_name": "Mungai",
   "name": "Kenneth Karaya Mungai",
-  "pcs_slug": [
-   "rider/kenneth-mungai"
-  ],
+  "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/kenneth-mungai",
+  "rider_id": "rider/kenneth-karaya-mungai",
   "years": [
    2024
   ]
@@ -43323,15 +44021,13 @@
    "za"
   ],
   "country": "za",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/kevin-benkenstein",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Kevin",
   "homonym_suspect": false,
   "last_name": "Benkenstein",
   "name": "Kevin Benkenstein",
-  "pcs_slug": [
-   "rider/kevin-benkenstein"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/kevin-benkenstein",
   "years": [
@@ -45355,15 +46051,13 @@
    "gb"
   ],
   "country": "gb",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/lawrence-carpenter",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Lawrence",
   "homonym_suspect": false,
   "last_name": "Carpenter",
   "name": "Lawrence Carpenter",
-  "pcs_slug": [
-   "rider/lawrence-carpenter"
-  ],
+  "pcs_slug": null,
   "results": 3,
   "rider_id": "rider/lawrence-carpenter",
   "years": [
@@ -45668,18 +46362,17 @@
    "it"
   ],
   "country": "it",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/leonardo-basso",
+  "decision": "matched",
+  "evidence": "Basso Leonardo (it), road 2018-2023, gravel 2023-2024",
   "first_name": "Leonardo",
   "homonym_suspect": false,
   "last_name": "Basso",
   "name": "Leonardo Basso",
-  "pcs_slug": [
-   "rider/leonardo-basso"
-  ],
-  "results": 1,
+  "pcs_slug": null,
+  "results": 2,
   "rider_id": "rider/leonardo-basso",
   "years": [
+   2023,
    2024
   ]
  },
@@ -46019,6 +46712,25 @@
    2022
   ]
  },
+ "lorenzo bellucco": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Lorenzo",
+  "homonym_suspect": false,
+  "last_name": "Bellucco",
+  "name": "Lorenzo Bellucco",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/lorenzo-bellucco",
+  "years": [
+   2024
+  ]
+ },
  "lorenzo iii semple": {
   "birth_year_approx": 1967,
   "countries": [
@@ -46132,11 +46844,29 @@
   "last_name": "Zimmer",
   "name": "Luc Zimmer",
   "pcs_slug": null,
-  "results": 2,
+  "results": 1,
   "rider_id": "rider/luc-zimmer",
   "years": [
-   2024,
    2025
+  ]
+ },
+ "luca celli": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "matched",
+  "evidence": "Celli Luca (it), road 2004-2009, gravel 2024-2024",
+  "first_name": "Luca",
+  "homonym_suspect": false,
+  "last_name": "Celli",
+  "name": "Luca Celli",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/luca-celli",
+  "years": [
+   2024
   ]
  },
  "luca dressler": {
@@ -46383,6 +47113,25 @@
   "rider_id": "rider/luis-diego-chaverri",
   "years": [
    2014
+  ]
+ },
+ "luis enrique brenes rodriguez": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Luis Enrique Brenes",
+  "homonym_suspect": false,
+  "last_name": "Rodriguez",
+  "name": "Luis Enrique Brenes Rodriguez",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/luis-enrique-brenes-rodriguez",
+  "years": [
+   2023
   ]
  },
  "luis mejia": {
@@ -46924,6 +47673,25 @@
    2012
   ]
  },
+ "manu rudaz": {
+  "birth_year_approx": null,
+  "countries": [
+   "ch"
+  ],
+  "country": "ch",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Manu",
+  "homonym_suspect": false,
+  "last_name": "Rudaz",
+  "name": "Manu Rudaz",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/manu-rudaz",
+  "years": [
+   2024
+  ]
+ },
  "manuel prado": {
   "birth_year_approx": 1982,
   "countries": [
@@ -46951,19 +47719,35 @@
    "ch"
   ],
   "country": "ch",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/manuel-rudaz",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Manuel",
   "homonym_suspect": false,
   "last_name": "Rudaz",
   "name": "Manuel Rudaz",
-  "pcs_slug": [
-   "rider/manuel-rudaz"
-  ],
-  "results": 2,
+  "pcs_slug": null,
+  "results": 1,
   "rider_id": "rider/manuel-rudaz",
   "years": [
-   2023,
+   2023
+  ]
+ },
+ "manuel vogl": {
+  "birth_year_approx": null,
+  "countries": [
+   "at"
+  ],
+  "country": "at",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Manuel",
+  "homonym_suspect": false,
+  "last_name": "Vogl",
+  "name": "Manuel Vogl",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/manuel-vogl",
+  "years": [
    2024
   ]
  },
@@ -47171,7 +47955,7 @@
    2021
   ]
  },
- "marc rusinol": {
+ "marc rusinol picanol": {
   "birth_year_approx": null,
   "countries": [
    "es"
@@ -47179,40 +47963,25 @@
   "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "Marc",
-  "homonym_suspect": false,
-  "last_name": "Rusiñol",
-  "name": "Marc Rusiñol",
-  "pcs_slug": null,
-  "results": 1,
-  "rider_id": "rider/marc-rusinol",
-  "years": [
-   2024
-  ]
- },
- "marc rusinol picanol": {
-  "birth_year_approx": null,
-  "countries": [],
-  "country": null,
-  "decision": "new_no_candidate",
-  "evidence": "no existing rider with this name",
   "first_name": "Marc Rusiñol",
   "homonym_suspect": false,
   "last_name": "Picañol",
   "name": "Marc Rusiñol Picañol",
   "pcs_slug": null,
-  "results": 1,
+  "results": 3,
   "rider_id": "rider/marc-rusinol-picanol",
   "years": [
-   2022
+   2022,
+   2023,
+   2024
   ]
  },
  "marc slinger": {
   "birth_year_approx": null,
   "countries": [
-   "ch"
+   "dk"
   ],
-  "country": "ch",
+  "country": "dk",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Marc",
@@ -47307,15 +48076,13 @@
    "it"
   ],
   "country": "it",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/marcello-pavarin",
+  "decision": "matched",
+  "evidence": "Pavarin Marcello (it), road 2011-2012, gravel 2024-2024",
   "first_name": "Marcello",
   "homonym_suspect": false,
   "last_name": "Pavarin",
   "name": "Marcello Pavarin",
-  "pcs_slug": [
-   "rider/marcello-pavarin"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/marcello-pavarin",
   "years": [
@@ -47355,10 +48122,11 @@
   "last_name": "Bo",
   "name": "Marco Dal Bo",
   "pcs_slug": null,
-  "results": 2,
+  "results": 3,
   "rider_id": "rider/marco-dal-bo",
   "years": [
    2022,
+   2023,
    2024
   ]
  },
@@ -47423,8 +48191,10 @@
  },
  "marco heemskerk": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "nl"
+  ],
+  "country": "nl",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Marco",
@@ -47432,10 +48202,11 @@
   "last_name": "Heemskerk",
   "name": "Marco Heemskerk",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/marco-heemskerk",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "marco van schijndel": {
@@ -47588,8 +48359,8 @@
   "evidence": "no existing rider with this name",
   "first_name": "Marin",
   "homonym_suspect": false,
-  "last_name": "de Saint-exupéry",
-  "name": "Marin de Saint-exupéry",
+  "last_name": "De Saint-Exupéry",
+  "name": "Marin De Saint-Exupéry",
   "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/marin-de-saint-exupery",
@@ -48259,6 +49030,25 @@
    2008
   ]
  },
+ "mark livesey": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Mark",
+  "homonym_suspect": false,
+  "last_name": "Livesey",
+  "name": "Mark Livesey",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/mark-livesey",
+  "years": [
+   2023
+  ]
+ },
  "mark llinares": {
   "birth_year_approx": 1964,
   "countries": [
@@ -48701,6 +49491,25 @@
    2025
   ]
  },
+ "martijn van strien": {
+  "birth_year_approx": null,
+  "countries": [
+   "nl"
+  ],
+  "country": "nl",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Martijn",
+  "homonym_suspect": false,
+  "last_name": "Van Strien",
+  "name": "Martijn Van Strien",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/martijn-van-strien",
+  "years": [
+   2023
+  ]
+ },
  "martin pahl": {
   "birth_year_approx": 1961,
   "countries": [
@@ -48967,6 +49776,25 @@
   "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/mason-wilson",
+  "years": [
+   2024
+  ]
+ },
+ "massimo coledan": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Massimo",
+  "homonym_suspect": false,
+  "last_name": "Coledan",
+  "name": "Massimo Coledan",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/massimo-coledan",
   "years": [
    2024
   ]
@@ -50937,15 +51765,13 @@
    "it"
   ],
   "country": "it",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/mattia-gaffuri",
+  "decision": "matched",
+  "evidence": "Gaffuri Mattia (it), road 2026-2026, gravel 2024-2024",
   "first_name": "Mattia",
   "homonym_suspect": false,
   "last_name": "Gaffuri",
   "name": "Mattia Gaffuri",
-  "pcs_slug": [
-   "rider/mattia-gaffuri"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/mattia-gaffuri",
   "years": [
@@ -51038,12 +51864,13 @@
   "evidence": "no existing rider with this name",
   "first_name": "Mauricio",
   "homonym_suspect": false,
-  "last_name": "Ordonez",
-  "name": "Mauricio Ordonez",
+  "last_name": "Ordoñez",
+  "name": "Mauricio Ordoñez",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/mauricio-ordonez",
   "years": [
+   2024,
    2025
   ]
  },
@@ -51244,6 +52071,25 @@
   "years": [
    1994,
    1995
+  ]
+ },
+ "max spurge": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Max",
+  "homonym_suspect": false,
+  "last_name": "Spurge",
+  "name": "Max Spurge",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/max-spurge",
+  "years": [
+   2024
   ]
  },
  "max taam": {
@@ -53114,8 +53960,10 @@
  },
  "miguel angel garcia marti": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "MIGUEL ANGEL GARCíA",
@@ -53123,11 +53971,12 @@
   "last_name": "MARTí",
   "name": "MIGUEL ANGEL GARCíA MARTí",
   "pcs_slug": null,
-  "results": 2,
+  "results": 3,
   "rider_id": "rider/miguel-angel-garcia-marti",
   "years": [
    2021,
-   2022
+   2022,
+   2023
   ]
  },
  "miguel angel pareja garcia": {
@@ -53162,6 +54011,25 @@
   "rider_id": "rider/miguel-angel-saez-rebollo",
   "years": [
    2021
+  ]
+ },
+ "miguel garcia losada": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Miguel García",
+  "homonym_suspect": false,
+  "last_name": "Losada",
+  "name": "Miguel García Losada",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/miguel-garcia-losada",
+  "years": [
+   2023
   ]
  },
  "miguel pareja": {
@@ -53785,9 +54653,10 @@
   "last_name": "Mono",
   "name": "Mike Mono",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/mike-mono",
   "years": [
+   2023,
    2024
   ]
  },
@@ -54168,6 +55037,25 @@
    2016
   ]
  },
+ "mike vlietstra": {
+  "birth_year_approx": null,
+  "countries": [
+   "nl"
+  ],
+  "country": "nl",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Mike",
+  "homonym_suspect": false,
+  "last_name": "Vlietstra",
+  "name": "Mike Vlietstra",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/mike-vlietstra",
+  "years": [
+   2023
+  ]
+ },
  "mike volk": {
   "birth_year_approx": 1964,
   "countries": [
@@ -54528,6 +55416,44 @@
   "rider_id": "rider/milton-schmida",
   "years": [
    2006
+  ]
+ },
+ "miquel campasol llinas": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Miquel Campasol",
+  "homonym_suspect": false,
+  "last_name": "Llinas",
+  "name": "Miquel Campasol Llinas",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/miquel-campasol-llinas",
+  "years": [
+   2023
+  ]
+ },
+ "miquel rojo rosa": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Miquel Rojo",
+  "homonym_suspect": false,
+  "last_name": "Rosa",
+  "name": "Miquel Rojo Rosa",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/miquel-rojo-rosa",
+  "years": [
+   2023
   ]
  },
  "miquelet campasol llinas": {
@@ -55615,6 +56541,25 @@
    2026
   ]
  },
+ "niccolo varanini": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Niccolo",
+  "homonym_suspect": false,
+  "last_name": "Varanini",
+  "name": "Niccolo Varanini",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/niccolo-varanini",
+  "years": [
+   2023
+  ]
+ },
  "nicholas applegate": {
   "birth_year_approx": 1981,
   "countries": [
@@ -56177,8 +57122,10 @@
  },
  "nicola girardi": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Nicola",
@@ -56186,10 +57133,11 @@
   "last_name": "Girardi",
   "name": "Nicola Girardi",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/nicola-girardi",
   "years": [
-   2022
+   2022,
+   2024
   ]
  },
  "nicolai henriksen": {
@@ -56281,10 +57229,10 @@
   "country": "it",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "Nicolo",
+  "first_name": "Nicolò",
   "homonym_suspect": false,
   "last_name": "Ferrazzo",
-  "name": "Nicolo Ferrazzo",
+  "name": "Nicolò Ferrazzo",
   "pcs_slug": null,
   "results": 3,
   "rider_id": "rider/nicolo-ferrazzo",
@@ -56599,15 +57547,13 @@
    "nl"
   ],
   "country": "nl",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/nol-van-loon",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Nol",
   "homonym_suspect": false,
   "last_name": "Van Loon",
   "name": "Nol Van Loon",
-  "pcs_slug": [
-   "rider/nol-van-loon"
-  ],
+  "pcs_slug": null,
   "results": 3,
   "rider_id": "rider/nol-van-loon",
   "years": [
@@ -56679,15 +57625,13 @@
    "no"
   ],
   "country": "no",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/ole-bjorn-smisethjell",
-  "first_name": "Ole Bjorn",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Ole Bjørn",
   "homonym_suspect": false,
   "last_name": "Smisethjell",
-  "name": "Ole Bjorn Smisethjell",
-  "pcs_slug": [
-   "rider/ole-bjorn-smisethjell"
-  ],
+  "name": "Ole Bjørn Smisethjell",
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/ole-bjorn-smisethjell",
   "years": [
@@ -56923,8 +57867,10 @@
  },
  "oriol chias": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Oriol",
@@ -56932,10 +57878,11 @@
   "last_name": "Chias",
   "name": "Oriol Chias",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/oriol-chias",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "oscar aakvist andersen": {
@@ -57166,27 +58113,6 @@
   "years": [
    2025,
    2026
-  ]
- },
- "padraig marrey": {
-  "birth_year_approx": null,
-  "countries": [
-   "ie"
-  ],
-  "country": "ie",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/padraig-marrey",
-  "first_name": "Padraig",
-  "homonym_suspect": false,
-  "last_name": "Marrey",
-  "name": "Padraig Marrey",
-  "pcs_slug": [
-   "rider/padraig-marrey"
-  ],
-  "results": 1,
-  "rider_id": "rider/padraig-marrey",
-  "years": [
-   2024
   ]
  },
  "parker kyzer": {
@@ -59503,6 +60429,25 @@
    2025
   ]
  },
+ "philippe bechet": {
+  "birth_year_approx": null,
+  "countries": [
+   "ch"
+  ],
+  "country": "ch",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Philippe",
+  "homonym_suspect": false,
+  "last_name": "Béchet",
+  "name": "Philippe Béchet",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/philippe-bechet",
+  "years": [
+   2023
+  ]
+ },
  "phillip holman hebert": {
   "birth_year_approx": 1971,
   "countries": [
@@ -59558,6 +60503,25 @@
   "rider_id": "rider/philllip-ring",
   "years": [
    2004
+  ]
+ },
+ "pierfrancesco santin": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Pierfrancesco",
+  "homonym_suspect": false,
+  "last_name": "Santin",
+  "name": "Pierfrancesco Santin",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/pierfrancesco-santin",
+  "years": [
+   2023
   ]
  },
  "pierre echasserieau": {
@@ -59924,12 +60888,30 @@
   "last_name": "Comulada",
   "name": "Ramon Comulada",
   "pcs_slug": null,
-  "results": 3,
+  "results": 2,
   "rider_id": "rider/ramon-comulada",
   "years": [
-   2023,
    2025,
    2026
+  ]
+ },
+ "ramon comulada perxachs": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Ramon Comulada",
+  "homonym_suspect": false,
+  "last_name": "Perxachs",
+  "name": "Ramon Comulada Perxachs",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/ramon-comulada-perxachs",
+  "years": [
+   2023
   ]
  },
  "ramon rubio palau": {
@@ -60770,6 +61752,44 @@
    2022
   ]
  },
+ "riccardo mosconi": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Riccardo",
+  "homonym_suspect": false,
+  "last_name": "Mosconi",
+  "name": "Riccardo Mosconi",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/riccardo-mosconi",
+  "years": [
+   2024
+  ]
+ },
+ "riccardo rosso": {
+  "birth_year_approx": null,
+  "countries": [
+   "it"
+  ],
+  "country": "it",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Riccardo",
+  "homonym_suspect": false,
+  "last_name": "Rosso",
+  "name": "Riccardo Rosso",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/riccardo-rosso",
+  "years": [
+   2024
+  ]
+ },
  "rich eidem": {
   "birth_year_approx": 1960,
   "countries": [
@@ -61340,15 +62360,13 @@
    "gb"
   ],
   "country": "gb",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/richard-tanguy",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Richard",
   "homonym_suspect": false,
   "last_name": "Tanguy",
   "name": "Richard Tanguy",
-  "pcs_slug": [
-   "rider/richard-tanguy"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/richard-tanguy",
   "years": [
@@ -61710,6 +62728,25 @@
    2002,
    2004,
    2005
+  ]
+ },
+ "riviere maxence": {
+  "birth_year_approx": null,
+  "countries": [
+   "fr"
+  ],
+  "country": "fr",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Rivière",
+  "homonym_suspect": false,
+  "last_name": "Maxence",
+  "name": "Rivière Maxence",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/riviere-maxence",
+  "years": [
+   2023
   ]
  },
  "rob ballou": {
@@ -62708,7 +63745,7 @@
    1998
   ]
  },
- "robert maso": {
+ "robert maso vidal": {
   "birth_year_approx": null,
   "countries": [
    "es"
@@ -62716,13 +63753,13 @@
   "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "Robert",
+  "first_name": "Robert Masó",
   "homonym_suspect": false,
-  "last_name": "Masó",
-  "name": "Robert Masó",
+  "last_name": "Vidal",
+  "name": "Robert Masó Vidal",
   "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/robert-maso",
+  "rider_id": "rider/robert-maso-vidal",
   "years": [
    2023
   ]
@@ -63034,6 +64071,25 @@
   "rider_id": "rider/robin-hankey",
   "years": [
    1997
+  ]
+ },
+ "roc balderstone roumens": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Roc Balderstone",
+  "homonym_suspect": false,
+  "last_name": "Roumens",
+  "name": "Roc Balderstone Roumens",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/roc-balderstone-roumens",
+  "years": [
+   2024
   ]
  },
  "rod bush": {
@@ -63463,6 +64519,25 @@
   "rider_id": "rider/roman-kilun-specialized",
   "years": [
    2016
+  ]
+ },
+ "romen guerra garcia": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Romén Guerra",
+  "homonym_suspect": false,
+  "last_name": "García",
+  "name": "Romén Guerra García",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/romen-guerra-garcia",
+  "years": [
+   2023
   ]
  },
  "ron amass": {
@@ -65396,18 +66471,17 @@
    "au"
   ],
   "country": "au",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/samuel-munday",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Samuel",
   "homonym_suspect": false,
   "last_name": "Munday",
   "name": "Samuel Munday",
-  "pcs_slug": [
-   "rider/samuel-munday"
-  ],
-  "results": 1,
+  "pcs_slug": null,
+  "results": 2,
   "rider_id": "rider/samuel-munday",
   "years": [
+   2023,
    2024
   ]
  },
@@ -65489,8 +66563,10 @@
  },
  "santi armero sanchez": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Santi Armero",
@@ -65498,13 +66574,14 @@
   "last_name": "Sanchez",
   "name": "Santi Armero Sanchez",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/santi-armero-sanchez",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
- "santi sanchez": {
+ "santiago gutierrez": {
   "birth_year_approx": null,
   "countries": [
    "es"
@@ -65512,13 +66589,13 @@
   "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "Santi",
+  "first_name": "Santiago",
   "homonym_suspect": false,
-  "last_name": "Sánchez",
-  "name": "Santi Sánchez",
+  "last_name": "Gutiérrez",
+  "name": "Santiago Gutiérrez",
   "pcs_slug": null,
   "results": 1,
-  "rider_id": "rider/santi-sanchez",
+  "rider_id": "rider/santiago-gutierrez",
   "years": [
    2023
   ]
@@ -67368,6 +68445,25 @@
    2025
   ]
  },
+ "sergio molinero pena": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Sergio Molinero",
+  "homonym_suspect": false,
+  "last_name": "Peña",
+  "name": "Sergio Molinero Peña",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/sergio-molinero-pena",
+  "years": [
+   2023
+  ]
+ },
  "sergio valenti vaz": {
   "birth_year_approx": null,
   "countries": [],
@@ -67917,6 +69013,44 @@
   "rider_id": "rider/simi-hamilton",
   "years": [
    2022
+  ]
+ },
+ "simon beckers": {
+  "birth_year_approx": null,
+  "countries": [
+   "be"
+  ],
+  "country": "be",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Simon",
+  "homonym_suspect": false,
+  "last_name": "Beckers",
+  "name": "Simon Beckers",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/simon-beckers",
+  "years": [
+   2023
+  ]
+ },
+ "simon eden": {
+  "birth_year_approx": null,
+  "countries": [
+   "gb"
+  ],
+  "country": "gb",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Simon",
+  "homonym_suspect": false,
+  "last_name": "Eden",
+  "name": "Simon Eden",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/simon-eden",
+  "years": [
+   2024
   ]
  },
  "simon essl": {
@@ -69633,8 +70767,10 @@
  },
  "steven davis": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "us"
+  ],
+  "country": "us",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Steven",
@@ -69642,10 +70778,11 @@
   "last_name": "Davis",
   "name": "Steven Davis",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/steven-davis",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "steven frank": {
@@ -70067,6 +71204,25 @@
    2015
   ]
  },
+ "stijn kiekens": {
+  "birth_year_approx": null,
+  "countries": [
+   "be"
+  ],
+  "country": "be",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Stijn",
+  "homonym_suspect": false,
+  "last_name": "Kiekens",
+  "name": "Stijn Kiekens",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/stijn-kiekens",
+  "years": [
+   2023
+  ]
+ },
  "stijn van der jeught": {
   "birth_year_approx": null,
   "countries": [
@@ -70267,9 +71423,9 @@
  "sviatoslav gudzenko": {
   "birth_year_approx": null,
   "countries": [
-   "ch"
+   "ru"
   ],
-  "country": "ch",
+  "country": "ru",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Sviatoslav",
@@ -71152,6 +72308,26 @@
    2026
   ]
  },
+ "thomas boury": {
+  "birth_year_approx": null,
+  "countries": [
+   "fr"
+  ],
+  "country": "fr",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Thomas",
+  "homonym_suspect": false,
+  "last_name": "Boury",
+  "name": "Thomas Boury",
+  "pcs_slug": null,
+  "results": 2,
+  "rider_id": "rider/thomas-boury",
+  "years": [
+   2023,
+   2024
+  ]
+ },
  "thomas cartier": {
   "birth_year_approx": null,
   "countries": [],
@@ -71604,6 +72780,25 @@
    2026
   ]
  },
+ "thomas steinbusch": {
+  "birth_year_approx": null,
+  "countries": [
+   "nl"
+  ],
+  "country": "nl",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Thomas",
+  "homonym_suspect": false,
+  "last_name": "Steinbusch",
+  "name": "Thomas Steinbusch",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/thomas-steinbusch",
+  "years": [
+   2024
+  ]
+ },
  "thomas sturtevant": {
   "birth_year_approx": 1989,
   "countries": [
@@ -71732,15 +72927,13 @@
    "is"
   ],
   "country": "is",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/thorsteinn-bardarson",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Þorsteinn",
   "homonym_suspect": false,
   "last_name": "Bárðarson",
   "name": "Þorsteinn Bárðarson",
-  "pcs_slug": [
-   "rider/thorsteinn-bardarson"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/thorsteinn-bardarson",
   "years": [
@@ -72686,6 +73879,25 @@
    2016
   ]
  },
+ "timo rokitta": {
+  "birth_year_approx": null,
+  "countries": [
+   "de"
+  ],
+  "country": "de",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Timo",
+  "homonym_suspect": false,
+  "last_name": "Rokitta",
+  "name": "Timo Rokitta",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/timo-rokitta",
+  "years": [
+   2023
+  ]
+ },
  "timothy andrew": {
   "birth_year_approx": 1967,
   "countries": [
@@ -73076,13 +74288,32 @@
   "pcs_slug": [
    "rider/tobias-kongstad"
   ],
-  "results": 9,
+  "results": 7,
   "rider_id": "rider/tobias-kongstad",
   "years": [
-   2023,
    2024,
    2025,
    2026
+  ]
+ },
+ "tobias morch kongstad": {
+  "birth_year_approx": null,
+  "countries": [
+   "dk"
+  ],
+  "country": "dk",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Tobias Mørch",
+  "homonym_suspect": false,
+  "last_name": "Kongstad",
+  "name": "Tobias Mørch Kongstad",
+  "pcs_slug": null,
+  "results": 2,
+  "rider_id": "rider/tobias-morch-kongstad",
+  "years": [
+   2023,
+   2024
   ]
  },
  "tobias perry": {
@@ -74218,15 +75449,13 @@
    "nl"
   ],
   "country": "nl",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/tom-leezer",
+  "decision": "matched",
+  "evidence": "Leezer Tom (nl), road 2008-2020, gravel 2024-2024",
   "first_name": "Tom",
   "homonym_suspect": false,
   "last_name": "Leezer",
   "name": "Tom Leezer",
-  "pcs_slug": [
-   "rider/tom-leezer"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/tom-leezer",
   "years": [
@@ -75843,8 +77072,10 @@
  },
  "tue mantoni": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "dk"
+  ],
+  "country": "dk",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Tue",
@@ -75852,10 +77083,11 @@
   "last_name": "Mantoni",
   "name": "Tue Mantoni",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/tue-mantoni",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "twan altorf": {
@@ -76197,8 +77429,10 @@
  },
  "ulrich bartholmoes": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "de"
+  ],
+  "country": "de",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Ulrich",
@@ -76206,10 +77440,11 @@
   "last_name": "Bartholmoes",
   "name": "Ulrich Bartholmoes",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/ulrich-bartholmoes",
   "years": [
-   2022
+   2022,
+   2024
   ]
  },
  "ulrich bartholmos": {
@@ -76225,11 +77460,10 @@
   "last_name": "Bartholmös",
   "name": "Ulrich Bartholmös",
   "pcs_slug": null,
-  "results": 2,
+  "results": 1,
   "rider_id": "rider/ulrich-bartholmos",
   "years": [
-   2023,
-   2024
+   2023
   ]
  },
  "umberto marengo": {
@@ -76252,6 +77486,25 @@
   "years": [
    2025,
    2026
+  ]
+ },
+ "unai aguirrebena olabarria": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Unai Aguirrebeña",
+  "homonym_suspect": false,
+  "last_name": "Olabarria",
+  "name": "Unai Aguirrebeña Olabarria",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/unai-aguirrebena-olabarria",
+  "years": [
+   2023
   ]
  },
  "vaughn veenendaal": {
@@ -76298,15 +77551,13 @@
    "fr"
   ],
   "country": "fr",
-  "decision": "pcs_slug",
-  "evidence": "PCS publishes this rider as rider/victor-bosoni",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
   "first_name": "Victor",
   "homonym_suspect": false,
   "last_name": "Bosoni",
   "name": "Victor Bosoni",
-  "pcs_slug": [
-   "rider/victor-bosoni"
-  ],
+  "pcs_slug": null,
   "results": 1,
   "rider_id": "rider/victor-bosoni",
   "years": [
@@ -76747,13 +77998,14 @@
   "last_name": "Dixon",
   "name": "Watts Dixon",
   "pcs_slug": null,
-  "results": 4,
+  "results": 5,
   "rider_id": "rider/watts-dixon",
   "years": [
    2015,
    2016,
    2017,
-   2018
+   2018,
+   2024
   ]
  },
  "wayne a langbein": {
@@ -77579,8 +78831,10 @@
  },
  "xavi calvo sanchez": {
   "birth_year_approx": null,
-  "countries": [],
-  "country": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
   "first_name": "Xavi Calvo",
@@ -77588,10 +78842,11 @@
   "last_name": "Sánchez",
   "name": "Xavi Calvo Sánchez",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/xavi-calvo-sanchez",
   "years": [
-   2022
+   2022,
+   2023
   ]
  },
  "xavi gonzalez torreblanca": {
@@ -77626,6 +78881,44 @@
   "rider_id": "rider/xavier-andres-centeno",
   "years": [
    2022
+  ]
+ },
+ "xavier carmona mantas": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Xavier Carmona",
+  "homonym_suspect": false,
+  "last_name": "Mantas",
+  "name": "Xavier Carmona Mantas",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/xavier-carmona-mantas",
+  "years": [
+   2023
+  ]
+ },
+ "xavier ferrer": {
+  "birth_year_approx": null,
+  "countries": [
+   "es"
+  ],
+  "country": "es",
+  "decision": "new_no_candidate",
+  "evidence": "no existing rider with this name",
+  "first_name": "Xavier",
+  "homonym_suspect": false,
+  "last_name": "Ferrer",
+  "name": "Xavier Ferrer",
+  "pcs_slug": null,
+  "results": 1,
+  "rider_id": "rider/xavier-ferrer",
+  "years": [
+   2023
   ]
  },
  "yannick eckmann": {

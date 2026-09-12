@@ -192,10 +192,10 @@
   ]
  ],
  "value_counts": {
-  "gravel.team_id": 55,
+  "gravel.team_id": 46,
   "one_day.team_id": 84800,
   "stage_race.team_id": 639164,
-  "gravel.finish_time_seconds": 7841,
+  "gravel.finish_time_seconds": 7940,
   "one_day.finish_time_seconds": 72911,
   "stage_race.finish_time_seconds": 641287
  }

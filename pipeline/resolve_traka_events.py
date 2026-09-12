@@ -40,6 +40,9 @@ import sys
 from race_common import (GRAVEL, SOURCE_PCS, SOURCE_SPORTMANIACS,
                          SOURCE_TRETZESPORTS, exit_on_help)
 import scrape_pcs_gravel as pcs
+# The window size the archive applies to an open field — the number that makes
+# two sources comparable. Defined once, in the Athlinks scraper.
+from scrape_athlinks import FIELD_CAP
 import traka_api as api
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -225,6 +228,20 @@ def _usable(rec):
     return bool(rec and rec.get("event_id") and not rec.get("skip"))
 
 
+def contribution(rec):
+    """How many riders this source would actually put in the archive.
+
+    Not the size of its field — the size of the WINDOW its rule takes, which is
+    the only number worth comparing two sources on. `open_field` is capped at
+    FIELD_CAP however many finished; `pcs_field` and `elite_course` are not
+    capped, so they contribute everything they have.
+    """
+    if not _usable(rec):
+        return 0
+    n = rec.get("n_men") or rec.get("n_rows") or 0
+    return min(n, FIELD_CAP) if rec.get("rule") == "open_field" else n
+
+
 def report(data):
     print(f"\n=== {GRAVEL['traka'].name}   (Girona, Spain)")
     print(f"{'year':<6}{'source':<14}{'event':<22}{'rule':<14}"
@@ -292,6 +309,29 @@ def main(argv=None):
             rec["also_seen"] = (prev.get("also_seen") or []) + [{
                 "source": prev["source"], "event_name": prev.get("event_name"),
                 "n_men": prev.get("n_men"), "skip": prev.get("skip")}]
+        # PCS is preferred, but not unconditionally, and this is the same rule
+        # the timer merge above already applies: the source that actually puts
+        # riders in the archive wins, so merge order never silently decides
+        # which edition we keep.
+        #
+        # PCS lists the riders it has road pages for, which for an open gravel
+        # race can be a small slice of the field: 21 of The Traka 2023's 291
+        # classified men (10 pro + 11 national-only), where the archive's own
+        # FIELD_CAP would take 100. Preferring it there traded four fifths of
+        # the edition for 2 team assignments, and nothing noticed, because
+        # coverage.py counts NULLs and a field that SHRANK has none.
+        #
+        # Ties go to PCS, which is the point of preferring it: it publishes
+        # real rider/<slug> ids, so the crossover to a road career is an exact
+        # join instead of a name match. It only loses when it would cost
+        # riders.
+        if contribution(prev) > contribution(rec):
+            rec["skip"] = (f"{contribution(prev)} riders from "
+                           f"{prev['source']} vs {contribution(rec)} from PCS")
+            prev.setdefault("also_seen", []).append({
+                "source": rec["source"], "event_name": rec.get("event_name"),
+                "n_men": rec.get("n_men"), "skip": rec["skip"]})
+            continue
         data[year] = rec
     with open(MAP_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1, sort_keys=True)
