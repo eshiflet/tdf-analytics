@@ -6,9 +6,24 @@
    "evidence": "Unbound 2010/2011/2012, one rider. Two of his three registrations spell it GAMMEL (2011, 2012) against one Gammell (2010), so the source majority picks the canonical, not string length. A separate Jed Gammell rides Chequamegon with the double L and is a different person.",
    "decided": "2026-09-11"
   },
+  "rider/alejandro-gomez": {
+   "canonical": "rider/alejandro-gomez1",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 50596s in the 2024 edition, PCS rank 83. PCS's own slug is alejandro-gomez1, and PCS appends that digit only when the bare slug already belongs to someone else. Keeping our locally-minted `alejandro-gomez` would leave a name-shaped id for a rider PCS calls something else, which a later import of that OTHER Alejandro Gomez would land on. The PCS id survives even though it holds no result.",
+   "decided": "2026-09-12"
+  },
+  "rider/alex-ruiz": {
+   "canonical": "rider/alex-ruiz-roldan",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 45830s in the 2024 edition, PCS rank 27. Spanish double surname. The rider registered with the timer as Alex Ruiz Roldan; PCS carries only the paternal surname.",
+   "decided": "2026-09-12"
+  },
   "rider/andrew-lesperance": {
    "canonical": "rider/andrew-l-esperance",
    "evidence": "21 of his 22 gravel registrations across 8 races spell it L'Esperance; one Leadville 2023 entry drops the apostrophe. PCS's own slug is andrew-l-esperance and Canadian Cycling Magazine confirms a single rider from Nova Scotia.",
+   "decided": "2026-09-12"
+  },
+  "rider/antonio-ortiz": {
+   "canonical": "rider/antonio-ortiz-barranco",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 53118s in the 2023 edition, PCS rank 21. Spanish double surname, Antonio Ortiz Barranco. PCS lists him national-only with no rider page at all, so `antonio-ortiz` is not a PCS id, just PCS's shortened display slugified.",
    "decided": "2026-09-12"
   },
   "rider/ben-a-anderson": {
@@ -16,10 +31,25 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/damia-palafoix": {
+   "canonical": "rider/damia-palafoix-huguet",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 53304s in the 2024 edition, PCS rank 128. Catalan: Damia Palafoix Huguet, Club Ciclista Lleida. PCS truncates the second surname AND writes the accent the wrong way round -- Damia with an acute where Catalan takes a grave. Both ids hold zero results, so the tool's alphabetical tie-break had picked the PCS spelling; the override is what puts the researched name first.",
+   "decided": "2026-09-12"
+  },
+  "rider/david-coma": {
+   "canonical": "rider/david-coma-cases",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 49585s in the 2023 edition, PCS rank 5. Spanish double surname, David Coma Cases.",
+   "decided": "2026-09-12"
+  },
   "rider/dennis-barret": {
    "canonical": "rider/dennis-barrett",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/dixon-watts": {
+   "canonical": "rider/watts-dixon",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 47510s in the 2024 edition, PCS rank 48. PCS has the name BACKWARDS. Watts Dixon is a Bikerumor journalist and photographer (muckrack.com/watts-dixon) whose given name is Watts; five independent registrations across two platforms -- Athlinks for Unbound 2015, 2016, 2017 and 2018, sportmaniacs for the Traka 2024 -- all record first_name Watts, last_name Dixon, and the 2024 entry names his club as BIKERUMOR/REVOLTING COGS. One PCS result-table parse against five of the rider's own entries.",
+   "decided": "2026-09-12"
   },
   "rider/elliott-rodda": {
    "canonical": "rider/elliot-rodda",
@@ -47,6 +77,16 @@
     "gravel_scrapes/_raw/205431_283868.json (Chequamegon 1999: 'Greogry C Follet')"
    ]
   },
+  "rider/hafsteinn-aegir-geirsson": {
+   "canonical": "rider/hafsteinn-geirsson",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 45634s in the 2024 edition, PCS rank 24. Icelandic. The given name is Hafsteinn Aegir and Geirsson is the patronymic, so PCS has the FULLER and more correct form here -- the opposite direction to the Spanish cases. The timer id survives because it carries three results to PCS's none, but the surviving row takes PCS's spelling of the name.",
+   "decided": "2026-09-12"
+  },
+  "rider/jannik-frank-christ": {
+   "canonical": "rider/jannik-christ",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 53095s in the 2023 edition, PCS rank 20. PCS carries a middle name, Frank, that the rider's own timer registration does not. The id follows the registration; the fuller name is kept on the row.",
+   "decided": "2026-09-12"
+  },
   "rider/jeremyhorgan-kobelski": {
    "canonical": "rider/jeremy-horgan-kobelski",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
@@ -57,15 +97,35 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/jesus-albert-rubio": {
+   "canonical": "rider/jesus-alberto-rubio",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 48937s in the 2024 edition, PCS rank 65. Same name in both sources, Jesus Alberto Rubio -- only the id differs, PCS having slugified it as `albert`. NOTE the sources disagree about nationality: PCS says ES, sportmaniacs says DE, and his club (Mister Biker Gobik Team) is Spanish. Not resolved here; the merge does not touch it.",
+   "decided": "2026-09-12"
+  },
+  "rider/jorge-padrones": {
+   "canonical": "rider/jorge-padrones-leon",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 54543s in the 2024 edition, PCS rank 143. Spanish double surname, Jorge Padrones Leon, C.C. Torrevieja. Zero results on both sides, so the override rather than the alphabetical tie-break decides it.",
+   "decided": "2026-09-12"
+  },
   "rider/ken-n-statz": {
    "canonical": "rider/ken-statz",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/kenneth-mungai": {
+   "canonical": "rider/kenneth-karaya-mungai",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 46967s in the 2024 edition, PCS rank 39. Both rows already store the full name Kenneth Karaya Mungai; only PCS's slug drops the middle name.",
+   "decided": "2026-09-12"
+  },
   "rider/kent-t-mcdaniel": {
    "canonical": "rider/kent-mcdaniel",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/marc-rusinol": {
+   "canonical": "rider/marc-rusinol-picanol",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 47110s in the 2024 edition, PCS rank 43. Catalan double surname. Marc Rusinol Picanol appears in full in the UEC's 2018 Ultramarathon masters results (Masters 30/34, Calderi Esport Ciclista); PCS carries only Rusinol.",
+   "decided": "2026-09-12"
   },
   "rider/mark-elssaser": {
    "canonical": "rider/mark-elsasser",
@@ -101,6 +161,16 @@
    "canonical": "rider/randy-bailey",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/robert-maso": {
+   "canonical": "rider/robert-maso-vidal",
+   "evidence": "Both ids were created for one finisher of The Traka 360 2024 by two sources that spell him differently; he placed outside the archive's 100-rider window, so neither id holds a result. Catalan double surname, Robert Maso Vidal.",
+   "decided": "2026-09-12"
+  },
+  "rider/santi-sanchez": {
+   "canonical": "rider/santi-armero-sanchez",
+   "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 51243s in the 2023 edition, PCS rank 12. PCS kept the WRONG surname. The full name is Santi Armero Sanchez, and he is known publicly as Santi Armero -- a well-known Spanish cyclocross rider who led the RFEC elite ranking in 2004-05 and whose Traka 360 ride was written up by esmtb.com. Armero is the paternal surname; PCS dropped it and kept the maternal Sanchez.",
+   "decided": "2026-09-12"
   },
   "rider/shawn-d-aurelio": {
    "canonical": "rider/shawn-daurelio",

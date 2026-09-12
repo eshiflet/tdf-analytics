@@ -18,6 +18,21 @@ carrying a middle initial, because `tim-swift` is the name and `tim-m-swift`
 is what somebody typed into a race entry form; then alphabetical, so the choice
 is deterministic and re-running cannot pick differently.
 
+A group may name its own `canonical` and that wins outright. The last step
+above is a COIN TOSS dressed as a rule — it exists so two runs agree, not
+because the alphabetically-first id is the better one — so when research has
+actually established which id should survive, it has to be able to say so.
+The override is checked against the group's members and refuses a typo. Cases
+it was built for, all 2026-09-12:
+  * `alejandro-gomez1` outranks our locally-minted `alejandro-gomez` even
+    though the latter holds the only result. PCS appends that 1 BECAUSE the
+    bare slug is a different rider; keeping the bare one leaves a name-shaped
+    id that a later PCS import of that other man would collide with.
+  * `damia-palafoix-huguet` and `jorge-padrones-leon` over the PCS spellings.
+    Both pairs are 0 results against 0, so alphabetical decided it, and it
+    decided against the full Catalan/Spanish name and (for Palafoix) against
+    the correct grave accent.
+
 The absorbed id's results, standings and provenance move to the survivor, the
 orphan row is deleted, and the survivor gets a provenance row naming what it
 absorbed and why. Re-export every race set the merged riders appear in
@@ -98,6 +113,15 @@ def main():
         ms = sorted(g["members"], key=lambda m: (-m["results"],
                                                  bool(INITIAL.search(m["id"])),
                                                  m["nat"] is None, m["id"]))
+        forced = g.get("canonical")
+        if forced:
+            # A canonical naming an id that is not in the group is a typo, and
+            # silently ignoring it would merge the pair the other way round —
+            # the one outcome the override exists to prevent.
+            if forced not in [m["id"] for m in ms]:
+                refused.append((g["key"], f"canonical {forced!r} is not a member"))
+                continue
+            ms = sorted(ms, key=lambda m: m["id"] != forced)
         plan.append((ms[0]["id"], [m["id"] for m in ms[1:]], g["why"]))
 
     print(f"{'KEEP':<34}{'ABSORB':<34}{'rows':>5}")
