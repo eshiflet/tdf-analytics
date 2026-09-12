@@ -266,11 +266,12 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     #
     # The rank and status stay: the rider finished and placed. What is removed
     # is a duration that cannot be true.
+    # NOTE: this connection has no row_factory, so every read here is by INDEX.
     wrow = cur.execute(
-        """SELECT MIN(finish_time_seconds) w FROM stage_results
+        """SELECT MIN(finish_time_seconds) FROM stage_results
             WHERE stage_id = ? AND stage_rank = 1 AND status = 'FINISHED'
               AND finish_time_seconds > 0""", (stage_id,)).fetchone()
-    wsecs = wrow["w"] if wrow else None
+    wsecs = wrow[0] if wrow else None
     impossible = []
     if wsecs:
         impossible = cur.execute(
@@ -280,27 +281,33 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
                   AND sr.stage_rank > 1 AND sr.finish_time_seconds > 0
                   AND sr.finish_time_seconds < ?""", (stage_id, wsecs)).fetchall()
         n_fin = cur.execute(
-            "SELECT COUNT(*) c FROM stage_results WHERE stage_id=? AND status='FINISHED'",
-            (stage_id,)).fetchone()["c"]
+            "SELECT COUNT(*) FROM stage_results WHERE stage_id=? AND status='FINISHED'",
+            (stage_id,)).fetchone()[0]
         if impossible and len(impossible) * 2 >= n_fin:
             print(f"    ! {slug} {year}: {len(impossible)} of {n_fin} finishers beat the "
                   f"winner's {wsecs}s — that many cannot be wrong, so the WINNER's time "
                   "is the suspect one. Nothing changed; this needs a human.")
             impossible = []
         for r in impossible:
-            cur.execute("UPDATE stage_results SET finish_time_seconds=NULL "
-                        "WHERE result_id=?", (r["result_id"],))
-            record_provenance(
-                cur, "stage_results", r["result_id"], "finish_time_seconds", source,
-                source_ref=f"{api} — {r['finish_time_seconds']}s is faster than the "
-                           f"winner's {wsecs}s on a rider ranked {r['stage_rank']}; the "
-                           "timer reports both. Rank and status kept, the time removed.")
+            rid, rank, secs, _name = r
+            # gap_seconds goes too. It is derived from the same impossible time
+            # and reads -9754 — "finished two and a half hours before the
+            # winner" — which is the identical claim in another column. Nulling
+            # one and leaving the other just moves the contradiction.
+            cur.execute("UPDATE stage_results SET finish_time_seconds=NULL, "
+                        "gap_seconds=NULL WHERE result_id=?", (rid,))
+            ref = (f"{api} — {secs}s is faster than the winner's {wsecs}s on a "
+                   f"rider ranked {rank}; the timer reports both. Rank and status "
+                   "kept, the impossible duration removed.")
+            for field in ("finish_time_seconds", "gap_seconds"):
+                record_provenance(cur, "stage_results", rid, field, source,
+                                  source_ref=ref)
 
     report_patches(f"{slug} {year}", *restore_patches(cur, edition_id, patched))
     if impossible:
         print(f"    {slug} {year}: {len(impossible)} finisher(s) timed faster than the "
               f"winner while ranked behind him — time set NULL, placing kept "
-              f"({', '.join(r['full_name'] for r in impossible[:4])}"
+              f"({', '.join(r[3] for r in impossible[:4])}"
               f"{', ...' if len(impossible) > 4 else ''})")
     if placeholders:
         print(f"    {slug} {year}: skipped {len(placeholders)} bib-only entr"

@@ -44,7 +44,7 @@ The frontend is race-aware via the `RACES` registry in raceRegistry.ts (see "Rac
 
 ---
 
-## Open items as of 2026-09-11
+## Open items as of 2026-09-12
 
 Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 
@@ -57,11 +57,17 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **TDF 2008 KOM has two rank-1 rows** — Kohl (stripped) and Sastre (re-award). Keeping both is Eric's decision (2026-08-18); the jersey stays and the rider page carries a revoked-results note. Modelling revocations in the DB is still open.
 - **The white jersey for the Giro and Vuelta.** Their youth standings are in `classification_standings` as of 2026-09-09, but `yw` is still exported for the Tour alone and `hasYouth` is still false for the other two. Turning it on is a display decision, not a data gap.
 
+**Closed 2026-09-12:**
+- **The disqualification sweep is complete** across all 113 Tour, 109 Giro and 80 Vuelta editions: **1,487 results, 67 riders**. `disqualified=1` survives a re-ingest, exports carry it, and the frontend renders it. See "PCS strikes through a disqualified rank".
+- **37 impossible gravel times** — a confirmed finisher timed faster than the winner he finished behind, Athlinks asserting both. `ingest_gravel` now clears the time AND the derived `gap_seconds`, since a -9754s gap is the same claim in another column. 37 -> 0 on both counts, all 8,142 gravel results kept.
+- **5,759 stale `data_provenance` rows** purged (it was 34 in the morning; the day's re-ingests and merges grew it).
+- **23 typo-variant rider ids merged**, 2 merges reversed after research, 3 pairs recorded as deliberately separate. Audit reads SAME 0, REVIEW 0.
+
 **Open work, ready to pick up:**
 - ~~**THE BIG ONE: the Riders grid builds 18,114 buttons eagerly and costs 628 ms**~~ — **DONE 2026-09-11. 628 ms -> 48 ms** by virtualising the grid; see "The grid is the last second".
 - ~~**11 time trials have no times**~~ and ~~**1960-2025 has no local scrape files**~~ — both **CLOSED 2026-09-11**, see "The 1960-2025 Tour backfill". All 66 editions are scraped and 64 are ingested; 1978 and 1982 refuse, each holding a stage PCS never classified, and both want a decision rather than a fix.
-- **41 stages typed ITT hold 4,040 riders on the winner's exact time** (a `validate_db` warning). **Resolved 2026-09-11 — there IS a rule, and all 41 are the same fault.** Each stage was fetched by its own `source_slug` and read: a non-winner whose `Time` cell matches `^[-+]?0:00$` has no published time, and all 4,040 are that. None is a mislabelled mass-start (Giro 1985 stage-8a was the genuine one, already fixed via `route_type_overrides.json`, which is why it is not in the set). NULL is the honest value; `null_itt_filler_times.py` writes it and is **not yet applied**. See "Times that no race produced".
-- **99 finishers carry a 0-second finish time** across 11 stages (same warning block). Do NOT reach for a re-ingest: today's code reads the same pages' `+0:00` filler and would credit all of them with the winner's time, trading one defect for the other. NULL is the honest value, and that is a decision.
+- ~~**41 stages typed ITT hold 4,040 riders on the winner's exact time**~~ — **CLOSED 2026-09-11, applied and the warning is gone.** Each stage was fetched by its own `source_slug` and read: a non-winner whose `Time` cell matches `^[-+]?0:00$` has no published time, and all 4,040 are that. None is a mislabelled mass-start (Giro 1985 stage-8a was the genuine one, already fixed via `route_type_overrides.json`, which is why it is not in the set). NULL is the honest value; `null_itt_filler_times.py` wrote it. `ingest_race` now refuses to recreate them, so a re-ingest is safe. See "Times that no race produced".
+- **54 finishers carry a 0-second finish time** across 10 stages (was 99 across 11; the ITT fix took Tour 1937 stage-17b out of the set). Do NOT reach for a re-ingest: today's code reads the same pages' `+0:00` filler and would credit all of them with the winner's time, trading one defect for the other. NULL is the honest value, and that is **still a decision waiting on Eric**.
 - **9 team time trials hold 536 fewer riders than the stage after them.** Measured: only 1 of the original 10 was recoverable (Vuelta 2003 st1, done). On the rest PCS has no more riders than we store — Tour 1954 st4a really is 10 riders. Coverage report, not a worklist.
 - **2026 Vuelta** has not been run (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
 - **20 Tour team time trials have no rider times**, 1954-1982, and none is safely fillable — see "Team time trials with no rider times".
