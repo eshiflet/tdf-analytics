@@ -1302,3 +1302,14 @@ svg text {
   color: var(--text-dim);
   text-align: right;
 }
+
+/* A result annulled after the fact — PCS's own convention, and the reason the
+   rider is still here: he rode, the placing was taken away. Strikethrough
+   alone would be invisible to a screen reader, so .is-dq rows also carry a
+   title explaining it. */
+.legend-name.is-dq,
+.legend-rank.is-dq {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  opacity: 0.72;
+}

@@ -750,3 +750,106 @@ class TestTimeTrialFillerGaps(IngestHarness):
             "SELECT COUNT(*) FROM data_provenance WHERE entity='stage_results' "
             "AND field='finish_time_seconds'").fetchone()[0]
         self.assertEqual(n, 30, "every written value needs its provenance row")
+
+
+class TestDisqualifiedRanks(IngestHarness):
+    """PCS annuls a result by striking the rank and keeping the number.
+
+    textContent drops the tag, so a struck "1" and a live "1" used to arrive
+    identical — which is how the database grew two rank-1 finishers on a stage
+    and, worse, measured everyone's time against a man who had been stripped
+    of the result.
+    """
+
+    def winner_row(self, time_txt, dsq=""):
+        r = result_row("1", "Winner", "rider/winner", rnk="1", gap=time_txt)[:13] \
+            + [time_txt, time_txt]
+        return r + [dsq]
+
+    def other_row(self, bib, name, rnk, gap, dsq=""):
+        r = result_row(bib, name, f"rider/{name.lower()}", rnk=rnk, gap=gap)[:13] + ["", gap]
+        return r + [dsq]
+
+    def results(self):
+        return {r["rider_id"]: r for r in self.conn.execute(
+            "SELECT rider_id, stage_rank, status, finish_time_seconds, disqualified "
+            "FROM stage_results")}
+
+    def test_marker_is_stored(self):
+        self.write_stage(1, rows=[self.winner_row("4:15:28"),
+                                  self.other_row("2", "Second", "2", "0:19", dsq="1")])
+        self.ingest()
+        r = self.results()
+        self.assertEqual(r["rider/second"]["disqualified"], 1)
+        self.assertEqual(r["rider/winner"]["disqualified"], 0)
+
+    def test_rank_time_and_row_all_survive(self):
+        """The whole point: he is marked, not erased. Deleting the row or
+        nulling the rank would lose a ride that happened."""
+        self.write_stage(1, rows=[self.winner_row("4:15:28"),
+                                  self.other_row("2", "Second", "2", "0:19", dsq="1")])
+        self.ingest()
+        row = self.results()["rider/second"]
+        self.assertEqual(row["stage_rank"], 2)
+        self.assertEqual(row["status"], "FINISHED")
+        self.assertEqual(row["finish_time_seconds"], 15328 + 19)
+
+    def test_a_struck_rank1_still_anchors_the_stage_times(self):
+        """1904 stage 3 in miniature, and the opposite of what I first assumed.
+
+        Refusing to let a disqualified rider set the winning time sounds right
+        and is wrong: his clock is the only absolute time on the page, and the
+        man promoted into his place is shown TIED with him — Cornet's own time
+        cell is PCS's ditto, "0:00", meaning "as above". Blocking Aucouturier
+        therefore makes winner_seconds zero and times the entire stage from
+        nothing. The marker records that the placing was annulled; the ride
+        still happened and the clock still ran."""
+        struck = self.winner_row("15:43:55", dsq="1")
+        struck[5], struck[6] = "Aucouturier", "rider/aucouturier"
+        real = self.other_row("2", "Cornet", "1", "0:00")
+        real[13] = "0:00"
+        self.write_stage(1, distance="424 km", rows=[struck, real,
+                                                     self.other_row("3", "Third", "3", "8:11")])
+        self.ingest()
+        r = self.results()
+        self.assertEqual(r["rider/aucouturier"]["disqualified"], 1)
+        self.assertEqual(r["rider/cornet"]["disqualified"], 0)
+        self.assertEqual(r["rider/cornet"]["finish_time_seconds"], 56635,
+                         "the rider awarded the stage must hold the winning time")
+        self.assertEqual(r["rider/third"]["finish_time_seconds"], 56635 + 491,
+                         "and everyone else must be measured against him")
+
+    def test_a_legacy_15_field_row_still_ingests(self):
+        legacy = self.other_row("2", "Second", "2", "0:19")[:15]
+        self.assertEqual(len(legacy), 15)
+        self.write_stage(1, rows=[self.winner_row("4:15:28")[:15], legacy])
+        self.ingest()
+        self.assertEqual(self.results()["rider/second"]["disqualified"], 0)
+
+    def test_a_legacy_file_does_not_erase_a_known_marker(self):
+        """THE regression that would undo every repair. A 15-field file carries
+        no marker, and an absent marker means UNKNOWN, not 'not disqualified'.
+        The normal patch-carry cannot rescue this: it only covers PATCH_SOURCES,
+        and the honest source for a struck rank is 'pcs', which ingest writes
+        itself."""
+        self.write_stage(1, rows=[self.winner_row("4:15:28")[:15],
+                                  self.other_row("2", "Second", "2", "0:19")[:15]])
+        self.ingest()
+        self.conn.execute("UPDATE stage_results SET disqualified=1 "
+                          "WHERE rider_id='rider/second'")
+        self.conn.commit()
+        self.ingest()          # rebuild from the same legacy file
+        self.assertEqual(self.results()["rider/second"]["disqualified"], 1,
+                         "a legacy file's silence must not clear a known marker")
+
+    def test_a_current_file_is_allowed_to_clear_it(self):
+        """The other half: a 16-field file DOES know, so it is authoritative
+        and can correct a marker set in error."""
+        self.write_stage(1, rows=[self.winner_row("4:15:28"),
+                                  self.other_row("2", "Second", "2", "0:19", dsq="1")])
+        self.ingest()
+        self.assertEqual(self.results()["rider/second"]["disqualified"], 1)
+        self.write_stage(1, rows=[self.winner_row("4:15:28"),
+                                  self.other_row("2", "Second", "2", "0:19")])
+        self.ingest()
+        self.assertEqual(self.results()["rider/second"]["disqualified"], 0)

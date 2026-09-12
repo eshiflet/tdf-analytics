@@ -116,6 +116,11 @@ const EXTRACT_ALL = `
 
     let colOffset = 0;
     const rnk = tds[0].textContent.trim();
+    // PCS annuls a result AFTER the fact by striking the rank through and
+    // keeping the number: <td><s>&nbsp;1&nbsp;</s></td>. textContent drops the
+    // tag, so Armstrong's struck 1 and the next man's live 1 used to arrive
+    // here identical. This is the only place the distinction exists.
+    const dsq = tds[0].querySelector('s') ? '1' : '';
 
     let gcPos = '', gcLag = '';
     if (hasGC) {
@@ -152,7 +157,7 @@ const EXTRACT_ALL = `
     const gapTime = rnk === '1' ? '' : timeRaw;
 
     result.push([rnk, gcPos, gcLag, bib, age, riderName, riderSlug, nat,
-                 teamName, teamSlug, uci, pnt, '', absTime, gapTime]);
+                 teamName, teamSlug, uci, pnt, '', absTime, gapTime, dsq]);
   });
 
   // ---- 2. Self-check: duplicate bib within this stage's own rows ----
@@ -312,6 +317,11 @@ const EXTRACT_RESULTS = `
 
     let colOffset = 0;
     const rnk = tds[0].textContent.trim();
+    // PCS annuls a result AFTER the fact by striking the rank through and
+    // keeping the number: <td><s>&nbsp;1&nbsp;</s></td>. textContent drops the
+    // tag, so Armstrong's struck 1 and the next man's live 1 used to arrive
+    // here identical. This is the only place the distinction exists.
+    const dsq = tds[0].querySelector('s') ? '1' : '';
 
     let gcPos = '', gcLag = '';
     if (hasGC) {
@@ -349,7 +359,7 @@ const EXTRACT_RESULTS = `
     const gapTime = rnk === '1' ? '' : timeRaw;
 
     result.push([rnk, gcPos, gcLag, bib, age, riderName, riderSlug, nat,
-                 teamName, teamSlug, uci, pnt, '', absTime, gapTime]);
+                 teamName, teamSlug, uci, pnt, '', absTime, gapTime, dsq]);
   });
 
   const output = JSON.stringify({

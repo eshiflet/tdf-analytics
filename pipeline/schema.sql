@@ -105,6 +105,12 @@ CREATE TABLE IF NOT EXISTS stage_results (
     pcs_points          INTEGER,
     gc_rank             INTEGER,        -- overall classification rank after this stage
     gc_gap_seconds       INTEGER,        -- overall gap to GC leader after this stage
+    -- Result annulled AFTER the fact: PCS strikes the rank through but keeps
+    -- the number. Distinct from status='DSQ', which is a rider thrown out on
+    -- the day and holding no rank at all. The rank, time and row are all kept
+    -- deliberately -- the ride happened, the placing was taken away -- and the
+    -- frontend renders these struck through, the way PCS does.
+    disqualified        INTEGER NOT NULL DEFAULT 0,
     age_at_race          INTEGER,
     UNIQUE(stage_id, rider_id)
 );

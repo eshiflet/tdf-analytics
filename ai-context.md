@@ -4837,20 +4837,51 @@ months and in December 1904 disqualified the first four finishers and every
 stage winner — 29 riders punished, two for life — handing the race to 19-year-old
 Henri Cornet four months after it ended.
 
-**NOT APPLIED, and this one is genuinely Eric's call**, because it collides with
-a decision already recorded here: *"TDF 2008 KOM has two rank-1 rows — Kohl
-(stripped) and Sastre (re-award). Keeping both is Eric's decision"*. Marking a
-struck rider `DSQ` removes him from the classification the same way. The row and
-his time survive either way, so a rider page can still show the ride with a
-revoked-results note — but whether a stripped rider keeps a visible placing is a
-modelling decision, not a defect.
+**Built and applied 2026-09-11.** `stage_results.disqualified` records the
+fact. The rank, the time and the row all stay — the ride happened, the placing
+was taken away — and the frontend draws the rider struck through the way PCS
+does, so he stays visible and the fact is visible with him. This is NOT
+`status='DSQ'`, which means a rider thrown out on the day holding no rank at
+all (344 rows, a different thing).
 
-**The durable half is not built.** The `<s>` marker is discarded in
-`EXTRACT_RESULTS` (`scrape_stage_template.js`) and there is no field for it in
-`StageRow` — `STAGE_ROW_LEN` is 15 and every existing scrape file has 15 fields,
-so carrying it needs a 16th field with back-compat plus a re-scrape of every
-affected edition. Until that exists, `audit_disqualifications.py` must be re-run
-after any re-ingest, like `backfill_bib_numbers`.
+**Two shapes, and only one is findable from inside the database:**
+
+- the rank is vacated and someone is **promoted** into it — 1904, Cornet given
+  Aucouturier's win. Two riders end up with the same number, which is what
+  `--duplicated-rank1` finds.
+- the rank is vacated and **nobody moves up**. The 2005 Tour GC strikes
+  Armstrong at 1, Ullrich at 3, Leipheimer at 6, Hincapie at 14, Boogerd at 24
+  — and Basso stays 2, Mancebo 4, Vinokurov 5. **No duplicate rank exists, so
+  nothing in our data hints at it.** Only the page shows it. These have to be
+  asked for by year, which is why the seven Armstrong Tours were swept by name.
+
+**374 results across 33 riders** are marked: Armstrong 147 (1999-2009),
+Leipheimer 45, Hincapie 41, Boogerd 22, Ullrich 20, then a long tail down to
+the 1904 six.
+
+**A struck rider still anchors the stage's times, and that is deliberate.**
+Refusing to let a disqualified man set the winning time sounds obviously right
+and is wrong: his clock is the only absolute time on the page, and the rider
+promoted into his place is shown TIED with him. Cornet's own time cell on 1904
+stage 3 is PCS's ditto `0:00`, meaning "as above" — so blocking Aucouturier's
+15:43:55 makes `winner_seconds` **zero** and times the whole stage from
+nothing. I wrote that guard, and `TestDisqualifiedRanks` caught it.
+
+**How it survives a rebuild.** A scrape file written before 2026-09-11 has 15
+fields and no marker, and an absent marker means UNKNOWN, not "clean". The
+usual patch-carry cannot help — it only rescues `PATCH_SOURCES`, and the honest
+source for a struck rank is `pcs`, which ingest writes itself. So `ingest_race`
+carries stored markers across explicitly and only a 16-field file is allowed to
+change one. `STAGE_ROW_LEN` stays 15, `STAGE_ROW_LEN_V2` is 16, both accepted;
+`EXTRACT_RESULTS` now reads `tds[0].querySelector('s')`. Re-scraping an edition
+makes its marker self-describing and the ingest says which ones it had to
+carry.
+
+**Still open:** the riders grid and rider-detail page read `riders_index.json`,
+which does not carry the flag yet, so the strikethrough shows in the By Stage
+sidebar only. And the sweep covered the Armstrong Tours plus the 39 stages that
+were findable from inside the data — other editions may hold vacated-rank
+disqualifications nobody has asked for by name.
 
 ### Times that no race produced (2026-09-11)
 

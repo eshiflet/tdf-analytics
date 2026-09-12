@@ -271,6 +271,20 @@ def export_year(year, out_path, race_id, db_path=None, supplements=None):
     # final GC rank per rider = gc_rank on the last stage they have a result for
     last_stage_id = stage_ids[-1]
 
+    # Riders whose result in this edition PCS strikes through: annulled after
+    # the fact. Emitted as a flag rather than acted on -- the rank, the time and
+    # the rider all stay exactly where they are, and the frontend draws them
+    # struck through the way PCS does. Any struck result in the edition marks
+    # the rider, because that is how PCS's own GC page behaves: Armstrong is
+    # struck at rank 1 and Basso still stands at 2, nobody promoted.
+    cur.execute(
+        """SELECT DISTINCT sr.rider_id FROM stage_results sr
+             JOIN stages st ON st.stage_id = sr.stage_id
+            WHERE st.edition_id = ? AND sr.disqualified = 1""",
+        (edition_id,),
+    )
+    disqualified_riders = {r["rider_id"] for r in cur.fetchall()}
+
     cur.execute(
         """
         SELECT sr.rider_id, r.full_name AS name, r.first_name, r.last_name,
@@ -483,6 +497,10 @@ def export_year(year, out_path, race_id, db_path=None, supplements=None):
             "bibNumber": bib_by_rider.get(rider_id),
             "byStage": by_stage,
         })
+        if rider_id in disqualified_riders:
+            # Present only when true, so the flag costs nothing on the 99.95%
+            # of riders it does not apply to (374 results of 745,280).
+            entry["dq"] = 1
         riders_out.append(entry)
 
     riders_out.sort(key=lambda r: r["finalRank"])

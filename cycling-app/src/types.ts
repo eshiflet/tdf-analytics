@@ -39,6 +39,10 @@ export interface RiderSeries {
   totalTimeSeconds: number | null;
   bibNumber: number | null;
   byStage: RiderStagePoint[];
+  /** Result annulled after the fact — PCS strikes the rank through and keeps
+   *  the number. Present only when true. The rider, the rank and the time are
+   *  all kept deliberately; this only says the placing was taken away. */
+  dq?: number;
 }
 
 export interface GcDataset {

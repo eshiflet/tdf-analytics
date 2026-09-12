@@ -29,7 +29,14 @@ import unicodedata
 from dataclasses import dataclass
 
 
-STAGE_ROW_LEN = 15
+# A scraped stage row had 15 fields until 2026-09-11, when a 16th was added for
+# PCS's struck-through rank (see StageRow.dsq). Files written before that have
+# 15 and are still valid: the marker is simply unknown for them, which is not
+# the same as "nobody was disqualified". Both lengths are accepted; only the
+# newer one carries the fact.
+STAGE_ROW_LEN = 15          # legacy files on disk
+STAGE_ROW_LEN_V2 = 16       # with the disqualification marker
+STAGE_ROW_LENGTHS = (STAGE_ROW_LEN, STAGE_ROW_LEN_V2)
 
 
 @dataclass
@@ -39,7 +46,14 @@ class StageRow:
     field order produced by EXTRACT_RESULTS in scrape_stage_template.js:
 
       [rnk, gc_pos, gc_lag, bib, age, name, slug, nat, team, team_slug,
-       uci_pts, pcs_pts, bonus, abs_time, gap]
+       uci_pts, pcs_pts, bonus, abs_time, gap, dsq]
+
+    `dsq` is "1" when PCS struck the rank through -- a result annulled after
+    the fact -- and "" when it did not. A 15-field legacy row leaves it "",
+    which means UNKNOWN rather than "not disqualified": those files were
+    written by an extractor that discarded the marker. Only a re-scrape can
+    tell the two apart, which is why audit_disqualifications.py reads the
+    live page.
 
     All fields are raw strings exactly as scraped (a row may represent a
     non-finisher, e.g. rnk="DNF"); use parse_int/parse_time_to_seconds/
@@ -62,19 +76,23 @@ class StageRow:
     bonus: str
     abs_time: str
     gap: str
+    dsq: str = ""
 
     @classmethod
     def from_list(cls, row: list) -> "StageRow":
-        if len(row) != STAGE_ROW_LEN:
+        if len(row) not in STAGE_ROW_LENGTHS:
             raise ValueError(
-                f"stage row must have exactly {STAGE_ROW_LEN} fields, got {len(row)}: {row!r}"
+                f"stage row must have {STAGE_ROW_LEN} or {STAGE_ROW_LEN_V2} fields, "
+                f"got {len(row)}: {row!r}"
             )
         return cls(*row)
 
     def to_list(self) -> list:
+        """Always emits the CURRENT length. A row read from a legacy file and
+        written back gains an empty marker, which is what it means: unknown."""
         return [self.rnk, self.gc_pos, self.gc_lag, self.bib, self.age, self.name,
                 self.slug, self.nat, self.team, self.team_slug, self.uci_pts,
-                self.pcs_pts, self.bonus, self.abs_time, self.gap]
+                self.pcs_pts, self.bonus, self.abs_time, self.gap, self.dsq]
 
 
 def swap_identity(row_a: list, row_b: list) -> None:

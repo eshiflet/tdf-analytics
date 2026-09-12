@@ -701,6 +701,16 @@ export function buildLegend() {
     name.textContent = displayName(rider);
     name.title = `${displayName(rider)} — ${rider.team ?? ""}`;
 
+    // A result annulled after the fact. Drawn struck through, the way PCS
+    // draws it — the rider stays in the list, keeps his rank and his line on
+    // the chart, and the fact that the placing was taken away is visible
+    // rather than silently applied.
+    if (rider.dq) {
+      name.classList.add("is-dq");
+      rank.classList.add("is-dq");
+      name.title = `${displayName(rider)} — ${rider.team ?? ""} · result later annulled`;
+    }
+
     row.appendChild(rank);
     row.appendChild(swatch);
     row.appendChild(name);

@@ -28,6 +28,8 @@ from backfill_source_slugs import backfill_edition_slugs
 from race_common import (
     RACES,
     STAGE_ROW_LEN,
+    STAGE_ROW_LENGTHS,
+    STAGE_ROW_LEN_V2,
     SOURCE_PCS,
     SOURCE_WIKIPEDIA,
     SOURCE_MANUAL,
@@ -207,6 +209,26 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             if r["source_slug"]:
                 preserved_by_slug[r["source_slug"]] = vals
 
+    # Disqualification markers already in the DB, keyed (stage_number, rider).
+    #
+    # A scrape file written before 2026-09-11 has 15 fields and carries no
+    # marker at all, and an ABSENT marker means UNKNOWN -- not "this rider was
+    # not disqualified". Letting a legacy file's silence overwrite a known 1
+    # would quietly undo every repair audit_disqualifications.py made, and the
+    # normal patch-carry cannot help here: it only rescues PATCH_SOURCES, and
+    # the honest source for a struck rank is 'pcs', which an ingest also
+    # writes. So the value is carried across explicitly, and only a file that
+    # actually carries the field is allowed to change it.
+    preserved_dsq = {}
+    if existing:
+        for r in cur.execute(
+            """SELECT s.stage_number, sr.rider_id, sr.disqualified
+                 FROM stage_results sr JOIN stages s ON s.stage_id = sr.stage_id
+                WHERE s.edition_id = ? AND sr.disqualified = 1""",
+            (existing[0],),
+        ):
+            preserved_dsq[(r["stage_number"], r["rider_id"])] = 1
+
     if DRY_RUN:
         action = "replace existing" if existing else "insert"
         print(f"  [DRY RUN] Would {action} {year} {race_name} with {len(stage_files)} stages")
@@ -295,6 +317,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     malformed: list[tuple] = []   # (stage_n, field_count, first_fields)
     implausible: list[tuple] = []  # (stage_n, distance_km, refused_seconds)
     itt_filler: list[tuple] = []   # (stage_n, riders_whose_ITT_time_was_filler)
+    carried_dsq: list[tuple] = []  # (stage_n, rider) markers a legacy file lacked
 
     for sf in stage_files:
         with open(sf, encoding="utf-8") as f:
@@ -433,7 +456,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         winner_seconds = None
 
         for row in rows:
-            if len(row) != STAGE_ROW_LEN:
+            if len(row) not in STAGE_ROW_LENGTHS:
                 # Never silently drop a row. A malformed row is a scrape bug,
                 # and swallowing it loses a real rider's result with no trace —
                 # Marco Haller's 2026 stage 2 result went missing this way and
@@ -443,6 +466,16 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                 continue
             sr = StageRow.from_list(row)
             rnk, gc_pos, gc_lag = sr.rnk, sr.gc_pos, sr.gc_lag
+            # PCS struck this rank through: the result was annulled after the
+            # fact. Empty on a legacy 15-field file, where it means UNKNOWN,
+            # not "clean" — only a re-scrape can tell those apart.
+            if len(row) == STAGE_ROW_LEN_V2:
+                dsq = 1 if str(sr.dsq).strip() == "1" else 0   # the file knows
+            else:
+                # Legacy file: the marker is unknown, so keep what is stored.
+                dsq = preserved_dsq.get((n, sr.slug), 0)
+                if dsq:
+                    carried_dsq.append((n, sr.slug))
             bib, age = sr.bib, sr.age
             rider_name, rider_slug, nat = sr.name, sr.slug, sr.nat
             team_name, team_slug = sr.team, sr.team_slug
@@ -539,6 +572,16 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             # lists both Schumacher and Kirchen) and would otherwise replace
             # the real winning time with an 18-second gap.
             is_winner_row = False
+            # A struck rider STILL anchors the stage's times, and that is
+            # deliberate. The disqualification took away the placing, not the
+            # afternoon: his clock is the only absolute time the page carries,
+            # and the man promoted into his place is shown tied with him.
+            # 1904 stage 3 is the case — Cornet's own time cell is PCS's ditto
+            # ("0:00", meaning "as above"), so refusing Aucouturier's 15:43:55
+            # here makes winner_seconds ZERO and times the whole stage from
+            # nothing. The marker records the fact; it does not rewrite the
+            # clock. (Caught by TestDisqualifiedRanks writing the assertion
+            # the other way round first.)
             if (status == "FINISHED" and abs_secs is not None and rnk == "1"
                     and winner_seconds is None):
                 # ...and that duplicated value is not a gap either. Storing it
@@ -575,8 +618,9 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                 """INSERT OR IGNORE INTO stage_results
                    (stage_id, rider_id, team_id, bib_number, stage_rank, status,
                     finish_time_seconds, gap_seconds, bonus_seconds, penalty_seconds,
-                    uci_points, pcs_points, gc_rank, gc_gap_seconds, age_at_race)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    uci_points, pcs_points, gc_rank, gc_gap_seconds, age_at_race,
+                    disqualified)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     stage_id, rider_slug,
                     team_slug if team_slug else None,
@@ -584,7 +628,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                     finish_secs, gap_secs, bonus_secs, 0,
                     parse_int(uci_pts), parse_int(pcs_pts),
                     gc_rank, gc_gap_secs,
-                    parse_int(age),
+                    parse_int(age), dsq,
                 ),
             )
             total_results += 1
@@ -659,7 +703,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
     # leave scrape_*_stage_info.py with nothing to key off.
     if malformed:
         print(f"\n  WARNING: {len(malformed)} malformed row(s) skipped in {year} — "
-              f"expected {STAGE_ROW_LEN} fields:")
+              f"expected {STAGE_ROW_LEN} or {STAGE_ROW_LEN_V2} fields:")
         for stage_n, count, head in malformed[:10]:
             print(f"    stage {stage_n}: {count} fields, starts {head}")
         if len(malformed) > 10:
@@ -676,6 +720,11 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                   "The gaps on the page are still real and were kept.")
         if len(implausible) > 10:
             print(f"    ... and {len(implausible) - 10} more")
+
+    if carried_dsq:
+        print(f"\n  carried {len(carried_dsq)} disqualification marker(s) across the "
+              "rebuild — the scrape file(s) predate the field and do not carry it. "
+              "Re-scrape those stages to make the marker self-describing.")
 
     if itt_filler:
         n_rows = sum(c for _, c in itt_filler)

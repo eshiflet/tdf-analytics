@@ -93,17 +93,36 @@ class TestAssignStageNumbers(unittest.TestCase):
 
 
 class TestStageRow(unittest.TestCase):
-    def test_requires_exactly_15_fields(self):
+    def test_rejects_any_length_but_15_or_16(self):
         """Real bug: ingest silently skipped short rows, losing Marco Haller's
-        2026 stage-2 result. The schema must reject, not truncate."""
-        with self.assertRaises(ValueError):
-            StageRow.from_list(["1"] * 14)
-        with self.assertRaises(ValueError):
-            StageRow.from_list(["1"] * 16)
-        self.assertEqual(StageRow.from_list(row("21", "A", "rider/a")).bib, "21")
+        2026 stage-2 result. The schema must reject, not truncate.
 
-    def test_roundtrip(self):
+        16 became legal on 2026-09-11, when a field was added for PCS's
+        struck-through rank. 15 stays legal because every scrape file on disk
+        has 15 — the protection this test exists for is against a row that is
+        neither, which is a malformed extraction."""
+        for n in (0, 13, 14, 17):
+            with self.assertRaises(ValueError, msg=f"{n} fields must be refused"):
+                StageRow.from_list(["1"] * n)
+        self.assertEqual(StageRow.from_list(row("21", "A", "rider/a")).bib, "21")
+        self.assertEqual(StageRow.from_list(["1"] * 16).dsq, "1")
+
+    def test_a_legacy_row_reads_as_marker_unknown(self):
+        """A 15-field row predates the field. Empty means UNKNOWN, not
+        "this rider was not disqualified" — the whole reason ingest keeps a
+        stored marker rather than letting a legacy file clear it."""
+        self.assertEqual(StageRow.from_list(row("21", "A", "rider/a")).dsq, "")
+
+    def test_roundtrip_normalises_a_legacy_row_to_the_current_length(self):
         r = row("21", "A", "rider/a")
+        self.assertEqual(len(r), 15)
+        out = StageRow.from_list(r).to_list()
+        self.assertEqual(len(out), 16)
+        self.assertEqual(out[:15], r, "the first 15 fields must be untouched")
+        self.assertEqual(out[15], "", "and the added marker means unknown")
+
+    def test_roundtrip_is_exact_for_a_current_row(self):
+        r = row("21", "A", "rider/a") + ["1"]
         self.assertEqual(StageRow.from_list(r).to_list(), r)
 
     def test_field_order_matches_scrape_format(self):

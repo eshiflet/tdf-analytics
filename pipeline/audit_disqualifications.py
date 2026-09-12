@@ -24,12 +24,24 @@ and every stage winner — 29 riders punished, two for life — handing the race
 19-year-old Henri Cornet four months after it ended. All six of its stages carry
 a duplicated rank 1 in this database.
 
+TWO SHAPES, and only one of them is findable from inside the database:
+
+  * the rank is VACATED and someone is promoted into it, giving two riders the
+    same number — 1904, where Cornet was awarded Aucouturier's win. These show
+    up as duplicated ranks, which is what --duplicated-rank1 finds.
+  * the rank is vacated and NOBODY moves up. The 2005 Tour GC strikes
+    Armstrong at 1, Ullrich at 3, Leipheimer at 6, Hincapie at 14 and Boogerd
+    at 24, and Basso stays 2, Mancebo 4, Vinokurov 5. No duplicate rank exists,
+    so nothing in our data hints at it. Only the page shows it, which is why
+    --years exists and why the seven Armstrong Tours have to be asked for by
+    name.
+
 What --apply writes, per struck rider:
-  * status      -> 'DSQ'        (the result is annulled)
-  * stage_rank  -> NULL         (he holds no placing; this is what un-duplicates
-                                 the rank and lets the real winner stand alone)
-It does NOT touch finish_time_seconds. The man rode and the clock ran; what was
-taken away was the placing, not the afternoon.
+  * disqualified -> 1
+Nothing else. The rank, the time and the row all stay: the ride happened and
+the clock ran, what was taken away was the placing. The frontend renders these
+struck through, the way PCS does, so the rider stays visible and the fact is
+visible with him.
 
 Usage:
   python3 audit_disqualifications.py --race tour --years 1904
@@ -183,11 +195,12 @@ def main():
         hits = []
         for slug, shown in struck:
             row = cur.execute(
-                """SELECT sr.result_id, sr.stage_rank, sr.status, ri.full_name
+                """SELECT sr.result_id, sr.stage_rank, sr.status, sr.disqualified,
+                          ri.full_name
                      FROM stage_results sr JOIN riders ri ON ri.rider_id = sr.rider_id
                     WHERE sr.stage_id = ? AND sr.rider_id = ?""",
                 (st["stage_id"], slug)).fetchone()
-            if row and (row["status"] == "FINISHED" or row["stage_rank"] is not None):
+            if row and not row["disqualified"]:
                 hits.append((row, shown))
         if hits:
             found += len(hits)
@@ -197,14 +210,12 @@ def main():
                 print(f"      #{str(row['stage_rank']):<5} {row['full_name'][:28]:<30} "
                       f"status={row['status']}  (PCS shows rank {shown}, struck)")
                 if args.apply:
-                    cur.execute(
-                        "UPDATE stage_results SET status='DSQ', stage_rank=NULL "
-                        "WHERE result_id=?", (row["result_id"],))
-                    for field in ("status", "stage_rank"):
-                        record_provenance(cur, "stage_results", row["result_id"],
-                                          field, SOURCE_PCS,
-                                          source_ref=f"{url} — rank struck through "
-                                                     "(<s>), result annulled")
+                    cur.execute("UPDATE stage_results SET disqualified=1 "
+                                "WHERE result_id=?", (row["result_id"],))
+                    record_provenance(cur, "stage_results", row["result_id"],
+                                      "disqualified", SOURCE_PCS,
+                                      source_ref=f"{url} — rank struck through "
+                                                 "(<s>), result annulled")
                     written += 1
         time.sleep(DELAY)
 
@@ -212,7 +223,7 @@ def main():
           + (f"; {unparsable} page(s) unparsable" if unparsable else ""))
     if args.apply:
         conn.commit()
-        print(f"APPLIED: {written} row(s) set to status DSQ with stage_rank NULL.")
+        print(f"APPLIED: {written} row(s) marked disqualified=1 (rank and time kept).")
     else:
         print("Dry run. Re-run with --apply to write.")
     return 0
