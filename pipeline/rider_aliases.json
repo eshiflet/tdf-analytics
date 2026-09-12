@@ -1,0 +1,105 @@
+{
+ "_README": "Rider ids that are variants of one person, and the id they belong to. CONSULTED AT INGEST: without this a re-ingest recreates every absorbed id straight from the scrape files, because the files still carry the old spelling — the same way the Dorsal placeholders came back. Lives outside the DB for that reason, like stage_notes.json and route_type_overrides.json. Produced by audit_rider_duplicates.py + merge_rider_duplicates.py; every entry carries the evidence for the claim, because a merge IS a claim and a wrong one fuses two careers invisibly.",
+ "aliases": {
+  "rider/aaron-gammell": {
+   "canonical": "rider/aaron-gammel",
+   "evidence": "Unbound 2010/2011/2012, one rider. Two of his three registrations spell it GAMMEL (2011, 2012) against one Gammell (2010), so the source majority picks the canonical, not string length. A separate Jed Gammell rides Chequamegon with the double L and is a different person.",
+   "decided": "2026-09-11"
+  },
+  "rider/ben-a-anderson": {
+   "canonical": "rider/ben-anderson",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/dennis-barret": {
+   "canonical": "rider/dennis-barrett",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/francesco-ceruti": {
+   "canonical": "rider/francesco-cerutti-777",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/greg-brandt": {
+   "canonical": "rider/gregg-brandt",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/greg-follett": {
+   "canonical": "rider/greg-follet",
+   "evidence": "Leadville 1997 and 1999, one rider. The two registrations split 1-1 — Follet 1997, Follett 1999 — and no outside source records an amateur finisher of those years, so the canonical is UNRESOLVED and was left where the merge put it. Flip it freely if better evidence turns up.",
+   "decided": "2026-09-11"
+  },
+  "rider/jeremyhorgan-kobelski": {
+   "canonical": "rider/jeremy-horgan-kobelski",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/jesse-e-lalonde": {
+   "canonical": "rider/jesse-lalonde",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/ken-n-statz": {
+   "canonical": "rider/ken-statz",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/kent-t-mcdaniel": {
+   "canonical": "rider/kent-mcdaniel",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/mark-elssaser": {
+   "canonical": "rider/mark-elsasser",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/matthew-omeara": {
+   "canonical": "rider/matthew-o-meara",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/paul-l-ellis": {
+   "canonical": "rider/paul-ellis",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/randal-l-sahs": {
+   "canonical": "rider/randal-sahs",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/randy-b-bailey": {
+   "canonical": "rider/randy-bailey",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/shawn-d-aurelio": {
+   "canonical": "rider/shawn-daurelio",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/steve-legoff": {
+   "canonical": "rider/steve-le-goff",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/steve-vanderburgh": {
+   "canonical": "rider/steve-vander-burgh",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/tim-m-swift": {
+   "canonical": "rider/tim-swift",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  },
+  "rider/tim-trudeau": {
+   "canonical": "rider/tim-m-trudeau",
+   "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
+   "decided": "2026-09-11"
+  }
+ }
+}

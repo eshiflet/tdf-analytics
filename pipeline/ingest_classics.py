@@ -27,6 +27,7 @@ import sqlite3
 import sys
 
 from race_common import (
+    load_rider_aliases,
     CLASSICS,
     classic_route_type,
     fix_mojibake,
@@ -54,7 +55,13 @@ SOURCE_DERIVED = "derived"
 STATUS_MAP = {"DNF": "DNF", "DNS": "DNS", "DSQ": "DSQ", "OTL": "OTL", "DF": "DNF"}
 
 
+RIDER_ALIASES = load_rider_aliases()
+
+
 def upsert_rider(cur, slug, name, nat, url=None):
+    # See race_common.load_rider_aliases: the scrape file still carries the
+    # old spelling, so a rebuild would mint the absorbed id again.
+    slug = RIDER_ALIASES.get(slug, slug)
     name = fix_mojibake(name)
     cur.execute("SELECT rider_id FROM riders WHERE rider_id = ?", (slug,))
     if cur.fetchone():

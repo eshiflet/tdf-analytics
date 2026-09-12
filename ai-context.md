@@ -4107,6 +4107,44 @@ Nationality is what separates the genuine collisions — `camile-leroy` (be,
 `michael-anderson` (us), `peter-godde` (nl) from `peter-goode` (us). Career
 span longer than 25 years separates the rest.
 
+### Canonical spelling is researched, not guessed — and two merges were reversed
+
+The first merge broke ties **alphabetically**, which prefers the shorter string
+and therefore the typo. Replaced 2026-09-11 by looking each case up. Of the 11
+ties, 4 kept the less plausible spelling; researching those changed three
+answers and reversed two merges:
+
+| pair | verdict |
+|---|---|
+| `aaron-gammel` / `-gammell` | **one rider, canonical CONFIRMED.** Two of his three Unbound registrations spell it GAMMEL (2011, 2012) against one Gammell (2010) — a source majority, not string length. A separate *Jed* Gammell rides Chequamegon with the double L. |
+| `greg-follet` / `-follett` | **one rider, canonical UNRESOLVED.** Registrations split 1-1 (Follet 1997, Follett 1999) and no outside source records an amateur finisher of those years. Left where the merge put it, deliberately. |
+| `ernest-gilioli` / `-gillioli` | **SEPARATED.** Wikipedia's 1926 Tour startlist has Gillioli at number 147 as a *touriste-routier*; its 1909 list has Gilioli at 157 as a *lone rider*. Two entries, two numbers, two categories, and PCS dates Gilioli to 1885 — 41 in 1926. Possible, but nothing asserts one man. |
+| `giuseppe-bereta` / `-beretta` | **SEPARATED.** Il Lombardia 1909 and Milan-San Remo 1934: 25 years, two different races, nothing between. Placing 72nd in a professional classic at about 49 is not credible. |
+
+**PCS is the PRIMARY source, not an authoritative one**, and this is where the
+difference bites. It carries all four ids as separate rider pages — which is a
+signal, not a verdict, since PCS demonstrably makes duplicates. What PCS *is*
+authoritative for is the `rider_id` string itself, because our ids are its
+slugs by convention. Spelling gets triangulated.
+
+**The default is not to merge.** Where evidence neither joins nor separates
+two ids, they stay separate: a merge is a claim, and an unmerged pair is cheap
+and reversible where a fused career is neither.
+
+### `rider_aliases.json` — what makes a merge durable
+
+**Consulted at ingest by all three paths** (`ingest_race`, `ingest_gravel`,
+`ingest_classics`) via `race_common.load_rider_aliases()`. Without that a
+rebuild mints every absorbed id again straight from the scrape files, which
+still carry the old spelling — the same failure as the Dorsal placeholders and
+the ITT filler times. It lives outside the database for the same reason
+`stage_notes.json` does.
+
+20 aliases. Every entry carries its evidence, because a merge is a claim.
+`TestRiderAliasesSurviveAReingest` pins the durability, that no alias points at
+another alias, and **that neither separated pair is in the file** — if either
+were, the next ingest would quietly re-merge riders a human had decided apart.
+
 **Resolving a REVIEW takes an outside source, and that is the point.**
 `andrew-l-esperance` (21 results, ca) beside `andrew-lesperance` (1 result, no
 nationality) reads as ambiguous from inside the data. One search settles it:

@@ -58,6 +58,7 @@ from race_common import (
     fix_mojibake,
     gravel_route_type,
     record_provenance,
+    load_rider_aliases,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -116,6 +117,8 @@ def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
 # Matched on the name alone, which is what the placeholder actually is. The
 # scrape files are NOT edited: they are the record of what the source said, and
 # the filter belongs at the point the DB decides what a rider is.
+RIDER_ALIASES = load_rider_aliases()
+
 PLACEHOLDER_NAME_RE = re.compile(r"^dorsal[\s_-]*\d+\b", re.I)
 
 
@@ -216,6 +219,11 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
                 f"{path}: {key!r} has no entry in _rider_ids.json — "
                 "re-run link_gravel_riders.py after any new scrape")
         rider_id = upsert_rider(cur, ident, source, api)
+        # An id this repo has established is a variant of another person's.
+        # Applied HERE because the scrape file still carries the old
+        # spelling, so without it a rebuild mints the absorbed id again and
+        # the merge silently comes undone. See race_common.load_rider_aliases.
+        rider_id = RIDER_ALIASES.get(rider_id, rider_id)
         if rider_id in seen_riders:
             collisions.append((r["name"], seen_riders[rider_id], r.get("rank")))
         seen_riders[rider_id] = r.get("rank")

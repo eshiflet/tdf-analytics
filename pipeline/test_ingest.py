@@ -853,3 +853,65 @@ class TestDisqualifiedRanks(IngestHarness):
                                   self.other_row("2", "Second", "2", "0:19")])
         self.ingest()
         self.assertEqual(self.results()["rider/second"]["disqualified"], 0)
+
+
+class TestRiderAliasesSurviveAReingest(IngestHarness):
+    """A merge is only as durable as the thing that reapplies it.
+
+    The scrape files still carry the old spelling — `aaron-gammell` is in the
+    2010 Unbound file forever — so a rebuild mints the absorbed id again and
+    the merge silently comes undone. That is the same failure as the Dorsal
+    placeholders and the ITT filler times, and rider_aliases.json exists to
+    close it at the ingest choke point rather than in a repair script that
+    somebody has to remember to re-run.
+    """
+
+    def result_rows(self):
+        return {r["rider_id"]: r["stage_rank"] for r in self.conn.execute(
+            "SELECT rider_id, stage_rank FROM stage_results")}
+
+    def test_an_aliased_slug_is_ingested_as_the_canonical_rider(self):
+        row = result_row("7", "Gammell Aaron", "rider/aaron-gammell", rnk="2", gap="0:19")
+        self.write_stage(1, rows=[result_row("1", "Winner", "rider/winner", rnk="1",
+                                             gap="4:15:28")[:13] + ["4:15:28", "4:15:28"],
+                                  row])
+        ingest_race.RIDER_ALIASES = {"rider/aaron-gammell": "rider/aaron-gammel"}
+        try:
+            self.ingest()
+        finally:
+            ingest_race.RIDER_ALIASES = {}
+        ids = self.result_rows()
+        self.assertIn("rider/aaron-gammel", ids, "the alias must resolve to the canonical id")
+        self.assertNotIn("rider/aaron-gammell", ids,
+                         "the absorbed id must not be recreated from the scrape file")
+
+    def test_an_unaliased_slug_is_untouched(self):
+        row = result_row("7", "Somebody Else", "rider/somebody-else", rnk="2", gap="0:19")
+        self.write_stage(1, rows=[result_row("1", "Winner", "rider/winner", rnk="1",
+                                             gap="4:15:28")[:13] + ["4:15:28", "4:15:28"],
+                                  row])
+        ingest_race.RIDER_ALIASES = {"rider/aaron-gammell": "rider/aaron-gammel"}
+        try:
+            self.ingest()
+        finally:
+            ingest_race.RIDER_ALIASES = {}
+        self.assertIn("rider/somebody-else", self.result_rows())
+
+    def test_the_file_on_disk_never_maps_a_separated_rider(self):
+        """Gilioli/Gillioli and Bereta/Beretta were merged and then REVERSED
+        once research showed them to be different people. If either id were
+        still in the alias file the next ingest would re-merge them, which is
+        the quiet way a reversed decision comes back."""
+        from race_common import load_rider_aliases
+        aliases = load_rider_aliases()
+        for rid in ("rider/ernest-gillioli", "rider/ernest-gilioli",
+                    "rider/giuseppe-beretta", "rider/giuseppe-bereta"):
+            self.assertNotIn(rid, aliases, f"{rid} was separated and must not be aliased")
+
+    def test_no_alias_points_at_another_alias(self):
+        """A chain would make the result depend on iteration order."""
+        from race_common import load_rider_aliases
+        aliases = load_rider_aliases()
+        for alias, canon in aliases.items():
+            self.assertNotIn(canon, aliases,
+                             f"{alias} -> {canon}, but {canon} is itself an alias")

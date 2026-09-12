@@ -147,6 +147,34 @@ def load_stage_notes(path=STAGE_NOTES_PATH):
     }
 
 
+RIDER_ALIASES_PATH = os.path.join(HERE, "rider_aliases.json")
+
+
+def load_rider_aliases(path=RIDER_ALIASES_PATH):
+    """rider_aliases.json as {alias_rider_id: canonical_rider_id}.
+
+    Two ids that are one person: `aaron-gammell` is `aaron-gammel`, who entered
+    Unbound three times and spelled it two ways.
+
+    MUST BE CONSULTED AT INGEST. The scrape files still carry the old spelling,
+    so a rebuild mints the absorbed id again and the merge silently comes undone
+    — the same failure as the Dorsal placeholders and the ITT filler times. That
+    is also why it lives outside the database: ingest deletes and re-inserts,
+    and only a fixed tuple of columns survives.
+
+    Every entry carries its evidence, because a merge IS a claim about a person
+    and a wrong one fuses two careers with nothing downstream able to tell. Two
+    merges were REVERSED on 2026-09-11 for exactly that reason, once research
+    showed Gilioli/Gillioli and Bereta/Beretta to be separate riders.
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    return {alias: entry["canonical"]
+            for alias, entry in (raw.get("aliases") or {}).items()}
+
+
 ROUTE_TYPE_OVERRIDES_PATH = os.path.join(HERE, "route_type_overrides.json")
 
 

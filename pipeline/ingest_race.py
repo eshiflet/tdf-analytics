@@ -41,6 +41,7 @@ from race_common import (
     StageRow,
     detect_route_type,
     load_route_type_overrides,
+    load_rider_aliases,
     parse_bonus_seconds,
     parse_int,
     parse_time_to_seconds,
@@ -69,6 +70,7 @@ SKIP_SWAP_GATE = "--skip-swap-gate" in sys.argv
 # Loaded once: a handful of stages where PCS's own metadata names the wrong
 # kind of race. See race_common.load_route_type_overrides.
 ROUTE_TYPE_OVERRIDES = load_route_type_overrides()
+RIDER_ALIASES = load_rider_aliases()
 
 # Above this many non-winners sharing the winner's exact second, an individual
 # time trial's times are PCS filler rather than results. Matches validate_db's
@@ -478,6 +480,11 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                     carried_dsq.append((n, sr.slug))
             bib, age = sr.bib, sr.age
             rider_name, rider_slug, nat = sr.name, sr.slug, sr.nat
+            # An id this repo has established is a variant of another person's.
+            # Applied HERE because the scrape file still carries the old
+            # spelling, so without it a rebuild mints the absorbed id again and
+            # the merge silently comes undone. See race_common.load_rider_aliases.
+            rider_slug = RIDER_ALIASES.get(rider_slug, rider_slug)
             team_name, team_slug = sr.team, sr.team_slug
             uci_pts, pcs_pts = sr.uci_pts, sr.pcs_pts
             bonus_txt, abs_time_txt, gap_txt = sr.bonus, sr.abs_time, sr.gap
