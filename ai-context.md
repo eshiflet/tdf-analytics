@@ -4780,21 +4780,31 @@ reads empty output.
 After both fixes: `validate_gc.py` reports **113 years, 40 ok, 2 mismatch**,
 and `validate_kom.py` 1998 goes from `no_data` to **90% match**.
 
-**Two years it immediately surfaced, neither yet investigated:**
+**Its two "mismatches" are BOTH alignment artifacts. Neither is a defect, and
+I asserted the opposite before checking — don't repeat that.**
 
-- **1998, and this one looks like a real defect.** bikeraceinfo has Ullrich
-  leading the GC on stages 10-13; we have Pantani from stage 9. Ullrich took
-  yellow after the stage-7 time trial and held it until Pantani's Les Deux
-  Alpes ride, so the reference matches the history and we do not.
-- **1979 is probably alignment, not error.** BRI has Zoetemelk leading stages
-  10-14 against our Hinault, but its stage 11 is 33.4 km where ours is 162.0 —
-  a 79% gap that smells of a split-day offset rather than a wrong leader. BRI's
-  stage numbers are not our `source_slug`s and the two diverge after any split,
-  which is the same trap that governs everything else here. Check the alignment
-  before trusting either side's leader.
+`build_sequential_map()` matches BRI stages to ours positionally when the
+counts are within one, and by label otherwise. For **1998 BRI has 20 stages
+against our 22**, so it takes the label path and scrambles: BRI "Stage 8" maps
+to our stage **13**, "Stage 9" to **16**, "Stage 10" to **18**. Every leader it
+then compares belongs to a different day.
 
-Several `dist_issues` come out of the same numbering question (2005 stage 17,
-BRI 239.5 km against our 55.0) and want the same check first.
+**Our 1998 GC is correct, checked against the history stage by stage:**
+Boardman (prologue-1), Zabel (2), Hamburger (3), O'Grady (4-6), Ullrich (7),
+**Desbiens (8-9, the Montauban break)**, Ullrich (10-14), Pantani from Les Deux
+Alpes (15-21). The validator reported "ours=Pantani" for stage 10 because it
+was reading our stage 18.
+
+1979 is the same story — BRI's stage 11 is 33.4 km where ours is 162.0, which
+is a split-day offset, not a wrong leader. The `dist_issues` (2005 stage 17,
+BRI 239.5 km against our 55.0) are the same artifact.
+
+**So: the path fix makes the validator RUN, but its alignment is only
+trustworthy where the stage counts match.** Treat a mismatch as a question
+about alignment first and a data defect second — BRI's stage numbers are not
+our `source_slug`s, and the two diverge after any split day, which is the trap
+that governs everything else in this file. Making `build_sequential_map` align
+on date rather than label or position is the real fix and is NOT done.
 
 **Tests worth knowing about** (`pipeline/test_exports.py`): `TestAbandonedRidersLeaveTheClassifications`
 builds a scratch DB where one rider leads the sprint classification and then
