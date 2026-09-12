@@ -422,6 +422,24 @@ def to_row(r, rank_type):
     # the whole point — kept, it outranks the winner.
     secs = int(round(ms / 1000)) if (ms and status == "FINISHED") else None
     loc = r.get("location") or {}
+    # Athlinks has a malformed location shape whose `country` is not a country:
+    # the COUNTRY code lands in `region` and a junk value lands in `country`.
+    # Every instance carries region "US " — the trailing space is Athlinks's,
+    # not a typo here — and across 59,060 raw athlete records region "US" occurs
+    # with exactly one country value, "SV". The 20 such rows in Leadville 2009
+    # are from Calgary, Canmore, Nanaimo, Whitehorse, Carcross, Toronto, Sao
+    # Paulo and Saint Genes Champanelle: the locality is real, the country is
+    # not. Read literally they became six riders stored as El Salvador.
+    #
+    # The test is on `region`, NOT on the value "SV", and that distinction is
+    # load-bearing: SV is a perfectly good code for El Salvador and Athlinks
+    # also uses it correctly — Mauricio Barrientos, locality "San Salvador",
+    # region "SS". Rejecting the code would throw away the real record with the
+    # corrupt ones. A legitimate row never has a COUNTRY in its region field;
+    # region "CA" alongside country "US" is California, 1,311 of them.
+    country = (loc.get("country") or "").lower() or None
+    if (loc.get("region") or "").strip().upper() == "US":
+        country = None
     name = clean_name(r.get("displayName"))
     first, last = split_name(name)
     return {
@@ -433,7 +451,7 @@ def to_row(r, rank_type):
         # a rider born the year they raced.
         "age": r.get("age") or None,
         "gender": r.get("gender"),
-        "country": (loc.get("country") or "").lower() or None,
+        "country": country,
         "locality": loc.get("locality") or None,
         "region": loc.get("region") or None,
         "finish_seconds": secs,

@@ -1600,6 +1600,54 @@ live, for 2021 and 2022:
    `Dorsal 0 — CORRE Y MARCHA POR LA ESCLEROSIS LATERAL`, a charity entry that
    matches the pattern and might one day have a time against it.
 
+### Athlinks `SV` is not El Salvador — a malformed location shape (2026-09-11)
+
+Six Leadville 2009 riders were stored as El Salvador. None is Salvadoran.
+
+Athlinks has a location shape where the **country code lands in `region`** and a
+junk value lands in `country`. Every instance carries `region: "US "` — the
+trailing space is Athlinks's — against real records whose region is a state:
+
+```
+Stig Somme      {"country": "SV", "locality": "denver",  "region": "US "}   <- malformed
+Lance Armstrong {"country": "US", "locality": "Grand Junction", "region": "CO"}
+```
+
+Across **59,060 raw athlete records in 91 files, `region` "US" occurs with
+exactly one country value, "SV"** — 32 rows. Their localities are Calgary,
+Canmore, Nanaimo (x4), Whitehorse, Carcross, Toronto (x2), Lantzville,
+Victoria, Sao Paulo, Saint Genes Champanelle, Perth. Overwhelmingly Canadian,
+not one Salvadoran. The locality is real; the country is not.
+
+**The guard tests `region`, never the value "SV", and that is load-bearing.**
+SV is a perfectly good code and Athlinks also uses it correctly — Mauricio
+Barrientos, locality `San Salvador`, region `SS`, the one SV record in the whole
+corpus with a normal region. Rejecting the code would have thrown away the real
+record with the corrupt ones. Nor can the guard simply look for country-shaped
+region values: `country US / region CA` is **California, 1,311 rows**.
+
+Fixed in `scrape_athlinks.to_row` (`TestMalformedAthlinksLocation`), so no
+future scrape reads one as a nationality.
+
+**What the six were set to.** Residence is not nationality and a guess is a
+claim, so only one of them got a value:
+
+| rider | to | why |
+|---|---|---|
+| Stig Somme | `us` | Athlinks itself records `us` in 4 of his 5 Leadville editions, and the official Leadville results list him as Denver, Colorado |
+| Sessford, Butt, Brown, Magee, Reed | **NULL** | the corrupt `sv` was the only country value any source gave |
+
+Canmore and Nanaimo make Canada the obvious guess for several, and that is
+exactly why it is not stored.
+
+**A related sharp edge in `link_gravel_riders.py`:** where a rider has more than
+one country across editions it takes `sorted(countries)[0]`. That is alphabetical
+and looks arbitrary, but works as a de-facto "prefer the non-US value", which is
+usually the real nationality — `['at','us'] -> at` for Lakata, `['ca','us'] -> ca`
+for Roberge, 43 riders in all. It is also why Stig Somme's real `us` lost to the
+corrupt `sv`. Left alone: the input was the bug, and changing the rule would
+re-decide all 43.
+
 **`club` is captured in the scrape files but not ingested.** sportmaniacs gives
 a real per-edition club ("AMERICAN GRAVEL MAFIA", "PAS NORMAL STUDIOS"), which
 is better evidence than the one-current-team-per-athlete figure that kept

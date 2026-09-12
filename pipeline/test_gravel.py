@@ -20,6 +20,7 @@ import sqlite3
 
 import ingest_classics
 import ingest_gravel
+import scrape_athlinks
 import scrape_pcs_gravel
 import scrape_traka
 from resolve_traka_events import pick_360
@@ -531,6 +532,44 @@ class TestIngestRepairsMojibake(unittest.TestCase):
         self.cur.execute("""SELECT typeof(entity_id) FROM data_provenance
                              WHERE entity='riders' LIMIT 1""")
         self.assertEqual(self.cur.fetchone()[0], "text")
+
+
+class TestMalformedAthlinksLocation(unittest.TestCase):
+    """Athlinks has a location shape whose `country` is not a country.
+
+    The COUNTRY code lands in `region` and junk lands in `country`. Every
+    instance carries region "US " (Athlinks's own trailing space), and across
+    59,060 raw athlete records region "US" occurs with exactly one country
+    value, "SV". Leadville 2009's twenty such rows are from Calgary, Canmore,
+    Nanaimo, Whitehorse, Carcross, Toronto, Sao Paulo and Saint Genes
+    Champanelle — read literally they became six riders stored as El Salvador.
+    """
+
+    @staticmethod
+    def _rec(country, region, locality="Somewhere"):
+        return {"displayName": "A B", "chipTimeInMillis": 1000, "rankings": {},
+                "location": {"country": country, "locality": locality,
+                             "region": region}}
+
+    def test_country_is_dropped_when_region_holds_a_country(self):
+        row = scrape_athlinks.to_row(self._rec("SV", "US ", "Canmore"), "chip")
+        self.assertIsNone(row["country"])
+        self.assertEqual(row["locality"], "Canmore",
+                         "the locality is real and must survive")
+
+    def test_a_genuine_el_salvador_record_is_kept(self):
+        """THE reason the test is on `region` and not on the value "SV". SV is
+        a perfectly good code and Athlinks also uses it correctly — Mauricio
+        Barrientos, locality San Salvador, region SS. Rejecting the code would
+        throw away the real record along with the corrupt ones."""
+        row = scrape_athlinks.to_row(self._rec("SV", "SS", "San Salvador"), "chip")
+        self.assertEqual(row["country"], "sv")
+
+    def test_california_is_not_mistaken_for_a_country(self):
+        """region "CA" alongside country "US" is California, 1,311 of them.
+        A guard that looked for country-shaped region codes would eat them."""
+        row = scrape_athlinks.to_row(self._rec("US", "CA", "Los Angeles"), "chip")
+        self.assertEqual(row["country"], "us")
 
 
 class TestPlaceholderBibNames(unittest.TestCase):
