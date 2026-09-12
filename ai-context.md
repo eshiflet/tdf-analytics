@@ -1575,13 +1575,30 @@ live, for 2021 and 2022:
    and Dorsal 15/44/119/138/158/197/204/211-215, which held no results at all
    and reached no export.
 
-   **A re-ingest of The Traka 2021 restores all of them.** The names are in
-   `gravel_scrapes/traka/2021.json` and the raw tretzesports files, which are
-   deliberately NOT edited — they are the record of what the source said.
-   Nothing filters them at ingest, so this is a DB-only deletion with no
-   artifact in git to notice its loss: the 12 orphans changed no exported
-   file at all. If they reappear, this is why, and the durable fix is a name
-   filter in the gravel ingest.
+   **The placeholder is upstream, not ours.** The raw tretzesports rows read
+   `{"Nom": "DORSAL 71 ", "Temps": "DNS", "PosicioSexe": "-1"}` — the timer
+   puts the bib in the *name* field. `scrape_traka.py` only title-cases it.
+
+   **Filtered at ingest since 2026-09-11**, so a rebuild no longer recreates
+   them: `ingest_gravel.is_placeholder_name()` matches `^dorsal[\s_-]*\d+\b`
+   and the row loop skips the entry. Verified both ways against a scratch copy
+   of the DB — re-ingesting 2021 with the filter leaves 0 Dorsal riders and the
+   edition at 63 results / 57 finishers; with the filter disabled all 9 come
+   straight back.
+
+   The scrape files are deliberately NOT edited — they are the record of what
+   the source said — which is exactly why the filter has to sit at the point
+   the DB decides what a rider is.
+
+   **The skip is conditional, and that matters.** It only drops a placeholder
+   that also carries NO result. Every one seen so far is a DNS with no rank and
+   no time, so nothing is lost; but a bib-only row that actually *placed* would
+   be a real result we simply cannot name, and dropping it would shrink the
+   field and move everyone behind it. Those are kept and reported loudly for a
+   human — the same rule as the malformed-row handling in `ingest_race`. Watch
+   for it on sportmaniacs, whose index carries
+   `Dorsal 0 — CORRE Y MARCHA POR LA ESCLEROSIS LATERAL`, a charity entry that
+   matches the pattern and might one day have a time against it.
 
 **`club` is captured in the scrape files but not ingested.** sportmaniacs gives
 a real per-edition club ("AMERICAN GRAVEL MAFIA", "PAS NORMAL STUDIOS"), which

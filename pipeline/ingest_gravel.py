@@ -37,6 +37,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import sqlite3
 import sys
 
@@ -103,6 +104,23 @@ def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
         record_provenance(cur, "riders", rid, field, source,
                           source_ref=source_ref or "gravel_scrapes/_rider_ids.json")
     return rid
+
+
+# tretzesports publishes a PLACEHOLDER in the name field itself where it timed
+# an entrant it could not name: the raw 2021 Traka rows read
+# {"Nom": "DORSAL 71 ", "Temps": "DNS", "PosicioSexe": "-1"}. "Dorsal" is
+# Spanish for bib number, so this is the timer saying "bib 71, no name" -- not
+# a person. Ingested literally it became nine riders called "Dorsal 71" through
+# "Dorsal 79", each with its own rider_id and a row in the riders table.
+#
+# Matched on the name alone, which is what the placeholder actually is. The
+# scrape files are NOT edited: they are the record of what the source said, and
+# the filter belongs at the point the DB decides what a rider is.
+PLACEHOLDER_NAME_RE = re.compile(r"^dorsal[\s_-]*\d+\b", re.I)
+
+
+def is_placeholder_name(name: str) -> bool:
+    return bool(PLACEHOLDER_NAME_RE.match((name or "").strip()))
 
 
 def ingest_one(cur, path, rider_ids, dry_run=False):
@@ -176,8 +194,22 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     # nothing better, so the row IS lost — but it is reported, not hidden.
     seen_riders = {}
     collisions = []
+    placeholders = []          # bib-only rows with no result: skipped
+    named_placeholders = []    # bib-only rows that DID place: kept, reported
     for r in data["rows"]:
         key = r["name"].strip()
+        # A bib with no name behind it is not a rider. Skipped only when the
+        # row also carries NO result -- every one seen so far is a DNS with no
+        # rank and no time, so nothing is lost. A placeholder that DID finish
+        # would be a real result we simply cannot name, and dropping it would
+        # shrink the field and move other riders' positions, so it is kept and
+        # reported instead. Same rule as the malformed-row handling in
+        # ingest_race: never silently drop a result.
+        if is_placeholder_name(key):
+            if r.get("finish_seconds") is None and r.get("rank") is None:
+                placeholders.append(key)
+                continue
+            named_placeholders.append((key, r.get("rank"), r.get("finish_seconds")))
         ident = rider_ids.get(fold(key).strip())
         if ident is None:
             raise KeyError(
@@ -207,6 +239,16 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
         inserted += 1
 
     report_patches(f"{slug} {year}", *restore_patches(cur, edition_id, patched))
+    if placeholders:
+        print(f"    {slug} {year}: skipped {len(placeholders)} bib-only entr"
+              f"{'y' if len(placeholders) == 1 else 'ies'} with no result "
+              f"({', '.join(placeholders[:5])}"
+              f"{', ...' if len(placeholders) > 5 else ''}) — the timer "
+              "published a bib number where it had no name")
+    for name, rank, secs in named_placeholders:
+        print(f"    ! {slug} {year}: {name!r} has no name but DID place "
+              f"(rank {rank}, {secs}s) — kept, because dropping a real result "
+              "would move everyone behind it. Needs a human.")
     if collisions:
         for name, first_rank, second_rank in collisions:
             print(f"    ! {slug} {year}: two riders named {name!r} "

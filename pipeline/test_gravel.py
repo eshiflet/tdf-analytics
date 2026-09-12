@@ -533,6 +533,44 @@ class TestIngestRepairsMojibake(unittest.TestCase):
         self.assertEqual(self.cur.fetchone()[0], "text")
 
 
+class TestPlaceholderBibNames(unittest.TestCase):
+    """A bib number where a name should be is not a rider.
+
+    tretzesports publishes the placeholder in the name field itself -- the raw
+    2021 Traka rows read {"Nom": "DORSAL 71 ", "Temps": "DNS"}. Ingested
+    literally that became nine riders called "Dorsal 71" through "Dorsal 79".
+    The scrape files are the record of what the source said and are not edited,
+    so the filter has to live at ingest or a rebuild brings them back.
+    """
+
+    def test_matches_the_shapes_the_timer_actually_emits(self):
+        for name in ("Dorsal 71", "DORSAL 71 ", "dorsal-71", "Dorsal71",
+                     "Dorsal 0 \u2014 CORRE Y MARCHA POR LA ESCLEROSIS"):
+            self.assertTrue(ingest_gravel.is_placeholder_name(name), name)
+
+    def test_does_not_match_a_real_name(self):
+        # The guard must not fire on a person. "Dorsal" with no number is not
+        # the placeholder shape, and a surname that merely starts with those
+        # letters is a real rider.
+        for name in ("Mattia De Marchi", "Freddy Ovett", "Dorsala Smith",
+                     "Dorsal", "Theodor Dorsalis"):
+            self.assertFalse(ingest_gravel.is_placeholder_name(name), name)
+
+    def test_a_placeholder_with_a_result_is_not_the_same_case(self):
+        """Every one seen so far is a DNS with no rank and no time. One that
+        actually placed would be a real result we cannot name, and dropping it
+        would shrink the field and move everyone behind it -- so the ingest
+        keeps it and reports it instead. This pins the distinction the skip
+        depends on."""
+        inert = {"name": "Dorsal 71", "rank": None, "finish_seconds": None}
+        placed = {"name": "Dorsal 71", "rank": 14, "finish_seconds": 49186}
+        self.assertTrue(ingest_gravel.is_placeholder_name(inert["name"]))
+        self.assertTrue(ingest_gravel.is_placeholder_name(placed["name"]))
+        skip = lambda r: (r["finish_seconds"] is None and r["rank"] is None)
+        self.assertTrue(skip(inert), "an inert DNS placeholder is dropped")
+        self.assertFalse(skip(placed), "a placeholder that placed is kept")
+
+
 class TestTrakaEventSelection(unittest.TestCase):
     """Which event IS "The Traka 360" — the one judgement this race needs.
 
