@@ -4759,10 +4759,42 @@ and a field's biggest gap and its fetchable gap can be disjoint sets.
 `test_coverage.py` pins each exclusion above, because each one is a case where
 a naive `COUNT` reported a gap that does not exist.
 
-`validate_kom.py` / `validate_gc.py` need external reference data that isn't in
-the repo; without it they report `0 ok / 0 mismatch` or `no_data` for every year
-and prove nothing. `validate_exports.py`, `validate_db.py` and the unittest
-suite are the ones that actually gate a change.
+`validate_exports.py`, `validate_db.py` and the unittest suite are the ones
+that gate a change.
+
+**`validate_kom.py` / `validate_gc.py` were NOT short of reference data, and
+the note here saying so was wrong (corrected 2026-09-11).** `bri_stages.json`
+is in the repo, covering 1960-2025, and the bikeraceinfo fetch works. Both
+validators pointed `DATA_DIR` at `cycling-app/src/data/`, and the Tour's
+exports moved to `data/tour/` in the **2026-07-31 per-race restructuring**.
+`load_our_*` therefore returned `[]` for every year, both printed `no_data`
+for everything, and the silence was read as "no reference data" for six weeks.
+
+`validate_gc.py` carried a second bug behind the first: `SELECT year FROM
+race_editions` with no race filter, so it walked all 1,365 editions of every
+race and printed each Tour year's verdict once per race sharing that year —
+"1365 years total" for a 113-edition race. This is exactly the year-only
+lookup the July pass fixed everywhere else; it was missed here because nobody
+reads empty output.
+
+After both fixes: `validate_gc.py` reports **113 years, 40 ok, 2 mismatch**,
+and `validate_kom.py` 1998 goes from `no_data` to **90% match**.
+
+**Two years it immediately surfaced, neither yet investigated:**
+
+- **1998, and this one looks like a real defect.** bikeraceinfo has Ullrich
+  leading the GC on stages 10-13; we have Pantani from stage 9. Ullrich took
+  yellow after the stage-7 time trial and held it until Pantani's Les Deux
+  Alpes ride, so the reference matches the history and we do not.
+- **1979 is probably alignment, not error.** BRI has Zoetemelk leading stages
+  10-14 against our Hinault, but its stage 11 is 33.4 km where ours is 162.0 —
+  a 79% gap that smells of a split-day offset rather than a wrong leader. BRI's
+  stage numbers are not our `source_slug`s and the two diverge after any split,
+  which is the same trap that governs everything else here. Check the alignment
+  before trusting either side's leader.
+
+Several `dist_issues` come out of the same numbering question (2005 stage 17,
+BRI 239.5 km against our 55.0) and want the same check first.
 
 **Tests worth knowing about** (`pipeline/test_exports.py`): `TestAbandonedRidersLeaveTheClassifications`
 builds a scratch DB where one rider leads the sprint classification and then

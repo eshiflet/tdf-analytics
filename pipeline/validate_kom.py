@@ -20,7 +20,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from race_common import exit_on_help
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(HERE, "..", "cycling-app", "src", "data")
+# The Tour's exports moved to data/tour/ in the 2026-07-31 per-race
+# restructuring and this path was not updated, so load_our_* returned []
+# for every year and both validators reported "no_data" for six weeks.
+# That is what the note about them "needing reference data not in the
+# repo" was really describing: bri_stages.json is present and the
+# bikeraceinfo fetch works fine.
+DATA_DIR       = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; tdf-analytics-validator/1.0)",

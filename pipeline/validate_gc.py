@@ -25,7 +25,13 @@ import unicodedata
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH        = os.path.join(HERE, "cycling.db")
 BRI_PATH       = os.path.join(HERE, "bri_stages.json")
-GC_DATA_DIR    = os.path.join(HERE, "..", "cycling-app", "src", "data")
+# The Tour's exports moved to data/tour/ in the 2026-07-31 per-race
+# restructuring and this path was not updated, so load_our_* returned []
+# for every year and both validators reported "no_data" for six weeks.
+# That is what the note about them "needing reference data not in the
+# repo" was really describing: bri_stages.json is present and the
+# bikeraceinfo fetch works fine.
+GC_DATA_DIR    = os.path.join(HERE, "..", "cycling-app", "src", "data", "tour")
 
 SUMMARY_ONLY = "--summary" in sys.argv
 YEAR_ARGS    = [int(a) for a in sys.argv[1:] if a.isdigit()]
@@ -281,7 +287,16 @@ def main():
         bri_data: dict[str, list] = json.load(f)
 
     conn = sqlite3.connect(DB_PATH)
-    all_years = [r[0] for r in conn.execute("SELECT year FROM race_editions ORDER BY year")]
+    # Filter to the Tour. race_editions holds every edition of every race, so
+    # an unfiltered year list walks 1,365 rows -- each Tour year once per race
+    # that also ran that year -- printing the same verdict a dozen times and
+    # reporting "1365 years total" for a 113-edition race. This is the
+    # year-only-lookup trap the July restructuring fixed everywhere else; this
+    # script was missed because its output was empty and nobody read it.
+    all_years = [r[0] for r in conn.execute(
+        """SELECT DISTINCT e.year FROM race_editions e
+             JOIN races r ON r.race_id = e.race_id
+            WHERE r.name LIKE 'Tour de France%' ORDER BY e.year""")]
     conn.close()
 
     years = YEAR_ARGS if YEAR_ARGS else all_years
