@@ -4070,6 +4070,51 @@ file already states. A renamed RIDER leaves the old id holding the editions not
 yet rebuilt, so merge the rows and delete the orphan — and clear its
 `data_provenance`, which `validate_db` will otherwise report.
 
+**Two things the merge leaves behind, both found 2026-09-11 on that same
+`julius-thallmann` -> `julius-thalmann` example:**
+
+- **The exports still point at the dead id.** `classics/gc_by_stage_1983.json`
+  carried `rider/julius-thallmann` after the DB had moved on, so the rider link
+  on that page went nowhere. **Re-export every race set the rider appears in**,
+  not just the one being rebuilt. Now 0 export rows point at a missing rider,
+  and `audit_rider_duplicates.py` is the cheap way to keep checking.
+- **`first_name`/`last_name` were dropped while their provenance survived**,
+  which is the detectable signature: a rider with a `full_name`, no split
+  names, and `data_provenance` rows claiming PCS supplied them. Thalmann was
+  the only case in 19,002 riders; restored, and the count is now 0.
+
+### `audit_rider_duplicates.py` — typo-variants already in the database
+
+`link_gravel_riders.py` asks whether an INCOMING name belongs to an existing
+rider. This asks the other half: which ids already stored are variants of each
+other. They arise from partial re-ingests after a PCS rename, and from Athlinks
+taking whatever an entrant typed — the same person with and without a middle
+initial across years.
+
+**It never merges.** It classifies and prints, because what settles one of
+these is usually outside the database. 30 groups today: **23 SAME, 3 REVIEW,
+4 DIFFERENT.**
+
+Two suffixes are MEANING and are never treated as typos — collapsing them
+would be the expensive error in reverse:
+- PCS's numeric disambiguator: `alessandro-fantini` and
+  `alessandro-fantini-1` are two different people.
+- PCS's roman numerals: `gilbert-desmet-i` and `gilbert-de-smet-ii` are two
+  real riders of the same family.
+
+Nationality is what separates the genuine collisions — `camile-leroy` (be,
+1919-24) from `camille-leroy` (fr, 1938), `michael-andersson` (se) from
+`michael-anderson` (us), `peter-godde` (nl) from `peter-goode` (us). Career
+span longer than 25 years separates the rest.
+
+**Resolving a REVIEW takes an outside source, and that is the point.**
+`andrew-l-esperance` (21 results, ca) beside `andrew-lesperance` (1 result, no
+nationality) reads as ambiguous from inside the data. One search settles it:
+Andrew L'Esperance is a single Canadian rider from Nova Scotia and PCS's own
+slug for him is `andrew-l-esperance`, so the other is a gravel-registration
+variant of the same man. See DATA_SOURCES.md for reaching Wikipedia,
+cyclingflash and the rider's PCS page.
+
 ---
 
 ## Time trials had no times (2026-09-10)
