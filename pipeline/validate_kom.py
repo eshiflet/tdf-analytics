@@ -256,13 +256,26 @@ def validate_year(year: int) -> dict:
     # Overall status: pass if at least one source agrees ≥70%
     rates = [s["match_rate"] for s in result["sources"].values() if s["source"] != "wiki_vs_bri"]
     result["best_match_rate"] = max(rates) if rates else 0
-    result["status"] = "ok" if result["best_match_rate"] >= 70 else ("no_data" if not our else "mismatch")
+    # A year with NO REFERENCE cannot be judged, whether or not we hold data
+    # for it. The old test asked only whether WE had data, so every year
+    # bikeraceinfo and Wikipedia do not cover came out "mismatch" — all of
+    # 2010-2026, which turned the summary into 48 failures that were really
+    # 26 unjudgeable years plus 22 real disagreements.
+    if not rates:
+        result["status"] = "no_reference"
+    elif result["best_match_rate"] >= 70:
+        result["status"] = "ok"
+    elif not our:
+        result["status"] = "no_data"          # they have it, we do not
+    else:
+        result["status"] = "mismatch"         # both have it and they disagree
     return result
 
 
 def print_result(r: dict, summary_only: bool = False):
     year = r["year"]
-    status_sym = {"ok": "✓", "mismatch": "✗", "no_data": "○"}.get(r["status"], "?")
+    status_sym = {"ok": "✓", "mismatch": "✗", "no_data": "○",
+                  "no_reference": "–"}.get(r["status"], "?")
 
     sources_str = "  ".join(
         f"{s['source']}:{s['match_rate']}%"
@@ -312,8 +325,13 @@ def main():
     ok = sum(1 for r in all_results if r["status"] == "ok")
     mismatch = sum(1 for r in all_results if r["status"] == "mismatch")
     no_data = sum(1 for r in all_results if r["status"] == "no_data")
+    no_ref = sum(1 for r in all_results if r["status"] == "no_reference")
     print(f"\n{'='*60}")
-    print(f"Summary: {ok} ok  {mismatch} mismatch  {no_data} no_data  ({len(all_results)} years total)")
+    print(f"Summary: {ok} ok  {mismatch} mismatch  {no_data} no_data  "
+          f"{no_ref} no_reference  ({len(all_results)} years total)")
+    if no_ref:
+        print(f"         {no_ref} year(s) have no external reference at all and are "
+              "UNJUDGED, not failed — bikeraceinfo and Wikipedia thin out after 2009.")
 
 
 if __name__ == "__main__":
