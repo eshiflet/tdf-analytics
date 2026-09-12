@@ -74,27 +74,16 @@ export function jerseyIconTitle(category: JerseyCategory, race: RaceId): string 
   return `${RACE_ABBR[race]} - ${label}`;
 }
 
-// REMOVED 2026-09-12: DOPING_REVOKED_NOTE ("Some race results revoked for
-// doping") and the hand-curated RIDERS_WITH_REVOKED_RESULTS set it keyed on.
-// The rider detail page now says "⊘ result annulled: <years>", built from
-// stage_results.disqualified, which is PCS's own strikethrough rather than a
-// list five riders long that somebody had to maintain. It is strictly more
-// informative: the note said Armstrong had "some" results revoked, the data
-// says 1999-2005, 2009 and 2010 across three Grand Tours.
+// Doping revocations are DATA, not a curated list. Three hand-maintained
+// constants lived here until 2026-09-12 — DOPING_REVOKED_NOTE,
+// RIDERS_WITH_REVOKED_RESULTS and DOPING_GC_NOTES — covering five riders
+// between them. stage_results.disqualified now covers 67, from PCS's own
+// struck-through ranks, and the rider page renders it as
+// "⊘ result annulled: <years>".
 //
-// Do not reintroduce a curated list. If a revocation is missing, it is missing
-// from the SOURCE — see audit_disqualifications.py and the `separated` /
-// `aliases` pattern for how that gets recorded with its evidence.
-
-// Doping notes shown next to GC jersey years on the rider detail page.
-// NOTE: this export is currently unused — nothing imports it. Left in place
-// rather than deleted along with the note above, because it says something the
-// dq years do not (WHICH jersey was lost), and that may be worth wiring up.
-export const DOPING_GC_NOTES: Record<string, string> = {
-  "rider/lance-armstrong": "Stripped of yellow jersey due to doping",
-  "rider/floyd-landis": "Stripped of yellow jersey due to doping",
-  "rider/alberto-contador": "Stripped of 2010 yellow jersey due to doping",
-};
+// Do not reintroduce one. A missing revocation is missing from the SOURCE;
+// audit_disqualifications.py is how it gets found, and rider_aliases.json's
+// evidence-carrying entries are the pattern for recording a human decision.
 export type JerseyCategory = keyof typeof JERSEY_LABELS;
 
 // A rider's win years never change once the index is loaded, but the Riders
