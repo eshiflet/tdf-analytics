@@ -1566,6 +1566,23 @@ live, for 2021 and 2022:
    than a claim. tretzesports publishes no nationality at all, so 2021 and 2022
    have none.
 
+4. **A bib with no name becomes a rider called "Dorsal N"** — *dorsal* is
+   Spanish for bib number, and tretzesports emits one wherever it timed an
+   entrant it could not name. Twenty-one reached the `riders` table as riders
+   in their own right and were **deleted 2026-09-11**: Dorsal 71-79, which
+   held one inert `DNS` row each in The Traka 360 2021 (no rank, no time, no
+   team — the edition stayed at 57 finishers and went from 72 results to 63),
+   and Dorsal 15/44/119/138/158/197/204/211-215, which held no results at all
+   and reached no export.
+
+   **A re-ingest of The Traka 2021 restores all of them.** The names are in
+   `gravel_scrapes/traka/2021.json` and the raw tretzesports files, which are
+   deliberately NOT edited — they are the record of what the source said.
+   Nothing filters them at ingest, so this is a DB-only deletion with no
+   artifact in git to notice its loss: the 12 orphans changed no exported
+   file at all. If they reappear, this is why, and the durable fix is a name
+   filter in the gravel ingest.
+
 **`club` is captured in the scrape files but not ingested.** sportmaniacs gives
 a real per-edition club ("AMERICAN GRAVEL MAFIA", "PAS NORMAL STUDIOS"), which
 is better evidence than the one-current-team-per-athlete figure that kept
