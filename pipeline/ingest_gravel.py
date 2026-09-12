@@ -66,6 +66,11 @@ DB_PATH = os.path.join(HERE, "cycling.db")
 SCRAPES = os.path.join(HERE, "gravel_scrapes")
 RIDER_IDS = os.path.join(SCRAPES, "_rider_ids.json")
 
+# Above upsert_rider because that is what reads it. It used to sit 60 lines
+# further down, inside the comment block explaining the Dorsal placeholder
+# filter, which is a different subject.
+RIDER_ALIASES = load_rider_aliases()
+
 
 def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
     """Insert a gravel-only rider; leave an already-known rider untouched.
@@ -75,7 +80,16 @@ def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
     `rider/peter-stetina`, the road career is the authority on his name,
     nationality and birth year. Athlinks knows only where he currently lives.
     """
-    rid = ident["rider_id"]
+    # Resolve the alias HERE, before the row is created, the way
+    # ingest_classics.upsert_rider() does. The caller used to resolve it
+    # afterwards, which is a different thing entirely: upsert_rider had already
+    # INSERTed the absorbed id by then, and only the stage_result carried the
+    # canonical one. So every gravel ingest minted a rider row that nothing
+    # referenced, and re-minted it on the next run — 22 of the 23 ids in
+    # rider_aliases.json were sitting in `riders` with zero results, including
+    # 22 created by a run on 2026-09-12. It did not undo the merge (the results
+    # were on the right rider) and so nothing that checks results ever saw it.
+    rid = RIDER_ALIASES.get(ident["rider_id"], ident["rider_id"])
     cur.execute("SELECT rider_id FROM riders WHERE rider_id = ?", (rid,))
     if cur.fetchone():
         return rid
@@ -117,8 +131,6 @@ def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
 # Matched on the name alone, which is what the placeholder actually is. The
 # scrape files are NOT edited: they are the record of what the source said, and
 # the filter belongs at the point the DB decides what a rider is.
-RIDER_ALIASES = load_rider_aliases()
-
 PLACEHOLDER_NAME_RE = re.compile(r"^dorsal[\s_-]*\d+\b", re.I)
 
 
@@ -218,12 +230,11 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
             raise KeyError(
                 f"{path}: {key!r} has no entry in _rider_ids.json — "
                 "re-run link_gravel_riders.py after any new scrape")
+        # Returns the CANONICAL id: upsert_rider resolves the alias before it
+        # inserts, so the absorbed id is never written. The scrape file still
+        # carries the old spelling, which is why the mapping has to be applied
+        # somewhere on every run. See race_common.load_rider_aliases.
         rider_id = upsert_rider(cur, ident, source, api)
-        # An id this repo has established is a variant of another person's.
-        # Applied HERE because the scrape file still carries the old
-        # spelling, so without it a rebuild mints the absorbed id again and
-        # the merge silently comes undone. See race_common.load_rider_aliases.
-        rider_id = RIDER_ALIASES.get(rider_id, rider_id)
         if rider_id in seen_riders:
             collisions.append((r["name"], seen_riders[rider_id], r.get("rank")))
         seen_riders[rider_id] = r.get("rank")

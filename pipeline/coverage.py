@@ -60,10 +60,31 @@ need a decision, not a guess:
     cached. Another source (Wikipedia, bikeraceinfo) could fill some; PCS
     cannot fill any.
 
-ALSO FOUND, not reported by this script or by validate_db.py: 936 rows in
-`riders` have zero stage_results and are referenced by nothing else in the
-schema — 868 of them carry a nationality, all 936 a first name, so they were
-parsed properly and then orphaned. Origin not yet established.
+ALSO FOUND, not reported by this script or by validate_db.py: rows in `riders`
+with zero stage_results, referenced by nothing else in the schema. Traced
+2026-09-12 via data_provenance, which named ingest_gravel.py for all 936 and
+split them cleanly in two:
+
+  * 22 were a live bug, fixed. ingest_gravel.upsert_rider() INSERTed the row
+    before the caller applied rider_aliases.json, so every run minted the
+    ABSORBED id and put the result on the canonical one — 22 of the 23 aliases
+    had a row with no results, re-created on every ingest. ingest_classics.py
+    and ingest_race.py both resolve the alias first; only gravel did not. The
+    22 are deleted and the alias now resolves inside upsert_rider.
+
+  * 914 are dead litter from re-sourcing The Traka on 2026-08-24 (commit
+    2d8cd2f0). They were created from the timers' full field and stranded when
+    the edition's results were replaced from PCS. None of them appears in
+    _rider_ids.json, so no ingest can reach them and none will be created
+    again. Safe to delete; left in place pending a decision.
+
+AND THE REASON THOSE 914 ARE WORTH A SECOND LOOK: that re-source cost results.
+The Traka 360 by year, sportmaniacs/tretzesports before vs PCS now — 2021
+72->63, 2022 100->100, 2023 101->21, 2024 102->87, 2026 135->141. Net -104,
+and 2023 lost four fifths of its field. PCS was the better source for
+everything else about the Traka (it has vertical_meters, ProfileScore and
+teams, which the timers do not), but its finisher list is shorter, and nothing
+in this report notices a field that SHRANK — it only counts what is NULL.
 
 WHAT THIS USED TO GET WRONG, because it is the failure mode to watch for. Every
 one of those columns was once excluded for the whole gravel set, on the stated
