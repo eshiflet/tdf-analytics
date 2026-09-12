@@ -54,6 +54,22 @@ Plain `urllib` with a browser User-Agent works. It rate-limits, so
 scrapers must never run at once** — concurrent runs return wrong data, not
 errors. Bulk work uses the DevTools snippet in `scrape_stage_template.js`.
 
+**Known PCS errors — where it is not silent but WRONG.** Each was checked
+against other sources, not assumed:
+
+| what | PCS says | reality |
+|---|---|---|
+| `rider/mathieu-belanger-barette` | "Mathieu Belanger Barette" | **Bélanger-Barrette**, double R, per the [UCI](https://www.uci.org/rider-details/86038), Precision Hydration, Cycling Weekly, Velo, Reserve Wheels and FirstCycling. PCS has one page and `...barrette` is a 404. Its birth date (3 Aug 1989) matches the press profile, so the *rider* is right and only the *name* is wrong. Our canonical id deliberately does NOT follow PCS here — see `rider_aliases.json`. |
+| Giro 1985 stage-8a | `Won how: Time trial` | a 9x5 km mass-start circuit race, won from the bunch. Corrected via `route_type_overrides.json` |
+| Giro 1946 winner time | a figure implying 46.5 km/h over 3,050 km | unusable; stored as NULL |
+| jury expulsions | `DNF`/`DNS`, or the rider vanishes | the nine Festina riders of 1998 were expelled, and PCS strikes none of them |
+| split-day time trials | the GC TOTAL in the stage Time column | the 1962 Tour's 23 km stage-2b reads 10:45:17, refused by `implausible_speed` |
+
+**PCS is the PRIMARY source — a statement about volume, not correctness.** It
+is authoritative for exactly one thing: the `rider_id` string, because our ids
+are its slugs by convention. That is a naming convention, not a truth claim,
+and the Bélanger-Barrette row above is the case where the two come apart.
+
 **Known silences, all verified rather than assumed:**
 - No elevation before ~1963 on the route page, and none at all for the 1954-62
   Tour block or Giro 1992-99.

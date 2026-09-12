@@ -74,7 +74,7 @@
   },
   "rider/mathieu-belanger-barette": {
    "canonical": "rider/mathieu-belanger-barrette",
-   "evidence": "Bélanger-Barrette, double R, confirmed by the UCI rider database plus Precision Hydration, Cycling Weekly, Velo, Reserve Wheels and FirstCycling. PCS spells it 'barette' and PCS IS WRONG; its slug was what link_gravel_riders matched on. The canonical therefore moves to the 0-result sportmaniacs identity, which is the only one spelling his name correctly — the opposite of what a most-results rule would pick.",
+   "evidence": "Bélanger-Barrette, double R, confirmed by the UCI rider database plus Precision Hydration, Cycling Weekly, Velo, Reserve Wheels and FirstCycling. PCS spells it 'barette' and PCS IS WRONG; its slug was what link_gravel_riders matched on. The canonical therefore moves to the 0-result sportmaniacs identity, which is the only one spelling his name correctly — the opposite of what a most-results rule would pick. CONFIRMED SAME PERSON: PCS's own page for the misspelled slug gives a birth date of 3 August 1989, matching the press profile of Mathieu Bélanger-Barrette exactly. PCS has only the one page — /rider/mathieu-belanger-barrette is a 404 — so this is a single rider whose NAME PCS has wrong, not two riders. The upstream typo cannot be fixed from here and is recorded in DATA_SOURCES.md.",
    "decided": "2026-09-12",
    "sources": [
     "https://www.uci.org/rider-details/86038",
