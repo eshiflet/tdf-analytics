@@ -23,6 +23,7 @@ distinction it draws deliberately and would be easy to "simplify" away:
 The DB fixtures are built from schema.sql rather than a copy of it, so the
 tests cannot drift from the real schema the way an inlined copy did before.
 """
+import audit_disqualifications
 import contextlib
 import io
 import json
@@ -1073,3 +1074,48 @@ class KomCompareTest(unittest.TestCase):
         r = validate_kom.compare("wikipedia", [("Richard Virenque", 0)],
                                  [("VIRENQUE Richard", 0)])
         self.assertEqual(r["match_rate"], 100)
+
+
+class TestStruckThroughRanks(unittest.TestCase):
+    """PCS marks an annulled result by striking the rank, keeping the number.
+
+    Every scraper here strips HTML tags, so <s>&nbsp;1&nbsp;</s> and a live
+    "1" both became rank 1 and the DB grew two rank-1 finishers on one stage.
+    audit_disqualifications.py reads the marker the tag-stripping threw away.
+    """
+
+    PAGE = """
+    <table class="results">
+      <thead><tr><th>Rnk</th><th>GC</th><th>Timelag</th><th>Rider</th></tr></thead>
+      <tbody>
+        <tr><td><s>&nbsp;1&nbsp;</s></td><td></td><td></td>
+            <td><a href="rider/hippolyte-aucouturier">AUCOUTURIER</a></td></tr>
+        <tr><td>1</td><td>1</td><td>+0:00</td>
+            <td><a href="rider/henri-cornet">CORNET</a></td></tr>
+        <tr><td>3</td><td>2</td><td>+5:08</td>
+            <td><a href="rider/francois-beaugendre">BEAUGENDRE</a></td></tr>
+        <tr><td><s>&nbsp;4&nbsp;</s></td><td></td><td></td>
+            <td><a href="rider/lucien-pothier">POTHIER</a></td></tr>
+      </tbody>
+    </table>"""
+
+    def test_finds_only_the_struck_riders(self):
+        got = audit_disqualifications.struck_riders(self.PAGE)
+        self.assertEqual(got, [("rider/hippolyte-aucouturier", "1"),
+                               ("rider/lucien-pothier", "4")])
+
+    def test_the_rider_awarded_the_win_is_not_flagged(self):
+        # Cornet shares the displayed rank 1 with a disqualified man. Catching
+        # him too would annul the result the UVF actually awarded him.
+        slugs = [s for s, _ in audit_disqualifications.struck_riders(self.PAGE)]
+        self.assertNotIn("rider/henri-cornet", slugs)
+
+    def test_no_results_table_is_not_read_as_nobody_disqualified(self):
+        # The distinction that keeps a fetch failure from looking like a clean
+        # page: None means "could not tell", [] means "checked, none struck".
+        self.assertIsNone(audit_disqualifications.struck_riders("<html></html>"))
+        self.assertEqual(
+            audit_disqualifications.struck_riders(
+                '<table class="results"><thead><tr><th>Rnk</th></tr></thead>'
+                '<tbody><tr><td>1</td><td><a href="rider/x">X</a></td></tr>'
+                '</tbody></table>'), [])

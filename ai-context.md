@@ -4789,6 +4789,69 @@ unranked rather than keeping a derived rank.
 - **1990 Stage 21** (Paris): Was stored as 45.5 km (duplicate of TT distance). Corrected to 182.5 km.
 - **1905–1912 gc_gap_seconds**: All zeros at last stage for points-system years — PCS stored intra-stage gaps, not cumulative race time gaps. Not usable for time calculations.
 
+### PCS strikes through a disqualified rank, and we threw the marker away (2026-09-11)
+
+**This is the answer to the duplicated ranks, and it was visible on the page the
+whole time.** PCS marks an annulled result by wrapping the rank in `<s>`,
+keeping the number:
+
+```html
+<td><s>&nbsp;1&nbsp;</s></td><td></td><td></td>   Aucouturier — DISQUALIFIED
+<td>1</td><td>1</td><td>+0:00</td>                Cornet — awarded the win
+```
+
+Every scraper here strips HTML tags, so both became a plain rank `1`. That is
+where **39 stages with two rank-1 finishers** come from, and it is worse than a
+cosmetic tie: `ingest_race` takes the first rank-1 row carrying an absolute time
+as the stage winner, so on 1904 stage 3 every rider's finish time is computed
+against the time of a man who was stripped of the result.
+
+**Two PCS conventions, and we only handled one.** A literal `DSQ` in the rank
+cell is already read as a status (344 rows). The struck-through numeric rank was
+invisible.
+
+**The empty GC cell is NOT the marker** — that was the tempting shortcut and it
+is wrong. Fily Camille finished 6th on 1904 stage 3, is not struck, and has an
+empty GC cell too. Only the `<s>` tag distinguishes them, and it does not
+survive into the scrape files, so this cannot be repaired from what is on disk.
+
+**`audit_disqualifications.py`** reads it from the live page by `source_slug`
+and reports every struck rider we store as a finisher; `--apply` sets
+`status='DSQ'` and `stage_rank=NULL` with provenance, and deliberately leaves
+`finish_time_seconds` alone — the man rode and the clock ran; what was taken
+away was the placing, not the afternoon.
+
+**Measured 2026-09-11 across the 39 suspect stages: 85 disqualified riders
+stored as finishers.** The years are the history — 1904, then 2006-2013:
+
+| edition | struck riders stored as finishers |
+|---|---|
+| Tour 1904, all six stages | 29, being Maurice Garin, Lucien Pothier, César Garin, Hippolyte Aucouturier and Stéphane Chaput |
+| Tour 2008 (st 4, 6, 9, 10, 20) | 25 |
+| Tour 2007 (st 3, 7, 11, 13, 15, 18, 21) | 11 |
+| Tour 2006 st17, 2009 st16, 2010 st15 | 11 |
+| Giro 2013 st14, Tour 2011, 1968, 1977, 1987, 1992, San Sebastián 2009 | 9 |
+
+The 1904 set matches the documented history exactly: the UVF heard testimony for
+months and in December 1904 disqualified the first four finishers and every
+stage winner — 29 riders punished, two for life — handing the race to 19-year-old
+Henri Cornet four months after it ended.
+
+**NOT APPLIED, and this one is genuinely Eric's call**, because it collides with
+a decision already recorded here: *"TDF 2008 KOM has two rank-1 rows — Kohl
+(stripped) and Sastre (re-award). Keeping both is Eric's decision"*. Marking a
+struck rider `DSQ` removes him from the classification the same way. The row and
+his time survive either way, so a rider page can still show the ride with a
+revoked-results note — but whether a stripped rider keeps a visible placing is a
+modelling decision, not a defect.
+
+**The durable half is not built.** The `<s>` marker is discarded in
+`EXTRACT_RESULTS` (`scrape_stage_template.js`) and there is no field for it in
+`StageRow` — `STAGE_ROW_LEN` is 15 and every existing scrape file has 15 fields,
+so carrying it needs a 16th field with back-compat plus a re-scrape of every
+affected edition. Until that exists, `audit_disqualifications.py` must be re-run
+after any re-ingest, like `backfill_bib_numbers`.
+
 ### Times that no race produced (2026-09-11)
 
 > **Resolved later the same day.** The subsections below were written while the
