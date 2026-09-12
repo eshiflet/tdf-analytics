@@ -4881,10 +4881,37 @@ and nobody needs to relay figures by hand for those years. Its stage URLs are
 ## Data Quality Notes
 
 ### KOM data by era
+
+**Measured 2026-09-11, the first full-archive run** — possible only after
+`validate_kom.py`'s data path was fixed the same day. **113 years: 39 ok,
+18 mismatch, 56 no_reference.**
+
+| decade | ok | median match |
+|---|---|---|
+| 1950s | 10/10 | **90%** |
+| 1990s | 6/10 | 90% |
+| 1980s | 5/10 | 80% |
+| 2000s | 3/10 | 80% |
+| 1960s-70s | 7/20 | **67%** |
+| 2010s-20s | — | no reference at all |
+
+**The "0% match" years below were partly an artefact and the list should not
+be trusted as written.** The first run reported 48 mismatches; 30 of those were
+years with NO external reference, scored as disagreeing with a source that said
+nothing. bikeraceinfo and Wikipedia thin out after 2009, so every year from
+2010 on was in that state. Real disagreements: 18.
+
+What survives measurement: the **1960s-70s dip is real** (67% median), matching
+the "PCS missing some climbs" note. The **1950s are the best decade in the
+archive** at 10 of 10 and a 90% median, which nothing here previously claimed.
+
 - **1933–1938**: Patched from Wikipedia top-10 via `patch_kom_wikipedia.py`
-- **1960–1976**: Old PCS format. Totals consistently 15–35% low vs Wikipedia (PCS missing some climbs)
+- **1960–1976**: Old PCS format. Totals run low vs Wikipedia — PCS missing some climbs
 - **1977–1984, 1986–1987, 1990, 1998–1999**: Modern PCS format, mostly good
-- **1985, 1988–1997, 2000, 2003–2004, 2010, 2015, 2018**: Large PCS gaps, 0% match — these years need alternative sources
+- **1985, 1988–1997, 2000, 2003–2004, 2010, 2015, 2018**: previously listed as
+  "0% match, need alternative sources". Re-check each against the corrected
+  run before acting: 2010, 2015 and 2018 have no reference at all, so their 0%
+  was never evidence.
 
 ### Known DB quirks
 - **1982 Stage 5** (Orchies→Fontaine-au-Pire, TTT): Cancelled due to farmer protest. Distance is null.

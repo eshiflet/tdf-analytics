@@ -238,7 +238,62 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
         )
         inserted += 1
 
+    # ── A finisher cannot beat the winner and still rank behind him ──────
+    #
+    # Athlinks asserts both. Unbound 2026 has Paul Voss at status CONF, rank
+    # 14, with a gun time of 6h32m over a 326 km course -- 49.9 km/h on
+    # gravel. Eleven riders in that edition, 37 across the set. The DB matched
+    # the scrape file exactly and every record carried a real gun time, so
+    # this is the timer's own data disagreeing with itself, not a parse.
+    #
+    # The RELATIONAL test is what catches it. race_common.implausible_speed()
+    # cannot: its ceiling is calibrated for road racing, where a short
+    # prologue legitimately exceeds 55 km/h, so 52.6 sails through. "Slower
+    # than the man you finished behind" needs no course knowledge at all.
+    #
+    # DIRECTION MATTERS, and this is the part worth reading twice. If MOST of
+    # the field beats the winner, the wrong time is the WINNER'S, and nulling
+    # everyone else would destroy a good field to protect one bad row. So a
+    # majority is reported and left alone; only a minority is nulled.
+    #
+    # The rank and status stay: the rider finished and placed. What is removed
+    # is a duration that cannot be true.
+    wrow = cur.execute(
+        """SELECT MIN(finish_time_seconds) w FROM stage_results
+            WHERE stage_id = ? AND stage_rank = 1 AND status = 'FINISHED'
+              AND finish_time_seconds > 0""", (stage_id,)).fetchone()
+    wsecs = wrow["w"] if wrow else None
+    impossible = []
+    if wsecs:
+        impossible = cur.execute(
+            """SELECT sr.result_id, sr.stage_rank, sr.finish_time_seconds, ri.full_name
+                 FROM stage_results sr JOIN riders ri ON ri.rider_id = sr.rider_id
+                WHERE sr.stage_id = ? AND sr.status = 'FINISHED'
+                  AND sr.stage_rank > 1 AND sr.finish_time_seconds > 0
+                  AND sr.finish_time_seconds < ?""", (stage_id, wsecs)).fetchall()
+        n_fin = cur.execute(
+            "SELECT COUNT(*) c FROM stage_results WHERE stage_id=? AND status='FINISHED'",
+            (stage_id,)).fetchone()["c"]
+        if impossible and len(impossible) * 2 >= n_fin:
+            print(f"    ! {slug} {year}: {len(impossible)} of {n_fin} finishers beat the "
+                  f"winner's {wsecs}s — that many cannot be wrong, so the WINNER's time "
+                  "is the suspect one. Nothing changed; this needs a human.")
+            impossible = []
+        for r in impossible:
+            cur.execute("UPDATE stage_results SET finish_time_seconds=NULL "
+                        "WHERE result_id=?", (r["result_id"],))
+            record_provenance(
+                cur, "stage_results", r["result_id"], "finish_time_seconds", source,
+                source_ref=f"{api} — {r['finish_time_seconds']}s is faster than the "
+                           f"winner's {wsecs}s on a rider ranked {r['stage_rank']}; the "
+                           "timer reports both. Rank and status kept, the time removed.")
+
     report_patches(f"{slug} {year}", *restore_patches(cur, edition_id, patched))
+    if impossible:
+        print(f"    {slug} {year}: {len(impossible)} finisher(s) timed faster than the "
+              f"winner while ranked behind him — time set NULL, placing kept "
+              f"({', '.join(r['full_name'] for r in impossible[:4])}"
+              f"{', ...' if len(impossible) > 4 else ''})")
     if placeholders:
         print(f"    {slug} {year}: skipped {len(placeholders)} bib-only entr"
               f"{'y' if len(placeholders) == 1 else 'ies'} with no result "

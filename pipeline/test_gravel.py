@@ -851,3 +851,72 @@ class TestPCSGravelParcours(unittest.TestCase):
     def test_a_page_with_no_panel_at_all_is_quiet(self):
         self.assertEqual(scrape_pcs_gravel.parse_parcours("<tbody></tbody>"),
                          (None, None))
+
+
+class TestImpossibleGravelTimes(unittest.TestCase):
+    """A finisher cannot beat the winner and still rank behind him.
+
+    Athlinks asserts both: Unbound 2026 has Paul Voss at status CONF, rank 14,
+    6h32m over 326 km — 49.9 km/h on gravel. Eleven in that edition, 37 across
+    the set. Our DB matched the scrape file exactly and every record carried a
+    real gun time, so it is the timer disagreeing with itself.
+
+    race_common.implausible_speed() cannot catch it: its ceiling is calibrated
+    for road racing, where a short prologue legitimately exceeds 55 km/h, so
+    52.6 sails through. The relational test needs no course knowledge at all.
+    """
+
+    def _rows(self, times_by_rank):
+        """(rank, seconds) pairs -> the shape ingest_gravel writes."""
+        return [{"rank": rk, "name": f"R{rk}", "finish_seconds": sec,
+                 "status": "FINISHED"} for rk, sec in times_by_rank]
+
+    def _apply(self, rows):
+        """The guard's logic over a plain list, independent of the DB so the
+        DECISION is what is pinned rather than the SQL that carries it."""
+        fin = [r for r in rows if r["status"] == "FINISHED"]
+        w = min((r["finish_seconds"] for r in fin
+                 if r["rank"] == 1 and r["finish_seconds"]), default=None)
+        if not w:
+            return rows, "no winner time"
+        bad = [r for r in fin if r["rank"] and r["rank"] > 1
+               and r["finish_seconds"] and r["finish_seconds"] < w]
+        if bad and len(bad) * 2 >= len(fin):
+            return rows, "majority — the winner is the suspect one"
+        for r in bad:
+            r["finish_seconds"] = None
+        return rows, f"nulled {len(bad)}"
+
+    def test_a_minority_beating_the_winner_is_nulled(self):
+        rows = self._rows([(1, 33290), (2, 33593), (14, 23536), (49, 22350),
+                           (60, 28868), (70, 35000), (80, 36000), (90, 37000)])
+        out, why = self._apply(rows)
+        self.assertEqual(why, "nulled 3")
+        self.assertEqual([r["finish_seconds"] for r in out if r["rank"] in (14, 49, 60)],
+                         [None, None, None])
+        self.assertEqual(out[0]["finish_seconds"], 33290, "the winner is untouched")
+        self.assertEqual(out[1]["finish_seconds"], 33593, "a legitimate time survives")
+
+    def test_a_majority_beating_the_winner_means_the_WINNER_is_wrong(self):
+        """THE case that decides the direction of the fix. Nulling here would
+        destroy a good field to protect one bad row."""
+        rows = self._rows([(1, 90000), (2, 33593), (3, 33700), (4, 33800), (5, 33900)])
+        out, why = self._apply(rows)
+        self.assertIn("winner", why)
+        self.assertTrue(all(r["finish_seconds"] is not None for r in out),
+                        "no rider's time may be removed when the winner is the outlier")
+
+    def test_a_normal_field_is_untouched(self):
+        rows = self._rows([(1, 33290), (2, 33593), (3, 33882), (4, 34605)])
+        out, why = self._apply(rows)
+        self.assertEqual(why, "nulled 0")
+        self.assertEqual([r["finish_seconds"] for r in out],
+                         [33290, 33593, 33882, 34605])
+
+    def test_the_absolute_speed_guard_would_not_have_caught_this(self):
+        """Why the relational test exists at all: 49.9 km/h over 326 km is
+        absurd on gravel and entirely normal for a road prologue, so a global
+        ceiling cannot express it."""
+        from race_common import implausible_speed
+        self.assertFalse(implausible_speed(326.38, 23536))
+        self.assertFalse(implausible_speed(326.38, 22350))
