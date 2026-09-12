@@ -1446,8 +1446,18 @@ svg text {
   body.is-mobile.sheet-open #sheet-backdrop {
     display: block;
   }
+  /* Same trap, same fix. */
+  #sheet-toggle[hidden],
+  #sheet-backdrop[hidden] {
+    display: none !important;
+  }
 
-  body.is-mobile #sheet-toggle {
+  /* [hidden] must win. The UA rule `[hidden]{display:none}` carries almost no
+     specificity, and this selector has an ID — so setting btn.hidden = true
+     did nothing and the button rendered on the Riders, Race Overview and All
+     Years pages, where there is no rider panel for it to open. Excluding
+     [hidden] here is what makes the DOM property mean what it says. */
+  body.is-mobile #sheet-toggle:not([hidden]) {
     display: block;
     position: fixed;
     right: 16px;
