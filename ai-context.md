@@ -4,6 +4,8 @@ Interactive cycling analytics app covering the **Tour de France** (all 113 editi
 
 ---
 
+**Where the data comes from: [DATA_SOURCES.md](DATA_SOURCES.md)** — every source, its URLs, how to reach it (cyclingflash needs the Claude in Chrome extension), and where each one stops being useful.
+
 ## Project Overview
 
 The app visualizes per-rider performance across every stage of multiple Grand Tour races. Users select a **race** (Tour de France, Giro d'Italia, or Vuelta a España) and **year** via dropdowns, then pick a metric and see a bump chart of every rider's ranking after each stage, with a sidebar legend and hover tooltips.
@@ -51,7 +53,7 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **Project rename** — analysed and **deferred**; see "Renaming the project". If revived, take the subdomain step first.
 - **Landing pages have identical visible body content.** The four `<race>/index.html` pages differ only in `<title>`/meta. Distinct copy would help them rank separately, but it is a UI/content decision.
 - **Duplicate ranks + same-team bib collisions** in 13 classics race-years — upstream PCS, how to model it is Eric's call. See "Known-open".
-- **More riders may belong on the doping list.** Five are recorded. Re-award pairs visible in the data were deliberately NOT added without confirmation: **Vuelta 2011** (Froome/Cobo), **Giro 2009** (Di Luca, Pellizotti, Valjavec), **Vuelta 2010** (Velits/Mosquera), **Vuelta 2022** (Almeida/López). Giro 1913/1932/1948 show the same pattern from old-data artefacts and are not doping.
+- **More riders may belong on the doping list.** Five are recorded. Re-award pairs visible in the data were deliberately NOT added without confirmation: **Vuelta 2011** (Froome/Cobo), **Vuelta 2010** (Velits/Mosquera), **Vuelta 2022** (Almeida/López). Giro 1913/1932/1948 show the same pattern from old-data artefacts and are not doping. ~~**Giro 2009** (Di Luca, Pellizotti, Valjavec)~~ — **SETTLED 2026-09-11**: the disqualification sweep found PCS striking all three through itself, so they are confirmed by the source rather than inferred from a re-award pair, and carry `disqualified=1` with provenance. Confirmed with Eric.
 - **TDF 2008 KOM has two rank-1 rows** — Kohl (stripped) and Sastre (re-award). Keeping both is Eric's decision (2026-08-18); the jersey stays and the rider page carries a revoked-results note. Modelling revocations in the DB is still open.
 - **The white jersey for the Giro and Vuelta.** Their youth standings are in `classification_standings` as of 2026-09-09, but `yw` is still exported for the Tour alone and `hasYouth` is still false for the other two. Turning it on is a display decision, not a data gap.
 

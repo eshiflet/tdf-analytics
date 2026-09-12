@@ -8,6 +8,10 @@ classics, and seven gravel and mountain-bike races.
 
 21 races · 1,365 race-years · 1892–2026 · 19,023 riders · 786,870 stage results
 
+## Data sources
+
+Every value is traced to a source in `data_provenance`. **[DATA_SOURCES.md](DATA_SOURCES.md)** lists each one — procyclingstats, bikeraceinfo, cyclingflash, Athlinks, sportmaniacs, tretzesports — with its URLs, how to reach it, and what it is and is not good for.
+
 ## What it shows
 
 - **By Stage** — a bump chart of the general classification day by day, and the
