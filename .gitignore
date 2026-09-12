@@ -28,6 +28,16 @@ architecture.md
 cycling.db
 pipeline/cycling.db
 pipeline/cycling.db.bak*
+# SQLite's sidecar files. A -journal appeared untracked mid-write on
+# 2026-09-11 while a long audit was committing; none of these should ever be
+# committed, and the repo is worked in by parallel sessions where an
+# indiscriminate `git add` is a live risk.
+cycling.db-journal
+cycling.db-wal
+cycling.db-shm
+pipeline/cycling.db-journal
+pipeline/cycling.db-wal
+pipeline/cycling.db-shm
 pipeline/db_backups/
 
 # Rider detail scrape cache (intermediate; ingested into cycling.db via scrape_rider_details.py)
