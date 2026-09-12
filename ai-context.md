@@ -4901,11 +4901,50 @@ The payload baseline was re-cut in the same commit: `main.js` +1.2 KB and
 relative gate. **The data files did not regress at all** — the `dq` arrays
 exist on 33 riders of 19,002 and cost nothing measurable.
 
-**Still open:** the sweep covered the Armstrong Tours plus the 39 stages
-findable from inside the data. Other editions may hold vacated-rank
-disqualifications nobody has asked for by name — Basso 2012, Contador 2010,
-Riccò and Kohl beyond the stages already found — and each needs a `--years`
-sweep, because nothing in our data can point at them.
+### Cross-checked against an independent list (2026-09-11)
+
+`grandtourstatistics.nl/dsq.php` is a researcher's hand-built list of riders
+disqualified by the jury in the Tour, Giro and Vuelta. It 403s a plain fetch;
+it reads fine in a browser. Its inclusion rule is deliberately NARROWER than
+PCS's: *"If his results were removed because of a doping test in a different
+race, I don't count it"* — which excludes exactly the USADA-style annulments
+(Leipheimer, Hincapie, Zabriskie) that PCS does strike.
+
+Against the 28 race-years swept so far: **37 of its 45 entries are in this
+database**, and the split says something useful about the two PCS conventions:
+
+| convention | what it covers |
+|---|---|
+| struck rank (`disqualified=1`) | the overall annulments — Armstrong x8, Contador 2010, Landis 2006, Ullrich 2005, the 1904 top four |
+| literal `DSQ` in the rank cell (`status='DSQ'`) | stage-level jury DQs — the ten further 1904 riders, Samyn and Stablinski 1968, the four Giro 2012 car-holders |
+
+**The first comparison looked like 27 misses and was wrong**: it counted only
+the new flag. Ten of the 1904 riders and every stage-level DQ were already
+present as `status='DSQ'`. Any audit of this has to count both.
+
+**The 8 genuine differences are PCS's, not ours** — each checked on the page
+rather than assumed:
+
+| rider | the list says | PCS shows |
+|---|---|---|
+| Froome, Giro 2010 st19 | DQ (held a police motorbike) | `DNF`, not struck |
+| Durand, Tour 2002 st12 | DQ | **not on the page at all** |
+| Fofonov, Tour 2008 | DQ afterwards (heptaminol) | rank 25, clean |
+| Gölz / Pieters, Tour 1992 | DQ | `DNF`, not struck |
+
+plus Nazon and Sweet (1999) and Blijlevens (2000) in the same shape. So the
+database is faithful to PCS and PCS is incomplete against a dedicated
+researcher. Filling these needs a second source per rider and a `manual`
+provenance, not a re-scrape.
+
+**Totals after the 2010-2012 sweep: 737 results, 40 riders** — Tour 594/29,
+Vuelta 101/8, Giro 41/6, San Sebastián 1/1.
+
+**Still open:** only 28 race-years have been swept. A vacated-rank
+disqualification is invisible from inside our data, so every other edition
+needs asking for by name.
+
+[reference_grandtourstatistics]: https://www.grandtourstatistics.nl/dsq.php
 
 ### Times that no race produced (2026-09-11)
 
