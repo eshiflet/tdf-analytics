@@ -77,6 +77,10 @@ export const state = {
   // AND semantics: a rider must have won every selected category, not just
   // one. Keys are "raceId:category" format (e.g. "tour:gc", "giro:sprint").
   ridersFilterJerseys: new Set<string>(),
+  /** Show only riders who had a result annulled. Career-level presence: a
+   *  rider who lost one Tour did not lose the other nine, so this asks
+   *  "ever?" and the icon's tooltip names the years. */
+  ridersFilterDq: false,
   // empty = all races shown; non-empty = only the listed races
   ridersFilterRaces: new Set<RaceId>(),
 };

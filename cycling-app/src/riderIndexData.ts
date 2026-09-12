@@ -24,6 +24,8 @@ export interface RiderEntry {
   lastName?: string;
   nationality: string | null;
   youthWinYears: number[];
+  /** Years this rider had a result annulled. Empty for almost everyone. */
+  dqYears: number[];
   years: Map<number, { finalRank: number; sprintRank: number; komRank: number; team: string | null }>;
   teams: Set<string>;
   /** Only present for aggregate races (the one-day classics), where a single
@@ -100,6 +102,10 @@ type RawRiderIndex = {
   xr?: string[];
   riders: Record<string, {
     n: string; fn?: string; ln?: string; c: string | null; yw?: number[];
+    /** Years in which a result of this rider's was annulled after the fact.
+     *  Years rather than a boolean: a disqualification belongs to a race, not
+     *  to a career. Absent for all but ~33 riders. */
+    dq?: (string | number)[];
     /** Bitmask over `xr`; omitted when the rider is in this set only. */
     x?: number;
     /** Grand Tours. */
@@ -310,7 +316,7 @@ function buildIndexFromRaw(race: RaceId, raw: RawRiderIndex): void {
       if (other && ((rec.x ?? 0) & (1 << bit))) alsoIn.push(other);
     }
 
-    const entry: RiderEntry = { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], years, teams, alsoIn };
+    const entry: RiderEntry = { id, name: rec.n, firstName: rec.fn, lastName: rec.ln, nationality: rec.c ?? null, youthWinYears: rec.yw ?? [], dqYears: (rec.dq ?? []).map(Number), years, teams, alsoIn };
     if (rec.ym) defineLazyConstituents(entry, rec.ym, raceTable, years);
     index.set(id, entry);
   }

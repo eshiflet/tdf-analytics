@@ -1313,3 +1313,47 @@ svg text {
   text-decoration-thickness: 1px;
   opacity: 0.72;
 }
+
+/* A rider with an annulled result. A marker BESIDE the name, never a
+   strikethrough over it: the Riders page is a career overview, and striking
+   the rider through would say the career was annulled when what happened is
+   that some of his races were. The By Stage sidebar, which shows one race,
+   does strike through — there it is the right claim. */
+.rider-dq-mark {
+  margin-left: 0.35em;
+  opacity: 0.78;
+  font-size: 0.95em;
+  cursor: help;
+}
+/* Matches .riders-clear-btn: it is a text control, not a jersey icon. It used
+   to borrow .jersey-filter-btn, which pins the height at 10px for an icon and
+   left the label spilling out of its own button. */
+.dq-filter-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dq-filter-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.dq-filter-btn.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.rider-detail-dq {
+  margin-left: 0.6em;
+  font-size: 0.5em;
+  font-weight: 500;
+  color: var(--text-dim);
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: help;
+}

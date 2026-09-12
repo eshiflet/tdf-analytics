@@ -152,6 +152,14 @@ def build_index(datasets, youth_winners=None, final_ranks=None, ranked_years=Non
                 entry["ln"] = r["lastName"]
             if r["id"] in youth_winners:
                 entry["yw"] = youth_winners[r["id"]]
+            # Years in which at least one of this rider's results was annulled
+            # after the fact. YEARS, not a boolean, because a disqualification
+            # belongs to a race and not to a career: the Riders page is a
+            # career overview, and a rider who lost one Tour did not lose the
+            # other nine. Only 33 riders carry this, so the list costs nothing
+            # and lets a per-year view mark the right row.
+            if r.get("dq"):
+                entry.setdefault("dq", []).append(year)
             if r.get("team"):
                 team_names.add(r["team"])
             raw_years.append((entry, year, r))

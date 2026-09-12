@@ -4877,11 +4877,35 @@ change one. `STAGE_ROW_LEN` stays 15, `STAGE_ROW_LEN_V2` is 16, both accepted;
 makes its marker self-describing and the ingest says which ones it had to
 carry.
 
-**Still open:** the riders grid and rider-detail page read `riders_index.json`,
-which does not carry the flag yet, so the strikethrough shows in the By Stage
-sidebar only. And the sweep covered the Armstrong Tours plus the 39 stages that
-were findable from inside the data — other editions may hold vacated-rank
-disqualifications nobody has asked for by name.
+**Career pages carry it too (2026-09-11), and the shape is different on
+purpose.** `riders_index.json` stores `dq` as a list of YEARS, not a boolean:
+a disqualification belongs to a race, and the Riders page is a career
+overview — a rider who lost one Tour did not lose the other nine. So:
+
+- **By Stage sidebar** (one race, one year) — the rider's name and rank are
+  drawn **struck through**, PCS's own convention. There the claim is true.
+- **Riders grid** (a career) — a `⊘` marker BESIDE the name, never over it,
+  with the years in its tooltip. Striking a career through would say the career
+  was annulled.
+- **Rider detail** — `⊘ result annulled: 1999, 2000, …`, unioned across every
+  race the rider appears in, and deliberately SEPARATE from the curated
+  `RIDERS_WITH_REVOKED_RESULTS` prose note: that list is an editorial decision
+  about five riders, this is what the source marks. A rider in both gets both.
+- **Filter** — a `⊘ Disqualified` toggle that ANDs with every other filter, so
+  nationality "United States" plus that toggle answers "American riders who
+  have been disqualified" in two clicks: 18,088 → 25 → 5 (Armstrong, Hincapie,
+  Landis, Leipheimer, Zabriskie).
+
+The payload baseline was re-cut in the same commit: `main.js` +1.2 KB and
+`main.css` +0.1 KB gzipped, both under 2% in absolute terms but over the
+relative gate. **The data files did not regress at all** — the `dq` arrays
+exist on 33 riders of 19,002 and cost nothing measurable.
+
+**Still open:** the sweep covered the Armstrong Tours plus the 39 stages
+findable from inside the data. Other editions may hold vacated-rank
+disqualifications nobody has asked for by name — Basso 2012, Contador 2010,
+Riccò and Kohl beyond the stages already found — and each needs a `--years`
+sweep, because nothing in our data can point at them.
 
 ### Times that no race produced (2026-09-11)
 

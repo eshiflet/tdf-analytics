@@ -140,6 +140,9 @@ export function filteredRiders(): RiderEntry[] {
       if (years.size > 0 && ![...years].some((y) => e.years.has(y))) return false;
       if (state.ridersFilterTeam && !e.teams.has(state.ridersFilterTeam)) return false;
       if (state.ridersFilterNationality && e.nationality !== state.ridersFilterNationality) return false;
+      // ANDs with every other filter, so "United States" + this answers
+      // "American riders who have been disqualified" directly.
+      if (state.ridersFilterDq && e.dqYears.length === 0) return false;
       if (!matchesJerseyFilter(e, selectedRaces)) return false;
       return true;
     })
@@ -409,6 +412,17 @@ export async function drawRidersPage() {
 
   // Jersey filter toggles grouped by race. AND semantics: selecting more than
   // one narrows to riders who've won every selected category in that race.
+  // Sits with the jersey toggles because it is the same kind of question --
+  // "riders who ever did X" -- and ANDs with nationality, so "American riders
+  // who have been disqualified" is two clicks.
+  const dqFilterBtn = document.createElement("button");
+  dqFilterBtn.className = "dq-filter-btn";
+  dqFilterBtn.type = "button";
+  dqFilterBtn.textContent = "\u2298 Disqualified";
+  dqFilterBtn.title = "Only riders who had a result annulled";
+  dqFilterBtn.setAttribute("aria-pressed", String(state.ridersFilterDq));
+  if (state.ridersFilterDq) dqFilterBtn.classList.add("active");
+
   const jerseyFilterGroup = document.createElement("div");
   jerseyFilterGroup.className = "jersey-filter-group";
   const jerseyFilterBtns: HTMLButtonElement[] = [];
@@ -458,7 +472,7 @@ export async function drawRidersPage() {
   const countLabel = document.createElement("span");
   countLabel.className = "riders-count-label";
 
-  controls.append(searchInput, yearDropdownWrap, raceDropdownWrap, teamSel, nationalitySel, jerseyFilterGroup, clearBtn, countLabel);
+  controls.append(searchInput, yearDropdownWrap, raceDropdownWrap, teamSel, nationalitySel, jerseyFilterGroup, dqFilterBtn, clearBtn, countLabel);
   ridersChartEl.appendChild(controls);
 
   const grid = document.createElement("div");
@@ -509,7 +523,21 @@ export async function drawRidersPage() {
     for (const jersey of jerseyIconsElMultiRace(entry, racesToLoad, state.ridersFilterYears)) {
       btn.appendChild(jersey);
     }
-    btn.title = label;
+    // A rider with any annulled result. Deliberately a marker BESIDE the name
+    // rather than a strikethrough over it: this page is a career overview, and
+    // striking the whole rider through would say his career was annulled when
+    // what happened is that some of his races were. The years are in the title.
+    if (entry.dqYears.length) {
+      const mark = document.createElement("span");
+      mark.className = "rider-dq-mark";
+      mark.textContent = "\u2298";           // circled slash
+      mark.setAttribute("aria-hidden", "true");
+      mark.title = `Result annulled: ${entry.dqYears.join(", ")}`;
+      btn.appendChild(mark);
+    }
+    btn.title = entry.dqYears.length
+      ? `${label} — result annulled: ${entry.dqYears.join(", ")}`
+      : label;
     // setAttribute rather than `btn.dataset.id`: the DOMStringMap proxy is
     // measurably slower.
     btn.setAttribute("data-id", entry.id);
@@ -617,6 +645,12 @@ export async function drawRidersPage() {
       refreshGrid();
     });
   }
+  dqFilterBtn.addEventListener("click", () => {
+    state.ridersFilterDq = !state.ridersFilterDq;
+    dqFilterBtn.classList.toggle("active", state.ridersFilterDq);
+    dqFilterBtn.setAttribute("aria-pressed", String(state.ridersFilterDq));
+    refreshGrid();
+  });
   clearBtn.addEventListener("click", () => {
     state.ridersSearchQuery = "";
     state.ridersFilterYears.clear();
@@ -624,10 +658,13 @@ export async function drawRidersPage() {
     state.ridersFilterNationality = "";
     state.ridersFilterJerseys.clear();
     state.ridersFilterRaces.clear();
+    state.ridersFilterDq = false;
     searchInput.value = "";
     teamSel.value = "";
     nationalitySel.value = "";
     for (const btn of jerseyFilterBtns) btn.classList.remove("active");
+    dqFilterBtn.classList.remove("active");
+    dqFilterBtn.setAttribute("aria-pressed", "false");
     drawRidersPage().catch(showLoadError);
   });
   refreshGrid();

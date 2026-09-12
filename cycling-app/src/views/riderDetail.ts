@@ -99,6 +99,23 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
     const detailFlag = nationalityFlagEl(primaryEntry.nationality);
     if (detailFlag) nameEl.appendChild(detailFlag);
 
+    // Which of this rider's years were annulled, across every race he appears
+    // in. Data-driven from PCS's struck-through ranks, and deliberately SEPARATE
+    // from the curated RIDERS_WITH_REVOKED_RESULTS note below: that list is an
+    // editorial decision about five riders, this is what the source marks. A
+    // rider in both gets both, which is correct — one is prose, one is years.
+    const dqYears = [...new Set(
+      racesWithData().flatMap((race) => byRace.get(race)?.dqYears ?? []),
+    )].sort((a, b) => a - b);
+    if (dqYears.length) {
+      const dqEl = document.createElement("span");
+      dqEl.className = "rider-detail-dq";
+      dqEl.textContent = `\u2298 result annulled: ${dqYears.join(", ")}`;
+      dqEl.title = "Struck through by the source: these results were annulled "
+                 + "after the fact. The rides are kept here, the placings were taken away.";
+      nameEl.appendChild(dqEl);
+    }
+
     // Sits immediately right of the name: the rider's headline results are not
     // all still theirs, and that belongs next to the name rather than buried in
     // the per-jersey notes further down the page.
