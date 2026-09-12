@@ -1486,6 +1486,52 @@ svg text {
     min-height: 36px;
   }
 
+  /* 2c. Tap targets for the buttons — the same 36px floor.
+         These sit at 24-31px, which is fine under a cursor: they are all
+         wider than they are tall, so the pointer only has to be accurate in
+         one axis. A thumb is not accurate in either.
+         .jersey-filter-btn gets a min-WIDTH too: it is a single-glyph icon
+         button, 31px wide, and it is the only control here that is small in
+         both directions.
+         #sheet-toggle is deliberately absent — its 12px/22px padding already
+         puts it past 44px. */
+  .view-btn,
+  .unit-toggle,
+  .button-row button,
+  .table-filter-row button,
+  .filter-toggle-btn,
+  .jersey-filter-btn,
+  .riders-clear-btn,
+  .dq-filter-btn,
+  .riders-multi-dropdown-btn,
+  .rider-back-btn,
+  .race-toggle-btn {
+    min-height: 36px;
+  }
+
+  /* Small in both directions too: "All" came out 35.3px wide, and the
+     quick-select row is four buttons in a line, so a miss hits a neighbour
+     rather than nothing. */
+  .jersey-filter-btn,
+  .race-toggle-btn,
+  .button-row button,
+  .table-filter-row button {
+    min-width: 36px;
+  }
+
+  /* The one control that is thin in graph mode AND in table mode, because it
+     is the same element rotated: 24px across either way. min-height grows the
+     UNROTATED box, so it widens the strip in graph mode and heightens the pill
+     in table mode — one declaration covers both.
+     Graph mode is centred on `left: 16px`, so a 36px-wide strip would hang 2px
+     off the left edge; nudging the centre to 20px keeps it on screen. The
+     table-mode rule sets `left: auto` and is more specific, so it is
+     unaffected. */
+  .y-axis-toggle {
+    min-height: 36px;
+    left: 20px;
+  }
+
   /* 3. Give the chart the width it just gained — and let it SCROLL.
         stageChart.ts floors the SVG at 600px wide (Math.max(rect.width, 600))
         so the picture stays readable in a small desktop window. At 375px that
@@ -1505,6 +1551,18 @@ svg text {
         truncates every one of them. */
   .riders-grid {
     grid-template-columns: 1fr;
+    /* .rider-name-btn is a grid item, so min-height on it would be overridden
+       by the fixed row — the ROW is what has to grow. riders.ts reads this
+       value back out of getComputedStyle rather than hardcoding it, so the
+       virtual window still lands on the right rows; see ROW_H there. */
+    grid-auto-rows: 36px;
+  }
+
+  /* The paint-skipping hint has to follow the row, or every off-screen row is
+     reserved 29px and the scrollbar lies by 7px a row — 3,400px over 14,260
+     riders. */
+  .rider-name-btn {
+    contain-intrinsic-size: auto 36px;
   }
 
   /* 5. Rider detail page.

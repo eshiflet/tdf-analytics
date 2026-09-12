@@ -493,7 +493,7 @@ export async function drawRidersPage() {
   // the remaining wait.
   //
   // The CSS makes this cheap to do properly rather than by chunking: the grid
-  // is `repeat(N, 1fr)` with `grid-auto-rows: 29px`, so a row's height is fixed
+  // is `repeat(N, 1fr)` with a fixed `grid-auto-rows`, so a row's height is known
   // and the row a rider sits on is just index/columns. Only the visible rows
   // plus OVERSCAN are built; the space above and below is held open by two
   // spacers that span whole rows, which is why the scrollbar stays honest.
@@ -501,14 +501,33 @@ export async function drawRidersPage() {
   // KNOWN TRADE: the browser's own Ctrl+F no longer finds an off-screen rider,
   // because he is not in the DOM. The page's search box covers that and always
   // has — it filters the full result set, not the rendered window.
-  const ROW_H = 29;                 // keep in sync with .riders-grid grid-auto-rows
   const OVERSCAN = 4;               // rows above and below, so a flick never shows blank
+  const ROW_H_FALLBACK = 29;        // only if grid-auto-rows is unreadable (jsdom)
   let results: RiderEntry[] = [];
   let windowFirst = -1, windowLast = -1;
 
-  function columnCount(): number {
-    const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length;
-    return Math.max(1, cols);
+  /** Columns and row height, read from the CSS rather than duplicated here.
+   *
+   *  Row height used to be a `const ROW_H = 29` with a "keep in sync with
+   *  .riders-grid grid-auto-rows" comment. Bumping the mobile row to 36px for
+   *  thumbs made that comment the bug: the CSS row grows, the arithmetic below
+   *  still divides by 29, and every scroll computes a window ~24% further down
+   *  the list than the one the user is looking at — blank space at the bottom
+   *  and riders that never render. Reading the value back means the breakpoint
+   *  is the single place the number lives.
+   *
+   *  Both come off ONE getComputedStyle call, which is what the old
+   *  columnCount() already cost, so this is not an extra style read. */
+  function gridMetrics(): { cols: number; rowH: number } {
+    const cs = getComputedStyle(grid);
+    const cols = cs.gridTemplateColumns.split(" ").filter(Boolean).length;
+    // jsdom returns "" for grid-auto-rows, and a percentage or `auto` would
+    // parse to NaN — anything not a positive px length falls back.
+    const rowH = parseFloat(cs.gridAutoRows);
+    return {
+      cols: Math.max(1, cols),
+      rowH: Number.isFinite(rowH) && rowH > 0 ? rowH : ROW_H_FALLBACK,
+    };
   }
 
   function buildButton(entry: RiderEntry): HTMLButtonElement {
@@ -555,10 +574,10 @@ export async function drawRidersPage() {
 
   /** Render the rows in view, or nothing if the window has not moved. */
   function renderWindow(force = false) {
-    const cols = columnCount();
+    const { cols, rowH } = gridMetrics();
     const totalRows = Math.ceil(results.length / cols);
-    const viewRows = Math.ceil(grid.clientHeight / ROW_H);
-    const first = Math.max(0, Math.floor(grid.scrollTop / ROW_H) - OVERSCAN);
+    const viewRows = Math.ceil(grid.clientHeight / rowH);
+    const first = Math.max(0, Math.floor(grid.scrollTop / rowH) - OVERSCAN);
     const last = Math.min(totalRows, first + viewRows + OVERSCAN * 2);
     if (!force && first === windowFirst && last === windowLast) return;
     windowFirst = first; windowLast = last;
