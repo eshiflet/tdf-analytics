@@ -1491,6 +1491,31 @@ svg text {
   .riders-grid {
     grid-template-columns: 1fr;
   }
+
+  /* 5. Rider detail page.
+        The annulled line is nowrap so it reads as one phrase on desktop; at
+        375px Armstrong's ten years ran 431px wide in a 375px viewport and
+        2005, 2009 and 2010 were simply cut off. Let it wrap onto its own
+        line(s) instead — the years are the content, not decoration.
+        The font-size is 0.5em of an h2, so it also needs a floor to stay
+        legible once it is no longer riding alongside the name. */
+  .rider-detail-name .rider-detail-dq {
+    display: block;
+    margin-left: 0;
+    margin-top: 6px;
+    white-space: normal;
+    font-size: 13px;
+  }
+
+  /* The career chart is 500px wide and #riders-chart clips it with
+     overflow-x: hidden, so the last years vanished with nothing to say they
+     were there — the same defect as the stage chart, one container further
+     in. .chart-area already scrolls; this lets the inner box scroll too
+     rather than hiding what it cannot fit. */
+  #riders-chart {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .riders-controls {
     flex-wrap: wrap;
     row-gap: 8px;
