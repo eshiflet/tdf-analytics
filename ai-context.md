@@ -4138,6 +4138,31 @@ So the canonical `greg-follet` stands — now on a 2-to-1 majority across two
 different events, rather than on an alphabetical tie-break that happened to
 land there. The evidence and all four source URLs are in `rider_aliases.json`.
 
+### The 3 REVIEW groups, resolved 2026-09-12 — and one of them inverts the rule
+
+- **`andrew-lesperance` -> `andrew-l-esperance`.** 21 of his 22 gravel
+  registrations across 8 races spell it L'Esperance; a single Leadville 2023
+  entry drops the apostrophe. PCS's slug agrees and Canadian Cycling Magazine
+  confirms one rider from Nova Scotia.
+- **`elliott-rodda` -> `elliot-rodda`.** Unbound 2014 and 2016, no shared
+  stage, no conflicting nationality — one rider. The registrations split 1-1
+  and **no outside source records him at all**, so the canonical is simply the
+  side carrying a nationality. Spelling UNRESOLVED, and recorded as such.
+- **`mathieu-belanger-barette` -> `mathieu-belanger-barrette`**, which is the
+  0-result identity absorbing the 2-result one. **Bélanger-Barrette, double R**,
+  per the UCI rider database, Precision Hydration, Cycling Weekly, Velo,
+  Reserve Wheels and FirstCycling. PCS spells it `barette` and **PCS is
+  wrong**; its slug is what `link_gravel_riders` matched on, which is how the
+  typo became our canonical. The correct spelling survived only in the
+  sportmaniacs record, which had no results attached.
+
+That last one is worth keeping in mind whenever a canonical is chosen: a
+most-results rule would have picked the misspelling, and so would anything that
+treated PCS as the arbiter. **Six outside sources beat both.**
+
+Audit now reads **SAME 0, REVIEW 0, DIFFERENT 4, SETTLED 3**, 23 aliases, and
+0 stale rider links in any export.
+
 **PCS is the PRIMARY source, not an authoritative one**, and this is where the
 difference bites. It carries all four ids as separate rider pages — which is a
 signal, not a verdict, since PCS demonstrably makes duplicates. What PCS *is*

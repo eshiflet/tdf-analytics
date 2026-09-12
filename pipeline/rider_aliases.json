@@ -6,6 +6,11 @@
    "evidence": "Unbound 2010/2011/2012, one rider. Two of his three registrations spell it GAMMEL (2011, 2012) against one Gammell (2010), so the source majority picks the canonical, not string length. A separate Jed Gammell rides Chequamegon with the double L and is a different person.",
    "decided": "2026-09-11"
   },
+  "rider/andrew-lesperance": {
+   "canonical": "rider/andrew-l-esperance",
+   "evidence": "21 of his 22 gravel registrations across 8 races spell it L'Esperance; one Leadville 2023 entry drops the apostrophe. PCS's own slug is andrew-l-esperance and Canadian Cycling Magazine confirms a single rider from Nova Scotia.",
+   "decided": "2026-09-12"
+  },
   "rider/ben-a-anderson": {
    "canonical": "rider/ben-anderson",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
@@ -15,6 +20,11 @@
    "canonical": "rider/dennis-barrett",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/elliott-rodda": {
+   "canonical": "rider/elliot-rodda",
+   "evidence": "Unbound 2014 and 2016, one rider, no shared stage and no conflicting nationality. The two registrations split 1-1 on the spelling and NO outside source records him, so the canonical is the side that at least carries a nationality. UNRESOLVED spelling.",
+   "decided": "2026-09-12"
   },
   "rider/francesco-ceruti": {
    "canonical": "rider/francesco-cerutti-777",
@@ -61,6 +71,16 @@
    "canonical": "rider/mark-elsasser",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/mathieu-belanger-barette": {
+   "canonical": "rider/mathieu-belanger-barrette",
+   "evidence": "Bélanger-Barrette, double R, confirmed by the UCI rider database plus Precision Hydration, Cycling Weekly, Velo, Reserve Wheels and FirstCycling. PCS spells it 'barette' and PCS IS WRONG; its slug was what link_gravel_riders matched on. The canonical therefore moves to the 0-result sportmaniacs identity, which is the only one spelling his name correctly — the opposite of what a most-results rule would pick.",
+   "decided": "2026-09-12",
+   "sources": [
+    "https://www.uci.org/rider-details/86038",
+    "https://www.precisionhydration.com/athletes/profiles/cycling/mathieu-belanger-barrette/",
+    "https://firstcycling.com/rider.php?r=58500"
+   ]
   },
   "rider/matthew-omeara": {
    "canonical": "rider/matthew-o-meara",
