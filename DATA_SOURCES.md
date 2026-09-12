@@ -26,6 +26,7 @@ a claim. If no source has it, it stays NULL and `coverage.py` counts it.
 | [`tretzesports`](#tretzesports) | 1,147 | JSON API | The Traka 2021-2022 |
 | [`manual`](#manual) | 13 | — | hand-entered, with a reason |
 | [`wikipedia`](#wikipedia) | 12 | plain HTTP | a specific corrected value |
+| [letour.fr](#letourfr--the-races-own-site) | 1, as `manual` | plain HTTP (year archive needs a browser) | the Tour's own record, for gaps PCS has |
 | [`cyclingflash`](#cyclingflash) | 2 | **Chrome extension only** | elevation, **2000 onward** |
 | [`unknown`](#unknown) | 3,480 | — | predates provenance; origin unproven |
 
@@ -105,6 +106,38 @@ anyone spends an afternoon on it. It is still the right second opinion for
 Used for specific corrected values with a cited article, not bulk import —
 `patch_msr_2013_distance.py` (Milan-San Remo 2013, 246 km),
 `fix_paris_finale_distances.py`, and the 1933-38 KOM patch.
+
+## letour.fr — the race's own site
+
+`https://www.letour.fr/` — the organiser's site, and therefore the most
+authoritative record that exists for the Tour. Already used once, and worth
+reaching for whenever PCS has a gap or looks wrong about a Tour result.
+
+**Currently recorded as `manual`, not as its own source**, and the reason is
+worth keeping: the history archive at `/en/history` is a JavaScript year
+selector, and **the URL does not change when you pick a year**. There is no
+per-year page to cite, so `patch_1905_unranked_finishers.py` records what it
+found there as `manual` with a prose `source_ref` rather than a link. That
+patch is the one row: the 1905 stage-1 finishers PCS holds at rank 999 with no
+time, which letour.fr lists as 29 riders sharing 16th at +5h20'00".
+
+**Two ways in:**
+
+- **The year archive** — `/en/history`, driven through the Claude in Chrome
+  extension (the selector needs JavaScript; plain `urllib` gets the shell).
+  Filters by year, and by data type: rankings, starters, stages, jersey
+  wearers, stage winners.
+- **The ASO *guide historique*, which IS citable** —
+  `https://storage-aso.lequipe.fr/ASO/cycling_tdf/tdf2025-guide-historique.pdf`,
+  an 8 MB official PDF, HTTP 200 over plain `curl`. **The URL pattern is not
+  general**: the 2024 and 2023 equivalents 404, so find the current link from
+  the history page rather than constructing one. This is the better citation
+  when a value needs a stable reference.
+
+If letour.fr ever supplies more than a handful of values it should get its own
+`SOURCE_LETOUR` constant instead of riding under `manual` — that would make its
+rows separable from genuinely hand-entered ones, which is the point of
+provenance. Not done, because one row does not justify the migration.
 
 ## athlinks
 
