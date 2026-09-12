@@ -1116,12 +1116,6 @@ svg text {
    narrow screen — so no negative margin here, which clipped its first letter
    against the viewport edge once wrapped. Dimmed and italic rather than a
    warning colour: it qualifies the results below it, it isn't an alert. */
-.rider-detail-doping-note {
-  font-size: 13px;
-  font-style: italic;
-  font-weight: 400;
-  color: var(--text-dim);
-}
 
 .rider-detail-meta {
   font-size: 13px;
@@ -1351,6 +1345,9 @@ svg text {
 .rider-detail-dq {
   margin-left: 0.6em;
   font-size: 0.5em;
+  /* Italic inherited from the "Some race results revoked for doping" note this
+     replaced — it read well there and reads well here. */
+  font-style: italic;
   font-weight: 500;
   color: var(--text-dim);
   vertical-align: middle;

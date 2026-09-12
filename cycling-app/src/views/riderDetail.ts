@@ -11,7 +11,6 @@ import { ridersChartEl, yearSelectEl, metricSelectEl, tooltipEl } from "../dom";
 import { updateHash } from "../hashRouting";
 import { positionTooltip, hideTooltip } from "../tooltip";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
-import { DOPING_REVOKED_NOTE, RIDERS_WITH_REVOKED_RESULTS } from "../jerseyIcons";
 import type { RiderEntry } from "../riderIndexData";
 import { riderIndexByRace, ensureRiderIndexFor, crossRaceFor } from "../riderIndexData";
 import { buildLegend } from "./stageChart";
@@ -100,10 +99,11 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
     if (detailFlag) nameEl.appendChild(detailFlag);
 
     // Which of this rider's years were annulled, across every race he appears
-    // in. Data-driven from PCS's struck-through ranks, and deliberately SEPARATE
-    // from the curated RIDERS_WITH_REVOKED_RESULTS note below: that list is an
-    // editorial decision about five riders, this is what the source marks. A
-    // rider in both gets both, which is correct — one is prose, one is years.
+    // in, from PCS's own struck-through ranks. This REPLACED a hand-curated
+    // "Some race results revoked for doping" note covering five riders: the
+    // years are strictly more informative — Armstrong reads 1999-2005, 2009
+    // and 2010 across three Grand Tours where the prose said "some" — and
+    // nobody has to maintain a list. It keeps that note's italics.
     const dqYears = [...new Set(
       racesWithData().flatMap((race) => byRace.get(race)?.dqYears ?? []),
     )].sort((a, b) => a - b);
@@ -116,16 +116,6 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       nameEl.appendChild(dqEl);
     }
 
-    // Sits immediately right of the name: the rider's headline results are not
-    // all still theirs, and that belongs next to the name rather than buried in
-    // the per-jersey notes further down the page.
-    const dopingNoteEl = RIDERS_WITH_REVOKED_RESULTS.has(primaryEntry.id)
-      ? document.createElement("span")
-      : null;
-    if (dopingNoteEl) {
-      dopingNoteEl.className = "rider-detail-doping-note";
-      dopingNoteEl.textContent = DOPING_REVOKED_NOTE;
-    }
 
     const metaEl = document.createElement("div");
     metaEl.className = "rider-detail-meta";
@@ -145,7 +135,7 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       metaParts.push(part);
     }
     metaEl.textContent = metaParts.join(", ");
-    header!.append(backBtn, nameEl, ...(dopingNoteEl ? [dopingNoteEl] : []), metaEl);
+    header!.append(backBtn, nameEl, metaEl);
   }
 
   // ── Toggle bar: race buttons (T/G/V) + divider + classification buttons ───────

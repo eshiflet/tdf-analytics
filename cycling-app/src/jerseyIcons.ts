@@ -74,28 +74,22 @@ export function jerseyIconTitle(category: JerseyCategory, race: RaceId): string 
   return `${RACE_ABBR[race]} - ${label}`;
 }
 
-// Riders who had a result taken away for doping. This drives the note beside
-// the rider's name on the detail page; DOPING_GC_NOTES below adds which jersey
-// for the GC years where the revoked result was the overall win.
+// REMOVED 2026-09-12: DOPING_REVOKED_NOTE ("Some race results revoked for
+// doping") and the hand-curated RIDERS_WITH_REVOKED_RESULTS set it keyed on.
+// The rider detail page now says "⊘ result annulled: <years>", built from
+// stage_results.disqualified, which is PCS's own strikethrough rather than a
+// list five riders long that somebody had to maintain. It is strictly more
+// informative: the note said Armstrong had "some" results revoked, the data
+// says 1999-2005, 2009 and 2010 across three Grand Tours.
 //
-// Membership is a documented revocation, not a suspension and not an
-// inference: a rider belongs here only when a governing body actually removed
-// a result. Duplicate ranks in the data are a hint that one happened, never
-// evidence on their own — the same duplicates also come from PCS artefacts —
-// so nothing is added here without the case behind it.
-export const DOPING_REVOKED_NOTE = "Some race results revoked for doping";
-export const RIDERS_WITH_REVOKED_RESULTS = new Set<string>([
-  "rider/lance-armstrong",   // all seven Tour wins, 1999-2005
-  "rider/floyd-landis",      // 2006 Tour
-  "rider/alberto-contador",  // 2010 Tour; 2011 Giro, re-awarded to Michele Scarponi by CAS
-  "rider/bernhard-kohl",     // 2008 Tour KOM, re-awarded to Carlos Sastre
-  "rider/juan-jose-cobo",    // 2011 Vuelta, re-awarded to Chris Froome
-  // Not "rider/ivan-cobo-cayon" — a different, unrelated Cobo rides in the data.
-]);
+// Do not reintroduce a curated list. If a revocation is missing, it is missing
+// from the SOURCE — see audit_disqualifications.py and the `separated` /
+// `aliases` pattern for how that gets recorded with its evidence.
 
-// Doping notes shown next to GC jersey years on the rider detail page. Keys
-// are a subset of RIDERS_WITH_REVOKED_RESULTS — a rider whose revoked result
-// wasn't a GC win (Kohl's KOM) has no entry here.
+// Doping notes shown next to GC jersey years on the rider detail page.
+// NOTE: this export is currently unused — nothing imports it. Left in place
+// rather than deleted along with the note above, because it says something the
+// dq years do not (WHICH jersey was lost), and that may be worth wiring up.
 export const DOPING_GC_NOTES: Record<string, string> = {
   "rider/lance-armstrong": "Stripped of yellow jersey due to doping",
   "rider/floyd-landis": "Stripped of yellow jersey due to doping",
