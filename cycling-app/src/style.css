@@ -1357,3 +1357,135 @@ svg text {
   white-space: nowrap;
   cursor: help;
 }
+
+/* The sheet chrome exists in the DOM only on mobile (mobile.ts creates it
+   lazily), but default it off here so a stale class can never surface it on
+   desktop. The media query below turns it on; a later rule would have
+   overridden the query, which is why this sits ABOVE it. */
+#sheet-toggle,
+#sheet-backdrop {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   MOBILE — everything below one breakpoint.
+
+   Every rule in this file below this line sits inside the media query, so
+   the desktop rendering is untouched BY CONSTRUCTION. A max-width query
+   cannot apply above its breakpoint, which makes "desktop unchanged" a
+   structural property rather than something to keep re-verifying.
+
+   767px, not 768: it is the last width before the common tablet portrait
+   breakpoint, so a 768px iPad keeps the desktop layout it renders fine.
+
+   Measured problems this addresses, at 375px:
+     - nav.view-nav was 487px and clipped — the right-hand buttons were
+       unreachable
+     - the 310px rider sidebar started the chart 280px in, so the picture was
+       mostly off-screen
+   The chart itself needed no work: stageChart.ts measures its container with
+   getBoundingClientRect(), so it reflows to full width the moment the
+   sidebar leaves the flow.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* 1. The nav wraps instead of overflowing. */
+  .view-nav {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .topbar-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .topbar {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* 2. The rider panel becomes a bottom sheet: out of flow, so .chart-area
+        takes the full width on its own. Reusing #sidebar rather than building
+        a second rider widget — see mobile.ts. */
+  body.is-mobile .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    width: auto;
+    max-height: 78vh;
+    border-right: none;
+    border-top: 1px solid var(--panel-border);
+    border-radius: 12px 12px 0 0;
+    background: var(--panel, #16181d);
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.45);
+    transform: translateY(100%);
+    transition: transform 180ms ease;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  body.is-mobile.sheet-open .sidebar {
+    transform: translateY(0);
+  }
+  /* The floating button sits over the sheet's bottom-right corner, so the last
+     legend row was unreachable behind it. Pad the scrolling list rather than
+     moving the button, which would make it jump on open. */
+  body.is-mobile.sheet-open .legend {
+    padding-bottom: 64px;
+  }
+  /* main.ts owns .hidden for view switching; the sheet must never override it. */
+  body.is-mobile .sidebar.hidden {
+    display: none;
+  }
+
+  #sheet-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(0, 0, 0, 0.5);
+  }
+  body.is-mobile.sheet-open #sheet-backdrop {
+    display: block;
+  }
+
+  body.is-mobile #sheet-toggle {
+    display: block;
+    position: fixed;
+    right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 61;
+    padding: 12px 22px;          /* >=44px tall: a real tap target */
+    border-radius: 24px;
+    border: 1px solid var(--panel-border);
+    background: var(--accent, #e8c547);
+    color: #1a1a1a;
+    font: inherit;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  /* 3. Give the chart the width it just gained — and let it SCROLL.
+        stageChart.ts floors the SVG at 600px wide (Math.max(rect.width, 600))
+        so the picture stays readable in a small desktop window. At 375px that
+        floor means the container is 355px around a 600px chart, and stages
+        13-21 of a Grand Tour were being clipped away with nothing to say they
+        existed. Lowering the floor instead would cram 21 stages into 355px and
+        make the whole thing unreadable, so the chart keeps its width and the
+        area scrolls horizontally — the same rule this repo already applies to
+        wide tables. */
+  .chart-area {
+    padding: 12px 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 4. The riders grid goes single-column; three columns of names at 375px
+        truncates every one of them. */
+  .riders-grid {
+    grid-template-columns: 1fr;
+  }
+  .riders-controls {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+}

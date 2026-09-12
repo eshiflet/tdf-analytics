@@ -33,6 +33,7 @@ import { drawAllRacesOverview } from "./views/allRaces";
 import { drawClassicsHistory, raceHistoryUsesDistanceUnits } from "./views/classicsHistory";
 import { drawRidersPage } from "./views/riders";
 import { drawRiderDetail } from "./views/riderDetail";
+import { initMobile, syncMobileChrome } from "./mobile";
 
 /** The cross-year nav slot: per-race history for an aggregate race, season
  *  totals for a stage race. */
@@ -153,6 +154,7 @@ function renderStage() {
   const isTable = state.stageViewMode === "table";
   chartEl.classList.toggle("hidden", isTable);
   sidebarEl.classList.toggle("hidden", isTable);
+  syncMobileChrome();
   stageTableEl.classList.toggle("visible", isTable);
   if (isTable) drawStageTable();
   else drawChart();
@@ -302,6 +304,7 @@ export function switchView(view: "stage" | "overview" | "allraces" | "riders",
   viewRidersBtn.classList.toggle("active", view === "riders");
   chartEl.classList.toggle("hidden", view !== "stage");
   sidebarEl.classList.toggle("hidden", view !== "stage");
+  syncMobileChrome();
   stageTableEl.classList.toggle("visible", view === "stage" && state.stageViewMode === "table");
   overviewChartEl.classList.toggle("visible", view === "overview");
   overviewSummaryEl.hidden = view !== "overview";
@@ -558,4 +561,5 @@ function init() {
   }
 }
 
+initMobile();
 init();
