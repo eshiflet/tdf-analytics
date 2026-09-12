@@ -28,8 +28,14 @@
   },
   "rider/greg-follett": {
    "canonical": "rider/greg-follet",
-   "evidence": "Leadville 1997 and 1999, one rider. The two registrations split 1-1 — Follet 1997, Follett 1999 — and no outside source records an amateur finisher of those years, so the canonical is UNRESOLVED and was left where the merge put it. Flip it freely if better evidence turns up.",
-   "decided": "2026-09-11"
+   "evidence": "Leadville 1997 and 1999, one rider — the organiser's own All Time Finishers list carries both his rides at times that match this database to the second (9:14:34 in 1997, 8:26:54 in 1999), same state, same M2 category. RESOLVED 2026-09-11 by counting EVENTS rather than records: Leadville 1997 spells it FOLLET and Chequamegon 1999 spells it Follet, against Follett at Leadville 1999 — 2 events to 1. The Leadville PDF is not an independent witness, it is the same Athlinks data. No outside source records him at all. Canonical greg-follet stands, now on evidence rather than on an alphabetical tie-break.",
+   "decided": "2026-09-11",
+   "sources": [
+    "https://www.leadvilleraceseries.com/wp-content/uploads/2017/07/1994thru2016_AllTime_Bike_Race.pdf",
+    "gravel_scrapes/_raw/174684_240340.json (Leadville 1997: 'Greg Follet')",
+    "gravel_scrapes/_raw/164094_225349.json (Leadville 1999: 'Greg Follett')",
+    "gravel_scrapes/_raw/205431_283868.json (Chequamegon 1999: 'Greogry C Follet')"
+   ]
   },
   "rider/jeremyhorgan-kobelski": {
    "canonical": "rider/jeremy-horgan-kobelski",

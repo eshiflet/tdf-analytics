@@ -4117,9 +4117,26 @@ answers and reversed two merges:
 | pair | verdict |
 |---|---|
 | `aaron-gammel` / `-gammell` | **one rider, canonical CONFIRMED.** Two of his three Unbound registrations spell it GAMMEL (2011, 2012) against one Gammell (2010) — a source majority, not string length. A separate *Jed* Gammell rides Chequamegon with the double L. |
-| `greg-follet` / `-follett` | **one rider, canonical UNRESOLVED.** Registrations split 1-1 (Follet 1997, Follett 1999) and no outside source records an amateur finisher of those years. Left where the merge put it, deliberately. |
+| `greg-follet` / `-follett` | **one rider, canonical RESOLVED** — see below. |
 | `ernest-gilioli` / `-gillioli` | **SEPARATED.** Wikipedia's 1926 Tour startlist has Gillioli at number 147 as a *touriste-routier*; its 1909 list has Gilioli at 157 as a *lone rider*. Two entries, two numbers, two categories, and PCS dates Gilioli to 1885 — 41 in 1926. Possible, but nothing asserts one man. |
 | `giuseppe-bereta` / `-beretta` | **SEPARATED.** Il Lombardia 1909 and Milan-San Remo 1934: 25 years, two different races, nothing between. Placing 72nd in a professional classic at about 49 is not credible. |
+
+**`greg-follet` resolved 2026-09-11, by counting EVENTS rather than records.**
+The raw Athlinks data holds three entries, not two: `Greg Follet` (Leadville
+1997), `Greg Follett` (Leadville 1999) and `Greogry C Follet` (Chequamegon
+1999 — the "Greogry" is theirs, and a useful reminder of how typo-prone this
+source is). Two events spell it **Follet**, one spells it Follett.
+
+The organiser's own *All Time Finishers* PDF carries both his rides —
+`FOLLET, GREG` 9:14:34 CO 1997 age 26, and `Follett, Greg` 8:26:54 CO 1999,
+both M2 — **at times matching this database to the second**. That confirms the
+merge and confirms our data, but it is NOT an independent witness on spelling:
+Leadville's results are the same Athlinks feed. No outside source records him
+at all.
+
+So the canonical `greg-follet` stands — now on a 2-to-1 majority across two
+different events, rather than on an alphabetical tie-break that happened to
+land there. The evidence and all four source URLs are in `rider_aliases.json`.
 
 **PCS is the PRIMARY source, not an authoritative one**, and this is where the
 difference bites. It carries all four ids as separate rider pages — which is a
