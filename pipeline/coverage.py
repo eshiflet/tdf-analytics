@@ -33,6 +33,38 @@ what the upstream actually publishes:
 
 Anything else that is NULL is reported, because in principle a source exists.
 
+TWO GAPS THIS REPORT CURRENTLY OVERSTATES, measured 2026-09-12. Both are listed
+here rather than excluded, because an exclusion hides work forever and these
+need a decision, not a guess:
+
+  * `gc_rank`, ~173,000 values and every one of the twenty biggest gaps below.
+    PCS does not publish a full GC after every stage; for older editions it
+    publishes a top-N widget. Measured over all 5,909 non-final stage-race
+    stages: 2,922 carry a full GC, 2,942 carry a top-N, 45 carry none. The
+    split is an era, not a defect — by decade (full/top-N): 1900s 9/69,
+    1950s 80/439, 1980s 213/442, 1990s 432/192, 2000s 560/40, 2010s 585/10,
+    2020s 393/4. The commonest depth is top-1 (1,037 stages: the GC leader
+    only), then top-10 (230), top-20 (179), top-15 (127). Giro 1989 is the
+    clean illustration — exactly 20 per stage for 22 stages, then 141 of 141
+    on the final one. Filling these from PCS is not possible; measuring
+    coverage against the depth PCS actually published would be honest, but it
+    needs a per-edition depth model, so the raw count stands until someone
+    builds one.
+
+  * `birthday`, 6,301 riders. Exhausted, not pending: 3,806 are gravel-only
+    riders whose rider_id we slugified from a Life Time result sheet, so there
+    is no PCS page at that slug and never will be — a random sample of 40
+    birthday-null riders returned 38 "Page not found". 936 more carry no stage
+    results at all (see below). The remaining 1,561 all have a PCS page that
+    exists and simply has no birth date on it — every one already fetched and
+    cached. Another source (Wikipedia, bikeraceinfo) could fill some; PCS
+    cannot fill any.
+
+ALSO FOUND, not reported by this script or by validate_db.py: 936 rows in
+`riders` have zero stage_results and are referenced by nothing else in the
+schema — 868 of them carry a nationality, all 936 a first name, so they were
+parsed properly and then orphaned. Origin not yet established.
+
 WHAT THIS USED TO GET WRONG, because it is the failure mode to watch for. Every
 one of those columns was once excluded for the whole gravel set, on the stated
 grounds that "PCS has no gravel or MTB coverage at all — verified, not assumed".
