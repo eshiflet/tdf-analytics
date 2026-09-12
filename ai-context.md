@@ -4780,40 +4780,56 @@ reads empty output.
 After both fixes: `validate_gc.py` reports **113 years, 40 ok, 2 mismatch**,
 and `validate_kom.py` 1998 goes from `no_data` to **90% match**.
 
-**Its two "mismatches" are BOTH alignment artifacts. Neither is a defect, and
-I asserted the opposite before checking — don't repeat that.**
+**Aligned on DATE since 2026-09-11, and both earlier "mismatches" were
+artifacts of the old alignment.** `build_date_map()` matches BRI stages to
+ours by `stage_date`; `build_sequential_map()` survives only as a fallback for
+years where one side has no usable dates.
 
-`build_sequential_map()` matches BRI stages to ours positionally when the
-counts are within one, and by label otherwise. For **1998 BRI has 20 stages
-against our 22**, so it takes the label path and scrambles: BRI "Stage 8" maps
-to our stage **13**, "Stage 9" to **16**, "Stage 10" to **18**. Every leader it
-then compares belongs to a different day.
+The old positional/label matching was wrong wherever the two sources disagree
+on stage count, and it failed loudly enough to look like a data defect. For
+1998, BRI lists 20 stages against our 22, so "Stage 8" matched our stage 13,
+"Stage 9" our 16, "Stage 10" our 18 — every leader compared belonged to a
+different day, reported as a 54% mismatch on a year whose GC is correct. A
+date is the one thing both sides agree on and neither renumbers; BRI's stage
+numbers are not our `source_slug`s and the two diverge after every split day,
+which is the trap that governs the rest of this pipeline. Split days put two
+stages on one date and are handed out in order.
 
-**Our 1998 GC is correct, checked against the history stage by stage:**
-Boardman (prologue-1), Zabel (2), Hamburger (3), O'Grady (4-6), Ullrich (7),
-**Desbiens (8-9, the Montauban break)**, Ullrich (10-14), Pantani from Les Deux
-Alpes (15-21). The validator reported "ours=Pantani" for stage 10 because it
-was reading our stage 18.
+**The date field is not one shape, and assuming it was cost a second pass.**
+1998 gives a bare `"Sunday, July 12"`; 2005 gives `"Saturday, July 2: 19 km"`
+and, for its stage 20, the date followed by a paragraph of race preview. An
+end-anchored pattern matched 1998 and failed all 18 of 2005's, silently
+dropping that year back to positional. The parser now scans for the first
+`<word> <number>` whose word is a real month.
 
-1979 is the same story — BRI's stage 11 is 33.4 km where ours is 162.0, which
-is a split-day offset, not a wrong leader. The `dist_issues` (2005 stage 17,
-BRI 239.5 km against our 55.0) are the same artifact.
+Result: **113 years, 42 ok, 0 mismatch** (was 40 ok / 2 mismatch / 1,365
+"years"), and `validate_kom.py` 1998 goes from `no_data` to a 90% match.
 
-**So: the path fix makes the validator RUN, but its alignment is only
-trustworthy where the stage counts match.** Treat a mismatch as a question
-about alignment first and a data defect second — BRI's stage numbers are not
-our `source_slug`s, and the two diverge after any split day, which is the trap
-that governs everything else in this file. Making `build_sequential_map` align
-on date rather than label or position is the real fix and is NOT done.
+**Two distance disagreements survive alignment and are therefore real** — the
+route names match on both sides, so these are the same stage:
 
-**Tests worth knowing about** (`pipeline/test_exports.py`): `TestAbandonedRidersLeaveTheClassifications`
-builds a scratch DB where one rider leads the sprint classification and then
-abandons, and asserts the finisher takes the final standings — that is the 1969
-De Vlaeminck/Merckx bug in miniature. `TestRidersIndex` covers the official-
-standings override, including that a rider absent from those standings ends up
-unranked rather than keeping a derived rank.
+| stage | bikeraceinfo | ours |
+|---|---|---|
+| 2004 stage 14 | 292.5 km | 192.5 km — differ by exactly 100, so one side has a digit wrong |
+| 2005 stage 14 Agde - Ax-3 Domaines | 220.5 km | 174.0 km |
 
----
+Neither is resolved. `distance_divergence_baseline.json` is the place for them
+once a third source settles it.
+
+### cyclingflash cannot fill the elevation gaps — checked 2026-09-11
+
+Read through the Chrome extension (it serves the in-app browser a Cloudflare
+interstitial). **Its elevation coverage starts in 2000.** Probed directly:
+1937, 1954, 1962, 1980, 1990, 1992, 1995 and 1998 all return a distance and no
+`Elevation gain`; 2000, 2001, 2002, 2004 and 2006 all return one. The 2006
+stage-20 probe returns **1012 m**, matching what `patch_cyclingflash_elevation.py`
+already stored, which is what confirms the extraction is right.
+
+Every elevation gap in this database is pre-2000 — the pre-war Tour, the
+1954-1962 block, Giro 1992-1999 — so **cyclingflash has nothing to offer them**
+and nobody needs to relay figures by hand for those years. Its stage URLs are
+`/race/tour-de-france-<year>/stages/stage-<n>`; the Giro's slug is
+`giro-ditalia-<year>`, with no hyphen before "italia".
 
 ## Data Quality Notes
 

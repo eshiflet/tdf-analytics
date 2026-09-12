@@ -16,6 +16,7 @@ Usage:
 """
 
 import json
+from datetime import datetime
 import os
 import re
 import sqlite3
@@ -105,6 +106,82 @@ def load_db_stages(year: int) -> list[dict]:
     )]
     conn.close()
     return stages
+
+
+_BRI_DATE_RE = re.compile(r"([A-Za-z]{3,9})\s+(\d{1,2})\b")
+
+
+def _bri_date(label_date: str, year: int) -> str | None:
+    """BRI writes a date; the DB stores "1998-07-12".
+
+    The field is NOT one shape. 1998 gives a bare "Sunday, July 12", while
+    2005 gives "Saturday, July 2: 19 km" and, for its stage 20, the date
+    followed by a paragraph of race preview. An end-anchored pattern matched
+    1998 and failed all 18 of 2005's, which sent that year silently back to
+    positional matching and put BRI's stage 17 against our stage 20.
+
+    So: scan for the first "<word> <number>" whose word is a real month, and
+    ignore everything after it. The weekday never matches because the comma
+    separates it from the number.
+
+    Returns None when nothing parses, which the caller treats as "no usable
+    date" rather than guessing.
+    """
+    if not label_date:
+        return None
+    for m in _BRI_DATE_RE.finditer(label_date):
+        word, day = m.group(1), int(m.group(2))
+        if not 1 <= day <= 31:
+            continue
+        try:
+            mnum = datetime.strptime(word[:3].title(), "%b").month
+        except ValueError:
+            continue
+        return f"{year:04d}-{mnum:02d}-{day:02d}"
+    return None
+
+
+def build_date_map(bri_stages: list[dict], db_stages: list[dict], year: int) -> dict[int, int]:
+    """Map BRI stage index -> DB stage index by DATE.
+
+    THE REASON THIS EXISTS. The old positional/label matching was wrong
+    wherever the two sources disagree on how many stages a Tour had, and it
+    failed loudly enough to look like a data defect: for 1998, BRI lists 20
+    stages against our 22, so "Stage 8" matched our stage 13, "Stage 9" our
+    16, "Stage 10" our 18. Every GC leader it compared belonged to a
+    different day, and the result was reported as a 54% mismatch on a year
+    whose GC is in fact correct.
+
+    A date is the one thing both sides agree on and neither renumbers. BRI's
+    stage numbers are not our source_slugs and the two diverge after every
+    split day -- the same trap that governs the rest of this pipeline.
+
+    A split day puts two stages on one date (4a/4b). Those are handed out in
+    order, which is the order both sources list them in.
+
+    Returns {} when either side lacks usable dates, so the caller can fall
+    back rather than match everything to nothing.
+    """
+    by_date: dict[str, list[int]] = {}
+    for i, st in enumerate(db_stages):
+        d = (st.get("stage_date") or "")[:10]
+        if d:
+            by_date.setdefault(d, []).append(i)
+    if not by_date:
+        return {}
+
+    used: set[int] = set()
+    out: dict[int, int] = {}
+    for bi, st in enumerate(bri_stages):
+        iso = _bri_date(st.get("date") or "", year)
+        if not iso:
+            continue
+        for di in by_date.get(iso, []):
+            if di not in used:
+                out[bi] = di
+                used.add(di)
+                break
+    return out
 
 
 def build_sequential_map(bri_stages: list[dict], db_stages: list[dict]) -> dict[int, int]:
@@ -215,7 +292,12 @@ def validate_year(year: int, bri_stages: list[dict]) -> dict:
     gc_leader_checks = 0
     gc_leader_ok = 0
 
-    seq_map = build_sequential_map(bri_stages, db_stages)
+    # Date first; the positional/label heuristic only as a fallback for years
+    # where one side has no usable dates. A date map that covers most of the
+    # race is always better than a guess that covers all of it.
+    seq_map = build_date_map(bri_stages, db_stages, year)
+    if len(seq_map) < len(bri_stages) * 0.5:
+        seq_map = build_sequential_map(bri_stages, db_stages)
 
     for bri_idx, bri_stage in enumerate(bri_stages):
         db_idx = seq_map.get(bri_idx)
