@@ -1,5 +1,5 @@
 {
- "_README": "Rider ids that are variants of one person, and the id they belong to. CONSULTED AT INGEST: without this a re-ingest recreates every absorbed id straight from the scrape files, because the files still carry the old spelling — the same way the Dorsal placeholders came back. Lives outside the DB for that reason, like stage_notes.json and route_type_overrides.json. Produced by audit_rider_duplicates.py + merge_rider_duplicates.py; every entry carries the evidence for the claim, because a merge IS a claim and a wrong one fuses two careers invisibly.",
+ "_README": "Rider ids that are variants of one person, and the id they belong to. CONSULTED AT INGEST: without this a re-ingest recreates every absorbed id straight from the scrape files, because the files still carry the old spelling — the same way the Dorsal placeholders came back. Lives outside the DB for that reason, like stage_notes.json and route_type_overrides.json. Produced by audit_rider_duplicates.py + merge_rider_duplicates.py; every entry carries the evidence for the claim, because a merge IS a claim and a wrong one fuses two careers invisibly. The `separated` section is the MIRROR of `aliases`: pairs a human examined and ruled DIFFERENT people. Without it audit_rider_duplicates.py re-proposes them on every run and the next --apply quietly re-merges a decision somebody already made.",
  "aliases": {
   "rider/aaron-gammell": {
    "canonical": "rider/aaron-gammel",
@@ -100,6 +100,23 @@
    "canonical": "rider/tim-m-trudeau",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  }
+ },
+ "separated": {
+  "ernest-gilioli|ernest-gillioli": {
+   "evidence": "Wikipedia's 1926 Tour startlist has Gillioli at number 147 as a touriste-routier; its 1909 list has Gilioli at 157 as a lone rider. Two entries, two numbers, two categories. PCS dates Gilioli to 1885, making him 41 in 1926 — possible, but nothing asserts one man.",
+   "decided": "2026-09-11",
+   "note": "merged 2026-09-11 and reversed the same day"
+  },
+  "giuseppe-bereta|giuseppe-beretta": {
+   "evidence": "Il Lombardia 1909 and Milan-San Remo 1934: 25 years, two different races, nothing in between. Placing 72nd in a professional classic at about 49 is not credible.",
+   "decided": "2026-09-11",
+   "note": "merged 2026-09-11 and reversed the same day"
+  },
+  "gilbert-desmet-i|gilbert-de-smet-ii": {
+   "evidence": "They share 93 stages and nobody rides a race twice. PCS's roman numerals separate two riders of one family; the hyphenation differs as well, which is why the name heuristic called them SAME.",
+   "decided": "2026-09-11",
+   "note": "never merged — refused by the share-a-stage test"
   }
  }
 }

@@ -915,3 +915,42 @@ class TestRiderAliasesSurviveAReingest(IngestHarness):
         for alias, canon in aliases.items():
             self.assertNotIn(canon, aliases,
                              f"{alias} -> {canon}, but {canon} is itself an alias")
+
+
+class TestSeparationsAreRemembered(IngestHarness):
+    """A separation is a decision, and decisions have to outlive the run.
+
+    A name heuristic cannot tell ernest-gilioli from ernest-gillioli, so it
+    proposes them every time. Recording only the MERGES remembers half the
+    work: the next --apply would quietly re-merge two riders a human had
+    already ruled apart, and nothing downstream could tell.
+    """
+
+    def test_every_separated_pair_is_settled_not_proposed(self):
+        import audit_rider_duplicates as aud
+        from race_common import load_rider_separations
+        for pair in load_rider_separations():
+            a, b = sorted(pair)
+            verdict, why = aud.classify(
+                {"id": "rider/" + a, "nat": "xx", "span": (1900, 1901), "base": a},
+                {"id": "rider/" + b, "nat": "xx", "span": (1900, 1901), "base": b})
+            self.assertEqual(verdict, "SETTLED",
+                             f"{a}/{b} was ruled apart and must not be proposed again")
+
+    def test_a_pair_nobody_ruled_on_is_still_classified_normally(self):
+        import audit_rider_duplicates as aud
+        verdict, _ = aud.classify(
+            {"id": "rider/some-rider", "nat": "us", "span": (2010, 2012), "base": "some-rider"},
+            {"id": "rider/some-ryder", "nat": "us", "span": (2011, 2013), "base": "some-ryder"})
+        self.assertNotEqual(verdict, "SETTLED")
+
+    def test_no_pair_is_both_aliased_and_separated(self):
+        """The two sections contradict each other if they overlap: one says
+        merge these, the other says never."""
+        from race_common import load_rider_aliases, load_rider_separations
+        aliases = load_rider_aliases()
+        pairs = {frozenset((a.removeprefix("rider/"), c.removeprefix("rider/")))
+                 for a, c in aliases.items()}
+        for pair in load_rider_separations():
+            self.assertNotIn(pair, pairs,
+                             f"{sorted(pair)} is recorded as both an alias and a separation")

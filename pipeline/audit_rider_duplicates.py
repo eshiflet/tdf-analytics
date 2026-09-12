@@ -41,7 +41,7 @@ import sys
 import unicodedata
 from collections import defaultdict
 
-from race_common import DB_PATH
+from race_common import DB_PATH, load_rider_separations
 
 # PCS's own disambiguators. Stripped only so two ids can be COMPARED; a pair
 # that differs by nothing else is two people and is dropped, never reported.
@@ -69,10 +69,21 @@ def collapse(slug: str) -> str:
     return re.sub(r"(.)\1+", r"\1", re.sub(r"[^a-z]", "", fold(slug)))
 
 
+SEPARATED = load_rider_separations()
+
+
 def classify(a: dict, b: dict) -> tuple[str, str]:
     """(verdict, why). Deliberately conservative: SAME only where two
     independent signals agree, DIFFERENT where one positively separates
     them, REVIEW for everything else."""
+    # A pair somebody already examined and ruled apart. Without this the
+    # heuristic proposes it again on every run, and the next --apply re-merges
+    # a decision that was already made — recording only the merges remembers
+    # half the work.
+    pair = frozenset((a["id"].removeprefix("rider/"), b["id"].removeprefix("rider/")))
+    if pair in SEPARATED:
+        return "SETTLED", "ruled different people on " + SEPARATED[pair]["decided"]
+
     na, nb = a["nat"], b["nat"]
     if na and nb and na != nb:
         return "DIFFERENT", f"nationalities differ ({na} vs {nb})"
@@ -132,7 +143,7 @@ def main():
                        "members": [{k: m[k] for k in ("id", "name", "nat", "results", "span")}
                                    for m in members]})
 
-    order = {"SAME": 0, "REVIEW": 1, "DIFFERENT": 2}
+    order = {"SAME": 0, "REVIEW": 1, "DIFFERENT": 2, "SETTLED": 3}
     groups.sort(key=lambda g: (order[g["verdict"]], g["key"]))
     shown = [g for g in groups if not args.same or g["verdict"] == "SAME"]
 

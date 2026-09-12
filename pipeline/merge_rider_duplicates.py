@@ -37,10 +37,12 @@ import sqlite3
 import subprocess
 import sys
 
-from race_common import DB_PATH, SOURCE_DERIVED, record_provenance
+from race_common import (DB_PATH, SOURCE_DERIVED, load_rider_separations,
+                         record_provenance)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INITIAL = re.compile(r"-[a-z]-")
+SEPARATIONS = load_rider_separations()
 
 
 def load_groups(path=None):
@@ -76,11 +78,19 @@ def main():
     conn.execute("PRAGMA busy_timeout=120000")
     cur = conn.cursor()
 
-    plan, skipped = [], []
+    plan, skipped, refused = [], [], []
     for g in load_groups(args.groups):
         if g["verdict"] != "SAME":
             continue
         ids = [m["id"] for m in g["members"]]
+        # Belt and braces: the audit already downgrades these to SETTLED, but a
+        # stale --groups file could still carry one as SAME, and re-merging a
+        # pair a human separated is precisely the error this whole path exists
+        # to avoid.
+        pair = frozenset(i.removeprefix("rider/") for i in ids)
+        if pair in SEPARATIONS:
+            refused.append((g["key"], SEPARATIONS[pair]["decided"]))
+            continue
         n = share_a_stage(cur, ids)
         if n:
             skipped.append((g["key"], n))
@@ -100,6 +110,9 @@ def main():
             total += n
             print(f"{keep.removeprefix('rider/'):<34}{aid.removeprefix('rider/'):<34}{n:>5}")
     print(f"\n{sum(len(a) for _, a, _ in plan)} merge(s), {total} result row(s) to re-point")
+    for key, when in refused:
+        print(f"  REFUSED {key}: ruled different people on {when} — see the "
+              "`separated` section of rider_aliases.json")
     for key, n in skipped:
         print(f"  SKIPPED {key}: the two ids share {n} stage(s) — two people, not one")
 

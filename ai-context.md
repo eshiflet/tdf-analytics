@@ -4145,6 +4145,24 @@ the ITT filler times. It lives outside the database for the same reason
 another alias, and **that neither separated pair is in the file** — if either
 were, the next ingest would quietly re-merge riders a human had decided apart.
 
+**The `separated` section is the mirror, and the audit is not clean without
+it.** Re-running `audit_rider_duplicates.py` after the merges left three SAME
+groups, and all three were pairs a human had ALREADY ruled apart: Gilioli /
+Gillioli and Bereta / Beretta, separated after research, plus Desmet i / de
+Smet ii, refused by the share-a-stage test. A name heuristic cannot tell them
+apart, so it proposes them on every run — and recording only the merges
+remembers half the work. The next `--apply` would have quietly re-merged two of
+them.
+
+So a separation is recorded like a merge, with its evidence and the date it was
+decided. `audit_rider_duplicates.py` reports those as **SETTLED** rather than
+SAME, and `merge_rider_duplicates.py` refuses them outright as belt and braces,
+since a stale `--groups` file could still carry one. The audit now reads
+**SAME 0, REVIEW 3, DIFFERENT 4, SETTLED 3**, and the merge dry run proposes
+nothing. `TestSeparationsAreRemembered` pins it, including that no pair is
+recorded as both an alias and a separation — the two sections contradict each
+other if they ever overlap.
+
 **Resolving a REVIEW takes an outside source, and that is the point.**
 `andrew-l-esperance` (21 results, ca) beside `andrew-lesperance` (1 result, no
 nationality) reads as ambiguous from inside the data. One search settles it:

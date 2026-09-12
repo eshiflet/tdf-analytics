@@ -175,6 +175,25 @@ def load_rider_aliases(path=RIDER_ALIASES_PATH):
             for alias, entry in (raw.get("aliases") or {}).items()}
 
 
+def load_rider_separations(path=RIDER_ALIASES_PATH):
+    """Pairs a human examined and ruled DIFFERENT people, as {frozenset: entry}.
+
+    The mirror of load_rider_aliases(). A name heuristic cannot tell
+    `ernest-gilioli` from `ernest-gillioli`, so it proposes them every time it
+    runs; without a record of the decision the next --apply re-merges riders
+    somebody already separated. Recording only the merges remembers half the
+    work.
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    out = {}
+    for key, entry in (raw.get("separated") or {}).items():
+        out[frozenset(key.split("|"))] = entry
+    return out
+
+
 ROUTE_TYPE_OVERRIDES_PATH = os.path.join(HERE, "route_type_overrides.json")
 
 
