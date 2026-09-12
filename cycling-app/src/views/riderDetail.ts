@@ -338,11 +338,47 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
       g.append("g").attr("class", "axis y-axis")
         .call(d3.axisLeft(yScale2).tickValues(yTickVals).tickFormat((d) => `#${d}`));
 
-      // X axis — tick only years present in active data
+      // X axis — tick only years present in active data.
+      //
+      // How many labels fit is a question about WIDTH, not about how many
+      // years the rider raced. Labelling every year whenever there were 20 or
+      // fewer was fine at the ~890px inner width of a desktop chart and
+      // collided into an unreadable smear at 375px, where the SVG sits on its
+      // 500px floor: "199219931994199519 96". Thin them to what actually fits
+      // and keep the first and last, so the axis still says where the career
+      // starts and ends.
+      const YEAR_LABEL_PX = 34;   // a 4-digit year at 11px, plus breathing room
+      const maxLabels = Math.max(2, Math.floor(iW / YEAR_LABEL_PX));
       const xAxis = d3.axisBottom(xScale2)
         .ticks(Math.min(uniqueYears.length, 12))
         .tickFormat((d) => String(d));
-      if (uniqueYears.length <= 20) xAxis.tickValues(uniqueYears);
+      if (uniqueYears.length <= 20) {
+        if (uniqueYears.length <= maxLabels) {
+          xAxis.tickValues(uniqueYears);
+        } else {
+          // Space by PIXEL POSITION, not by index. Taking every Nth year looks
+          // right and is not: the years are unevenly spaced on the scale (a
+          // rider misses seasons), so a fixed step still collides where they
+          // bunch up. Keeping the last year on top of that made it worse —
+          // 2009 and 2010 are adjacent and both got labelled.
+          const kept: number[] = [];
+          let lastX = -Infinity;
+          for (const y of uniqueYears) {
+            const x = xScale2(y);
+            if (x - lastX >= YEAR_LABEL_PX) { kept.push(y); lastX = x; }
+          }
+          // The final year anchors the axis, so force it in — and drop what it
+          // would sit on top of rather than letting the two collide.
+          const last = uniqueYears[uniqueYears.length - 1];
+          if (kept[kept.length - 1] !== last) {
+            while (kept.length && xScale2(last) - xScale2(kept[kept.length - 1]) < YEAR_LABEL_PX) {
+              kept.pop();
+            }
+            kept.push(last);
+          }
+          xAxis.tickValues(kept);
+        }
+      }
       g.append("g").attr("class", "axis x-axis")
         .attr("transform", `translate(0,${iH - 4})`)
         .call(xAxis)
