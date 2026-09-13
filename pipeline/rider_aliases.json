@@ -362,6 +362,11 @@
    "evidence": "The same name once case, accents, punctuation and word order are normalised: 'JOSÉ Mª CORDERO MARTÍNEZ' / 'José M Cordero Martínez'. One person entered more than one way across years, and the ids never share a stage.",
    "decided": "2026-09-12"
   },
+  "rider/joshua-l-shively": {
+   "canonical": "rider/joshua-shively",
+   "evidence": "Leadville 1997 and Chequamegon 2006 on one id, Chequamegon 2000 and 2001 on the other -- the years INTERLEAVE and never collide. Age 25 at Leadville 1997 and age 28 at Chequamegon 2000 both give 1972. Three Shivelys in the whole off-road set.",
+   "decided": "2026-09-12"
+  },
   "rider/ken-n-statz": {
    "canonical": "rider/ken-statz",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
@@ -467,6 +472,11 @@
    "evidence": "'Mike Budd' / 'Mike J Budd' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1974, 1972). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
    "decided": "2026-09-12"
   },
+  "rider/mike-t-johnson": {
+   "canonical": "rider/mike-johnson",
+   "evidence": "Held twice before on the grounds that Mike Johnson is the commonest name here, so the base rate was worth measuring rather than assuming: the off-road set holds 24 riders surnamed Johnson and exactly TWO called Mike or Michael, which are these. The merge also makes the career more coherent rather than less -- age 31 in 2000, 41 in 2010, 42 in 2011 and 45 in 2014 are four readings that all give 1969, and the incoming row is one of them. The 2007 and 2012 rows still imply 1975 and 1972 and remain the reason this id is not above suspicion, but that is an argument for splitting it later, not for leaving a fifth agreeing row outside.",
+   "decided": "2026-09-12"
+  },
   "rider/nathan-keck-sram": {
    "canonical": "rider/nathan-keck",
    "evidence": "'Nathan Keck' / 'Nathan Keck- SRAM' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1986, 1985). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
@@ -552,6 +562,11 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/steve-sonnesyn": {
+   "canonical": "rider/steve-w-sonnesyn",
+   "evidence": "Chequamegon only, 1999 and 2000 on the initialled id then 2007 without it. Sonnesyn is rare enough that this archive holds exactly two riders with the surname, and they are these two. Age 40 in 2000 and age 47 in 2007 both give 1960; the 1999 reading of 35 is the outlier.",
+   "decided": "2026-09-12"
+  },
   "rider/steve-vanderburgh": {
    "canonical": "rider/steve-vander-burgh",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
@@ -627,6 +642,10 @@
    "evidence": "Two different Brian Laihos. Each id is internally consistent and they disagree with each other: 1981 and 1982 against 1977 twice. Both spellings carry the Specialized sponsor in some form, so again the names cannot separate them and only this record can.",
    "decided": "2026-09-12"
   },
+  "elliot-cooper|elliot-cooper-sally-finkbeiner": {
+   "evidence": "NOT a rider at all. Unbound 2016 has a tandem category and the timer put both riders' names in one field: that file's only two rows with four or more name tokens are 'Steve Wasmund Amy Andrews' on bib 1141 and 'Elliot Cooper Sally Finkbeiner' on bib 1143 -- consecutive bibs, finishing 30th and 70th. Every other long name in the Unbound files is a real particle surname (Van Den Ham, Lopez De San Roman). Merging this into rider/elliot-cooper would credit a solo rider with a tandem result.",
+   "decided": "2026-09-12"
+  },
   "ernest-gilioli|ernest-gillioli": {
    "evidence": "Wikipedia's 1926 Tour startlist has Gillioli at number 147 as a touriste-routier; its 1909 list has Gilioli at 157 as a lone rider. Two entries, two numbers, two categories. PCS dates Gilioli to 1885, making him 41 in 1926 — possible, but nothing asserts one man.",
    "decided": "2026-09-11",
@@ -656,6 +675,10 @@
   },
   "jonathan-homberg|jonathan-van-den-berg": {
    "evidence": "NOT the same person, despite an identical Traka 2024 finish time of 51336s. Jonathan van den Berg is a real Dutch road professional, active 2022-2025, with his own PCS rider page; PCS's Traka 2024 page lists him. The timer's full 737-man field has no van den Berg anywhere -- at that exact time it has JONATHAN HOMBERG (DE), who has no PCS page. Same first name, different surname, different nationality. Same-second finishes are ordinary in a mass-start gravel race, so the shared time is not evidence of identity here; the pattern matches PCS mis-linking a finisher to an existing rider page.",
+   "decided": "2026-09-12"
+  },
+  "paul-c-ellis|paul-ellis": {
+   "evidence": "At least two Paul Ellises exist and rider/paul-ellis has already absorbed one of them. A merge on 2026-09-11 folded rider/paul-L-ellis into it; this is rider/paul-C-ellis. Two different middle initials cannot be one man, so whichever way that first merge went, adding this one would definitely fuse two people. The ages cannot arbitrate -- 1983 against 1980 is inside the noise floor -- and that is the point: the initials are the only discriminating information in the record, and they discriminate.",
    "decided": "2026-09-12"
   }
  }
