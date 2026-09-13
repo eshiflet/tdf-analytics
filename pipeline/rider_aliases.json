@@ -11,9 +11,19 @@
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 50596s in the 2024 edition, PCS rank 83. PCS's own slug is alejandro-gomez1, and PCS appends that digit only when the bare slug already belongs to someone else. Keeping our locally-minted `alejandro-gomez` would leave a name-shaped id for a rider PCS calls something else, which a later import of that OTHER Alejandro Gomez would land on. The PCS id survives even though it holds no result.",
    "decided": "2026-09-12"
   },
+  "rider/alex-howes-gu": {
+   "canonical": "rider/alex-howes",
+   "evidence": "'Howes Alex' / 'Alex Howes - GU' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1988, 1988). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
   "rider/alex-ruiz": {
    "canonical": "rider/alex-ruiz-roldan",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 45830s in the 2024 edition, PCS rank 27. Spanish double surname. The rider registered with the timer as Alex Ruiz Roldan; PCS carries only the paternal surname.",
+   "decided": "2026-09-12"
+  },
+  "rider/andrew-l": {
+   "canonical": "rider/andrew-l-esperance",
+   "evidence": "'Andrew L' / \"Andrew L'Esperance\" differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1991, 1991). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
    "decided": "2026-09-12"
   },
   "rider/andrew-lesperance": {
@@ -36,6 +46,81 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/ben-bostrom-specialized": {
+   "canonical": "rider/ben-bostrom",
+   "evidence": "'Ben Bostrom' / 'Ben Bostrom-Specialized' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1974, 1974). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/benjamin-olivier": {
+   "canonical": "rider/benjamin-olivier23",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Benjamin Olivier' / 'Benjamin Olivier'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/billiault-baptiste": {
+   "canonical": "rider/baptiste-billiault",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Baptiste Billiault' / 'Billiault Baptiste'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/bob-africa-lm": {
+   "canonical": "rider/bob-africa",
+   "evidence": "'Bob Africa' / 'Bob Africa LM' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1973, 1973). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/bob-c-weintz": {
+   "canonical": "rider/bob-weintz",
+   "evidence": "'Bob C Weintz' / 'Bob Weintz' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1964, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/brian-laiho-specialized-gvl": {
+   "canonical": "rider/brian-laiho-specialized",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Brian Laiho- Specialized' / 'Brian Laiho-Specialized'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/c-bryan-bunch": {
+   "canonical": "rider/bryan-bunch",
+   "evidence": "'Bryan Bunch' / 'C. Bryan Bunch' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1971, 1971). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/caley-fretz-herbalife": {
+   "canonical": "rider/caley-fretz",
+   "evidence": "'Caley Fretz' / 'Caley Fretz-Herbalife' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1991, 1988). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/cameron-piper-specialized": {
+   "canonical": "rider/cameron-piper",
+   "evidence": "'Cameron Piper' / 'Cameron Piper - Specialized' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1991, 1992). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/carlos-julian-quintero": {
+   "canonical": "rider/carlos-quintero",
+   "evidence": "'carlos julian Quintero' / 'Quintero Carlos' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1986, 1986). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/chad-boyles": {
+   "canonical": "rider/chad-j-boyles",
+   "evidence": "'Chad Boyles' / 'Chad J Boyles' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1971, 1969). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/chad-joe-deherrera": {
+   "canonical": "rider/chad-deherrera",
+   "evidence": "'Chad Deherrera' / 'Chad (Joe) DeHerrera' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1980, 1980). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/christoph-sauser-specialized": {
+   "canonical": "rider/christoph-sauser",
+   "evidence": "'Christoph Sauser-Specialized' is 'Christoph Sauser' with the sponsor Specialized glued to the surname by an Athlinks registration. A sponsor suffix is a formatting artifact, not a name: it cannot tell two people apart the way a middle initial can. The two never appear on the same stage and the implied birth years agree (1976, None).",
+   "decided": "2026-09-12"
+  },
+  "rider/cle-brent": {
+   "canonical": "rider/brent-cle",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Brent Clé' / 'Clé Brent'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/craig-roemer-gotmilk": {
+   "canonical": "rider/craig-roemer",
+   "evidence": "'Craig Roemer' / 'Craig Roemer-GotMilk' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1966, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
   "rider/daan-van-meeuwen": {
    "canonical": "rider/daan-timo-van-meeuwen",
    "evidence": "The Traka 360 2021 (tretzesports) and 2024 (sportmaniacs, club Tactic.cc) as Daan Timo Van Meeuwen, then 2025 (PCS) with the middle name dropped. Same race, Dutch both, no overlap.",
@@ -44,6 +129,26 @@
   "rider/damia-palafoix": {
    "canonical": "rider/damia-palafoix-huguet",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 53304s in the 2024 edition, PCS rank 128. Catalan: Damia Palafoix Huguet, Club Ciclista Lleida. PCS truncates the second surname AND writes the accent the wrong way round -- Damia with an acute where Catalan takes a grave. Both ids hold zero results, so the tool's alphabetical tie-break had picked the PCS spelling; the override is what puts the researched name first.",
+   "decided": "2026-09-12"
+  },
+  "rider/dan-j-paulus": {
+   "canonical": "rider/dan-paulus",
+   "evidence": "'Dan J Paulus' / 'Dan Paulus' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1966, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/dan-swanson": {
+   "canonical": "rider/dan-j-swanson",
+   "evidence": "'Dan J Swanson' / 'Dan Swanson' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1983, 1981). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/daniel-arden": {
+   "canonical": "rider/daniel-e-arden",
+   "evidence": "'Daniel Arden' / 'Daniel E Arden' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1969, 1969). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/dave-eckel": {
+   "canonical": "rider/dave-l-eckel",
+   "evidence": "'Dave Eckel' / 'Dave L Eckel' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1966, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
    "decided": "2026-09-12"
   },
   "rider/david-coma": {
@@ -56,9 +161,19 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/dirk-j-rettig": {
+   "canonical": "rider/dirk-rettig",
+   "evidence": "'Dirk J Rettig' / 'Dirk Rettig' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1974, 1974). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
   "rider/dixon-watts": {
    "canonical": "rider/watts-dixon",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 47510s in the 2024 edition, PCS rank 48. PCS has the name BACKWARDS. Watts Dixon is a Bikerumor journalist and photographer (muckrack.com/watts-dixon) whose given name is Watts; five independent registrations across two platforms -- Athlinks for Unbound 2015, 2016, 2017 and 2018, sportmaniacs for the Traka 2024 -- all record first_name Watts, last_name Dixon, and the 2024 entry names his club as BIKERUMOR/REVOLTING COGS. One PCS result-table parse against five of the rider's own entries.",
+   "decided": "2026-09-12"
+  },
+  "rider/donald-c-fedrigon-jr": {
+   "canonical": "rider/donald-c-fedrigon",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Donald C Fedrigon' / 'Donald C Fedrigon Jr' / '\"fedrigon, Jr\", Donald C'. One person entered more than one way across years, and the ids never share a stage.",
    "decided": "2026-09-12"
   },
   "rider/elliott-rodda": {
@@ -66,10 +181,40 @@
    "evidence": "Unbound 2014 and 2016, one rider, no shared stage and no conflicting nationality. The two registrations split 1-1 on the spelling and NO outside source records him, so the canonical is the side that at least carries a nationality. UNRESOLVED spelling.",
    "decided": "2026-09-12"
   },
+  "rider/fedrigon-jr-donald-c": {
+   "canonical": "rider/donald-c-fedrigon",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Donald C Fedrigon' / 'Donald C Fedrigon Jr' / '\"fedrigon, Jr\", Donald C'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
   "rider/francesco-ceruti": {
    "canonical": "rider/francesco-cerutti-777",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/frantisek-rabon-specialized": {
+   "canonical": "rider/frantisek-rabon",
+   "evidence": "'Frantisek Rabon-Specialized' is 'Rabon František' with the sponsor Specialized glued to the surname by an Athlinks registration. A sponsor suffix is a formatting artifact, not a name: it cannot tell two people apart the way a middle initial can. The two never appear on the same stage and the implied birth years agree (1984, 1983).",
+   "decided": "2026-09-12"
+  },
+  "rider/gauran-antoine": {
+   "canonical": "rider/antoine-gauran",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Antoine Gauran' / 'Gauran Antoine'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/gene-p-oberpriller": {
+   "canonical": "rider/gene-oberpriller",
+   "evidence": "'Gene Oberpriller' / 'Gene P Oberpriller' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1962, 1964). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/georwill-perez": {
+   "canonical": "rider/georwill-perez-roman",
+   "evidence": "'Georwill Perez' / 'Georwill Perez Roman' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1993, 1993). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/gerry-cody-jr": {
+   "canonical": "rider/gerry-cody",
+   "evidence": "'Gerry Cody' / 'Gerry Cody Jr' differ only by a generational suffix (Jr/III/...), they never appear on the same stage, and the birth years the sources imply agree (1981, 1978). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
   },
   "rider/greg-brandt": {
    "canonical": "rider/gregg-brandt",
@@ -87,9 +232,24 @@
     "gravel_scrapes/_raw/205431_283868.json (Chequamegon 1999: 'Greogry C Follet')"
    ]
   },
+  "rider/guido-dracone": {
+   "canonical": "rider/guido-paolo-dracone",
+   "evidence": "'Guido Dracone' / 'Guido Paolo dracone' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1977, 1977). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
   "rider/hafsteinn-aegir-geirsson": {
    "canonical": "rider/hafsteinn-geirsson",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 45634s in the 2024 edition, PCS rank 24. Icelandic. The given name is Hafsteinn Aegir and Geirsson is the patronymic, so PCS has the FULLER and more correct form here -- the opposite direction to the Spanish cases. The timer id survives because it carries three results to PCS's none, but the surviving row takes PCS's spelling of the name.",
+   "decided": "2026-09-12"
+  },
+  "rider/harri-s-pasila": {
+   "canonical": "rider/harri-pasila",
+   "evidence": "'Harri Pasila' / 'Harri S Pasila' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1976, 1974). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/harry-f-anderson": {
+   "canonical": "rider/harry-anderson",
+   "evidence": "'Harry Anderson' / 'Harry F Anderson' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1981, 1983). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
    "decided": "2026-09-12"
   },
   "rider/inigo-bravo": {
@@ -97,15 +257,60 @@
    "evidence": "One rider of The Traka 360 across four editions. The timer-sourced years carry the full Basque/Spanish name -- 2022 (tretzesports), 2023 and 2024 (sportmaniacs, club C.D. Loiolatarra both years) -- and the PCS-sourced 2026 carries the truncated 'Inigo Bravo'. Same race, same nationality, no overlapping edition.",
    "decided": "2026-09-12"
   },
+  "rider/j-ross-fraboni": {
+   "canonical": "rider/ross-j-fraboni",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'J Ross Fraboni' / 'Ross J Fraboni'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/james-iii-selman": {
+   "canonical": "rider/james-selman-iii",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'James III Selman' / 'James Selman' / 'James Selman Iii'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/james-selman": {
+   "canonical": "rider/james-selman-iii",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'James III Selman' / 'James Selman' / 'James Selman Iii'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
   "rider/jannik-frank-christ": {
    "canonical": "rider/jannik-christ",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 53095s in the 2023 edition, PCS rank 20. PCS carries a middle name, Frank, that the rider's own timer registration does not. The id follows the registration; the fuller name is kept on the row.",
+   "decided": "2026-09-12"
+  },
+  "rider/jay-henderson": {
+   "canonical": "rider/jay-j-henderson",
+   "evidence": "'Jay Henderson' / 'Jay J Henderson' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1971, 1974). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/jay-richards": {
+   "canonical": "rider/jay-f-richards",
+   "evidence": "'Jay F Richards' / 'Jay Richards' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1971, 1970). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/jeff-huhta": {
+   "canonical": "rider/jeff-hooter-huhta",
+   "evidence": "'Jeff Hooter Huhta' / 'Jeff Huhta' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1967, 1967). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/jeff-juntti": {
+   "canonical": "rider/jeff-d-juntti",
+   "evidence": "'Jeff D Juntti' / 'Jeff Juntti' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1971, 1969). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/jeff-sympson": {
+   "canonical": "rider/jeff-t-sympson",
+   "evidence": "'Jeff Sympson' / 'Jeff T Sympson' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1963, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
    "decided": "2026-09-12"
   },
   "rider/jeremyhorgan-kobelski": {
    "canonical": "rider/jeremy-horgan-kobelski",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/jeroen-vroemen-jeroen": {
+   "canonical": "rider/jeroen-vroemen",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Jeroen Vroemen' / 'Jeroen Vroemen Jeroen'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
   },
   "rider/jesse-e-lalonde": {
    "canonical": "rider/jesse-lalonde",
@@ -117,9 +322,24 @@
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 48937s in the 2024 edition, PCS rank 65. Same name in both sources, Jesus Alberto Rubio -- only the id differs, PCS having slugified it as `albert`. NOTE the sources disagree about nationality: PCS says ES, sportmaniacs says DE, and his club (Mister Biker Gobik Team) is Spanish. Not resolved here; the merge does not touch it.",
    "decided": "2026-09-12"
   },
+  "rider/john-a-sandberg": {
+   "canonical": "rider/john-sandberg",
+   "evidence": "'John A Sandberg' / 'John Sandberg' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1969, 1970). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/jonathan-kloppenburg": {
+   "canonical": "rider/jonathan-jonny-kloppenburg",
+   "evidence": "'Jonathan (jonny) Kloppenburg' / 'Jonathan Kloppenburg' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1980, 1980). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
   "rider/jorge-padrones": {
    "canonical": "rider/jorge-padrones-leon",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 54543s in the 2024 edition, PCS rank 143. Spanish double surname, Jorge Padrones Leon, C.C. Torrevieja. Zero results on both sides, so the override rather than the alphabetical tie-break decides it.",
+   "decided": "2026-09-12"
+  },
+  "rider/jose-m-cordero-martinez-gvl": {
+   "canonical": "rider/jose-m-cordero-martinez",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'JOSÉ Mª CORDERO MARTÍNEZ' / 'José M Cordero Martínez'. One person entered more than one way across years, and the ids never share a stage.",
    "decided": "2026-09-12"
   },
   "rider/ken-n-statz": {
@@ -137,9 +357,19 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/lee-w-bergin": {
+   "canonical": "rider/lee-bergin",
+   "evidence": "'Lee Bergin' / 'Lee W Bergin' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1966, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
   "rider/loustaunou-nicolas": {
    "canonical": "rider/nicolas-loustaunou",
    "evidence": "Same name, reversed. The absorbed id is a Lastname-Firstname artifact of one sportmaniacs row and holds no results at all; the survivor holds The Traka 2024 (club Le Flow Team), 2025 and 2026.",
+   "decided": "2026-09-12"
+  },
+  "rider/luis-diego-chaverri": {
+   "canonical": "rider/luis-chaverri",
+   "evidence": "'Luis Chaverri' / 'Luis Diego Chaverri' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1975, 1975). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
    "decided": "2026-09-12"
   },
   "rider/marc-rusinol": {
@@ -147,10 +377,20 @@
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 47110s in the 2024 edition, PCS rank 43. Catalan double surname. Marc Rusinol Picanol appears in full in the UEC's 2018 Ultramarathon masters results (Masters 30/34, Calderi Esport Ciclista); PCS carries only Rusinol.",
    "decided": "2026-09-12"
   },
+  "rider/mark-a-engen": {
+   "canonical": "rider/mark-engen",
+   "evidence": "'Mark A Engen' / 'Mark Engen' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1964, 1961). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
   "rider/mark-elssaser": {
    "canonical": "rider/mark-elsasser",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/mark-p-lewis": {
+   "canonical": "rider/mark-lewis",
+   "evidence": "'Mark Lewis' / 'Mark P Lewis' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1976, 1976). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
   },
   "rider/mathieu-belanger-barette": {
    "canonical": "rider/mathieu-belanger-barrette",
@@ -167,10 +407,50 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/max-jenkins-herbalife": {
+   "canonical": "rider/max-jenkins",
+   "evidence": "'Max Jenkins' / 'Max Jenkins-Herbalife' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1987, 1987). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/michael-d-madden": {
+   "canonical": "rider/michael-madden",
+   "evidence": "'Michael D Madden' / 'Michael Madden' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1964, 1964). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/michael-dalton": {
+   "canonical": "rider/michael-j-dalton",
+   "evidence": "'Michael Dalton' / 'Michael J Dalton' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1961, 1961). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/mike-j-budd": {
+   "canonical": "rider/mike-budd",
+   "evidence": "'Mike Budd' / 'Mike J Budd' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1974, 1972). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/nathan-keck-sram": {
+   "canonical": "rider/nathan-keck",
+   "evidence": "'Nathan Keck' / 'Nathan Keck- SRAM' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1986, 1985). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/niccolo-varanini-gvl": {
+   "canonical": "rider/niccolo-varanini",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Niccolo’ Varanini' / 'Niccolo Varanini'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
   "rider/paul-l-ellis": {
    "canonical": "rider/paul-ellis",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/phillips-iv-courtney": {
+   "canonical": "rider/courtney-phillips-iv",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Courtney Phillips Iv' / 'Phillips, IV, Courtney'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/ramon-comulada-perxachs": {
+   "canonical": "rider/ramon-comulada",
+   "evidence": "The Traka 360, one rider across editions: 'Ramon Comulada' from the timer and 'Ramon Comulada Perxachs' from PCS, which truncates the Catalan second surname. Same race, same nationality, no shared stage.",
+   "decided": "2026-09-12"
   },
   "rider/randal-l-sahs": {
    "canonical": "rider/randal-sahs",
@@ -182,9 +462,24 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/robert-j-dobrient": {
+   "canonical": "rider/robert-dobrient",
+   "evidence": "'Robert Dobrient' / 'Robert J Dobrient' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1962, 1962). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
   "rider/robert-maso": {
    "canonical": "rider/robert-maso-vidal",
    "evidence": "Both ids were created for one finisher of The Traka 360 2024 by two sources that spell him differently; he placed outside the archive's 100-rider window, so neither id holds a result. Catalan double surname, Robert Maso Vidal.",
+   "decided": "2026-09-12"
+  },
+  "rider/rodney-johnson": {
+   "canonical": "rider/rodney-l-johnson",
+   "evidence": "'Rodney Johnson' / 'Rodney L Johnson' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1959, 1959). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/ryan-lee": {
+   "canonical": "rider/ryan-d-lee",
+   "evidence": "'Ryan D Lee' / 'Ryan Lee' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1983, 1983). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
    "decided": "2026-09-12"
   },
   "rider/santi-sanchez": {
@@ -197,6 +492,11 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/simpson-chris": {
+   "canonical": "rider/chris-simpson",
+   "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Chris Simpson' / 'Simpson Chris'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
   "rider/steve-legoff": {
    "canonical": "rider/steve-le-goff",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
@@ -206,6 +506,16 @@
    "canonical": "rider/steve-vander-burgh",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/theo-groote": {
+   "canonical": "rider/theo-de-groote",
+   "evidence": "'Theo De Groote' / 'Theo Groote' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (2004, 2004). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/thomas-e-macdonald": {
+   "canonical": "rider/thomas-macdonald",
+   "evidence": "'Thomas E Macdonald' / 'Thomas MacDonald' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1966, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
   },
   "rider/tim-m-swift": {
    "canonical": "rider/tim-swift",
@@ -221,9 +531,38 @@
    "canonical": "rider/tobias-kongstad",
    "evidence": "CONFIRMED by outside sources, and the most consequential of the set: one elite career split across two ids. Tobias Morch Kongstad is Danish, born 14 September 1996 in Copenhagen, and rides for PAS Racing. Wikipedia files him as Tobias Kongstad, Cyclingnews's rider page as Tobias Morch Kongstad, and Groadio podcast ep.101 as Tobias Morch Kongstad. Our two ids hold exactly the career those sources describe: the full-name id has The Traka 360 2023 (2nd, club PAS Normal Studios) and 2024 (5th, PAS Racing); the short id has Unbound 2024 3rd, which Cyclingnews reports as his breakthrough, and The Traka 360 2025, which he won solo, plus Unbound 2025 and 2026, Big Sugar 2025 and Sea Otter 2026.",
    "decided": "2026-09-12"
+  },
+  "rider/todd-w-mcfadden": {
+   "canonical": "rider/todd-mcfadden",
+   "evidence": "'Todd Mcfadden' / 'Todd W Mcfadden' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1966, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/todd-wells-specialized": {
+   "canonical": "rider/todd-wells",
+   "evidence": "Todd Wells won Leadville in 2011 and 2016 under one id and 2014 under the other, which is the whole problem: the race's own winner list was split in two. 'Todd Wells-Specialized' is his surname with a sponsor glued to it by the Athlinks registration, not a different name -- a sponsor suffix cannot distinguish two people the way a middle initial can, which is why this one is merged where the other twelve held-back pairs are not. Ages 38 in 2014 and 39 in 2015 give 1976, matching the survivor's stored birth year.",
+   "decided": "2026-09-12"
+  },
+  "rider/torbjorn-roed": {
+   "canonical": "rider/torbjorn-andre-roed",
+   "evidence": "'Torbjørn Andre Røed' / 'Torbjørn Røed' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1997, 1997). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/travis-tj-woodruff": {
+   "canonical": "rider/tj-woodruff",
+   "evidence": "'Tj Woodruff' / 'Travis (TJ) Woodruff' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1985, 1983). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/zach-guy-herbalife": {
+   "canonical": "rider/zach-guy",
+   "evidence": "'Zach Guy' / 'Zach Guy-Herbalife' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1986, 1985). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
   }
  },
  "separated": {
+  "alberto-fernandez-blanco|alberto-fernandez-sainz": {
+   "evidence": "Two Spanish professionals, not one. Both rows store the truncated 'Fernandez Alberto', which is what makes a name-token sweep pair them, but the ids carry the second surnames that tell them apart: Alberto Fernandez Blanco raced 1978-1984 (222 results), Alberto Fernandez Sainz 2008-2026 (16). Six years and a generation apart.",
+   "decided": "2026-09-12"
+  },
   "ernest-gilioli|ernest-gillioli": {
    "evidence": "Wikipedia's 1926 Tour startlist has Gillioli at number 147 as a touriste-routier; its 1909 list has Gilioli at 157 as a lone rider. Two entries, two numbers, two categories. PCS dates Gilioli to 1885, making him 41 in 1926 — possible, but nothing asserts one man.",
    "decided": "2026-09-11",
@@ -233,6 +572,10 @@
    "evidence": "They share 93 stages and nobody rides a race twice. PCS's roman numerals separate two riders of one family; the hyphenation differs as well, which is why the name heuristic called them SAME.",
    "decided": "2026-09-11",
    "note": "never merged — refused by the share-a-stage test"
+  },
+  "giovanni-maggi|giovanni-maggi-gvl": {
+   "evidence": "Two riders 90 years apart. rider/giovanni-maggi is an Italian road rider with results from 1923 to 1930; the -gvl id is a modern gravel entrant. The suffix itself is the record of the decision: link_gravel_riders.py mints '-gvl' exactly when it DECLINES to match a gravel name into an existing non-gravel slug, so merging them would undo that refusal by the back door.",
+   "decided": "2026-09-12"
   },
   "giuseppe-bereta|giuseppe-beretta": {
    "evidence": "Il Lombardia 1909 and Milan-San Remo 1934: 25 years, two different races, nothing in between. Placing 72nd in a professional classic at about 49 is not credible.",
