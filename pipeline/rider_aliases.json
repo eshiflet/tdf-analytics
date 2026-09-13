@@ -26,10 +26,20 @@
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 53118s in the 2023 edition, PCS rank 21. Spanish double surname, Antonio Ortiz Barranco. PCS lists him national-only with no rider page at all, so `antonio-ortiz` is not a PCS id, just PCS's shortened display slugified.",
    "decided": "2026-09-12"
   },
+  "rider/asier-irigoyen": {
+   "canonical": "rider/asier-irigoyen-indave",
+   "evidence": "The Traka 360 2024 (sportmaniacs, club Meler Gravel) as Asier Irigoyen Indave, then 2025 (PCS) as the truncated Asier Irigoyen. Consecutive editions of one race, a rare Basque name, no overlap. Both ids hold one result, so the alphabetical tie-break would have kept PCS's truncation; the canonical override is what prevents that.",
+   "decided": "2026-09-12"
+  },
   "rider/ben-a-anderson": {
    "canonical": "rider/ben-anderson",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/daan-van-meeuwen": {
+   "canonical": "rider/daan-timo-van-meeuwen",
+   "evidence": "The Traka 360 2021 (tretzesports) and 2024 (sportmaniacs, club Tactic.cc) as Daan Timo Van Meeuwen, then 2025 (PCS) with the middle name dropped. Same race, Dutch both, no overlap.",
+   "decided": "2026-09-12"
   },
   "rider/damia-palafoix": {
    "canonical": "rider/damia-palafoix-huguet",
@@ -82,6 +92,11 @@
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 45634s in the 2024 edition, PCS rank 24. Icelandic. The given name is Hafsteinn Aegir and Geirsson is the patronymic, so PCS has the FULLER and more correct form here -- the opposite direction to the Spanish cases. The timer id survives because it carries three results to PCS's none, but the surviving row takes PCS's spelling of the name.",
    "decided": "2026-09-12"
   },
+  "rider/inigo-bravo": {
+   "canonical": "rider/inigo-bravo-saez",
+   "evidence": "One rider of The Traka 360 across four editions. The timer-sourced years carry the full Basque/Spanish name -- 2022 (tretzesports), 2023 and 2024 (sportmaniacs, club C.D. Loiolatarra both years) -- and the PCS-sourced 2026 carries the truncated 'Inigo Bravo'. Same race, same nationality, no overlapping edition.",
+   "decided": "2026-09-12"
+  },
   "rider/jannik-frank-christ": {
    "canonical": "rider/jannik-christ",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 53095s in the 2023 edition, PCS rank 20. PCS carries a middle name, Frank, that the rider's own timer registration does not. The id follows the registration; the fuller name is kept on the row.",
@@ -121,6 +136,11 @@
    "canonical": "rider/kent-mcdaniel",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/loustaunou-nicolas": {
+   "canonical": "rider/nicolas-loustaunou",
+   "evidence": "Same name, reversed. The absorbed id is a Lastname-Firstname artifact of one sportmaniacs row and holds no results at all; the survivor holds The Traka 2024 (club Le Flow Team), 2025 and 2026.",
+   "decided": "2026-09-12"
   },
   "rider/marc-rusinol": {
    "canonical": "rider/marc-rusinol-picanol",
@@ -196,6 +216,11 @@
    "canonical": "rider/tim-m-trudeau",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
+  },
+  "rider/tobias-morch-kongstad": {
+   "canonical": "rider/tobias-kongstad",
+   "evidence": "CONFIRMED by outside sources, and the most consequential of the set: one elite career split across two ids. Tobias Morch Kongstad is Danish, born 14 September 1996 in Copenhagen, and rides for PAS Racing. Wikipedia files him as Tobias Kongstad, Cyclingnews's rider page as Tobias Morch Kongstad, and Groadio podcast ep.101 as Tobias Morch Kongstad. Our two ids hold exactly the career those sources describe: the full-name id has The Traka 360 2023 (2nd, club PAS Normal Studios) and 2024 (5th, PAS Racing); the short id has Unbound 2024 3rd, which Cyclingnews reports as his breakthrough, and The Traka 360 2025, which he won solo, plus Unbound 2025 and 2026, Big Sugar 2025 and Sea Otter 2026.",
+   "decided": "2026-09-12"
   }
  },
  "separated": {
@@ -204,15 +229,23 @@
    "decided": "2026-09-11",
    "note": "merged 2026-09-11 and reversed the same day"
   },
+  "gilbert-desmet-i|gilbert-de-smet-ii": {
+   "evidence": "They share 93 stages and nobody rides a race twice. PCS's roman numerals separate two riders of one family; the hyphenation differs as well, which is why the name heuristic called them SAME.",
+   "decided": "2026-09-11",
+   "note": "never merged — refused by the share-a-stage test"
+  },
   "giuseppe-bereta|giuseppe-beretta": {
    "evidence": "Il Lombardia 1909 and Milan-San Remo 1934: 25 years, two different races, nothing in between. Placing 72nd in a professional classic at about 49 is not credible.",
    "decided": "2026-09-11",
    "note": "merged 2026-09-11 and reversed the same day"
   },
-  "gilbert-desmet-i|gilbert-de-smet-ii": {
-   "evidence": "They share 93 stages and nobody rides a race twice. PCS's roman numerals separate two riders of one family; the hyphenation differs as well, which is why the name heuristic called them SAME.",
-   "decided": "2026-09-11",
-   "note": "never merged — refused by the share-a-stage test"
+  "hugo-simon|simon-hugot": {
+   "evidence": "NOT the same person, despite an identical Traka 2024 finish time of 54014s. PCS's page reads 'Simon Hugo' with the team UVCA Troyes, and Hugo Simon is a real French rider with his own PCS page at that team. The official timer's 737-man field contains no Hugo Simon at all -- it has SIMON HUGOT (FR, club La Nuit Noire) at exactly that time, and Hugot has no PCS page. The likeliest reading is that PCS matched the finisher's name to the wrong rider in its own database, and the team it shows is that other rider's. Merging would fuse a French road rider's identity into a gravel finisher who is not him.",
+   "decided": "2026-09-12"
+  },
+  "jonathan-homberg|jonathan-van-den-berg": {
+   "evidence": "NOT the same person, despite an identical Traka 2024 finish time of 51336s. Jonathan van den Berg is a real Dutch road professional, active 2022-2025, with his own PCS rider page; PCS's Traka 2024 page lists him. The timer's full 737-man field has no van den Berg anywhere -- at that exact time it has JONATHAN HOMBERG (DE), who has no PCS page. Same first name, different surname, different nationality. Same-second finishes are ordinary in a mass-start gravel race, so the shared time is not evidence of identity here; the pattern matches PCS mis-linking a finisher to an existing rider page.",
+   "decided": "2026-09-12"
   }
  }
 }
