@@ -194,6 +194,35 @@ def load_rider_separations(path=RIDER_ALIASES_PATH):
     return out
 
 
+RIDER_SPLITS_PATH = os.path.join(HERE, "rider_splits.json")
+
+
+def load_rider_splits(path=RIDER_SPLITS_PATH):
+    """One id that is two people, as {(rider_id, race_slug, year): new rider}.
+
+    The mirror of load_rider_aliases() in the other direction: aliases fuse two
+    ids, this fissions one. Consulted at ingest for the same reason — the
+    gravel linker keys riders on the folded NAME, so two people called Tom
+    Miller collapse to one id on every run and a split applied only to the
+    database is undone by the next rebuild. The rule therefore keys on what the
+    scrape file actually carries, the race and the year, and never on age,
+    which is the unreliable thing that identified the split in the first place.
+
+    A row matching no rule keeps its original id, so adding an entry here can
+    only move the rows it names.
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    out = {}
+    for rider_id, entry in (raw.get("splits") or {}).items():
+        for rule in entry.get("rules") or ():
+            for year in rule.get("years") or ():
+                out[(rider_id, rule["race"], int(year))] = rule
+    return out
+
+
 ROUTE_TYPE_OVERRIDES_PATH = os.path.join(HERE, "route_type_overrides.json")
 
 

@@ -920,3 +920,51 @@ class TestImpossibleGravelTimes(unittest.TestCase):
         from race_common import implausible_speed
         self.assertFalse(implausible_speed(326.38, 23536))
         self.assertFalse(implausible_speed(326.38, 22350))
+
+
+class TestRiderSplits(unittest.TestCase):
+    """rider_splits.json is the mirror of rider_aliases.json, and the two can
+    contradict each other in ways nothing else would notice: a split that
+    produces an id the alias map immediately absorbs would undo itself on every
+    ingest, quietly, with the rows landing back on the id they were split off."""
+
+    @classmethod
+    def setUpClass(cls):
+        from race_common import (load_rider_splits, load_rider_aliases,
+                                 load_rider_separations, GRAVEL)
+        cls.splits = load_rider_splits()
+        cls.aliases = load_rider_aliases()
+        cls.separations = load_rider_separations()
+        cls.races = set(GRAVEL)
+
+    def test_a_split_never_targets_an_id_the_alias_map_absorbs(self):
+        for (src, race, year), rule in self.splits.items():
+            self.assertNotIn(rule["rider_id"], self.aliases,
+                             f"{rule['rider_id']} is split out of {src} and then "
+                             "merged away again by rider_aliases.json")
+
+    def test_a_split_source_is_not_itself_absorbed(self):
+        """Splitting an id that the alias map redirects means the rule keys on
+        a rider_id the ingest never produces, so it silently never fires."""
+        for (src, race, year), rule in self.splits.items():
+            self.assertNotIn(src, self.aliases,
+                             f"{src} is a split source but the alias map "
+                             "redirects it, so the rule can never match")
+
+    def test_a_split_names_a_race_that_exists(self):
+        for (src, race, year), rule in self.splits.items():
+            self.assertIn(race, self.races,
+                          f"{race!r} is not a gravel race slug, so this rule "
+                          "will never match a file")
+
+    def test_split_output_ids_are_distinct_from_their_sources(self):
+        for (src, race, year), rule in self.splits.items():
+            self.assertNotEqual(src, rule["rider_id"])
+
+    def test_the_two_halves_are_not_also_recorded_as_the_same_person(self):
+        for (src, race, year), rule in self.splits.items():
+            pair = frozenset({src.removeprefix("rider/"),
+                              rule["rider_id"].removeprefix("rider/")})
+            self.assertNotIn(pair, self.separations,
+                             "a pair cannot be both split apart and recorded "
+                             "as a decided non-merge")

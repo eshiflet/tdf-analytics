@@ -59,6 +59,7 @@ from race_common import (
     gravel_route_type,
     record_provenance,
     load_rider_aliases,
+    load_rider_splits,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -70,6 +71,10 @@ RIDER_IDS = os.path.join(SCRAPES, "_rider_ids.json")
 # further down, inside the comment block explaining the Dorsal placeholder
 # filter, which is a different subject.
 RIDER_ALIASES = load_rider_aliases()
+# One id that is really two people, keyed on (rider_id, race, year) — see
+# race_common.load_rider_splits. Applied AFTER the alias map, because a split
+# acts on the canonical id: the absorbed spelling never reaches this point.
+RIDER_SPLITS = load_rider_splits()
 
 
 def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
@@ -132,6 +137,37 @@ def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
 # scrape files are NOT edited: they are the record of what the source said, and
 # the filter belongs at the point the DB decides what a rider is.
 PLACEHOLDER_NAME_RE = re.compile(r"^dorsal[\s_-]*\d+\b", re.I)
+
+
+def upsert_split_rider(cur, rule, source=SOURCE_ATHLINKS, source_ref=None):
+    """The second person behind a shared id, created on demand.
+
+    Deliberately NOT upsert_rider(): that one takes an `ident` out of
+    _rider_ids.json, and the whole point of a split is that the linker has no
+    entry for this person — it folded them into somebody else. The row is built
+    from the split rule, which is where the evidence for the claim lives.
+    """
+    rid = rule["rider_id"]
+    cur.execute("SELECT rider_id FROM riders WHERE rider_id = ?", (rid,))
+    if cur.fetchone():
+        return rid
+    name = rule["name"]
+    parts = name.split()
+    first, last = ((" ".join(parts[:-1]), parts[-1]) if len(parts) > 1
+                   else (None, name))
+    cur.execute(
+        """INSERT INTO riders (rider_id, full_name, nationality_code,
+                               birth_year_approx, first_name, last_name)
+           VALUES (?,?,?,?,?,?)""",
+        (rid, name, upsert_country(cur, rule.get("nationality_code")),
+         rule.get("birth_year_approx"), first, last),
+    )
+    for field in ("full_name", "first_name", "last_name", "nationality_code",
+                  "birth_year_approx"):
+        record_provenance(cur, "riders", rid, field, source,
+                          source_ref=source_ref,
+                          script="ingest_gravel.py (rider_splits.json)")
+    return rid
 
 
 def is_placeholder_name(name: str) -> bool:
@@ -235,6 +271,9 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
         # carries the old spelling, which is why the mapping has to be applied
         # somewhere on every run. See race_common.load_rider_aliases.
         rider_id = upsert_rider(cur, ident, source, api)
+        split = RIDER_SPLITS.get((rider_id, slug, year))
+        if split:
+            rider_id = upsert_split_rider(cur, split, source, api)
         if rider_id in seen_riders:
             collisions.append((r["name"], seen_riders[rider_id], r.get("rank")))
         seen_riders[rider_id] = r.get("rank")

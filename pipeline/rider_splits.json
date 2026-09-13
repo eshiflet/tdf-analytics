@@ -1,0 +1,25 @@
+{
+ "_README": "One rider_id that is really two people, and which of its results belong to the second. The MIRROR of rider_aliases.json in the other direction: aliases fuse ids, this fissions one. CONSULTED AT INGEST for the same reason aliases are — link_gravel_riders.py keys riders on the folded NAME, so two people called Tom Miller collapse to one id every time it runs, and a split applied only to the database is undone by the next rebuild. A rule therefore keys on something the scrape file actually carries: the race and the year. Rows that match no rule stay on the original id, so adding a rider here can only ever move the rows it names. A split is a claim exactly as strong as a merge and fractures one career if it is wrong, so the bar used here is a contradiction inside a single id that is too large to be Athlinks age noise — which this archive measures at plus or minus 3 to 5 years. Two candidates were REJECTED at that bar and are listed at the bottom so nobody re-derives them.",
+ "splits": {
+  "rider/tom-miller": {
+   "evidence": "This id holds Chequamegon 2003, 2006 and 2007 plus Unbound 2015. Its own rows make one person impossible: age 26 at Chequamegon 2007 and age 46 at Unbound 2015 is twenty years of ageing across eight calendar years. The Chequamegon rows agree with each other — age 25 in 2006 and 26 in 2007 both give 1981 — so it is the Unbound row that belongs to somebody else, a Tom Miller born about 1969. Different race, different state, and a gap four times the noise floor.",
+   "decided": "2026-09-12",
+   "rules": [
+    {"race": "unbound", "years": [2015], "rider_id": "rider/tom-miller-ii",
+     "name": "Tom Miller", "nationality_code": "us", "birth_year_approx": 1969}
+   ]
+  },
+  "rider/mark-smith": {
+   "evidence": "This id holds Leadville 1994, 2008, 2010 and 2011. Age 42 in 1994 and age 49 in 2008 is seven years of ageing across fourteen calendar years; a rider born 1952 would have been 56 in 2008. The later rows agree with each other — 49 in 2008 and 50 in 2011 give 1959 and 1961 — so the 1994 ride belongs to an older Mark Smith, born about 1952. rider/mark-p-smith, Leadville 1998 at age 39, implies 1959 and therefore belongs with the LATER group, which is why it stays on the original id.",
+   "decided": "2026-09-12",
+   "rules": [
+    {"race": "leadville", "years": [1994], "rider_id": "rider/mark-smith-ii",
+     "name": "Mark Smith", "nationality_code": "us", "birth_year_approx": 1952}
+   ]
+  }
+ },
+ "rejected": {
+  "rider/paul-ellis": "NOT split. Proposed as a conflation on 2026-09-12 and that was an over-call, corrected the same day. Its implied birth years run 1981, 1980, 1980, 1984 — a spread of 4, which IS the Athlinks noise floor, not evidence of two people. Its worst single contradiction is age 28 in 2008 followed by age 25 in 2009, three years in one, ordinary noise. The thing that made it look conflated was social, not numerical: it had already absorbed a paul-L-ellis and a later sweep offered it a paul-C-ellis. Two middle initials is a reason to leave paul-c-ellis unmerged, which it is, and not a reason to fission what is here.",
+  "rider/mike-johnson": "NOT split. Its worst contradiction is age 32 in 2007 against age 41 in 2010 — nine years in three, a gap of 6, which sits at the edge of the noise floor rather than beyond it. The supporting argument was that its 2007 row carries bib 948 where its others carry 48 to 229, an unseeded bib among seeded ones; that argument does not survive checking. Chequamegon 2007 bibs run to 1867 and 56 of the 98 rows this archive stores for that edition carry a bib of 800 or more, with a median finish of 63rd. Bib 948 finishing 67th is the most ordinary row in the field. Mike Johnson is also the commonest name in the off-road set, so a second one is entirely possible — there is just no evidence here that reaches the bar."
+ }
+}
