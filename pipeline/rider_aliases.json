@@ -6,6 +6,11 @@
    "evidence": "Unbound 2010/2011/2012, one rider. Two of his three registrations spell it GAMMEL (2011, 2012) against one Gammell (2010), so the source majority picks the canonical, not string length. A separate Jed Gammell rides Chequamegon with the double L and is a different person.",
    "decided": "2026-09-11"
   },
+  "rider/al-thresher": {
+   "canonical": "rider/alfred-thresher",
+   "evidence": "One Las Vegas rider filed as three men across three consecutive Leadvilles. The decisive evidence is the BIB CHAIN, because Leadville hands a returning rider last year's finishing position as this year's number: 2010 bib 1451 finishing 29th, 2011 bib 29 finishing 56th, 2012 bib 56 finishing 64th. Measured across the whole Leadville archive that seeding rule holds for 75% of returning top-100 finishers, and for 44 of the 46 who came back in 2011 — a rider entering for the first time is not handed bib 29. Athlinks also records a location on every row and all three read Las Vegas. Finish times 8h02, 7h44, 7h53. 'Al' is the diminutive of 'Alfred', so the full name survives; the '(l)' was never part of his name at all, it is Leadville's LEADMAN series flag.",
+   "decided": "2026-09-12"
+  },
   "rider/alejandro-gomez": {
    "canonical": "rider/alejandro-gomez1",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 50596s in the 2024 edition, PCS rank 83. PCS's own slug is alejandro-gomez1, and PCS appends that digit only when the bare slug already belongs to someone else. Keeping our locally-minted `alejandro-gomez` would leave a name-shaped id for a rider PCS calls something else, which a later import of that OTHER Alejandro Gomez would land on. The PCS id survives even though it holds no result.",
@@ -19,6 +24,11 @@
   "rider/alex-ruiz": {
    "canonical": "rider/alex-ruiz-roldan",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 45830s in the 2024 edition, PCS rank 27. Spanish double surname. The rider registered with the timer as Alex Ruiz Roldan; PCS carries only the paternal surname.",
+   "decided": "2026-09-12"
+  },
+  "rider/alfred-thresher-l": {
+   "canonical": "rider/alfred-thresher",
+   "evidence": "One Las Vegas rider filed as three men across three consecutive Leadvilles. The decisive evidence is the BIB CHAIN, because Leadville hands a returning rider last year's finishing position as this year's number: 2010 bib 1451 finishing 29th, 2011 bib 29 finishing 56th, 2012 bib 56 finishing 64th. Measured across the whole Leadville archive that seeding rule holds for 75% of returning top-100 finishers, and for 44 of the 46 who came back in 2011 — a rider entering for the first time is not handed bib 29. Athlinks also records a location on every row and all three read Las Vegas. Finish times 8h02, 7h44, 7h53. 'Al' is the diminutive of 'Alfred', so the full name survives; the '(l)' was never part of his name at all, it is Leadville's LEADMAN series flag.",
    "decided": "2026-09-12"
   },
   "rider/andrew-l": {
@@ -615,6 +625,11 @@
   "rider/torbjorn-roed": {
    "canonical": "rider/torbjorn-andre-roed",
    "evidence": "'Torbjørn Andre Røed' / 'Torbjørn Røed' differ only by a one extra whole word, they never appear on the same stage, and the birth years the sources imply agree (1997, 1997). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/travis-macy-lm": {
+   "canonical": "rider/travis-macy",
+   "evidence": "Leadville 2007, 2011 and 2013, all three rows located Evergreen, Colorado, bibs 567, 109 and 111. The LM is Leadville's Leadman series flag, not a surname — 71 riders carry it in 2013 and nobody carries it in any other year except 2011, where the same flag is spelt '(l)'. Marvin Sandoval has '(l)' in 2011 and 'LM' in 2013, which is one man and one flag. Mark Macy, also of Evergreen, is his father and stays separate.",
    "decided": "2026-09-12"
   },
   "rider/travis-tj-woodruff": {

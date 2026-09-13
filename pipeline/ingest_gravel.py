@@ -62,6 +62,7 @@ from race_common import (
     load_rider_splits,
     load_tandem_entries,
     fold_name,
+    strip_series_flag,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -256,7 +257,10 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     maybe_tandems = []         # unlisted rows joined by "&"/"and": reported only
     tandem_names = TANDEMS.get((slug, year), set())
     for r in data["rows"]:
-        key = r["name"].strip()
+        # Same strip the linker applies before it takes an identity key, or
+        # the lookup below misses: _rider_ids.json is keyed on the cleaned
+        # name. See race_common.strip_series_flag.
+        key = strip_series_flag(r["name"])
         # A bib with no name behind it is not a rider. Skipped only when the
         # row also carries NO result -- every one seen so far is a DNS with no
         # rank and no time, so nothing is lost. A placeholder that DID finish

@@ -2481,28 +2481,10 @@
   "last_name": "Thresher",
   "name": "Alfred Thresher",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/alfred-thresher",
   "years": [
-   2010
-  ]
- },
- "alfred thresher  l": {
-  "birth_year_approx": null,
-  "countries": [
-   "us"
-  ],
-  "country": "us",
-  "decision": "new_no_candidate",
-  "evidence": "no existing rider with this name",
-  "first_name": "Alfred Thresher",
-  "homonym_suspect": false,
-  "last_name": "(l)",
-  "name": "Alfred Thresher (l)",
-  "pcs_slug": null,
-  "results": 1,
-  "rider_id": "rider/alfred-thresher-l",
-  "years": [
+   2010,
    2011
   ]
  },
@@ -6539,29 +6521,11 @@
   "last_name": "Africa",
   "name": "Bob Africa",
   "pcs_slug": null,
-  "results": 1,
+  "results": 2,
   "rider_id": "rider/bob-africa",
   "years": [
+   2013,
    2015
-  ]
- },
- "bob africa lm": {
-  "birth_year_approx": 1973,
-  "countries": [
-   "us"
-  ],
-  "country": "us",
-  "decision": "new_no_candidate",
-  "evidence": "no existing rider with this name",
-  "first_name": "Bob Africa",
-  "homonym_suspect": false,
-  "last_name": "LM",
-  "name": "Bob Africa LM",
-  "pcs_slug": null,
-  "results": 1,
-  "rider_id": "rider/bob-africa-lm",
-  "years": [
-   2013
   ]
  },
  "bob billings": {
@@ -76316,26 +76280,6 @@
   ]
  },
  "travis macy": {
-  "birth_year_approx": 1991,
-  "countries": [
-   "us"
-  ],
-  "country": "us",
-  "decision": "new_no_candidate",
-  "evidence": "no existing rider with this name",
-  "first_name": "Travis",
-  "homonym_suspect": false,
-  "last_name": "Macy",
-  "name": "Travis Macy",
-  "pcs_slug": null,
-  "results": 2,
-  "rider_id": "rider/travis-macy",
-  "years": [
-   2007,
-   2011
-  ]
- },
- "travis macy lm": {
   "birth_year_approx": 1983,
   "countries": [
    "us"
@@ -76343,14 +76287,16 @@
   "country": "us",
   "decision": "new_no_candidate",
   "evidence": "no existing rider with this name",
-  "first_name": "Travis Macy",
-  "homonym_suspect": false,
-  "last_name": "LM",
-  "name": "Travis Macy LM",
+  "first_name": "Travis",
+  "homonym_suspect": true,
+  "last_name": "Macy",
+  "name": "Travis Macy",
   "pcs_slug": null,
-  "results": 1,
-  "rider_id": "rider/travis-macy-lm",
+  "results": 3,
+  "rider_id": "rider/travis-macy",
   "years": [
+   2007,
+   2011,
    2013
   ]
  },

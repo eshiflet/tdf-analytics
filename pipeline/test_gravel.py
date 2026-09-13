@@ -1045,3 +1045,47 @@ class TestTandemEntries(unittest.TestCase):
         for real in ("Juan Carlos Najera Alonso De Porres", "Ian Lopez De San Roman",
                      "Jose Eduardo Tijerina Cuesta", "Luis Fernando Conejo Morales"):
             self.assertNotIn(fold_name(real), listed)
+
+
+class TestSeriesFlagStripping(unittest.TestCase):
+    """Leadville appends its Leadman flag to the NAME field — "(l)" in 2011,
+    "LM" in 2013 — and it was splitting riders in two. The strip has to happen
+    before the identity key is taken, not merely before the name is displayed."""
+
+    def test_the_leadman_flag_is_removed(self):
+        from race_common import strip_series_flag
+        for flagged, clean in (("Alfred Thresher (l)", "Alfred Thresher"),
+                               ("Travis Macy LM", "Travis Macy"),
+                               ("Marvin Sandoval (l)", "Marvin Sandoval"),
+                               ("Bob Africa LM", "Bob Africa")):
+            self.assertEqual(strip_series_flag(flagged), clean)
+
+    def test_a_real_name_is_never_touched(self):
+        """The guard on the guard: this runs on every gravel name, so anything
+        it trims by accident silently renames a rider."""
+        from race_common import strip_series_flag
+        for real in ("Alfred Thresher", "Al Thresher", "Ian Lopez De San Roman",
+                     "Jose Eduardo Tijerina Cuesta", "Mark Macy",
+                     "Juan Carlos Najera Alonso De Porres", "Lachlan Morton"):
+            self.assertEqual(strip_series_flag(real), real)
+
+    def test_nothing_mid_name_is_trimmed(self):
+        """Anchored at the end. An LM inside a name is somebody's initials."""
+        from race_common import strip_series_flag
+        self.assertEqual(strip_series_flag("LM Jones"), "LM Jones")
+        self.assertEqual(strip_series_flag("John LM Smith"), "John LM Smith")
+
+    def test_no_stored_gravel_name_still_carries_a_flag(self):
+        import os, re, sqlite3
+        from race_common import DB_PATH
+        if not os.path.exists(DB_PATH):
+            self.skipTest("no database")
+        con = sqlite3.connect(DB_PATH)
+        bad = [r[0] for r in con.execute("""
+            SELECT DISTINCT ri.full_name FROM riders ri
+            JOIN stage_results sr USING(rider_id) JOIN stages s USING(stage_id)
+            JOIN race_editions e USING(edition_id) JOIN races ra USING(race_id)
+            WHERE ra.race_type = 'gravel'""")
+            if re.search(r"\(\s*l\s*\)\s*$|\bLM\s*$", r[0] or "", re.I)]
+        con.close()
+        self.assertEqual(bad, [], f"names still carrying a series flag: {bad}")

@@ -194,6 +194,28 @@ def load_rider_separations(path=RIDER_ALIASES_PATH):
     return out
 
 
+# Leadville appends its LEADMAN flag to the name field: "(l)" on 40 riders in
+# 2011, "LM" on 71 in 2013, and in no other year. Leadman is the series award
+# for finishing the whole summer's Leadville events, so it is a competition a
+# rider entered, not part of their name — Marvin Sandoval carries "(l)" in 2011
+# and "LM" in 2013, which is the same flag spelt two ways on one man.
+#
+# Stripped when IDENTITY is decided, not only when the name is displayed,
+# because the flag was splitting people in two: "Alfred Thresher (l)" got its
+# own rider_id beside "Alfred Thresher" and "Al Thresher", one Las Vegas rider
+# across three consecutive Leadvilles filed as three men.
+#
+# Anchored at the end and deliberately narrow. "LM" bare at the end of a name
+# is not a surname anybody has; a parenthesised single letter is not part of
+# one either. Nothing in the middle of a name is touched.
+LEADMAN_SUFFIX = re.compile(r"\s*(?:\(\s*l\s*\)|\bLM)\s*$", re.IGNORECASE)
+
+
+def strip_series_flag(name):
+    """Remove a timer's series-competition flag from the end of a name."""
+    return LEADMAN_SUFFIX.sub("", (name or "").strip()).strip()
+
+
 TANDEM_ENTRIES_PATH = os.path.join(HERE, "tandem_entries.json")
 
 

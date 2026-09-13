@@ -49,7 +49,7 @@ import sys
 import unicodedata
 from collections import defaultdict
 
-from race_common import GRAVEL
+from race_common import strip_series_flag, GRAVEL
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -155,12 +155,27 @@ def gravel_people():
             data = json.load(f)
         year = data["info"]["year"]
         for r in data["rows"]:
-            key = fold(r["name"]).strip()
+            # Strip the timer's series flag BEFORE the identity key is taken,
+            # or "Alfred Thresher (l)" becomes a second Alfred Thresher. See
+            # race_common.strip_series_flag.
+            name = strip_series_flag(r["name"])
+            # When the flag was there, the scraper's own first/last split ran on
+            # the flagged string and BOTH halves are wrong: "Alfred Thresher (l)"
+            # came out first="Alfred Thresher", last="(l)". Re-split the cleaned
+            # name rather than strip the pieces, which would leave an empty
+            # surname.
+            if name != (r["name"] or "").strip():
+                parts = name.split()
+                first = " ".join(parts[:-1]) or None
+                last = parts[-1] if parts else None
+            else:
+                first, last = r["first_name"], r["last_name"]
+            key = fold(name).strip()
             if not key:
                 continue
             p = people.setdefault(key, {
-                "name": r["name"], "first_name": r["first_name"],
-                "last_name": r["last_name"], "years": set(), "countries": set(),
+                "name": name, "first_name": first,
+                "last_name": last, "years": set(), "countries": set(),
                 "births": [], "results": 0, "pcs_slugs": set(),
             })
             p["years"].add(year)
