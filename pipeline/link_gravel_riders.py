@@ -44,6 +44,7 @@ import json
 import os
 import re
 import sqlite3
+import statistics
 import sys
 import unicodedata
 from collections import defaultdict
@@ -160,14 +161,14 @@ def gravel_people():
             p = people.setdefault(key, {
                 "name": r["name"], "first_name": r["first_name"],
                 "last_name": r["last_name"], "years": set(), "countries": set(),
-                "births": set(), "results": 0, "pcs_slugs": set(),
+                "births": [], "results": 0, "pcs_slugs": set(),
             })
             p["years"].add(year)
             p["results"] += 1
             if r.get("country"):
                 p["countries"].add(r["country"])
             if r.get("age"):
-                p["births"].add(year - int(r["age"]))
+                p["births"].append(year - int(r["age"]))
             # A PCS-sourced row carries the rider's real id. That ends the
             # guessing for this person: everything below is machinery for
             # deciding identity from a NAME, which is only necessary because
@@ -217,12 +218,22 @@ def decide(person, by_tokens):
     # No birth year is published by either Traka source, so for those riders the
     # check below cannot fire at all and this is the only disqualifier left.
     gravel_countries = set(person.get("countries") or ())
+    # Measured in BOTH directions. This used to read `gy_min - c["last_year"]`
+    # alone, which only fires when the gravel ride comes AFTER the road career
+    # — and so never fired for the reverse, a gravel ride years BEFORE the road
+    # rider had started. That is how a 43-year-old American called David Martin,
+    # 72nd at Chequamegon in 2007 off bib 1168, was matched to
+    # rider/david-martin-romero, a Spanish rider whose only result is
+    # Milan-San Remo 2023. The linker's own evidence line recorded the
+    # mismatch it was failing to act on: "(es), road 2023-2023, gravel
+    # 2007-2007".
+    era_gap = max(gy_min - c["last_year"], c["first_year"] - gy_max)
     if (c["nationality_code"] and gravel_countries
             and c["nationality_code"] not in gravel_countries
-            and gy_min - c["last_year"] > STALE_SPAN):
+            and era_gap > STALE_SPAN):
         return (None, "new_country_and_era_mismatch",
-                f"{c['rider_id']} is {c['nationality_code']} and last raced "
-                f"{c['last_year']}; this rider entered from "
+                f"{c['rider_id']} is {c['nationality_code']} and raced "
+                f"{c['first_year']}-{c['last_year']}; this rider entered from "
                 f"{'/'.join(sorted(gravel_countries))} in {gy_min}")
     if person["births"] and c["birth_year_approx"]:
         near = min(abs(b - c["birth_year_approx"]) for b in person["births"])
@@ -281,9 +292,10 @@ def main(argv=None):
         # So this flags rather than splits. Splitting automatically would
         # fracture the real crossover riders this whole script exists to keep
         # whole, to fix a handful of amateur collisions.
-        suspect = len(p["births"]) > 1 and max(p["births"]) - min(p["births"]) > 3
+        suspect = (len(set(p["births"])) > 1
+                   and max(p["births"]) - min(p["births"]) > 3)
         if suspect:
-            homonyms.append((p["name"], sorted(p["births"]), sorted(p["countries"]),
+            homonyms.append((p["name"], sorted(set(p["births"])), sorted(p["countries"]),
                              sorted(p["years"])))
         out[key] = {
             "pcs_slug": sorted(p.get("pcs_slugs") or ())[:1] or None,
@@ -295,7 +307,19 @@ def main(argv=None):
             # MEDIAN, not mean: one mistyped age should not drag a rider's
             # birth year by four years, which is what averaging Morton's ten
             # 1992s against one 2000 did.
-            "birth_year_approx": (sorted(p["births"])[len(p["births"]) // 2]
+            #
+            # Over the OBSERVATIONS, not the distinct values. `births` was a
+            # set, which threw away exactly the information a median needs:
+            # ten readings of 1992 and one of 2000 collapsed to two numbers, so
+            # the outlier weighed as much as the ten. With an even number of
+            # distinct values the index then picks the HIGHER one, i.e. the
+            # mistyped age. Morton survived it by luck — three distinct values,
+            # so the index landed on 1992 anyway — but scott-tietzel did not:
+            # two readings of 1984 against one of 1991 stored 1991, and that
+            # wrong birth year is what held his merge back in the 2026-09-12
+            # sweep. Checked across the gravel corpus after the fix: see the
+            # commit that made this change for the riders it moved.
+            "birth_year_approx": (statistics.median_low(sorted(p["births"]))
                                   if p["births"] else None),
             "homonym_suspect": suspect,
             "results": p["results"], "years": sorted(p["years"]),

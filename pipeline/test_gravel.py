@@ -968,3 +968,32 @@ class TestRiderSplits(unittest.TestCase):
             self.assertNotIn(pair, self.separations,
                              "a pair cannot be both split apart and recorded "
                              "as a decided non-merge")
+
+    def test_the_duplicate_audit_will_not_propose_undoing_a_split(self):
+        """The regression this file was one commit away from shipping.
+
+        Two halves of a split share a name EXACTLY and never share a stage,
+        which is the most confident SAME the duplicate heuristic can produce.
+        The first version of these tests asserted only that the pair was absent
+        from `separated` — true, and beside the point: nothing then stopped the
+        next sweep merging them straight back together.
+        """
+        import audit_rider_duplicates as aud
+        for (src, race, year), rule in self.splits.items():
+            verdict, why = aud.classify(
+                {"id": src, "nat": "us", "span": (2000, 2001),
+                 "base": src.removeprefix("rider/")},
+                {"id": rule["rider_id"], "nat": "us", "span": (2000, 2001),
+                 "base": rule["rider_id"].removeprefix("rider/")})
+            self.assertEqual(verdict, "SETTLED",
+                             f"{src} and {rule['rider_id']} are the two halves "
+                             f"of a split and the audit called them {verdict}")
+
+    def test_the_merge_tool_refuses_a_split_pair_outright(self):
+        """The audit is where the verdict is made, but the merge tool is what
+        writes, and it accepts a --groups file that may predate the split."""
+        import merge_rider_duplicates as mrg
+        for (src, race, year), rule in self.splits.items():
+            pair = frozenset({src.removeprefix("rider/"),
+                              rule["rider_id"].removeprefix("rider/")})
+            self.assertIn(pair, mrg.SPLIT_HALVES)

@@ -41,7 +41,7 @@ import sys
 import unicodedata
 from collections import defaultdict
 
-from race_common import DB_PATH, load_rider_separations
+from race_common import DB_PATH, load_rider_separations, load_rider_splits
 
 # PCS's own disambiguators. Stripped only so two ids can be COMPARED; a pair
 # that differs by nothing else is two people and is dropped, never reported.
@@ -70,6 +70,15 @@ def collapse(slug: str) -> str:
 
 
 SEPARATED = load_rider_separations()
+# The halves of a deliberate split share a name EXACTLY, never share a stage,
+# and so score as the most confident SAME this heuristic can produce. Without
+# consulting rider_splits.json the next --apply fuses them back together and
+# the split disappears silently — the same way an unrecorded separation gets
+# re-merged, which is what SEPARATED above exists to stop.
+SPLIT_HALVES = {
+    frozenset((src.removeprefix("rider/"), rule["rider_id"].removeprefix("rider/"))): rule
+    for (src, _race, _year), rule in load_rider_splits().items()
+}
 
 
 def classify(a: dict, b: dict) -> tuple[str, str]:
@@ -83,6 +92,9 @@ def classify(a: dict, b: dict) -> tuple[str, str]:
     pair = frozenset((a["id"].removeprefix("rider/"), b["id"].removeprefix("rider/")))
     if pair in SEPARATED:
         return "SETTLED", "ruled different people on " + SEPARATED[pair]["decided"]
+    if pair in SPLIT_HALVES:
+        return "SETTLED", ("one id split into two people — see rider_splits.json; "
+                           "merging these would undo that split")
 
     na, nb = a["nat"], b["nat"]
     if na and nb and na != nb:

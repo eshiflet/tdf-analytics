@@ -53,11 +53,18 @@ import subprocess
 import sys
 
 from race_common import (DB_PATH, SOURCE_DERIVED, load_rider_separations,
-                         record_provenance)
+                         load_rider_splits, record_provenance)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INITIAL = re.compile(r"-[a-z]-")
 SEPARATIONS = load_rider_separations()
+# Belt and braces beside the audit's own check, for the same reason SEPARATIONS
+# is checked here: this is the script that actually writes, and a stale
+# --groups file can carry a pair the audit would now settle.
+SPLIT_HALVES = {
+    frozenset((src.removeprefix("rider/"), rule["rider_id"].removeprefix("rider/")))
+    for (src, _race, _year), rule in load_rider_splits().items()
+}
 
 
 def load_groups(path=None):
@@ -106,6 +113,10 @@ def main():
         if pair in SEPARATIONS:
             refused.append((g["key"], SEPARATIONS[pair]["decided"]))
             continue
+        if pair in SPLIT_HALVES:
+            refused.append((g["key"], "these are the two halves of a deliberate "
+                            "split — see rider_splits.json; merging them would undo it"))
+            continue
         n = share_a_stage(cur, ids)
         if n:
             skipped.append((g["key"], n))
@@ -134,9 +145,14 @@ def main():
             total += n
             print(f"{keep.removeprefix('rider/'):<34}{aid.removeprefix('rider/'):<34}{n:>5}")
     print(f"\n{sum(len(a) for _, a, _ in plan)} merge(s), {total} result row(s) to re-point")
-    for key, when in refused:
-        print(f"  REFUSED {key}: ruled different people on {when} — see the "
-              "`separated` section of rider_aliases.json")
+    # Two reasons a group is refused and they read differently: a pair a human
+    # separated carries a DATE, a pair that is the two halves of a split
+    # carries its own sentence. Formatting both as "ruled different people on
+    # <reason>" produced one line that contradicted itself twice over.
+    for key, why in refused:
+        detail = (f"ruled different people on {why} — see the `separated` "
+                  "section of rider_aliases.json") if re.fullmatch(r"\d{4}-\d{2}-\d{2}", why) else why
+        print(f"  REFUSED {key}: {detail}")
     for key, n in skipped:
         print(f"  SKIPPED {key}: the two ids share {n} stage(s) — two people, not one")
 
