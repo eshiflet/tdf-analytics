@@ -60,6 +60,8 @@ from race_common import (
     record_provenance,
     load_rider_aliases,
     load_rider_splits,
+    load_tandem_entries,
+    fold_name,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -75,6 +77,9 @@ RIDER_ALIASES = load_rider_aliases()
 # race_common.load_rider_splits. Applied AFTER the alias map, because a split
 # acts on the canonical id: the absorbed spelling never reaches this point.
 RIDER_SPLITS = load_rider_splits()
+# Two people on one bib. Not riders, and this schema cannot say what they
+# are — see tandem_entries.json for why it is a list and not a rule.
+TANDEMS = load_tandem_entries()
 
 
 def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
@@ -247,6 +252,9 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
     collisions = []
     placeholders = []          # bib-only rows with no result: skipped
     named_placeholders = []    # bib-only rows that DID place: kept, reported
+    tandems = []               # two-person entries: dropped, reported
+    maybe_tandems = []         # unlisted rows joined by "&"/"and": reported only
+    tandem_names = TANDEMS.get((slug, year), set())
     for r in data["rows"]:
         key = r["name"].strip()
         # A bib with no name behind it is not a rider. Skipped only when the
@@ -256,6 +264,18 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
         # shrink the field and move other riders' positions, so it is kept and
         # reported instead. Same rule as the malformed-row handling in
         # ingest_race: never silently drop a result.
+        # A TANDEM is two people sharing one bib and one finish. Storing it
+        # makes a rider who does not exist, and every check downstream then
+        # treats that person as real — which is how "Elliot Cooper Sally
+        # Finkbeiner" ended up being proposed for merging into Elliot Cooper.
+        # Dropped rather than kept-and-flagged, unlike a named placeholder,
+        # because a placeholder is one real rider we cannot name while this is
+        # two riders we cannot separate.
+        if fold_name(key) in tandem_names:
+            tandems.append((key, r.get("rank")))
+            continue
+        if re.search(r"\s(?:&|and)\s", key, re.I):
+            maybe_tandems.append((key, r.get("rank")))
         if is_placeholder_name(key):
             if r.get("finish_seconds") is None and r.get("rank") is None:
                 placeholders.append(key)
@@ -359,6 +379,15 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
               f"winner while ranked behind him — time set NULL, placing kept "
               f"({', '.join(r[3] for r in impossible[:4])}"
               f"{', ...' if len(impossible) > 4 else ''})")
+    if tandems:
+        print(f"    {slug} {year}: dropped {len(tandems)} tandem entr(y/ies) — "
+              "two people on one bib, which this schema cannot store as a rider: "
+              + ", ".join(n for n, _ in tandems[:4])
+              + (" ..." if len(tandems) > 4 else ""), flush=True)
+    if maybe_tandems:
+        print(f"    {slug} {year}: {len(maybe_tandems)} row(s) joined by '&' or 'and' are NOT in "
+              "tandem_entries.json — check whether they are two people: "
+              + ", ".join(n for n, _ in maybe_tandems[:4]), flush=True)
     if placeholders:
         print(f"    {slug} {year}: skipped {len(placeholders)} bib-only entr"
               f"{'y' if len(placeholders) == 1 else 'ies'} with no result "

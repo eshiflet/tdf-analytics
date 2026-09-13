@@ -1,0 +1,68 @@
+{
+ "_README": "Rows where the timer recorded a TANDEM: two people, one bib, one finish. They are not riders and this archive has no way to say what they are, so they are dropped at ingest rather than stored as a person who does not exist. Identified by reading the raw Athlinks results, where tandems sit in a contiguous bib block and every name in it is two full names — Unbound 2016 bibs 1135 to 1146, Unbound 2017 bibs 1144 to 1150, Unbound 2019 bibs 2901 to 2907, Chequamegon 2013 bibs 256 to 261. That block is the reliable tell and the scrape file does not preserve it, which is why this is an explicit list and not a rule: a name-shaped test cannot separate 'Joe Stiller Tina Stiller' from 'Juan Carlos Najera Alonso De Porres' or 'Ian Lopez De San Roman', both of which are one Spanish rider and both of which a four-token rule would have thrown away. 38 entries across three races; only two ever reached the database, because the rest finished outside the 100-rider window this archive keeps. The RESULT each represents is real — a tandem did finish 30th at Unbound 2016 — and dropping it is a deliberate choice that this schema cannot express a two-person entry, not a claim that the ride did not happen. ingest_gravel.py also warns about any unlisted row joined by '&' or 'and', which is the one tandem spelling a rule can catch safely.",
+ "decided": "2026-09-12",
+ "entries": {
+  "unbound": {
+   "2016": [
+    "Joe Kraxner Jennifer Kraxner",
+    "Mike Clark Kaat Tahy",
+    "Donald Wood Brian Gillies",
+    "Jeff Caldwell Shae Caldwell",
+    "Bailey Newbrey Allison Zmuda",
+    "Steve Wasmund Amy Andrews",
+    "Elliot Cooper Sally Finkbeiner",
+    "Joe Stiller Tina Stiller",
+    "Kris Tilford Rita Robben",
+    "Noel Heyer Genai Heyer",
+    "Danny Noble Tara Noble"
+   ],
+   "2017": [
+    "Jeff Sona Carrie Sona",
+    "Heidi Snyder Middy Matthews",
+    "Donald Wood Jesse Ramsey",
+    "Trevor Spangle Jamie Lusk",
+    "Catherine Culkin Jordan Caverly",
+    "Tim Hornik Mike Reynolds",
+    "Jackie Brandhorst Jeff Brandhorst"
+   ],
+   "2019": [
+    "Corey Smith & Adam Galindo",
+    "Don Daly & Carrie Bax",
+    "Dori & Andrew Coetzee",
+    "Tim Hornik & Greg Miller",
+    "Kim West and Tina Ament"
+   ]
+  },
+  "chequamegon": {
+   "2013": [
+    "Brian Eppen Kim Eppen",
+    "Keven Kvalsten Bob Brown",
+    "Pamela Nielsen Jeff Colbert",
+    "Adam Froemming Kevin Ishaug",
+    "Tina Hjeltman Michael B Larson",
+    "Janna Krawczyk Paul Krawczyk",
+    "Wallace Alexander Beckie Alexander"
+   ],
+   "2017": [
+    "Alysa Merrill Bradley Hinde"
+   ]
+  },
+  "leadville": {
+   "1999": [
+    "Steven Elmes Rob Mossman",
+    "Beckie Fuller Wallace Hay"
+   ],
+   "2009": [
+    "Karla Wagner Charles Schuster",
+    "Mark & Jon Hirsch",
+    "Bob Brown Robin Johnson"
+   ],
+   "2014": [
+    "Katie Lindquist and Kent Eriksen"
+   ],
+   "2015": [
+    "Richard Biocca & Steve Haider"
+   ]
+  }
+ }
+}

@@ -642,10 +642,6 @@
    "evidence": "Two different Brian Laihos. Each id is internally consistent and they disagree with each other: 1981 and 1982 against 1977 twice. Both spellings carry the Specialized sponsor in some form, so again the names cannot separate them and only this record can.",
    "decided": "2026-09-12"
   },
-  "elliot-cooper|elliot-cooper-sally-finkbeiner": {
-   "evidence": "NOT a rider at all. Unbound 2016 has a tandem category and the timer put both riders' names in one field: that file's only two rows with four or more name tokens are 'Steve Wasmund Amy Andrews' on bib 1141 and 'Elliot Cooper Sally Finkbeiner' on bib 1143 -- consecutive bibs, finishing 30th and 70th. Every other long name in the Unbound files is a real particle surname (Van Den Ham, Lopez De San Roman). Merging this into rider/elliot-cooper would credit a solo rider with a tandem result.",
-   "decided": "2026-09-12"
-  },
   "ernest-gilioli|ernest-gillioli": {
    "evidence": "Wikipedia's 1926 Tour startlist has Gillioli at number 147 as a touriste-routier; its 1909 list has Gilioli at 157 as a lone rider. Two entries, two numbers, two categories. PCS dates Gilioli to 1885, making him 41 in 1926 — possible, but nothing asserts one man.",
    "decided": "2026-09-11",

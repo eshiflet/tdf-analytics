@@ -997,3 +997,51 @@ class TestRiderSplits(unittest.TestCase):
             pair = frozenset({src.removeprefix("rider/"),
                               rule["rider_id"].removeprefix("rider/")})
             self.assertIn(pair, mrg.SPLIT_HALVES)
+
+
+class TestTandemEntries(unittest.TestCase):
+    """A tandem is two people on one bib. Stored, it becomes a rider who does
+    not exist — and everything downstream then treats that person as real,
+    which is how 'Elliot Cooper Sally Finkbeiner' came to be proposed for
+    merging into Elliot Cooper."""
+
+    @classmethod
+    def setUpClass(cls):
+        from race_common import load_tandem_entries, GRAVEL
+        cls.tandems = load_tandem_entries()
+        cls.races = set(GRAVEL)
+
+    def test_every_entry_names_a_race_that_exists(self):
+        for (race, year) in self.tandems:
+            self.assertIn(race, self.races,
+                          f"{race!r} is not a gravel race slug, so nothing will match")
+
+    def test_names_are_stored_folded_so_matching_is_case_insensitive(self):
+        from race_common import fold_name
+        for names in self.tandems.values():
+            for n in names:
+                self.assertEqual(n, fold_name(n))
+
+    def test_no_listed_tandem_survives_as_a_rider(self):
+        """The list is only worth having if the database agrees with it."""
+        import os, sqlite3
+        from race_common import DB_PATH, fold_name
+        if not os.path.exists(DB_PATH):
+            self.skipTest("no database")
+        con = sqlite3.connect(DB_PATH)
+        stored = {fold_name(r[0]) for r in con.execute("SELECT full_name FROM riders")}
+        con.close()
+        for (race, year), names in self.tandems.items():
+            for n in names:
+                self.assertNotIn(n, stored,
+                                 f"{n!r} is listed as a tandem for {race} {year} "
+                                 "but is still a rider in the database")
+
+    def test_the_list_does_not_swallow_a_real_long_name(self):
+        """The guard on the guard. A four-token rule would have deleted these
+        real single riders, which is why the file is an explicit list."""
+        from race_common import fold_name
+        listed = set().union(*self.tandems.values()) if self.tandems else set()
+        for real in ("Juan Carlos Najera Alonso De Porres", "Ian Lopez De San Roman",
+                     "Jose Eduardo Tijerina Cuesta", "Luis Fernando Conejo Morales"):
+            self.assertNotIn(fold_name(real), listed)

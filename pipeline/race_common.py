@@ -194,6 +194,36 @@ def load_rider_separations(path=RIDER_ALIASES_PATH):
     return out
 
 
+TANDEM_ENTRIES_PATH = os.path.join(HERE, "tandem_entries.json")
+
+
+def load_tandem_entries(path=TANDEM_ENTRIES_PATH):
+    """Two-person entries to drop, as {(race_slug, year): {folded name, ...}}.
+
+    An explicit list rather than a rule, and the reason is in the file: the
+    reliable tell is a contiguous bib block in the raw Athlinks results, which
+    the scrape file does not preserve, and the only thing left in the file is
+    the name. No name-shaped test can separate "Joe Stiller Tina Stiller" from
+    "Juan Carlos Najera Alonso De Porres".
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    out = {}
+    for race, years in (raw.get("entries") or {}).items():
+        for year, names in years.items():
+            out[(race, int(year))] = {fold_name(n) for n in names}
+    return out
+
+
+def fold_name(name):
+    """Case-, accent- and punctuation-insensitive form, for MATCHING only."""
+    n = unicodedata.normalize("NFD", name or "")
+    n = "".join(c for c in n if unicodedata.category(c) != "Mn")
+    return " ".join(re.sub(r"[^a-z0-9 ]", " ", n.lower()).split())
+
+
 RIDER_SPLITS_PATH = os.path.join(HERE, "rider_splits.json")
 
 
