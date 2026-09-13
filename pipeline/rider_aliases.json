@@ -1,5 +1,5 @@
 {
- "_README": "Rider ids that are variants of one person, and the id they belong to. CONSULTED AT INGEST: without this a re-ingest recreates every absorbed id straight from the scrape files, because the files still carry the old spelling — the same way the Dorsal placeholders came back. Lives outside the DB for that reason, like stage_notes.json and route_type_overrides.json. Produced by audit_rider_duplicates.py + merge_rider_duplicates.py; every entry carries the evidence for the claim, because a merge IS a claim and a wrong one fuses two careers invisibly. The `separated` section is the MIRROR of `aliases`: pairs a human examined and ruled DIFFERENT people. Without it audit_rider_duplicates.py re-proposes them on every run and the next --apply quietly re-merges a decision somebody already made.",
+ "_README": "Rider ids that are variants of one person, and the id they belong to. CONSULTED AT INGEST: without this a re-ingest recreates every absorbed id straight from the scrape files, because the files still carry the old spelling — the same way the Dorsal placeholders came back. Lives outside the DB for that reason, like stage_notes.json and route_type_overrides.json. Produced by audit_rider_duplicates.py + merge_rider_duplicates.py; every entry carries the evidence for the claim, because a merge IS a claim and a wrong one fuses two careers invisibly. The `separated` section is the MIRROR of `aliases`: pairs a human examined and ruled DIFFERENT people. Without it audit_rider_duplicates.py re-proposes them on every run and the next --apply quietly re-merges a decision somebody already made. KNOWN CONFLATIONS, neither merged nor separated (2026-09-12): four ids are themselves more than one person, so they need SPLITTING and nothing should be merged INTO them until that is done. They are deliberately absent from `separated`, which would assert the opposite claim, and they will keep resurfacing in any duplicate sweep — which is correct, they are unfinished. Each is proved by its own rows: rider/tom-miller ages 20 years between 2007 and 2015 (8 elapsed), so its Unbound 2015 row is a second Tom Miller; rider/mark-smith ages 7 years between Leadville 1994 and 2008 (14 elapsed); rider/mike-johnson ages 9 between 2007 and 2010, and its 2007 row carries bib 948 against 48-132 in the rest, an unseeded rider among seeded ones; rider/paul-ellis has already absorbed a paul-L-ellis and a sweep then offered it a paul-C-ellis, two different 18-year-olds in 1999 and 2001. The pairs waiting on them are tom-w-miller, mark-p-smith, mike-t-johnson and paul-c-ellis.",
  "aliases": {
   "rider/aaron-gammell": {
    "canonical": "rider/aaron-gammel",
@@ -54,6 +54,11 @@
   "rider/benjamin-olivier": {
    "canonical": "rider/benjamin-olivier23",
    "evidence": "The same name once case, accents, punctuation and word order are normalised: 'Benjamin Olivier' / 'Benjamin Olivier'. One person entered more than one way across years, and the ids never share a stage.",
+   "decided": "2026-09-12"
+  },
+  "rider/bill-c-stolte": {
+   "canonical": "rider/bill-stolte",
+   "evidence": "Chequamegon, one rider entering alternately with and without the middle initial: plain 1999, C in 2000 and 2001, plain again 2002, then plain from 2009 to 2019. The years INTERLEAVE and never collide, which two different Chequamegon regulars sharing a name would not manage for twenty years. Both ids' commonest implied birth year is 1970. NOTE on the evidence NOT used. These eight were held back by a guard that rejected any pair where an id's own rows disagreed about its birth year. That guard turned out to be mostly a proxy for how much age data an id has: across the 63 pairs merged in the same sweep the median id carries ZERO ages and so could not fail it, while these carry a median of three. 75% of the ids here contradict themselves. Athlinks age_at_race is simply noisy at +/-3 to 5 years -- the same failure that records Lachlan Morton as 19 at the 2019 Dirty Kanza when he was 27 -- so it is not evidence either way at that scale. What it can still show is a contradiction too large to be noise, and the four pairs left unmerged are exactly those: rider/tom-miller ages 20 years in 8, rider/mark-smith 7 in 14.",
    "decided": "2026-09-12"
   },
   "rider/billiault-baptiste": {
@@ -156,6 +161,11 @@
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 49585s in the 2023 edition, PCS rank 5. Spanish double surname, David Coma Cases.",
    "decided": "2026-09-12"
   },
+  "rider/david-kay": {
+   "canonical": "rider/david-r-kay",
+   "evidence": "Chequamegon only, 1999-2003 under the initialled id and 2006-2016 without it. Both rows already store the same birth year, 1981. NOTE on the evidence NOT used. These eight were held back by a guard that rejected any pair where an id's own rows disagreed about its birth year. That guard turned out to be mostly a proxy for how much age data an id has: across the 63 pairs merged in the same sweep the median id carries ZERO ages and so could not fail it, while these carry a median of three. 75% of the ids here contradict themselves. Athlinks age_at_race is simply noisy at +/-3 to 5 years -- the same failure that records Lachlan Morton as 19 at the 2019 Dirty Kanza when he was 27 -- so it is not evidence either way at that scale. What it can still show is a contradiction too large to be noise, and the four pairs left unmerged are exactly those: rider/tom-miller ages 20 years in 8, rider/mark-smith 7 in 14.",
+   "decided": "2026-09-12"
+  },
   "rider/dennis-barret": {
    "canonical": "rider/dennis-barrett",
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
@@ -252,6 +262,11 @@
    "evidence": "'Harry Anderson' / 'Harry F Anderson' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1981, 1983). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
    "decided": "2026-09-12"
   },
+  "rider/ian-j-stanford": {
+   "canonical": "rider/ian-stanford",
+   "evidence": "Chequamegon only, 1999-2003 under the initialled id and 2006-2016 without it, no overlap. NOTE on the evidence NOT used. These eight were held back by a guard that rejected any pair where an id's own rows disagreed about its birth year. That guard turned out to be mostly a proxy for how much age data an id has: across the 63 pairs merged in the same sweep the median id carries ZERO ages and so could not fail it, while these carry a median of three. 75% of the ids here contradict themselves. Athlinks age_at_race is simply noisy at +/-3 to 5 years -- the same failure that records Lachlan Morton as 19 at the 2019 Dirty Kanza when he was 27 -- so it is not evidence either way at that scale. What it can still show is a contradiction too large to be noise, and the four pairs left unmerged are exactly those: rider/tom-miller ages 20 years in 8, rider/mark-smith 7 in 14.",
+   "decided": "2026-09-12"
+  },
   "rider/inigo-bravo": {
    "canonical": "rider/inigo-bravo-saez",
    "evidence": "One rider of The Traka 360 across four editions. The timer-sourced years carry the full Basque/Spanish name -- 2022 (tretzesports), 2023 and 2024 (sportmaniacs, club C.D. Loiolatarra both years) -- and the PCS-sourced 2026 carries the truncated 'Inigo Bravo'. Same race, same nationality, no overlapping edition.",
@@ -300,6 +315,11 @@
   "rider/jeff-sympson": {
    "canonical": "rider/jeff-t-sympson",
    "evidence": "'Jeff Sympson' / 'Jeff T Sympson' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1963, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
+   "decided": "2026-09-12"
+  },
+  "rider/jeff-t-hall": {
+   "canonical": "rider/jeff-hall",
+   "evidence": "Chequamegon, one podium career in two halves: 6th/4th/2nd/4th from 1999 to 2003 as Jeff T Hall, then 3rd/2nd/1st and more from 2006 to 2022 as Jeff Hall, with no overlapping year. The bib numbers read as a single seeding history -- 132, 120, 60, then 44, 54, 41, 11, 4. CAVEAT recorded deliberately: this id carries two 2011 rows, Chequamegon and Leadville, giving ages 35 and 40, so one of its ages is wrong whatever the truth about the merge. NOTE on the evidence NOT used. These eight were held back by a guard that rejected any pair where an id's own rows disagreed about its birth year. That guard turned out to be mostly a proxy for how much age data an id has: across the 63 pairs merged in the same sweep the median id carries ZERO ages and so could not fail it, while these carry a median of three. 75% of the ids here contradict themselves. Athlinks age_at_race is simply noisy at +/-3 to 5 years -- the same failure that records Lachlan Morton as 19 at the 2019 Dirty Kanza when he was 27 -- so it is not evidence either way at that scale. What it can still show is a contradiction too large to be noise, and the four pairs left unmerged are exactly those: rider/tom-miller ages 20 years in 8, rider/mark-smith 7 in 14.",
    "decided": "2026-09-12"
   },
   "rider/jeremyhorgan-kobelski": {
@@ -357,6 +377,11 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality; differs only by a middle initial; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/kory-nauta": {
+   "canonical": "rider/kory-d-nauta",
+   "evidence": "Chequamegon only, 1999-2003 then 2006-2008, no overlap, rare surname. NOTE on the evidence NOT used. These eight were held back by a guard that rejected any pair where an id's own rows disagreed about its birth year. That guard turned out to be mostly a proxy for how much age data an id has: across the 63 pairs merged in the same sweep the median id carries ZERO ages and so could not fail it, while these carry a median of three. 75% of the ids here contradict themselves. Athlinks age_at_race is simply noisy at +/-3 to 5 years -- the same failure that records Lachlan Morton as 19 at the 2019 Dirty Kanza when he was 27 -- so it is not evidence either way at that scale. What it can still show is a contradiction too large to be noise, and the four pairs left unmerged are exactly those: rider/tom-miller ages 20 years in 8, rider/mark-smith 7 in 14.",
+   "decided": "2026-09-12"
+  },
   "rider/lee-w-bergin": {
    "canonical": "rider/lee-bergin",
    "evidence": "'Lee Bergin' / 'Lee W Bergin' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1966, 1966). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
@@ -387,6 +412,11 @@
    "evidence": "same name after collapsing doubled letters, accents and a middle initial; same nationality, careers within one lifetime; and the two never appear on the same stage, which is the test that would have disproved it",
    "decided": "2026-09-11"
   },
+  "rider/mark-p-brone": {
+   "canonical": "rider/mark-brone",
+   "evidence": "Chequamegon only, 1999-2003 under the initialled id and 2006-2012 without it, no overlap. Brone is a rare surname and the modal implied birth years are 1968 and 1969. NOTE on the evidence NOT used. These eight were held back by a guard that rejected any pair where an id's own rows disagreed about its birth year. That guard turned out to be mostly a proxy for how much age data an id has: across the 63 pairs merged in the same sweep the median id carries ZERO ages and so could not fail it, while these carry a median of three. 75% of the ids here contradict themselves. Athlinks age_at_race is simply noisy at +/-3 to 5 years -- the same failure that records Lachlan Morton as 19 at the 2019 Dirty Kanza when he was 27 -- so it is not evidence either way at that scale. What it can still show is a contradiction too large to be noise, and the four pairs left unmerged are exactly those: rider/tom-miller ages 20 years in 8, rider/mark-smith 7 in 14.",
+   "decided": "2026-09-12"
+  },
   "rider/mark-p-lewis": {
    "canonical": "rider/mark-lewis",
    "evidence": "'Mark Lewis' / 'Mark P Lewis' differ only by a middle initial only, they never appear on the same stage, and the birth years the sources imply agree (1976, 1976). That last test is the one carrying the weight: an initial or a generational suffix is exactly what WOULD distinguish a father from a son, so every pair whose implied birth years sat further apart than age-rounding error was left unmerged rather than assumed.",
@@ -401,6 +431,11 @@
     "https://www.precisionhydration.com/athletes/profiles/cycling/mathieu-belanger-barrette/",
     "https://firstcycling.com/rider.php?r=58500"
    ]
+  },
+  "rider/matt-c-muyres": {
+   "canonical": "rider/matt-muyres",
+   "evidence": "Chequamegon only, 2001-2003 then 2006-2018, no overlap. Muyres is rare enough that two of them in one Wisconsin race is the less likely reading. NOTE on the evidence NOT used. These eight were held back by a guard that rejected any pair where an id's own rows disagreed about its birth year. That guard turned out to be mostly a proxy for how much age data an id has: across the 63 pairs merged in the same sweep the median id carries ZERO ages and so could not fail it, while these carry a median of three. 75% of the ids here contradict themselves. Athlinks age_at_race is simply noisy at +/-3 to 5 years -- the same failure that records Lachlan Morton as 19 at the 2019 Dirty Kanza when he was 27 -- so it is not evidence either way at that scale. What it can still show is a contradiction too large to be noise, and the four pairs left unmerged are exactly those: rider/tom-miller ages 20 years in 8, rider/mark-smith 7 in 14.",
+   "decided": "2026-09-12"
   },
   "rider/matthew-omeara": {
    "canonical": "rider/matthew-o-meara",
@@ -485,6 +520,11 @@
   "rider/santi-sanchez": {
    "canonical": "rider/santi-armero-sanchez",
    "evidence": "Both ids were created for one finisher of The Traka 360 by two sources that spell him differently: PCS's result page and the timer's own ranking. They are the same man because the finish times are identical to the second: 51243s in the 2023 edition, PCS rank 12. PCS kept the WRONG surname. The full name is Santi Armero Sanchez, and he is known publicly as Santi Armero -- a well-known Spanish cyclocross rider who led the RFEC elite ranking in 2004-05 and whose Traka 360 ride was written up by esmtb.com. Armero is the paternal surname; PCS dropped it and kept the maternal Sanchez.",
+   "decided": "2026-09-12"
+  },
+  "rider/scott-d-cole": {
+   "canonical": "rider/scott-cole",
+   "evidence": "Chequamegon and Leadville, interleaved across twenty years: D in 1999, 2001 and 2002, plain 2006-2013, D again 2015-2017, never the same event twice. Both ids' commonest implied birth year is 1964 exactly. NOTE on the evidence NOT used. These eight were held back by a guard that rejected any pair where an id's own rows disagreed about its birth year. That guard turned out to be mostly a proxy for how much age data an id has: across the 63 pairs merged in the same sweep the median id carries ZERO ages and so could not fail it, while these carry a median of three. 75% of the ids here contradict themselves. Athlinks age_at_race is simply noisy at +/-3 to 5 years -- the same failure that records Lachlan Morton as 19 at the 2019 Dirty Kanza when he was 27 -- so it is not evidence either way at that scale. What it can still show is a contradiction too large to be noise, and the four pairs left unmerged are exactly those: rider/tom-miller ages 20 years in 8, rider/mark-smith 7 in 14.",
    "decided": "2026-09-12"
   },
   "rider/shawn-d-aurelio": {
