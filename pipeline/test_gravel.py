@@ -1089,3 +1089,51 @@ class TestSeriesFlagStripping(unittest.TestCase):
             if re.search(r"\(\s*l\s*\)\s*$|\bLM\s*$", r[0] or "", re.I)]
         con.close()
         self.assertEqual(bad, [], f"names still carrying a series flag: {bad}")
+
+
+class TestHomeTownsAreReadable(unittest.TestCase):
+    """Athlinks publishes a locality on every row. This repo argued a whole
+    duplicate pass from names and ages without reading it, then found it
+    settled two cases outright — Jeff Bradley (Davenport on both halves) and
+    Alfred Thresher (Las Vegas on all three)."""
+
+    def test_the_scrape_files_carry_a_locality(self):
+        import glob, json, os
+        from race_common import GRAVEL
+        withloc = total = 0
+        for p in glob.glob(os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "gravel_scrapes", "*", "*.json")):
+            if os.path.basename(os.path.dirname(p)) not in GRAVEL:
+                continue
+            with open(p, encoding="utf-8") as f:
+                d = json.load(f)
+            for r in d.get("rows", []):
+                total += 1
+                if r.get("locality") or r.get("region"):
+                    withloc += 1
+        self.assertGreater(total, 0)
+        self.assertGreater(withloc, total // 2,
+                           "most gravel rows should carry a place of origin")
+
+    def test_the_audit_can_map_a_rider_to_towns(self):
+        import audit_rider_duplicates as aud
+        towns = aud.home_towns()
+        self.assertGreater(len(towns), 500,
+                           "home_towns() should resolve a town for most gravel riders")
+        for rid, places in towns.items():
+            self.assertTrue(rid.startswith("rider/"))
+            self.assertIsInstance(places, list)
+
+    def test_region_normalisation_folds_the_two_spellings(self):
+        """Athlinks writes a state both as a code and as a word, often for one
+        rider in different years. Compared raw they look like two people."""
+        from link_gravel_riders import normalize_region
+        self.assertEqual(normalize_region("COLORADO"), normalize_region("CO"))
+        self.assertEqual(normalize_region("MINNESOTA"), normalize_region("MN"))
+        self.assertIsNone(normalize_region("--"))
+        self.assertIsNone(normalize_region("7"))
+
+    def test_a_town_spelt_several_ways_folds_to_one(self):
+        from link_gravel_riders import normalize_place
+        forms = ["Las Vegas", "LAS VEGAS", "Las Vegas Nv"]
+        self.assertEqual(len({normalize_place(f) for f in forms}), 1)

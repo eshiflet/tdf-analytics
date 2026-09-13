@@ -36,6 +36,7 @@ Usage:
 import argparse
 import json
 import re
+import os
 import sqlite3
 import sys
 import unicodedata
@@ -69,6 +70,7 @@ def collapse(slug: str) -> str:
     return re.sub(r"(.)\1+", r"\1", re.sub(r"[^a-z]", "", fold(slug)))
 
 
+HERE = os.path.dirname(os.path.abspath(__file__))
 SEPARATED = load_rider_separations()
 # The halves of a deliberate split share a name EXACTLY, never share a stage,
 # and so score as the most confident SAME this heuristic can produce. Without
@@ -116,12 +118,48 @@ def classify(a: dict, b: dict) -> tuple[str, str]:
     return "REVIEW", "no signal separates or joins them"
 
 
+def home_towns():
+    """rider_id -> the towns that rider entered races from, if any are known.
+
+    Athlinks publishes a locality on every row and this repo spent a long
+    duplicate pass arguing from names and ages without ever reading it. It is
+    not a homonym DETECTOR — tried over the whole corpus it flags 256 names and
+    almost none is a second person, because riders move house — but on a pair
+    something else has already proposed it is often decisive. Jeff Bradley's
+    road career and his three Chequamegon rides both read Davenport, Iowa;
+    Alfred Thresher's three Leadvilles all read Las Vegas.
+
+    Only the gravel corpus has it. A rider absent here is not evidence of
+    anything, which is why the display says so rather than printing a blank.
+    """
+    path = os.path.join(HERE, "gravel_scrapes", "_rider_ids.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    out = {}
+    def walk(o):
+        if isinstance(o, dict):
+            rid, places = o.get("rider_id"), o.get("places")
+            if rid and places:
+                out.setdefault(rid, set()).update(places)
+            for v in o.values():
+                if isinstance(v, (dict, list)):
+                    walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(raw)
+    return {k: sorted(v) for k, v in out.items()}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--same", action="store_true", help="only confident matches")
     ap.add_argument("--json", help="write the groups to this file")
     args = ap.parse_args()
 
+    towns = home_towns()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -165,6 +203,20 @@ def main():
             span = f"{m['span'][0]}-{m['span'][1]}" if m["span"] else "no results"
             print(f"             {m['id']:<36} {str(m['name'])[:24]:<26} "
                   f"{m['results']:>4} res  {span:<11} nat={m['nat']}")
+            here = towns.get(m["id"])
+            if here:
+                print(f"               entered from: {', '.join(here)}")
+        # The comparison, not the individual lists, is what decides anything.
+        sets = [set(towns.get(m["id"]) or ()) for m in g["members"]]
+        known = [x for x in sets if x]
+        if len(known) > 1:
+            if set.intersection(*known):
+                print("               ^ SAME TOWN on both — strong evidence of one person")
+            else:
+                print("               ^ no town in common — worth checking before merging")
+        elif len(known) < len(sets):
+            print("               ^ no town recorded for every side; the gravel "
+                  "scrapes carry one, PCS does not")
     counts = {v: sum(1 for g in groups if g["verdict"] == v) for v in order}
     print(f"\n{len(groups)} group(s): " + ", ".join(f"{v} {n}" for v, n in counts.items()))
     print("\nNothing was merged. A SAME verdict is a lead, not a decision — confirm "

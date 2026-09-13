@@ -136,6 +136,60 @@ def load_existing(cur):
     return by_tokens, all_ids
 
 
+# Athlinks writes a region both ways — "CO" and "COLORADO", "MN" and
+# "MINNESOTA", "KS" and "KANSAS" — often for the same rider in different years.
+# Compared raw, a single Minnesotan looks like two people, which is what the
+# first run of this check reported: 675 names flagged, nearly all of them one
+# state spelt twice.
+_STATES = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN",
+    "mississippi": "MS", "missouri": "MO", "montana": "MT", "nebraska": "NE",
+    "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ",
+    "new mexico": "NM", "new york": "NY", "north carolina": "NC",
+    "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR",
+    "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+    "vermont": "VT", "virginia": "VA", "washington": "WA",
+    "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY",
+    "quebec": "QC", "ontario": "ON", "british columbia": "BC", "alberta": "AB",
+}
+
+
+def normalize_region(region):
+    """A region comparable across editions, or None when it says nothing.
+
+    None for the junk Athlinks also puts in this field — "--", "7", a bare
+    country code — because an unreadable region is not evidence of a second
+    person, and treating it as one is how a check like this turns into noise.
+    """
+    t = (region or "").strip().lower()
+    if not t or set(t) <= set("-. "):
+        return None
+    if t in _STATES:
+        return _STATES[t]
+    t = t.upper()
+    return t if len(t) == 2 and t.isalpha() else None
+
+
+def normalize_place(locality):
+    """A town name comparable across editions, for MATCHING only.
+
+    Athlinks spells one town several ways across years — "Las Vegas", "LAS
+    VEGAS", "Las Vegas Nv", "Evergreen Co United" — so a raw string comparison
+    would call one rider two.
+    """
+    t = (locality or "").strip().lower()
+    t = re.sub(r"[^a-z ]", " ", t)
+    # trailing state or country words the timer sometimes appends to the town
+    t = re.sub(r"\b(nv|co|ia|wi|mn|ca|tx|ut|usa|us|united|states)\b", " ", t)
+    return " ".join(t.split())
+
+
 def gravel_people():
     """Every distinct name in the scrapes, with the evidence about it.
 
@@ -177,11 +231,22 @@ def gravel_people():
                 "name": name, "first_name": first,
                 "last_name": last, "years": set(), "countries": set(),
                 "births": [], "results": 0, "pcs_slugs": set(),
+                "places": set(),
             })
             p["years"].add(year)
             p["results"] += 1
             if r.get("country"):
                 p["countries"].add(r["country"])
+            # WHERE the rider entered from. Athlinks publishes a locality and a
+            # region on every row and nothing in this repo had ever read them,
+            # while every identity question was being argued from names and
+            # ages — the two weakest signals in the file. A town is the
+            # strongest: it settled Jeff Bradley (Davenport, Iowa, the same
+            # town as the 7-Eleven professional) and Alfred Thresher (Las Vegas
+            # on all three of his Leadville rows).
+            place = (normalize_place(r.get("locality")), normalize_region(r.get("region")))
+            if place[0] or place[1]:
+                p["places"].add(place)
             if r.get("age"):
                 p["births"].append(year - int(r["age"]))
             # A PCS-sourced row carries the rider's real id. That ends the
@@ -307,11 +372,28 @@ def main(argv=None):
         # So this flags rather than splits. Splitting automatically would
         # fracture the real crossover riders this whole script exists to keep
         # whole, to fix a handful of amateur collisions.
+        # Home town is NOT used to flag a homonym here, and the reason is
+        # worth writing down because it looks like it should be. Tried both
+        # ways over the whole corpus: region flags 380 names and locality 256,
+        # and almost none of either is a second person. Athlinks puts the
+        # RACE's state in `region` whenever the locality string already carries
+        # one — Alfred Thresher reads CO and NV for the same Las Vegas rider,
+        # because Leadville is in Colorado — and a differing locality usually
+        # means the rider moved house, as Alex Howes did from Louisville to
+        # Nederland.
+        #
+        # Where the town IS decisive is on a PAIR that something else already
+        # proposed: it settled Jeff Bradley (Davenport on both halves) and
+        # Alfred Thresher (Las Vegas on all three). So the towns are written
+        # into _rider_ids.json below and audit_rider_duplicates.py shows them
+        # beside every candidate, instead of being turned into a flag that
+        # cries wolf 600 times.
+        regions = {reg for _loc, reg in p["places"] if reg}
         suspect = (len(set(p["births"])) > 1
                    and max(p["births"]) - min(p["births"]) > 3)
         if suspect:
             homonyms.append((p["name"], sorted(set(p["births"])), sorted(p["countries"]),
-                             sorted(p["years"])))
+                             sorted(p["years"]), sorted(regions), "ages"))
         out[key] = {
             "pcs_slug": sorted(p.get("pcs_slugs") or ())[:1] or None,
             "rider_id": rider_id, "name": p["name"],
@@ -337,6 +419,7 @@ def main(argv=None):
             "birth_year_approx": (statistics.median_low(sorted(p["births"]))
                                   if p["births"] else None),
             "homonym_suspect": suspect,
+            "places": sorted(f"{loc}, {reg}".strip(", ") for loc, reg in p["places"]),
             "results": p["results"], "years": sorted(p["years"]),
         }
 
@@ -354,8 +437,12 @@ def main(argv=None):
     if homonyms:
         print(f"\n{len(homonyms)} names with an inconsistent birth year "
               f"(possible homonyms sharing one identity — review):")
-        for name, births, countries, years in homonyms[:20]:
-            print(f"  {name:<28} births {births}  {countries}  years {years}")
+        for name, births, countries, years, regions, why in homonyms[:20]:
+            extra = f"  regions {regions}" if regions else ""
+            print(f"  [{why:12s}] {name:<28} births {births}  {countries}  "
+                  f"years {years}{extra}")
+        if len(homonyms) > 20:
+            print(f"  ... {len(homonyms)-20} more")
     print(f"\nwrote {OUT_PATH}")
     return 0
 
