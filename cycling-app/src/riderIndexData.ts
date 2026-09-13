@@ -7,6 +7,7 @@
 import type { RaceId } from "./raceRegistry";
 import { RACE_IDS, emptyPerRace, isRaceId } from "./raceRegistry";
 import { state } from "./state";
+import { compareNames } from "./riderDisplay";
 
 
 export interface ConstituentResult {
@@ -320,10 +321,10 @@ function buildIndexFromRaw(race: RaceId, raw: RawRiderIndex): void {
     if (rec.ym) defineLazyConstituents(entry, rec.ym, raceTable, years);
     index.set(id, entry);
   }
-  allTeamsSortedByRace[race] = [...teamTable].sort();
+  allTeamsSortedByRace[race] = [...teamTable].sort(compareNames);
   allNationalitiesSortedByRace[race] = [...new Set(
     [...index.values()].map((r) => r.nationality).filter((n): n is string => !!n),
-  )].sort();
+  )].sort(compareNames);
   riderIndexBuilt[race] = true;
 }
 

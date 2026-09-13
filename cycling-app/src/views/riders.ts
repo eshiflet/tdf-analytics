@@ -12,7 +12,7 @@ import { ridersChartEl } from "../dom";
 import { updateHash } from "../hashRouting";
 import { showLoadError } from "../main";
 import { debounce } from "../utils";
-import { displayName, foldForSearch, nationalityFlagEl, searchHaystack } from "../riderDisplay";
+import { compareNames, displayName, foldForSearch, nationalityFlagEl, searchHaystack } from "../riderDisplay";
 import type { RiderEntry } from "../riderIndexData";
 import {
   riderIndexByRace, allTeamsSortedByRace, allNationalitiesSortedByRace,
@@ -146,7 +146,7 @@ export function filteredRiders(): RiderEntry[] {
       if (!matchesJerseyFilter(e, selectedRaces)) return false;
       return true;
     })
-    .sort((a, b) => (a.lastName ?? a.name).localeCompare(b.lastName ?? b.name));
+    .sort((a, b) => compareNames(a.lastName ?? a.name, b.lastName ?? b.name));
 }
 
 // "Click outside to close" handlers for the filter dropdowns. drawRidersPage()
@@ -212,8 +212,8 @@ export async function drawRidersPage() {
   // therefore grow when the rest land — hence the two recompute helpers below.
   const allYears = [...new Set(racesToLoad.flatMap((r) => Object.keys(URLS_BY_RACE[r])))]
     .sort().reverse();
-  let allTeams = [...new Set(racesToLoad.flatMap((r) => allTeamsSortedByRace[r]))].sort();
-  let allNats = [...new Set(racesToLoad.flatMap((r) => allNationalitiesSortedByRace[r]))].sort();
+  let allTeams = [...new Set(racesToLoad.flatMap((r) => allTeamsSortedByRace[r]))].sort(compareNames);
+  let allNats = [...new Set(racesToLoad.flatMap((r) => allNationalitiesSortedByRace[r]))].sort(compareNames);
   const controls = document.createElement("div");
   controls.className = "riders-controls";
 
@@ -703,8 +703,8 @@ export async function drawRidersPage() {
       if (state.currentView !== "riders" || state.currentRiderId !== null) return;
       if (!grid.isConnected) return;
       stillLoading = false;
-      allTeams = [...new Set(racesToLoad.flatMap((r) => allTeamsSortedByRace[r]))].sort();
-      allNats = [...new Set(racesToLoad.flatMap((r) => allNationalitiesSortedByRace[r]))].sort();
+      allTeams = [...new Set(racesToLoad.flatMap((r) => allTeamsSortedByRace[r]))].sort(compareNames);
+      allNats = [...new Set(racesToLoad.flatMap((r) => allNationalitiesSortedByRace[r]))].sort(compareNames);
       fillFilterSelects();
       refreshGrid();
     }).catch(showLoadError);

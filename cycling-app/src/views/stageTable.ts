@@ -5,7 +5,7 @@
 import type { RiderSeries, RiderStagePoint } from "../types";
 import { state, raceConfig } from "../state";
 import { stageTableEl, chartAreaEl, gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn } from "../dom";
-import { displayName, nationalityFlagEl } from "../riderDisplay";
+import { compareNames, displayName, nationalityFlagEl } from "../riderDisplay";
 import { fmtGapHM } from "../formatters";
 import { showStageTooltip, hideTooltip } from "../tooltip";
 
@@ -148,7 +148,7 @@ function buildTeamOrder(riders: RiderSeries[]): Map<string, number> {
     }
     // Identical record (commonly: no finishers at all) — keep it stable and
     // predictable rather than leaving it to sort implementation order.
-    return a.localeCompare(b);
+    return compareNames(a, b);
   });
 
   return new Map(ordered.map((team, i) => [team, i]));
@@ -264,7 +264,7 @@ function buildTableControls(riders: RiderSeries[], redraw: () => void): HTMLDivE
   controls.appendChild(row);
 
   const nations = [...new Set(riders.map((r) => r.nationality).filter((n): n is string => !!n))]
-    .sort();
+    .sort(compareNames);
 
   const dropdown = document.createElement("div");
   dropdown.className = "table-filter-dropdown";
@@ -387,7 +387,7 @@ export function drawStageTable() {
     const kb = sortKeys.get(b.id)!;
     if (ka[0] !== kb[0]) return ka[0] - kb[0];
     if (ka[1] !== kb[1]) return ka[1] - kb[1];
-    return ka[2].localeCompare(kb[2]);
+    return compareNames(ka[2], kb[2]);
   });
   // Row filters apply only where they are offered (see buildTableControls).
   const filterable = raceConfig().stagesAreRaces;

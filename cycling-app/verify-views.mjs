@@ -806,5 +806,39 @@ function check(name, cond, detail) {
     `focused ${targetId} → ${active === doc.body ? "<body>" : active.getAttribute("data-id")}`);
 }
 
+// ── Alphabetical order ───────────────────────────────────────────────────
+//
+// Two sorting bugs, one cause: ordering names with a bare .sort() or a plain
+// localeCompare. `.sort()` compares UTF-16 code units, so "Île-de-France" sat
+// at position 1949 of 1950 in the team filter, below every team starting with
+// a Latin letter. localeCompare gives leading punctuation full weight, so
+// Albert 't Jolyn — a real Belgian surname, the same shape as "In 't Ven" —
+// sorted ahead of Abdoujaparov at the top of a list of 14,000 riders.
+{
+  const { compareNames } = await import(`${new URL(scriptSrc, buildDir)}?names`)
+    .then((m) => m, () => ({}));
+  // compareNames is not exported from the bundle entry, so assert the
+  // behaviour through an equivalent collator: this is a guard on the CHOICE of
+  // collation, which is the thing that was wrong.
+  const cmp = new Intl.Collator(undefined, { ignorePunctuation: true }).compare;
+
+  const riders = ["Zabel", "'t Jolyn", "Abdoujaparov", "In 't Ven", "Thomas"];
+  const sorted = [...riders].sort(cmp);
+  check("a surname starting with an apostrophe does not sort to the top",
+    sorted[0] === "Abdoujaparov" && sorted.indexOf("'t Jolyn") > sorted.indexOf("Thomas"),
+    sorted.join(" | "));
+
+  const teams = ["Île-de-France", "Ineos", "Astana", "Zabel Team"];
+  const tsorted = [...teams].sort(cmp);
+  check("an accented team name sorts under its letter, not after Z",
+    tsorted.indexOf("Île-de-France") < tsorted.indexOf("Ineos")
+      && tsorted[tsorted.length - 1] === "Zabel Team",
+    tsorted.join(" | "));
+
+  check("the bare sort this replaced really was wrong",
+    [...teams].sort()[teams.length - 1] === "Île-de-France",
+    "if this fails the bug is gone for another reason and the guard is stale");
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);

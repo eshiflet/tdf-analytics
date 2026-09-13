@@ -12,7 +12,7 @@ import {
   teamFilterBtn, teamFilterPanel, nationFilterBtn, nationFilterPanel,
 } from "../dom";
 import { showStageTooltip, hideTooltip, positionTooltip } from "../tooltip";
-import { displayName, nationalityFlagEl } from "../riderDisplay";
+import { compareNames, displayName, nationalityFlagEl } from "../riderDisplay";
 import { fmtTotalTime, fmtGap, fmtHms, stageLabel, stageTitle, stageAxisLabel } from "../formatters";
 
 function buildRankMapsFromField(
@@ -857,8 +857,8 @@ export function buildStageFilters() {
   if (!state.dataset) return;
   const hadActiveFilter = state.stageFilterTeams.size > 0 || state.stageFilterNations.size > 0;
 
-  const teams = [...new Set(state.dataset.riders.map((r) => r.team).filter((t): t is string => !!t))].sort();
-  const nations = [...new Set(state.dataset.riders.map((r) => r.nationality).filter((n): n is string => !!n))].sort();
+  const teams = [...new Set(state.dataset.riders.map((r) => r.team).filter((t): t is string => !!t))].sort(compareNames);
+  const nations = [...new Set(state.dataset.riders.map((r) => r.nationality).filter((n): n is string => !!n))].sort(compareNames);
 
   // Carry the filter *values* over across a year change, dropping only the
   // ones that don't exist in the new year's teams/nations (e.g. a team name

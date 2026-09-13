@@ -113,3 +113,28 @@ export function nationalityFlagEl(nationality: string | null | undefined): HTMLS
   }
   return prototype ? (prototype.cloneNode(true) as HTMLSpanElement) : null;
 }
+
+// Sorting names and teams needs a collator, not a bare .sort() or a per-pair
+// localeCompare, and two real bugs came of not having one.
+//
+//  * `.sort()` compares UTF-16 code units, so every accented letter lands
+//    after Z. "Île-de-France" sat at position 1949 and 1950 of 1950 in the
+//    team filter, below every team beginning with a Latin letter.
+//  * plain localeCompare gives punctuation full weight at the head of a
+//    string, so Albert 't Jolyn — a real Belgian surname of the same shape as
+//    "In 't Ven" and "Op 't Eyndt" — sorted ahead of Abdoujaparov at the very
+//    top of a list of 14,000 riders.
+//
+// ignorePunctuation is what fixes the second, and it files 't Jolyn under T,
+// beside In 't Ven under I: this app alphabetises a particle where it is
+// written rather than applying the Dutch convention of skipping it, and one
+// rider should not be the exception.
+//
+// One shared instance, because constructing a Collator is the expensive part
+// and the riders grid sorts its whole index on every filter change.
+export const NAME_COLLATOR = new Intl.Collator(undefined, { ignorePunctuation: true });
+
+/** Compare two names or team names for display order. */
+export function compareNames(a: string, b: string): number {
+  return NAME_COLLATOR.compare(a, b);
+}
