@@ -175,6 +175,43 @@ def check_referential(c):
         n = c.execute(sql).fetchone()[0]
         if n:
             err(f"{n} {label}")
+    check_orphan_riders(c)
+
+
+def check_orphan_riders(c):
+    """Rider rows nothing references — the opposite direction to the checks above.
+
+    A WARNING, not an error: a rider with no results is not corrupt, it is a row
+    whose reason for existing went away. But it goes away SILENTLY, which is why
+    this exists. 826 of them accumulated between 2026-08-24 and 2026-09-14
+    without a single check noticing: re-sourcing The Traka from PCS replaced each
+    edition's results, and every rider the timers had listed and PCS did not was
+    left behind. They were found by reading data_provenance by hand, not by any
+    validator, and the exporters never mentioned them because an unreferenced
+    rider is never exported.
+
+    Deleted 2026-09-14, which is why the expected count is now zero. A number
+    above zero here means some ingest stranded rows again; read
+    data_provenance's `script` and `recorded_at` for that rider_id to find out
+    which run, the way those 826 were traced.
+    """
+    n = c.execute("""SELECT COUNT(*) FROM riders
+                      WHERE rider_id NOT IN (SELECT DISTINCT rider_id FROM stage_results)""").fetchone()[0]
+    if not n:
+        return
+    sample = [r[0] for r in c.execute("""SELECT rider_id FROM riders
+                 WHERE rider_id NOT IN (SELECT DISTINCT rider_id FROM stage_results)
+                 ORDER BY rider_id LIMIT 3""")]
+    who = c.execute("""SELECT script, MIN(recorded_at), MAX(recorded_at) FROM data_provenance
+                        WHERE entity='riders' AND entity_id IN (
+                          SELECT rider_id FROM riders
+                           WHERE rider_id NOT IN (SELECT DISTINCT rider_id FROM stage_results))
+                        GROUP BY script ORDER BY COUNT(*) DESC LIMIT 1""").fetchone()
+    trail = (f" — mostly written by {who[0]} between {str(who[1])[:10]} and "
+             f"{str(who[2])[:10]}") if who else ""
+    warn(f"{n:,} rider row(s) have no stage_results and are referenced by nothing"
+         f"{trail}. e.g. {', '.join(sample)}. An unreferenced rider is never "
+         "exported, so nothing downstream will ever complain about these.")
 
 
 def check_provenance(c):

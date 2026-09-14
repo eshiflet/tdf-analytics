@@ -2,7 +2,7 @@
 
 Interactive cycling analytics app covering **21 races in five sets**: the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), the **Vuelta a España** (80 editions, back to 1935), **11 one-day classics** (1892–2026) and **7 off-road races** (gravel and MTB, 1994–2026). The 2026 Tour de France is **complete** — all 21 stages are in the DB, Pogačar won in **73:56:26** and the slowest finisher was Cees Bol at **+6:22:08** (finalized 2026-08-15; see "Finalizing a completed year" below for what changed). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
-**Riders, as of 2026-09-14**: the app lists **18,050** — the `riders` table holds 18,876 rows, 826 of which carry no results and are never exported. 11,095 appear in exactly one race set and 36 appear in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,791 of its 3,901 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
+**Riders, as of 2026-09-14**: **18,050**, and `riders` holds exactly that many — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. 11,095 appear in exactly one race set and 36 appear in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,791 of its 3,901 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
 
 ---
 
@@ -63,6 +63,7 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **Names sort through one shared `Intl.Collator`** (`riderDisplay.ts`, `ignorePunctuation`). A bare `.sort()` compares UTF-16 code units, which put `Île-de-France` at position 1949 of 1950 in the team filter; a plain `localeCompare` gives leading punctuation full weight, which put Albert `'t Jolyn` ahead of Abdoujaparov at the top of 14,000 riders. Used everywhere names or teams are ordered.
 - **The Traka source rule is conditional** — see "The Traka: PCS does not automatically win". 2023 recovered 21 -> 101 results, 2024 87 -> 102.
 - **Rider identity has four files and they know about each other** — see "Rider identity: four files outside the database". ~100 merges, 2 splits, 11 recorded non-merges, 38 tandem entries excluded.
+- **The 826 orphan rider rows are deleted** (2026-09-14). Litter from re-sourcing The Traka on 2026-08-24: created from the timers' full field and stranded when each edition's results were replaced from PCS. Verified unreferenced before deleting — 0 rows in `stage_results` or `classification_standings`, 0 reachable through `_rider_ids.json`, 0 present in any export — and a full gravel re-ingest afterwards re-created none. `riders` is now **18,050**, which is exactly what the app lists; the two numbers had diverged for three weeks. Nothing in the exports changed, because an unreferenced rider was never exported — which is why nothing noticed. **`validate_db.check_orphan_riders()` now reports them**, naming the script and date range that stranded them, so the next occurrence is a line of output rather than an afternoon reading `data_provenance` by hand.
 - **`birth_year_approx` was wrong for 481 gravel riders** (set-median bug) and **`link_gravel_riders`'s country/era guard only fired in one direction**, which had fused a 43-year-old American David Martin into a Spanish road rider whose only result is Milan-San Remo 2023. Both fixed.
 
 **Closed 2026-09-12:**
@@ -73,7 +74,6 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 
 **Open work, ready to pick up:**
 - **171 duplicate-rider candidates remain open** after the 2026-09-14 sweep, and the sweep classifies them so nobody re-derives the triage: 139 have no birth year on one or both sides and nothing this archive knows can decide them, 26 have conflicting nationalities and are probably two people, 6 disagree on birth year by more than rounding. Re-run the pairwise scan from "Rider identity"; the audit now prints each candidate's home towns, which is the signal most likely to settle one.
-- **826 rider rows carry no results at all** — litter from re-sourcing The Traka on 2026-08-24, created from the timers' full field and stranded when the results were replaced from PCS. None appears in `_rider_ids.json`, so no ingest can reach them and none will come back. Safe to delete; left in place pending a decision, and they are the difference between the 18,876 rows in `riders` and the 18,050 the app lists.
 - **A tandem has no representation in this schema.** 38 two-person entries are excluded at ingest (`tandem_entries.json`) and two of them held a real finish — a tandem really did place 30th and 70th at Unbound 2016. Dropping them says the schema cannot express a two-person entry, not that the rides did not happen. Modelling them is open.
 - **Four riders keep a sponsor glued to their stored name** (`jeff-hall-herbalife`, `brian-laiho-specialized` and their two partners). They are *not* the clean-named rider — the birth years say two different people — so renaming them would put two visually identical riders on the page while leaving them separate. A display decision, not a data bug.
 - ~~**THE BIG ONE: the Riders grid builds 18,114 buttons eagerly and costs 628 ms**~~ — **DONE 2026-09-11. 628 ms -> 48 ms** by virtualising the grid; see "The grid is the last second".
@@ -5029,7 +5029,7 @@ python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
 
-# Unit tests — 565 as of 2026-09-14
+# Unit tests — 569 as of 2026-09-14
 python3 -m unittest discover -p "test_*.py"
 
 # Exported-JSON checks (run after any export). 469 files, 0 errors and

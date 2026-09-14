@@ -450,7 +450,7 @@ Rider  → Country                  (riders.nationality_code → countries.code)
   cross-race rider detail page possible (one rider ID, looked up independently in each
   race's index).
 - **…except for the off-road races, where PCS supplies no id at all.** 3,791 of the
-  18,050 riders the app lists (21%) appear only in a gravel race, and their ids are
+  18,050 riders (21%) appear only in a gravel race, and their ids are
   minted by `link_gravel_riders.py` from the FOLDED NAME. Identity is therefore a
   judgement, not a lookup, and the judgements live in four JSON files outside the DB
   because a decision applied only to the database is undone by the next rebuild:

@@ -1119,3 +1119,59 @@ class TestStruckThroughRanks(unittest.TestCase):
                 '<table class="results"><thead><tr><th>Rnk</th></tr></thead>'
                 '<tbody><tr><td>1</td><td><a href="rider/x">X</a></td></tr>'
                 '</tbody></table>'), [])
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# validate_db.check_orphan_riders — rows nothing references
+# ══════════════════════════════════════════════════════════════════════════
+
+class OrphanRiderTest(DBCheckTest):
+    """826 rider rows accumulated over three weeks with no check noticing.
+
+    Re-sourcing The Traka from PCS on 2026-08-24 replaced each edition's
+    results, and every rider the timers had listed and PCS had not was left
+    behind. Nothing downstream complains, because an unreferenced rider is
+    never exported — which is exactly why the DB has to say so itself. They
+    were found by reading data_provenance by hand; this check is what makes
+    that unnecessary next time.
+    """
+
+    def assertWarningMatching(self, fragment):
+        joined = "\n".join(validate_db.warnings)
+        self.assertIn(fragment, joined,
+                      f"no warning containing {fragment!r}; warnings were {validate_db.warnings}")
+
+    def test_a_rider_with_no_results_warns(self):
+        self.race(1, "Tour de France")
+        self.edition(1, 1, 2020)
+        self.stage(1, 1, 1)
+        self.result(1, "rider/has-a-result")
+        self.rider("rider/stranded")
+        validate_db.check_orphan_riders(self.cur)
+        self.assertWarningMatching("1 rider row(s) have no stage_results")
+        self.assertWarningMatching("rider/stranded")
+
+    def test_it_names_the_script_that_stranded_them(self):
+        """The trail is the point: script + date range is what turns 'there are
+        orphans' into 'this run made them'."""
+        self.rider("rider/stranded")
+        self.prov("riders", "rider/stranded", "full_name", "sportmaniacs",
+                  script="ingest_gravel.py")
+        validate_db.check_orphan_riders(self.cur)
+        self.assertWarningMatching("ingest_gravel.py")
+
+    def test_a_clean_database_says_nothing(self):
+        self.race(1, "Tour de France")
+        self.edition(1, 1, 2020)
+        self.stage(1, 1, 1)
+        self.result(1, "rider/has-a-result")
+        validate_db.check_orphan_riders(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_it_is_a_warning_and_never_an_error(self):
+        """A rider with no results is not corrupt — it is a row whose reason for
+        existing went away. Failing the build on it would block every legitimate
+        re-source."""
+        self.rider("rider/stranded")
+        validate_db.check_orphan_riders(self.cur)
+        self.assertNoErrors()
