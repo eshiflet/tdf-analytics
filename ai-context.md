@@ -1,6 +1,8 @@
 # Cycling Analytics — AI Context
 
-Interactive cycling analytics app covering the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), and the **Vuelta a España** (80 editions with data, back to 1935). The 2026 Tour de France is **complete** — all 21 stages are in the DB, Pogačar won in **73:56:26** and the slowest finisher was Cees Bol at **+6:22:08** (finalized 2026-08-15; see "Finalizing a completed year" below for what changed). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+Interactive cycling analytics app covering **21 races in five sets**: the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), the **Vuelta a España** (80 editions, back to 1935), **11 one-day classics** (1892–2026) and **7 off-road races** (gravel and MTB, 1994–2026). The 2026 Tour de France is **complete** — all 21 stages are in the DB, Pogačar won in **73:56:26** and the slowest finisher was Cees Bol at **+6:22:08** (finalized 2026-08-15; see "Finalizing a completed year" below for what changed). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+
+**Riders, as of 2026-09-14**: the app lists **18,050** — the `riders` table holds 18,876 rows, 826 of which carry no results and are never exported. 11,095 appear in exactly one race set and 36 appear in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,791 of its 3,901 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
 
 ---
 
@@ -15,7 +17,7 @@ The app visualizes per-rider performance across every stage of multiple Grand To
 - Data: SQLite → Python export → JSON files bundled by Vite
 - Hosting: GitHub Pages, deployed via GitHub Actions on push to `main`
 
-**Multi-race support:** Each race has a canonical **slug** — `tour`, `giro`, `vuelta` — used consistently for the data subdirectory (`src/data/<slug>/gc_by_stage_*.json`), the frontend `RaceId` type, the race dropdown value, and the URL hash segment. The frontend race dropdown is populated from the `RACES` registry in raceRegistry.ts (see "Race registry" below); every view (stage chart, Race Overview, All Races Overview, Riders) works for all three races, and deep links are race-aware (`#giro/2026/stage/gc`). The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). Editions with data: TDF 113 (1903–2026), Giro 109 (~4,700 riders), Vuelta 80 (1935–2025, ~4,400 riders).
+**Multi-race support:** Each race SET has a canonical **slug** — `tour`, `giro`, `vuelta`, `classics`, `gravel` — used consistently for the data subdirectory (`src/data/<slug>/gc_by_stage_*.json`), the frontend `RaceId` type, the race dropdown value, and the URL hash segment. The frontend race dropdown is populated from the `RACES` registry in raceRegistry.ts (see "Race registry" below); every view (stage chart, Race Overview, All Races Overview, Riders) works for all three races, and deep links are race-aware (`#giro/2026/stage/gc`). The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). Editions with data: TDF 113 (1903–2026), Giro 109 (~4,700 riders), Vuelta 80 (1935–2025, ~4,400 riders).
 
 **Jersey colors by race:**
 - **TDF**: Yellow = GC, Green = Sprint, Red polka-dot = KOM, White = Youth
@@ -44,18 +46,24 @@ The frontend is race-aware via the `RACES` registry in raceRegistry.ts (see "Rac
 
 ---
 
-## Open items as of 2026-09-12
+## Open items as of 2026-09-14
 
 Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 
 **Decisions waiting on Eric (do not guess):**
-- **There is no mobile layout, and that looks deliberate rather than broken.** The whole stylesheet holds two media queries, both setting the Riders grid's column count; nothing stacks. At 375px the viewport meta is correct and the page does NOT scroll sideways, but `nav.view-nav` is 487px and clipped, and the chart starts 280px in behind a 310px rider sidebar — so the picture is mostly off-screen. Measured 2026-09-11. Fixing it is a design question (stack the sidebar, collapse it behind a toggle, or declare the site desktop-only and say so), not a bug fix, and the site deploys on push — so it wants a decision before anyone builds one.
 - **Project rename** — analysed and **deferred**; see "Renaming the project". If revived, take the subdomain step first.
-- **Landing pages have identical visible body content.** The four `<race>/index.html` pages differ only in `<title>`/meta. Distinct copy would help them rank separately, but it is a UI/content decision.
+- **Landing pages have identical visible body content.** The five `<race>/index.html` pages differ only in `<title>`/meta. Distinct copy would help them rank separately, but it is a UI/content decision.
 - **Duplicate ranks + same-team bib collisions** in 13 classics race-years — upstream PCS, how to model it is Eric's call. See "Known-open".
 - **More riders may belong on the doping list.** Five are recorded. Re-award pairs visible in the data were deliberately NOT added without confirmation: **Vuelta 2011** (Froome/Cobo), **Vuelta 2010** (Velits/Mosquera), **Vuelta 2022** (Almeida/López). Giro 1913/1932/1948 show the same pattern from old-data artefacts and are not doping. ~~**Giro 2009** (Di Luca, Pellizotti, Valjavec)~~ — **SETTLED 2026-09-11**: the disqualification sweep found PCS striking all three through itself, so they are confirmed by the source rather than inferred from a re-award pair, and carry `disqualified=1` with provenance. Confirmed with Eric.
 - **TDF 2008 KOM has two rank-1 rows** — Kohl (stripped) and Sastre (re-award). Keeping both is Eric's decision (2026-08-18); the jersey stays and the rider page carries a revoked-results note. Modelling revocations in the DB is still open.
 - **The white jersey for the Giro and Vuelta.** Their youth standings are in `classification_standings` as of 2026-09-09, but `yw` is still exported for the Tour alone and `hasYouth` is still false for the other two. Turning it on is a display decision, not a data gap.
+
+**Closed 2026-09-13/14 — rider identity and the mobile layout:**
+- **There IS a mobile layout now**, built behind `@media (max-width: 767px)` in `style.css`. Additive only, so the desktop rendering is untouched BY CONSTRUCTION — a max-width query cannot apply above its breakpoint, which makes "desktop unchanged" structural rather than something to re-verify. The rider sidebar becomes a sheet behind a `#sheet-toggle` button (created lazily by `mobile.ts`, gated on `window.matchMedia`, hidden on views with no sidebar — the `[hidden]` attribute needs an ID selector to beat the UA rule). Every control is at least 36px in both axes. Verified at 375px across all five races, four routes, both stage views and the rider detail page: zero horizontal page scroll.
+- **Names sort through one shared `Intl.Collator`** (`riderDisplay.ts`, `ignorePunctuation`). A bare `.sort()` compares UTF-16 code units, which put `Île-de-France` at position 1949 of 1950 in the team filter; a plain `localeCompare` gives leading punctuation full weight, which put Albert `'t Jolyn` ahead of Abdoujaparov at the top of 14,000 riders. Used everywhere names or teams are ordered.
+- **The Traka source rule is conditional** — see "The Traka: PCS does not automatically win". 2023 recovered 21 -> 101 results, 2024 87 -> 102.
+- **Rider identity has four files and they know about each other** — see "Rider identity: four files outside the database". ~100 merges, 2 splits, 11 recorded non-merges, 38 tandem entries excluded.
+- **`birth_year_approx` was wrong for 481 gravel riders** (set-median bug) and **`link_gravel_riders`'s country/era guard only fired in one direction**, which had fused a 43-year-old American David Martin into a Spanish road rider whose only result is Milan-San Remo 2023. Both fixed.
 
 **Closed 2026-09-12:**
 - **The disqualification sweep is complete** across all 113 Tour, 109 Giro and 80 Vuelta editions: **1,487 results, 67 riders**. `disqualified=1` survives a re-ingest, exports carry it, and the frontend renders it. See "PCS strikes through a disqualified rank".
@@ -64,6 +72,10 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **23 typo-variant rider ids merged**, 2 merges reversed after research, 3 pairs recorded as deliberately separate. Audit reads SAME 0, REVIEW 0.
 
 **Open work, ready to pick up:**
+- **171 duplicate-rider candidates remain open** after the 2026-09-14 sweep, and the sweep classifies them so nobody re-derives the triage: 139 have no birth year on one or both sides and nothing this archive knows can decide them, 26 have conflicting nationalities and are probably two people, 6 disagree on birth year by more than rounding. Re-run the pairwise scan from "Rider identity"; the audit now prints each candidate's home towns, which is the signal most likely to settle one.
+- **826 rider rows carry no results at all** — litter from re-sourcing The Traka on 2026-08-24, created from the timers' full field and stranded when the results were replaced from PCS. None appears in `_rider_ids.json`, so no ingest can reach them and none will come back. Safe to delete; left in place pending a decision, and they are the difference between the 18,876 rows in `riders` and the 18,050 the app lists.
+- **A tandem has no representation in this schema.** 38 two-person entries are excluded at ingest (`tandem_entries.json`) and two of them held a real finish — a tandem really did place 30th and 70th at Unbound 2016. Dropping them says the schema cannot express a two-person entry, not that the rides did not happen. Modelling them is open.
+- **Four riders keep a sponsor glued to their stored name** (`jeff-hall-herbalife`, `brian-laiho-specialized` and their two partners). They are *not* the clean-named rider — the birth years say two different people — so renaming them would put two visually identical riders on the page while leaving them separate. A display decision, not a data bug.
 - ~~**THE BIG ONE: the Riders grid builds 18,114 buttons eagerly and costs 628 ms**~~ — **DONE 2026-09-11. 628 ms -> 48 ms** by virtualising the grid; see "The grid is the last second".
 - ~~**11 time trials have no times**~~ and ~~**1960-2025 has no local scrape files**~~ — both **CLOSED 2026-09-11**, see "The 1960-2025 Tour backfill". All 66 editions are scraped and 64 are ingested; 1978 and 1982 refuse, each holding a stage PCS never classified, and both want a decision rather than a fix.
 - ~~**41 stages typed ITT hold 4,040 riders on the winner's exact time**~~ — **CLOSED 2026-09-11, applied and the warning is gone.** Each stage was fetched by its own `source_slug` and read: a non-winner whose `Time` cell matches `^[-+]?0:00$` has no published time, and all 4,040 are that. None is a mislabelled mass-start (Giro 1985 stage-8a was the genuine one, already fixed via `route_type_overrides.json`, which is why it is not in the set). NULL is the honest value; `null_itt_filler_times.py` wrote it. `ingest_race` now refuses to recreate them, so a re-ingest is safe. See "Times that no race produced".
@@ -624,7 +636,7 @@ The rider ids were minted by *our* `link_gravel_riders.slugify()` from the
 corrupted string — these editions came from Athlinks, which publishes no rider
 id, so we own them outright. (The reason is Athlinks, not PCS: PCS does cover
 some gravel, under `national-race/`, and where it does its slug is preferred —
-see "Source The Traka from PCS".) `√Öberg` slugified to `emil-oberg`, which reads as `Ø` and is
+see commit 2d8cd2f0, "Source The Traka from PCS".) `√Öberg` slugified to `emil-oberg`, which reads as `Ø` and is
 wrong twice over.
 
 The team id came out of a **PCS href**. It is PCS's own identifier, generated
@@ -2047,6 +2059,185 @@ what a future change has to argue against.
 
 ---
 
+## The mobile layout (September 2026)
+
+A static site on GitHub Pages has no server, so there is no user-agent branching
+and no separate mobile build. Everything is one stylesheet and one bundle.
+
+**The whole layout lives below one line in `style.css`:**
+`@media (max-width: 767px)`. Every rule for small screens sits inside it, which
+makes "desktop is unchanged" a structural property rather than a claim to
+re-verify — a max-width query cannot apply above its breakpoint. Anything that
+must be true on mobile and false on desktop belongs in that block and nowhere
+else.
+
+767 and not 768: it is the last width before the common tablet-portrait
+breakpoint, so a 768px iPad keeps the desktop layout it renders perfectly well.
+
+**`mobile.ts` is the only JS**, and it is gated on `window.matchMedia` — with a
+`typeof window` guard, because the Node smoke tests import the bundle and a bare
+`window.matchMedia()` at module scope crashes them. It creates the sheet chrome
+lazily (the elements do not exist in the DOM on desktop at all) and listens for
+`change` so a rotation or a resize is handled without a reload.
+
+**Two traps worth knowing:**
+
+1. The `#sheet-toggle` button must be hidden on views that have no rider sidebar
+   — Riders, Race Overview, All Years. Setting `btn.hidden = true` did nothing,
+   because the UA's `[hidden] { display: none }` rule carries almost no
+   specificity and the mobile rule has an ID. The selector is
+   `body.is-mobile #sheet-toggle:not([hidden])`, which is what makes the DOM
+   property mean what it says.
+2. The riders grid is virtualised and its row height is read back out of
+   `grid-auto-rows` by `gridMetrics()` in `riders.ts`. It used to be a hardcoded
+   `const ROW_H = 29` with a "keep in sync" comment; raising the row to 36px for
+   thumbs is exactly the edit that comment could not survive. If you change the
+   row height, change it in the CSS only.
+
+**Tap targets are 36px minimum in both axes**, set by `min-height`/`min-width`
+inside the media block. Short of Apple's 44px deliberately: 44 would add 48px to
+a topbar that already takes 170px of an 812px screen. The `y-axis-toggle` is one
+element rotated, so a single `min-height` widens it in graph mode and heightens
+it in table mode; its graph-mode strip is centred on `left: 20px` so a 36px-wide
+strip does not hang off the edge.
+
+**Verified at 375px** across all five races, four routes, both stage views and
+the rider detail page: `document.documentElement.scrollWidth` is exactly 375
+everywhere, and nothing is clipped-and-unreachable. Rider-name label collisions
+on the Gravel and By Stage Graph charts are **pre-existing, not mobile-caused** —
+measured at 1440px they are 27 and 1 respectively.
+
+---
+
+## Rider identity: four files outside the database (September 2026)
+
+Road riders arrive with a PCS slug, so identity is solved before the data
+reaches us. Gravel riders do not: `link_gravel_riders.py` keys them on the
+FOLDED NAME, which means every identity question is decided by a string. Four
+files hold the answers, all of them consulted **at ingest** — a decision applied
+only to the database is undone by the next rebuild, the same trap the Dorsal
+placeholders taught.
+
+| file | claim it records | direction |
+|---|---|---|
+| `rider_aliases.json` → `aliases` | these two ids are one person | fuses |
+| `rider_aliases.json` → `separated` | these two ids are NOT one person | blocks a merge |
+| `rider_splits.json` | this ONE id is two people | fissions |
+| `tandem_entries.json` | this row is not a rider at all | drops |
+
+Plus one rule rather than a list: `race_common.strip_series_flag()` removes
+Leadville's Leadman marker, `(l)` in 2011 and `LM` in 2013, before the identity
+key is taken. It is applied in `link_gravel_riders.py` AND `ingest_gravel.py`,
+because both look the rider up by name.
+
+**They have to know about each other.** The two halves of a split share a name
+exactly and never share a stage, which is the most confident SAME the duplicate
+heuristic can produce — so `audit_rider_duplicates.py` and
+`merge_rider_duplicates.py` both read `rider_splits.json` and settle such a pair
+instead of merging it. Shipping the split without that took one commit to
+introduce and the next sweep would have silently undone it.
+
+**Why `tandem_entries.json` is a list and not a rule.** A tandem is two people
+on one bib, identified in the raw Athlinks results by a contiguous bib block
+where every name is two full names — Unbound 2016 bibs 1135-1146, Unbound 2017
+1144-1150, Unbound 2019 2901-2907, Chequamegon 2013 256-261. The scrape file
+does not preserve that block; all that survives is the name, and no name-shaped
+test separates "Joe Stiller Tina Stiller" from "Juan Carlos Najera Alonso De
+Porres" or "Ian Lopez De San Roman". A four-token rule would delete both of
+those real riders, and there is a test asserting it does not. 38 entries found,
+2 ever reached the database. The ingest additionally WARNS about an unlisted row
+joined by `&` or `and`, which is the one tandem spelling a rule can catch safely.
+
+**`merge_rider_duplicates.py` takes an optional per-group `canonical`.** Its last
+tie-break is alphabetical, which exists so two runs agree and not because the
+first id is better — when research has established which id should survive it has
+to be able to say so. The override is validated against the group's members,
+because silently ignoring a typo would merge the pair the wrong way round.
+
+---
+
+## What the Athlinks data will and will not tell you (2026-09-12/14)
+
+A whole duplicate pass was argued from names and ages before anyone looked at
+what else is in the file. Read this before trusting either.
+
+**`age_at_race` is noise at plus or minus 3 to 5 years.** Lachlan Morton's Dirty
+Kanza 2019 row says 19 when he was 27. Measured across the pairs examined,
+75% of the ids carrying more than two ages contradict themselves. Consequences:
+
+- A gap of 4 between two ids is NOT evidence they are different people.
+- An id whose own rows imply birth years more than ~6 years apart IS a
+  conflation — `rider/tom-miller` aged 20 years in 8, `rider/mark-smith` 7 in 14.
+  That is the bar `rider_splits.json` uses.
+- Do not filter on "an id contradicts itself" without checking what that selects.
+  Used as a guard it mostly picks out ids with MORE age data: across 63 pairs it
+  cleared, the median id carried zero ages and so could not fail the test.
+
+**`birth_year_approx` was wrong for 481 gravel riders until 2026-09-12.**
+`link_gravel_riders.py` accumulated implied birth years into a SET and took the
+median of that, so ten readings of 1992 and one of 2000 collapsed to two numbers
+and the typo weighed as much as the ten — and with an even count the index picks
+the HIGHER one. Fixed to take the median over the observations. The check that
+settles it is independent of every age involved: 57 of the corrected values now
+match a birthday scraped from a PCS rider page.
+
+**`locality` is the strongest signal in the file, and nothing read it for
+months.** It settled two cases outright: Jeff Bradley's 7-Eleven road career and
+his three Chequamegon rides both read Davenport, Iowa; Alfred Thresher's three
+Leadvilles all read Las Vegas. But it works PAIRWISE, on a candidate something
+else proposed — as a bulk homonym flag it catches 256 names and almost none is a
+second person, because riders move house. `audit_rider_duplicates.py` now prints
+each candidate's towns and the comparison between them.
+
+**`region` is often the RACE's state, not the rider's.** Whenever the locality
+string already carries a state, Athlinks puts the event's state in `region`:
+Thresher reads CO and NV for one Las Vegas rider because Leadville is in
+Colorado. It is also spelt both ways — `CO` and `COLORADO` — frequently for one
+rider in different years. Use `normalize_region()`, and prefer the locality.
+
+**Leadville seeds a returning rider with last year's finishing position as this
+year's bib.** Measured over the whole Leadville archive: it holds for 75% of
+returning top-100 finishers and 8% of those outside 300th, so it is seeding and
+not coincidence. That chain is what proved three Threshers were one man —
+2010 bib 1451 finishing 29th, 2011 bib 29 finishing 56th, 2012 bib 56. Nobody
+entering for the first time is handed bib 29.
+
+**Measure the base rate before trusting a name.** "Mike Johnson" sounds
+hopeless; the archive holds 24 riders surnamed Johnson and exactly two called
+Mike or Michael. "Sonnesyn" holds two, both halves of one rider. The count is
+one query and it changes the answer.
+
+**`rank_overall` is in the scrape files and differs from `stage_rank`**, which
+is the men's/division rank. Thresher finished 29th overall and is stored at 28.
+The bib chain needs the overall number.
+
+**sportmaniacs and tretzesports publish no location of any kind** — nationality
+and club only. Everything above applies to the five Athlinks races, not the Traka.
+
+---
+
+## The Traka: PCS does not automatically win (2026-09-12)
+
+`resolve_traka_events.py` preferred PCS for every year it covered, unconditionally.
+For an open mass-start gravel race PCS lists only the riders it has road pages
+for: 21 of The Traka 2023's 291 classified men, where this archive's own
+`FIELD_CAP` would take 100. The edition was stored at 21 riders and nothing
+noticed, because `coverage.py` counts NULLs and a field that SHRANK has none.
+
+The preference is now conditional on `contribution()` — the size of the WINDOW
+each source's rule would take, not its raw field size, because `open_field` is
+capped and `pcs_field` is not. Ties go to PCS, which is the point of preferring
+it: real `rider/<slug>` ids make the crossover to a road career an exact join.
+It only loses when it would cost riders.
+
+Effect: 2023 21 -> 101, 2024 87 -> 102, 2025 and 2026 unchanged (sportmaniacs
+published no rankings for 2025, and 2026's sportmaniacs event is a 325 km
+360 PRO M with 135). Cost: 9 team assignments PCS supplied and the timers do
+not, plus 20 PCS rider ids whose results moved to differently-spelled ids —
+which is where most of the merge work below came from.
+
+---
+
 ## Paris-finale elevation: the route page, and the reconstruction it replaced (August 2026)
 
 > **Corrected 2026-08-19. The premise of this section was wrong.** PCS *does* publish
@@ -2425,6 +2616,22 @@ tdf-analytics/
     │                                 #   re-scraped forever. Keyed by DB stage_number, NOT the PCS slug
     │                                 #   number (they diverge after a split day). Loaded by
     │                                 #   race_common.load_stage_notes(); validate_db.py reports gaps
+    │
+    │   # Rider identity — read at INGEST, because a decision applied only to the DB is
+    │   # undone by the next rebuild. See "Rider identity: four files outside the database"
+    ├── rider_aliases.json            # `aliases`: absorbed id -> canonical id, with the evidence for each.
+    │                                 #   `separated`: pairs a human ruled DIFFERENT people, so the audit
+    │                                 #   stops re-proposing them. 127 and 11 as of 2026-09-14
+    ├── rider_splits.json             # The mirror: ONE id that is two people, keyed on
+    │                                 #   (rider_id, race, year) because that is what the scrape file
+    │                                 #   carries. `rejected` records two candidates that did NOT meet
+    │                                 #   the bar, so nobody re-derives them
+    ├── tandem_entries.json           # Two people on one bib — not a rider. An explicit list, not a rule:
+    │                                 #   the tell is a bib block in the raw results, which the scrape
+    │                                 #   file does not preserve. 38 entries, 3 races
+    ├── warm_rider_cache.py           # Parallel fetcher into scrape_rider_details.py's cache. Built for a
+    │                                 #   6,304-rider birthday scrape that measured out at a 2.5% hit rate
+    │                                 #   and was not run; --skip-no-pcs encodes why
     └── vuelta_races_summary_overrides.json # Per-year field overrides for export_race_summary.py --race vuelta
                                       #   4 entries as of 2026-08-15 (1978, 1982, 1984, 1994), all
                                       #   slowestFinisherTimeSeconds. Was 78 — see "No-op overrides" below
@@ -2570,7 +2777,7 @@ All three pipelines feed into the same `cycling.db` (the `races` table distingui
                                vite build  →  build/  →  GitHub Pages
 ```
 
-> **Scraping PCS in 2025+:** plain `curl`/`urllib` requests get a Cloudflare "Just a moment…" 403 challenge page — `scrape_pcs_stages.py` (urllib-based) no longer works against the live site. Use a real browser (e.g. the Chrome MCP tools) to load each stage page and extract the results table via injected JavaScript instead. See "Scraping a live/in-progress Tour" below for the exact DOM structure and a working extraction pattern.
+> **Scraping PCS in 2025+:** plain `curl`/`urllib` requests get a Cloudflare "Just a moment…" 403 challenge page — `scrape_pcs_stages.py` (urllib-based) no longer works against the live site. Use a real browser (e.g. the Chrome MCP tools) to load each stage page and extract the results table via injected JavaScript instead. See "Scraping a live/in-progress race from PCS" below for the exact DOM structure and a working extraction pattern.
 
 ### Key data files
 
@@ -2959,7 +3166,7 @@ Names considered: `grand-tour-analytics` is **already too narrow** (the classics
 
 ## Adding a New Year (e.g. 2026)
 
-1. **Scrape PCS data** for the new year into `tour_scrapes/2026/stage_N.json`, one file per stage (`{"n": 1, "info": {...}, "rows": [...]}`) — the same shape the Giro and Vuelta use. For a live/in-progress Tour this must be done via a real browser, which lands the files in the flat `scrapes/` directory for `add_stages.py` to pick up; see "Scraping a live/in-progress Tour" below. Each row is `[rnk, gc_pos, gc_lag, bib, age, rider_name, rider_slug, nat, team_name, team_slug, uci_pts, pcs_pts, bonus_txt, abs_time_txt, gap_txt]` — only the stage winner (`rnk == "1"`) needs a real `abs_time_txt`; every other rider needs `gap_txt`, and the winner's `gap_txt` is `+0:00`, never their own time (see the September 2026 rules). `gc_pos`/`gc_lag` blank on stage 1 falls back to the stage rank/gap; it is NOT carried forward beyond that. An edition's final classifications go in `tour_scrapes/2026/classifications.json`.
+1. **Scrape PCS data** for the new year into `tour_scrapes/2026/stage_N.json`, one file per stage (`{"n": 1, "info": {...}, "rows": [...]}`) — the same shape the Giro and Vuelta use. For a live/in-progress Tour this must be done via a real browser, which lands the files in the flat `scrapes/` directory for `add_stages.py` to pick up; see "Scraping a live/in-progress race from PCS" below. Each row is `[rnk, gc_pos, gc_lag, bib, age, rider_name, rider_slug, nat, team_name, team_slug, uci_pts, pcs_pts, bonus_txt, abs_time_txt, gap_txt]` — only the stage winner (`rnk == "1"`) needs a real `abs_time_txt`; every other rider needs `gap_txt`, and the winner's `gap_txt` is `+0:00`, never their own time (see the September 2026 rules). `gc_pos`/`gc_lag` blank on stage 1 falls back to the stage rank/gap; it is NOT carried forward beyond that. An edition's final classifications go in `tour_scrapes/2026/classifications.json`.
 
 2. **Add to DB with `ingest_race.py`:**
    ```bash
@@ -2969,11 +3176,11 @@ Names considered: `grand-tour-analytics` is **already too narrow** (the classics
    ```
    This only works if `2026` is **not already** in `race_editions` — see "Adding stages to an in-progress year" below for what to do once it is.
 
-3. **Add sprint points** for the year to `tour_sprint_points.json`. Key = year string, value = array of dicts (one per stage, same order as DB stages) mapping `rider/slug` → points earned that stage from sprints + stage finish (exclude KOM sprint points). See "Scraping a live/in-progress Tour" for how to extract these from PCS's `-points` page.
+3. **Add sprint points** for the year to `tour_sprint_points.json`. Key = year string, value = array of dicts (one per stage, same order as DB stages) mapping `rider/slug` → points earned that stage from sprints + stage finish (exclude KOM sprint points). See "Scraping a live/in-progress race from PCS" for how to extract these from PCS's `-points` page.
 
 4. **Add profile icons** for the year to `profile_icons.json` — an array of **raw PCS icon codes** (`p1`–`p5`), one per stage, in DB stage order. For a TTT/ITT stage, also make sure that stage's `info["Won how"]` in `tdf_2026_full.json` contains "team time trial"/"time trial" text (see the `profile_icons.json` warning above) — the icon code alone won't classify it correctly.
 
-5. **Add KOM points** for the year to `tour_kom_points_reconciled.json`. Same structure as tour_sprint_points.json — see "Scraping a live/in-progress Tour" for extraction.
+5. **Add KOM points** for the year to `tour_kom_points_reconciled.json`. Same structure as tour_sprint_points.json — see "Scraping a live/in-progress race from PCS" for extraction.
 
 6. **Scrape Wikipedia GC times** (only meaningful once the race has an official classification — skip for an in-progress year):
    ```bash
@@ -4822,14 +5029,14 @@ python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
 
-# Unit tests — 162 as of 2026-08-18
+# Unit tests — 565 as of 2026-09-14
 python3 -m unittest discover -p "test_*.py"
 
-# Exported-JSON checks (run after any export). 436 files, 0 errors and
-# 90 warnings is the expected clean result as of 2026-08-18 — compare the
+# Exported-JSON checks (run after any export). 469 files, 0 errors and
+# 84 warnings is the expected clean result as of 2026-09-14 — compare the
 # COUNT against that baseline rather than expecting zero.
 python3 validate_exports.py
-python3 validate_db.py               # 0 errors, 10 warnings expected (2026-09-11)
+python3 validate_db.py               # 0 errors, 9 warnings expected (2026-09-14)
                                      # Warnings are a standing worklist, not noise —
                                      # read them. Two were added 2026-09-11 and name
                                      # 4,310 rows that are still wrong; see
@@ -4865,7 +5072,7 @@ noise, and noise is what made the per-field audits hard to read side by side:
 | `finish_time_seconds` / `gc_rank` for a **DNF** | no finishing time or GC standing exists; counting the whole startlist reported ~60% missing on years that are complete. Biggest single source of noise |
 | `gc_rank` for a one-day or gravel race | structural: a race of one stage has no general classification. 0 of 72,911 and 0 of 7,891 |
 | `route_type` anywhere it is computed; a gravel `source_slug` | derived or assigned at ingest, never fetched, so no scrape fills them. `route_type` fills exactly when its input does |
-| elevation, profile score and teams **only for the gravel editions Athlinks or tretzesports timed** | those are timing platforms: a finish list, no parcours, no trade team. **Corrected 2026-09-09** — this row used to exclude the whole gravel set because "PCS has no gravel or MTB coverage at all — verified, not assumed", and the one-day row excluded profile score because "a one-day race is not classified flat/hilly/mountain". Both were false and together hid ~993 fillable values. See "coverage.py excluded work that was doable" |
+| elevation, profile score and teams **only for the gravel editions Athlinks or tretzesports timed** | those are timing platforms: a finish list, no parcours, no trade team. **Corrected 2026-09-09** — this row used to exclude the whole gravel set because "PCS has no gravel or MTB coverage at all — verified, not assumed", and the one-day row excluded profile score because "a one-day race is not classified flat/hilly/mountain". Both were false and together hid ~993 fillable values. The reasoning is in this table and in coverage.py's own docstring. |
 
 Gaps rank by **values missing**, not by percentage: a year at 40% of 180 is a
 bigger afternoon than one at 0% of 3. Distrust a low number either way — it

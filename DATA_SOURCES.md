@@ -165,11 +165,49 @@ junk in `country`, always with `region: "US "`. Guarded in
 `scrape_athlinks.to_row` by testing `region`, never the country value — `SV` is
 a real code for El Salvador and Athlinks also uses it correctly.
 
+**What it publishes that is worth reading** (all of it reaches the scrape files;
+see ai-context.md's "What the Athlinks data will and will not tell you"):
+
+- `locality` — the rider's home town, and the strongest identity signal in the
+  file. It settled Jeff Bradley (Davenport, Iowa on his 7-Eleven road career and
+  on all three Chequamegon rides) and Alfred Thresher (Las Vegas on all three
+  Leadvilles). Decisive PAIRWISE, on a candidate something else proposed; useless
+  in bulk, because riders move house.
+- `region` — often the RACE's state rather than the rider's, whenever the
+  locality string already carries one. Also spelt both ways, `CO` and `COLORADO`,
+  for one rider in different years.
+- `bib` — at Leadville a returning rider is seeded with LAST year's finishing
+  position as this year's number. Holds for 75% of returning top-100 finishers
+  and 8% of those outside 300th, so it is seeding rather than coincidence, and it
+  chains a career together across editions.
+- `rankings.overall` — stored as `rank_overall`, and different from `stage_rank`,
+  which is the men's/division rank. The bib chain needs the overall number.
+- `age` — **unreliable at plus or minus 3 to 5 years.** Lachlan Morton's Dirty
+  Kanza 2019 row says 19 when he was 27. Athlinks also writes `0` for "not
+  recorded" in the older editions. A four-year disagreement between two ids is
+  not evidence they are different people; a self-contradiction beyond about six
+  years is evidence one id is two people.
+- **Series flags glued to the name.** Leadville appends its Leadman marker —
+  `(l)` on 40 riders in 2011, `LM` on 71 in 2013, no other year. Stripped by
+  `race_common.strip_series_flag()` before the identity key is taken.
+- **Tandem entries** — two people on one bib, name fields concatenated, sitting
+  in a contiguous bib block. Listed in `tandem_entries.json` and dropped.
+
 ## sportmaniacs
 
 `https://sportmaniacs.com/` JSON API. The Traka 2023-2026. Publishes a real
 per-edition club, which is captured in the scrape files but deliberately not
 ingested.
+
+**No location field of any kind** — nationality and club only. Everything the
+athlinks entry above says about home towns applies to the five Life Time races
+and not to The Traka.
+
+**It is not automatically beaten by PCS.** For an open mass-start gravel race
+PCS lists only the riders it holds road pages for — 21 of The Traka 2023's 291
+classified men. `resolve_traka_events.py` now compares what each source would
+actually contribute under its own field rule and prefers PCS only on a tie. See
+ai-context.md's "The Traka: PCS does not automatically win".
 
 ## tretzesports
 

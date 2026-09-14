@@ -193,6 +193,13 @@ flowchart TD
   source-agnostic. `GravelInfo.master_id` is therefore optional and paired with a
   `source`, an invariant the tests hold.
 
+  Since 2026-09-12 the ingest also consults `rider_splits.json` and
+  `tandem_entries.json` alongside `rider_aliases.json`, and strips Leadville's Leadman
+  flag from the name before looking the rider up — all four are identity decisions that
+  a rebuild would otherwise undo. Where two sources cover one edition,
+  `resolve_traka_events.py` now picks the one that would actually put more riders in the
+  archive rather than preferring PCS unconditionally.
+
 - **Vite build** — compiles `main.ts` (TypeScript) and bundles it with the JSON data files
   into a static site. Per-year `gc_by_stage_*.json` files are emitted as separate lazily
   `fetch()`-loaded assets, not bundled into the main JS — only their hashed URLs are
@@ -217,7 +224,7 @@ flowchart TD
   | `raceRegistry.ts` | `RaceId`, `RaceConfig`, the `RACES` registry, and the `URLS_BY_RACE`/`ALL_RACES_BY_RACE` glob-discovery of per-race data files |
   | `state.ts` | The shared **mutable state object** — see note below — plus `raceConfig()` |
   | `formatters.ts` | Time/gap string formatting, route-type colors, difficulty score |
-  | `riderDisplay.ts` | `displayName`, nationality flag rendering (prototype-cloned per nationality), and `foldForSearch`/`searchHaystack` accent folding — shared across 3+ views |
+  | `riderDisplay.ts` | `displayName`, nationality flag rendering (prototype-cloned per nationality), `foldForSearch`/`searchHaystack` accent folding, and `NAME_COLLATOR`/`compareNames` — the ONE shared `Intl.Collator` every name and team sort goes through. A bare `.sort()` compares UTF-16 code units and files accents after Z; a plain `localeCompare` gives leading punctuation full weight. Both were live bugs (`Île-de-France` last of 1950 teams, `'t Jolyn` first of 14,000 riders) |
   | `tooltip.ts` | Generic tooltip positioning/show/hide (the rider-hover tooltip content itself lives in `stageChart.ts` — too coupled to that view's state to be a leaf) |
   | `jerseyIcons.ts` | Jersey SVG builders, per-classification win-year lookups (memoized), the per-race jersey capability helpers, and `RIDERS_WITH_REVOKED_RESULTS` |
   | `dataLoading.ts` | Pure fetch + LRU cache for per-year datasets (`getDataset`) |
@@ -230,6 +237,7 @@ flowchart TD
   | `views/riders.ts` | Riders grid: search/filter, and the merged-index cache — which tracks which races have been **folded in**, not just which are selected, so the grid can draw before every index has landed. **Virtualised** (2026-09-11): only the rows in view plus overscan are in the DOM, held open by row-spanning spacers. `renderWindow()` restores both `scrollTop` *and* keyboard focus across its `replaceChildren` — losing focus ejected tab users to the top of the document and locked them out of the grid entirely |
   | `views/riderDetail.ts` | Cross-race rider career chart (446 lines — was the single largest function in the old `main.ts`) |
   | `views/classicsHistory.ts` | Race History small multiples for either aggregate race set — classics or gravel (one panel per race across its own lifetime) |
+  | `mobile.ts` | The whole mobile behaviour: creates the rider-sidebar sheet chrome lazily and toggles it. Gated on `window.matchMedia` behind a `typeof window` guard, because the Node smoke tests import the bundle and a bare call at module scope crashes them. Listens for `change`, so rotation and resize need no reload. Everything else about the mobile layout is CSS inside one `@media (max-width: 767px)` block — see ai-context.md's "The mobile layout" |
   | `main.ts` | Orchestration only: `init()`, `wireControls()`, `setRace()`, `switchView()`, `loadDataset()`, `applyHash()` — the last two stay here rather than in `dataLoading.ts`/`hashRouting.ts` because both call into nearly every view module to trigger redraws. `switchView(view, { draw: false })` swaps the chrome without drawing, used only by a `#riders/<slug>` deep link so the grid does not start loading every race's index ahead of a rider detail |
 
   **Shared mutable state:** ES modules can't reassign an imported `let` binding from outside
@@ -314,7 +322,7 @@ erDiagram
         int race_id PK
         text name "e.g. Giro d'Italia"
         text country
-        text race_type "stage_race | one_day"
+        text race_type "stage_race | one_day | gravel"
     }
     RACE_EDITIONS {
         int edition_id PK
@@ -422,6 +430,14 @@ Rider  → Country                  (riders.nationality_code → countries.code)
   `gc_gap_seconds`) — the final GC placing is just the last stage's row. This is why the
   per-stage GC data-fabrication bug (see `ai-context.md`'s "Vuelta & Giro per-stage GC
   standings" section) was so consequential: it corrupted the one place GC history lives.
+- **The riders table carries no home town, deliberately.** Athlinks publishes a
+  `locality` and `region` on every gravel result row and both reach the scrape files,
+  where `link_gravel_riders.py` collects them into `_rider_ids.json` and
+  `audit_rider_duplicates.py` shows them beside each duplicate candidate — the town is
+  what settled Jeff Bradley and Alfred Thresher. It is NOT denormalised onto `riders`
+  because it records where a rider lived on race day, not where they are from, and it
+  changes: one column would flatten a career into whichever edition was ingested last.
+  The per-result view in the scrape files is the honest shape.
 - **`classification_standings`** only holds the *secondary* jerseys (points/KOM/youth)
   because GC is already covered by `stage_results`. `classification='youth'` is only
   populated for the TDF — Giro/Vuelta's pipelines never captured it (see the frontend's
@@ -433,6 +449,23 @@ Rider  → Country                  (riders.nationality_code → countries.code)
   used as the primary key across all three races and every era — this is what makes the
   cross-race rider detail page possible (one rider ID, looked up independently in each
   race's index).
+- **…except for the off-road races, where PCS supplies no id at all.** 3,791 of the
+  18,050 riders the app lists (21%) appear only in a gravel race, and their ids are
+  minted by `link_gravel_riders.py` from the FOLDED NAME. Identity is therefore a
+  judgement, not a lookup, and the judgements live in four JSON files outside the DB
+  because a decision applied only to the database is undone by the next rebuild:
+
+  | file | claim | direction |
+  |---|---|---|
+  | `rider_aliases.json` → `aliases` | two ids are one person | fuses |
+  | `rider_aliases.json` → `separated` | two ids are NOT one person | blocks a merge |
+  | `rider_splits.json` | one id is two people, keyed on (rider_id, race, year) | fissions |
+  | `tandem_entries.json` | a row is two people on one bib, so not a rider | drops |
+
+  All four are read at ingest. `audit_rider_duplicates.py` and
+  `merge_rider_duplicates.py` read the splits as well as the separations, because the
+  two halves of a split share a name exactly and would otherwise be re-merged on the
+  next sweep. See ai-context.md's "Rider identity: four files outside the database".
 - **`stages.source_slug` is the stage's real identity, not `stage_number`.** PCS numbers a
   split day `stage-3a`/`stage-3b`; the DB numbers stages contiguously, so from the first
   split onward the two diverge *permanently* — Tour 1981's `stage_number` 5 is PCS's
