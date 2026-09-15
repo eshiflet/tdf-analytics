@@ -47,7 +47,8 @@ import time
 import unicodedata
 
 from audit_elevation import fetch
-from race_common import DB_PATH, SOURCE_PCS, record_provenance
+from race_common import (DB_PATH, SOURCE_PCS, STAGE_CANCELLED_RE,
+                         record_provenance)
 
 BASE = "https://www.procyclingstats.com"
 RACE_PATH = {
@@ -55,17 +56,11 @@ RACE_PATH = {
     "Giro d'Italia": "giro-d-italia",
     "Vuelta a España": "vuelta-a-espana",
 }
-# PCS does not use a fixed phrase. Every variant below is one it actually
-# prints. Requiring the literal word "stage" missed the 1982 Tour's cancelled
-# team time trial, whose note reads "Team Time Trial was cancelled due to a
-# protest of local farmers" — so that stage sat in the DB as raced, with 0 km
-# and 160 results that are GC standings carrying no stage rank or finish time.
-CANCEL_RE = re.compile(
-    r"(race/stage is cancelled"
-    r"|stage (?:was|is) cancelled"
-    r"|stage cancelled"
-    r"|(?:individual |team )?time trial was cancelled"
-    r"|was cancelled due to)", re.I)
+# The phrase list moved to race_common.STAGE_CANCELLED_RE (2026-09-14), so the
+# scraper that REFUSES a cancelled page and this script, which places the row
+# afterwards, cannot drift apart about what "cancelled" looks like. Aliased
+# here because the name is used below and in the tests.
+CANCEL_RE = STAGE_CANCELLED_RE
 
 
 def page_text(html):

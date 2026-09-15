@@ -47,7 +47,8 @@ import scrape_race as SV
 # these tests only ever exercised the Vuelta copy of two 94%-identical files.
 import scrape_rider_details as SRD
 import scrape_stage_info as SVSI
-from race_common import RACES, STAGE_ROW_LEN, StageRow, assign_stage_numbers
+from race_common import (RACES, STAGE_ROW_LEN, StageRow, assign_stage_numbers,
+                         page_says_cancelled)
 from record_fixtures import FIXTURES, load, path_for
 
 
@@ -392,6 +393,55 @@ class TestPointsPage(unittest.TestCase):
         self.assertTrue(all(v > 0 for v in pts.values()), "zero-point riders are dropped")
         self.assertTrue(all(k.startswith("rider/") for k in pts))
 
+    # PCS's modern points tables end with `delta_pnt` ("Today"), so "the last
+    # numeric cell in the row" — what this parser used before 2026-09-14 — reads
+    # the wrong column. Worse, it degrades unevenly: on a row whose Today cell
+    # is blank it lands back on `pnt`, so the totals come out merely low rather
+    # than uniformly wrong. Wout van Aert finished the 2026 Vuelta credited with
+    # 208 of his real 326 points, and nothing flagged it.
+    _ROW = ('<tr><td>{rnk}</td><td class="bibs ">{bib}</td><td class="h2h "></td>'
+            '<td class="age ">27</td>'
+            '<td class="ridername "><a href="{slug}">X</a></td>'
+            '<td class="pnt ">{pnt}</td>{boni}'
+            '<td class="delta_pnt ar green">{today}</td></tr>')
+
+    def _page(self, heading, boni):
+        """One points table in PCS's real shape. `boni` adds the bonus-seconds
+        column that a sprint with time bonuses has and one without it does not —
+        the reason a fixed column index cannot work either."""
+        head = ('<th data-code="rnk">Rnk</th><th data-code="bib">BIB</th>'
+                '<th data-code="h2h">H2H</th><th data-code="age">Age</th>'
+                '<th data-code="ridername">Rider</th><th data-code="pnt">Pnt</th>'
+                + ('<th data-code="result_boni">Bonis</th>' if boni else '')
+                + '<th data-code="delta_pnt">Today</th>')
+        rows = "".join(
+            self._ROW.format(rnk=i + 1, bib=10 + i, slug=s, pnt=p,
+                             boni='<td>6\u2033</td>' if boni else "", today=t)
+            for i, (s, p, t) in enumerate(
+                [("rider/a", 30, "10"), ("rider/b", 25, "6"), ("rider/c", 19, "")]))
+        return (f"<h4>{heading}</h4>\n<table><thead>{head}</thead>"
+                f"<tbody>{rows}</tbody></table>")
+
+    def test_reads_the_pnt_column_not_the_today_delta(self):
+        for boni in (True, False):
+            with self.subTest(bonus_column=boni):
+                pts = SV.parse_points_page(self._page("Points at finish", boni), "sprint")
+                self.assertEqual(pts, {"rider/a": 30, "rider/b": 25, "rider/c": 19})
+
+    def test_kom_tables_read_the_same_column(self):
+        pts = SV.parse_points_page(self._page("KOM Sprint (1) Somewhere (50 km)", False), "kom")
+        self.assertEqual(pts, {"rider/a": 30, "rider/b": 25, "rider/c": 19})
+
+    def test_a_table_without_a_pnt_column_yields_nothing(self):
+        """Rather than falling back to whatever number happens to be there."""
+        self.assertEqual(
+            SV.parse_points_page(
+                '<h4>Points at finish</h4>\n<table><thead>'
+                '<th data-code="rnk">Rnk</th><th data-code="ridername">Rider</th>'
+                '</thead><tbody><tr><td>1</td>'
+                '<td><a href="rider/a">X</a></td></tr></tbody></table>', "sprint"),
+            {})
+
 
 class TestElevationExtraction(unittest.TestCase):
     """scrape_*_stage_info.extract_info — vertical metres + ProfileScore."""
@@ -642,26 +692,59 @@ class TestScrapeStageEndToEnd(unittest.TestCase):
         self.assertEqual(rec["info"]["Start"], "Burgos")
         self.assertEqual(rec["profile_icon"], "p2")
         self.assertGreater(len(rec["sprint_points"]), 0)
-        self.assertEqual(rec["kom_points"], {})      # missing page -> empty, not an error
+        # A missing -kom page is no longer an empty result: PCS 500s that page
+        # for the FINAL stage of every Grand Tour, and the stage's own result
+        # page carries the same KOM tables, so scrape_stage falls back to it.
+        # Before this the Vuelta 2025 and 2026 finales both landed with zero
+        # sprint and zero KOM points and nothing said so.
+        self.assertEqual(rec["kom_points"],
+                         {"rider/sepp-kuss": 3, "rider/sep-vanmarcke": 2,
+                          "rider/rui-oliveira": 1})
 
     def test_a_stage_with_no_published_result_writes_no_file(self):
-        """Both stages with an empty table return None, so no stage file is
-        written and ingest's orphan guard refuses the edition rather than
-        quietly dropping the day. That refusal is the correct outcome: it asks
-        for a decision about a stage that was never classified."""
+        """Both stages return something FALSY, so no stage file is written and
+        ingest's orphan guard refuses the edition rather than quietly dropping
+        the day. That refusal is the correct outcome: it asks for a decision
+        about a stage that was never classified.
+
+        Falsiness is the contract, not `is None` — a page PCS declares
+        cancelled returns the _CANCELLED sentinel so the scrape loop can report
+        it as a deliberate hole instead of a failure to retry, and that
+        sentinel is falsy precisely so this promise survives."""
         orig = SV.fetch
         for fixture in ("tdf_1978_stage_12a_no_result", "vuelta_1991_stage_11_cancelled"):
             SV.fetch = lambda url, _f=fixture, **kw: (
                 None if url.endswith(("-points", "-kom")) else load(_f))
             try:
-                self.assertIsNone(
+                self.assertFalse(
                     self._quiet(SV.scrape_stage, RACES["tour"], 1978, "stage-12a", 13),
                     fixture)
             finally:
                 SV.fetch = orig
 
-    def test_returns_none_when_the_page_has_no_results(self):
+    def test_a_cancelled_page_is_told_apart_from_a_failure(self):
+        """The 1991 Vuelta's stage 11 was cancelled for snow, and PCS says so in
+        words. Reporting it as FAILED sends the next person back to re-scrape a
+        stage that will never have a result; the sentinel makes the scrape loop
+        name it, skip the "re-run to retry" warning, and point at
+        insert_cancelled_stages.py instead."""
         SV.fetch = lambda url, **kw: load("vuelta_1991_stage_11_cancelled")
+        result = self._quiet(SV.scrape_stage, RACES["vuelta"], 1991, "stage-11", 12)
+        self.assertIs(result, SV._CANCELLED)
+        self.assertFalse(result)
+
+    def test_returns_none_when_the_page_has_no_results(self):
+        """An empty results table and NO cancellation notice is still nothing to
+        write — but PCS has made no claim about why, so it must not be reported
+        as a cancellation. Both cancelled fixtures print "Race/stage is
+        cancelled"; this strips that sentence to reach the empty-table branch
+        underneath, which is the one a stage PCS has simply not published hits."""
+        html = (load("vuelta_1991_stage_11_cancelled")
+                .replace('<div class="red fs14">Race/stage is cancelled.</div>', "")
+                .replace('<div class="resultsComment  fs14">'
+                         'Stage cancelled due to bad weather.</div>', ""))
+        self.assertFalse(page_says_cancelled(html), "fixture still says cancelled")
+        SV.fetch = lambda url, **kw: html
         self.assertIsNone(self._quiet(SV.scrape_stage, RACES["vuelta"], 1991, "stage-11", 12))
 
     def test_returns_none_when_the_fetch_fails(self):

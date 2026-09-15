@@ -67,6 +67,7 @@ from race_common import (
     apply_stage_title,
     exit_on_help,
     assign_stage_numbers,
+    page_says_cancelled,
     parse_ttt_rows,
 )
 
@@ -92,6 +93,26 @@ ICON_TO_ROUTE = {"p1": "F", "p2": "H", "p3": "H", "p4": "M", "p5": "M"}
 
 
 _NETWORK_ERROR = "__NETWORK_ERROR__"
+
+class _Cancelled:
+    """A stage PCS declares cancelled. Distinct from a failure: there is
+    nothing to retry, and the hole it leaves in the stage numbering is correct.
+
+    Deliberately FALSY, so the only contract every caller of scrape_stage
+    already relies on — "anything falsy means write no file" — keeps holding
+    for a value none of them has heard of. The scrape loop tests identity to
+    say something more specific.
+    """
+    __slots__ = ()
+
+    def __bool__(self):
+        return False
+
+    def __repr__(self):
+        return "<cancelled>"
+
+
+_CANCELLED = _Cancelled()
 
 
 def fetch(url: str, retries: int = 2, soft_fail_429: bool = False,
@@ -488,18 +509,36 @@ def parse_points_page(html: str, point_type: str) -> dict:
         if not tbl:
             continue
 
+        # Read the `pnt` column by its data-code, the same rule parse_rows
+        # follows. "The last numeric cell in the row" used to stand in for it
+        # and was wrong on every modern page: these tables end with `delta_pnt`
+        # ("Today"), so the winner of the 2026 Vuelta's stage 2 was credited
+        # with 10 points instead of 30 — and on a row where Today is blank, the
+        # fallback silently landed on `pnt` instead, so the error varied row by
+        # row and the totals looked merely low rather than wrong. Van Aert
+        # finished that Vuelta on 208 of his real 326 points.
+        #
+        # Positions cannot stand in either: a sprint with time bonuses carries
+        # a `result_boni` column and one without it does not, so the same page
+        # serves 9- and 10-column tables side by side.
+        codes = parse_header_codes(tbl.group(1))
+        if "pnt" not in codes:
+            continue
+        pnt_i = codes["pnt"]
+
         for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tbl.group(1), re.DOTALL):
             tds = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.DOTALL)
+            if pnt_i >= len(tds):
+                continue
             slug = ""
-            points = 0
             for td in tds:
                 slug_m = re.search(r'href="/?([^"]*rider/[a-z0-9.-]+)"', td)
                 if slug_m:
                     s = slug_m.group(1)
                     slug = s[1:] if s.startswith("/") else s
-                txt = td_text(td).strip()
-                if re.match(r"^\d+$", txt) and int(txt) > 0:
-                    points = int(txt)
+                    break
+            txt = td_text(tds[pnt_i]).strip()
+            points = int(txt) if re.match(r"^\d+$", txt) else 0
             if slug and points > 0:
                 pts[slug] = pts.get(slug, 0) + points
 
@@ -511,6 +550,18 @@ def scrape_stage(race, year: int, slug: str, stage_num: int) -> dict | None:
     html = fetch(url)
     if not html:
         return None
+
+    # A cancelled stage, checked BEFORE the tables are read. The empty-results
+    # guard further down catches the common shape, but not the one the Vuelta
+    # 2026's stage 3 arrived in: PCS served a full 183-row table with every
+    # rank "NR" and every GC column carried over from stage 2, under a banner
+    # reading "Race/stage is cancelled". Parsed as results that is 183 people
+    # finishing a stage the jury stopped on the Col de Mont-Louis for hail,
+    # plus one day's general classification repeated as the next day's.
+    # insert_cancelled_stages.py places the row instead, cancelled=1 with no
+    # results, and stage_notes.json records the reason.
+    if page_says_cancelled(html):
+        return _CANCELLED
 
     # A TTT is grouped by team and needs its own parser, because on many of
     # these pages find_results_table picks up an unrelated table and parse_rows
@@ -565,8 +616,17 @@ def scrape_stage(race, year: int, slug: str, stage_num: int) -> dict | None:
     time.sleep(DELAY * 0.5)
     kom_html = fetch(f"{BASE}/race/{race.pcs_slug}/{year}/{slug}-kom", soft_fail_429=True)
 
-    sprint_points = parse_points_page(pts_html, "sprint") if pts_html else {}
-    kom_points = parse_points_page(kom_html, "kom") if kom_html else {}
+    # PCS 500s `<slug>-points` and `<slug>-kom` for the FINAL stage of every
+    # Grand Tour — verified 2026-09-14 on the Tour, Giro and Vuelta 2026, and on
+    # the Vuelta 2025, so it is not a one-off. That silently left stage 21 with
+    # no sprint or KOM points in every year scraped this way.
+    #
+    # The stage's own result page carries the same `Sprint | ...`, `Points at
+    # finish` and `KOM Sprint` tables, and it is already in hand. Checked
+    # against both dedicated pages on Vuelta 2026 stage 20: all three parse to
+    # identical sprint and KOM dicts. Falling back to it costs no extra request.
+    sprint_points = parse_points_page(pts_html or html, "sprint")
+    kom_points = parse_points_page(kom_html or html, "kom")
 
     return {
         "n": stage_num,
@@ -610,13 +670,16 @@ def scrape_year(race, year: int, out_dir: str) -> bool:
         print(f"  ABORT {year}: {err}")
         return False
 
-    saved_nums = []
+    saved_nums, cancelled_nums = [], []
     for stage_num, slug in numbered:
         out_path = os.path.join(out_dir, f"stage_{stage_num}.json")
 
         print(f"  {slug} → stage_{stage_num}.json ... ", end="", flush=True)
         result = scrape_stage(race, year, slug, stage_num)
-        if result:
+        if result is _CANCELLED:
+            print("CANCELLED — no results file written")
+            cancelled_nums.append(stage_num)
+        elif result:
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(result, f, ensure_ascii=False)
             sp = len(result["sprint_points"])
@@ -631,9 +694,15 @@ def scrape_year(race, year: int, out_dir: str) -> bool:
     saved = len([f for f in os.listdir(out_dir) if f.startswith("stage_") and f.endswith(".json")])
     print(f"  {year}: {saved}/{len(slugs)} stages saved to {out_dir}")
 
+    if cancelled_nums:
+        print(f"  {year}: stage(s) {cancelled_nums} cancelled by PCS — run "
+              f"insert_cancelled_stages.py after ingest to place the row(s), "
+              f"and record the reason in stage_notes.json.")
+
     if saved_nums:
         expected = set(range(min(saved_nums), max(saved_nums) + 1))
-        missing = sorted(expected - set(saved_nums))
+        # A cancelled stage is a hole on purpose, not one to retry.
+        missing = sorted(expected - set(saved_nums) - set(cancelled_nums))
         if missing:
             print(f"  WARNING: gap in stage numbering — missing stage(s) {missing} "
                   f"between {min(saved_nums)} and {max(saved_nums)}. Re-run to retry them.")

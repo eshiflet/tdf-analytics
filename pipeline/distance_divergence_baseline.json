@@ -1,26 +1,27 @@
 {
-  "giro": {
-    "1926": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1928": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1949": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1965": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1967": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1989": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "2011": "accepted 2026-08-15: stage 4 is stored as 0.0 km with no results, so its real distance (~216 km) is absent from the sum and accounts for the whole gap. Not a missing stage — see stage_notes.json for why it has no results."
-  },
-  "tour": {
-    "1978": "accepted 2026-08-15: DB +4.4% over Wikipedia across 25 stages; stage numbering contiguous, no stage missing"
-  },
-  "vuelta": {
-    "1974": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1976": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1978": "accepted 2026-08-15: stage 21 is stored as 0.0 km with no results (cancelled-stage convention). The DB still runs +4.4% OVER Wikipedia, so the gap is source disagreement, not the zero-length stage.",
-    "1983": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1984": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1992": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "1995": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "2002": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "2004": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
-    "2005": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing"
-  }
+ "giro": {
+  "1926": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1928": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1949": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1965": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1967": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1989": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "2011": "accepted 2026-08-15: stage 4 is stored as 0.0 km with no results, so its real distance (~216 km) is absent from the sum and accounts for the whole gap. Not a missing stage — see stage_notes.json for why it has no results."
+ },
+ "tour": {
+  "1978": "accepted 2026-08-15: DB +4.4% over Wikipedia across 25 stages; stage numbering contiguous, no stage missing"
+ },
+ "vuelta": {
+  "1974": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1976": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1978": "accepted 2026-08-15: stage 21 is stored as 0.0 km with no results (cancelled-stage convention). The DB still runs +4.4% OVER Wikipedia, so the gap is source disagreement, not the zero-length stage.",
+  "1983": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1984": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1992": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "1995": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "2002": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "2004": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "2005": "accepted 2026-08-15: source disagreement (prologue/split-stage/neutralized-section accounting); stage numbering contiguous, no stage missing",
+  "2026": "accepted 2026-09-14, decomposed against the OFFICIAL race site and resolved 2026-09-15: no stage is missing. The DB's sum of all 21 stages, 3209.6 km, matches PCS's own /route page to the decimal, and matches the official lavuelta.es stage list on 18 of 21. The 275.0 km gap to Wikipedia's 3310.6 infobox is: 166.7 stage 3, cancelled on the road and excluded here while Wikipedia still counts its planned length; 71.0 stage 15, shortened for extreme heat (raced 110.2, Wikipedia still lists 181.2 — its article is the pre-race route book plus a stage-3 note, never updated for in-race changes); 28.8 stages 2 and 8; 19.4 by which Wikipedia's infobox exceeds its OWN stage table (3291.2); and -10.9 net across the other 17 stages at 0.1-5.7 km each. Stage 2 is CONFIRMED planned-vs-raced: 214.3 was the guidebook route and ~12 km was trimmed before the start for road safety in the South of France, so 202.1 is what was ridden. Stage 8's 10.0 km has no explanation found and PCS's 161.0 is kept anyway (Eric, 2026-09-15). Stage 20's landslide reroute contributes nothing: it predates both route tables, so Wikipedia's 187.0 and the raced 186.8 already agree."
+ }
 }

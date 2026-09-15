@@ -1,8 +1,8 @@
 # Cycling Analytics — AI Context
 
-Interactive cycling analytics app covering **21 races in five sets**: the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), the **Vuelta a España** (80 editions, back to 1935), **11 one-day classics** (1892–2026) and **7 off-road races** (gravel and MTB, 1994–2026). The 2026 Tour de France is **complete** — all 21 stages are in the DB, Pogačar won in **73:56:26** and the slowest finisher was Cees Bol at **+6:22:08** (finalized 2026-08-15; see "Finalizing a completed year" below for what changed). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
+Interactive cycling analytics app covering **21 races in five sets**: the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), the **Vuelta a España** (81 editions, back to 1935), **11 one-day classics** (1892–2026) and **7 off-road races** (gravel and MTB, 1994–2026). The 2026 Tour de France is **complete** — all 21 stages are in the DB, Pogačar won in **73:56:26** and the slowest finisher was Cees Bol at **+6:22:08** (finalized 2026-08-15; see "Finalizing a completed year" below for what changed). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
-**Riders, as of 2026-09-14**: **18,050**, and `riders` holds exactly that many — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. 11,095 appear in exactly one race set and 36 appear in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,791 of its 3,901 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
+**Riders, as of 2026-09-14**: **18,054**, and `riders` holds exactly that many — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. (18,050 before the 2026 Vuelta landed that evening; it introduced 4 riders new to the whole archive.) On the 18,050 snapshot, 11,095 appeared in exactly one race set and 36 in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,791 of its 3,901 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
 
 ---
 
@@ -17,7 +17,7 @@ The app visualizes per-rider performance across every stage of multiple Grand To
 - Data: SQLite → Python export → JSON files bundled by Vite
 - Hosting: GitHub Pages, deployed via GitHub Actions on push to `main`
 
-**Multi-race support:** Each race SET has a canonical **slug** — `tour`, `giro`, `vuelta`, `classics`, `gravel` — used consistently for the data subdirectory (`src/data/<slug>/gc_by_stage_*.json`), the frontend `RaceId` type, the race dropdown value, and the URL hash segment. The frontend race dropdown is populated from the `RACES` registry in raceRegistry.ts (see "Race registry" below); every view (stage chart, Race Overview, All Races Overview, Riders) works for all three races, and deep links are race-aware (`#giro/2026/stage/gc`). The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). Editions with data: TDF 113 (1903–2026), Giro 109 (~4,700 riders), Vuelta 80 (1935–2025, ~4,400 riders).
+**Multi-race support:** Each race SET has a canonical **slug** — `tour`, `giro`, `vuelta`, `classics`, `gravel` — used consistently for the data subdirectory (`src/data/<slug>/gc_by_stage_*.json`), the frontend `RaceId` type, the race dropdown value, and the URL hash segment. The frontend race dropdown is populated from the `RACES` registry in raceRegistry.ts (see "Race registry" below); every view (stage chart, Race Overview, All Races Overview, Riders) works for all three races, and deep links are race-aware (`#giro/2026/stage/gc`). The DB schema is multi-race via the `races` table (race_id=1 TDF, race_id=2 Giro, race_id=3 Vuelta). Editions with data: TDF 113 (1903–2026), Giro 109 (~4,700 riders), Vuelta 81 (1935–2026, ~4,500 riders).
 
 **Jersey colors by race:**
 - **TDF**: Yellow = GC, Green = Sprint, Red polka-dot = KOM, White = Youth
@@ -80,8 +80,9 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**11 time trials have no times**~~ and ~~**1960-2025 has no local scrape files**~~ — both **CLOSED 2026-09-11**, see "The 1960-2025 Tour backfill". All 66 editions are scraped and 64 are ingested; 1978 and 1982 refuse, each holding a stage PCS never classified, and both want a decision rather than a fix.
 - ~~**41 stages typed ITT hold 4,040 riders on the winner's exact time**~~ — **CLOSED 2026-09-11, applied and the warning is gone.** Each stage was fetched by its own `source_slug` and read: a non-winner whose `Time` cell matches `^[-+]?0:00$` has no published time, and all 4,040 are that. None is a mislabelled mass-start (Giro 1985 stage-8a was the genuine one, already fixed via `route_type_overrides.json`, which is why it is not in the set). NULL is the honest value; `null_itt_filler_times.py` wrote it. `ingest_race` now refuses to recreate them, so a re-ingest is safe. See "Times that no race produced".
 - **54 finishers carry a 0-second finish time** across 10 stages (was 99 across 11; the ITT fix took Tour 1937 stage-17b out of the set). Do NOT reach for a re-ingest: today's code reads the same pages' `+0:00` filler and would credit all of them with the winner's time, trading one defect for the other. NULL is the honest value, and that is **still a decision waiting on Eric**.
+- **Vuelta 2026 stage 8 is 10.0 km shorter on PCS (161.0) than on lavuelta.es (171.0)** and nothing found explains why. **Decided 2026-09-15: keep PCS's figure**, unexplained. Its neighbour, stage 2, turned out to be a pre-start route trim — planned 214.3, raced 202.1 — so the same is likely here, but that is inference, not evidence. Only the road book would settle it. Worth 0.3% of the race total.
 - **9 team time trials hold 536 fewer riders than the stage after them.** Measured: only 1 of the original 10 was recoverable (Vuelta 2003 st1, done). On the rest PCS has no more riders than we store — Tour 1954 st4a really is 10 riders. Coverage report, not a worklist.
-- **2026 Vuelta** has not been run (last edition with data is 2025). When it finishes, follow "Finalizing a completed year".
+- ~~**2026 Vuelta** has not been run~~ — **DONE 2026-09-14**, the day after it finished. 81 editions now, 1935-2026. Enric Mas won in **73:52:55**; van Aert took the points jersey, Buitrago the mountains, Onley the youth. **Stage 3 was cancelled mid-race** and is stored as such. Three parser defects surfaced while adding it — see "The 2026 Vuelta, and the three defects it exposed".
 - **20 Tour team time trials have no rider times**, 1954-1982, and none is safely fillable — see "Team time trials with no rider times".
 - **26 editions list a rider under two teams** — PCS's own data, not a defect: Alfredo Irusta rides for `deportpublic-1994` on stages 1-6 of the Vuelta and `castellblanch-1994` on 7-21. Never rewrite these; the guard in `backfill_bib_numbers --field team_id` skips their editions, which is why 4,223 Giro/Vuelta team fills are still unapplied.
 - **Giro 2011 and 2013** hold a stage with no scrape file, the same shape as the 1982 Tour. 2013's stage 2 has a corrected TTT file waiting on that decision.
@@ -3439,7 +3440,7 @@ The Vuelta pipeline mirrors the Giro pipeline exactly (same scrape format, same 
 - First year: 1935 (vs 1909 for Giro)
 - War band: Spanish Civil War / WWII gap 1936–1944
 
-**Current status (as of 2026-07-17):** 80 editions with data, 1935–2025 (~4,400 riders / ~570 teams).
+**Current status (as of 2026-09-14):** 81 editions with data, 1935–2026 (4,491 riders / 601 teams). The 2026 edition was added the day after it finished — see "The 2026 Vuelta, and the three defects it exposed" for what that pass changed in the shared scraper, and read it before adding another year.
 
 ### Adding historical Vuelta years
 
@@ -3459,6 +3460,61 @@ python3 export_race_summary.py --race vuelta
 > **Note on re-ingesting.** `ingest_race.py --race {vuelta,giro}` **deletes and re-creates** any edition it touches, but does so atomically (a failed insert rolls the delete back) and **preserves `vertical_meters`/`profile_score`** from the existing edition, so re-ingesting no longer wipes elevation data. A bare no-arg run (which would rebuild every year found in the scrapes directory) is refused unless you pass `--all`. Still prefer passing the specific range you changed (e.g. `ingest_race.py --race vuelta 1970-1989`). `scrape_vuelta_stage_info.py` only needs to run for years that never had elevation scraped.
 
 **PCS rate limiting:** Use `SCRAPE_DELAY=4.0` for recent years (2015+). Older years can often use `2.0`. The scraper handles 429 with a 30s backoff.
+
+### Adding a JUST-FINISHED Vuelta — the full recipe (used for 2026, 2026-09-14)
+
+The block above is the historical-backfill recipe and is missing four steps a
+current edition needs. None of the four fails a validator if you skip it; each
+shows up as a blank or a stale number. In order:
+
+```bash
+cd pipeline
+python3 db_backup.py                                   # cycling.db is NOT regenerable
+
+SCRAPE_DELAY=4.0 python3 scrape_vuelta.py 2026         # replays recorded name swaps itself
+python3 detect_name_swaps.py --race vuelta --year 2026 # NEW swaps this year; confirm by TEAM first
+python3 fix_name_swaps.py --race vuelta --year 2026 --dry-run
+python3 fix_name_swaps.py --race vuelta --year 2026 --apply
+
+python3 build_vuelta_points.py
+python3 ingest_race.py --race vuelta 2026 --dry-run
+python3 ingest_race.py --race vuelta 2026
+
+python3 insert_cancelled_stages.py --dry-run           # (1) any stage the scraper refused
+python3 insert_cancelled_stages.py --apply             #     then WRITE THE REASON into stage_notes.json
+python3 scrape_vuelta_stage_info.py 2026               # (2) elevation + profile score
+python3 scrape_classifications.py --race vuelta --year 2026 --apply   # (3) final points/KOM/youth
+python3 check_vuelta_gc_times.py 2026                  # (4) official GC winner time
+python3 scrape_wiki_distances.py --race vuelta         # rebuilds the whole file; diff it
+
+python3 export_gc.py --race vuelta --year 2026
+python3 export_race_summary.py --race vuelta
+python3 export_riders_index.py --race vuelta
+
+python3 validate_exports.py --race vuelta   # expect 0 errors; compare the WARNING COUNT to the baseline
+python3 validate_db.py                      # a deliberate row-count rise wants --update-patch-manifest
+python3 coverage.py --race vuelta           # the new year should not appear at all
+```
+
+**(4) is the highest-leverage step**, exactly as it is for the Tour.
+`export_race_summary.py` reads `vuelta_gc_winner_times.json` directly for
+`gcWinnerTimeSeconds`, and `export_gc.py` bases every rider's
+`totalTimeSeconds` on it. Until it exists, the fallback is a sum of stage
+times, which for 2026 was **693 s (11:33) over** PCS's official 73:52:55.
+`slowestFinisherTimeSeconds` then appears on its own. `apply_vuelta_gc_corrections.py`
+is a LEGACY path — it writes the same figure into
+`vuelta_races_summary_overrides.json`, which the exporter no longer needs, and
+it iterates over every correction, so running it would add ~79 override entries
+to a file that holds 4. Don't.
+
+**Things that will look like problems and are not** (all seen on 2026):
+
+| symptom | what it is |
+|---|---|
+| a NEW distance divergence >3% | reconcile against PCS's `/route` page total first, then record it in `distance_divergence_baseline.json` with the reason |
+| `validate_db` notes row counts rose | new data; `python3 validate_db.py --update-patch-manifest`, then check the PATCHED LIST is unchanged and only the counts moved |
+| `build_vuelta_points.py` changes years you never touched | those committed arrays are STALE against their own scrape files. 9 sprint / 13 KOM years on 2026-09-14. Keep your year, restore HEAD for the rest — do not smuggle an unreviewed data change in |
+| riders absent from a classification | a rider who abandoned keeps his points but stops being ranked. Correct and deliberate |
 
 ### Adding elevation data for a Vuelta year
 
@@ -4086,6 +4142,202 @@ disappears as the metric switch changes, not only on entering the view
 `updateUnitToggle` from `main.ts`, a cycle that is safe for the same reason
 `riders.ts`'s is: the call happens inside an event handler, never at
 module-evaluation time.
+
+---
+
+## The 2026 Vuelta, and the three defects it exposed (2026-09-14)
+
+Added the day after the race ended. The edition itself was routine — 21 stages,
+184 starters, 142 finishers, `coverage.py` reports **no gaps on any tracked
+field**. What was not routine is that adding one ordinary year surfaced three
+separate defects, each of which had been silently wrong for years. All three
+have the same shape as every defect in the section below: **something read the
+easy thing instead of the right thing, and nothing downstream could tell.**
+
+### 1. PCS 500s the final stage's `-points` page, for every Grand Tour
+
+`scrape_race.scrape_stage` fetches `<slug>-points` and `<slug>-kom` and treated
+a missing page as "no points awarded". For stage 21 those URLs return HTTP 500
+— verified on the Tour, Giro and Vuelta 2026 and on the Vuelta 2025, so it is
+not a one-off — and every Grand Tour finale scraped through this path landed
+with **zero sprint and zero KOM points**. The 2025 Vuelta still has that hole.
+
+The fix costs nothing: the stage's OWN result page carries the same
+`Sprint | ...`, `Points at finish` and `KOM Sprint` tables, and it is already in
+hand. Checked against both dedicated pages on Vuelta 2026 stage 20 — all three
+parse to identical dicts. `pts_html or html`.
+
+### 2. The points parser read PCS's "Today" column, not `Pnt`
+
+Much worse, and the reason to distrust a total that merely looks low.
+`parse_points_page` took **the last numeric cell in the row** as the points
+value. PCS's points tables end with `delta_pnt` ("Today"), so the winner of the
+2026 Vuelta's stage 2 was credited with **10 points instead of 30**. And the
+error was not even consistent: on a row whose Today cell is blank the fallback
+landed back on `pnt` and was right. So the totals came out *low and plausible*
+rather than uniformly wrong — Wout van Aert finished that Vuelta credited with
+**208 of his real 326 points**, and nothing anywhere said so.
+
+Positions cannot substitute either: a sprint with time bonuses carries a
+`result_boni` column and one without it does not, so the same page serves 9-
+and 10-column tables side by side. The fix is durable rule 3 — **read the
+`data-code`** — via `parse_header_codes`, which already existed in this file and
+which `parse_rows` had used all along. The points parser simply never called it.
+
+After the fix the 2026 Vuelta's cumulative sprint points reproduce PCS's
+published points classification **exactly** for the whole top six (326 / 273 /
+216 / 141 / 116 / 115).
+
+> **Every Giro and Vuelta year still carries the old values.** Per-stage points
+> live inside each scrape file, written at scrape time, so only a re-scrape
+> moves them; `build_*_points.py` just copies. 2026 was re-scraped and is
+> correct. **Nothing else has been**, and that is a deliberate stop — it is a
+> large data change across ~190 editions and wants its own pass with its own
+> change table. The jersey WINNERS are not affected: those come from
+> `classification_standings`, scraped from PCS's official tables by
+> `scrape_classifications.py`, which has always had its own correct parser.
+
+### 3. A year-scoped `check_gc_times.py` run wiped 77 years of corrections
+
+`check_vuelta_gc_times.py 2026` cut `vuelta_gc_time_corrections.json` from 78
+entries to 1. `winner_times` was seeded from the file on disk so a scoped run
+merged; `discrepancies` started empty and the file was overwritten wholesale.
+Both now seed from disk, and a year the run actually examined gets that run's
+verdict (including removal once it agrees with PCS again) while every year it
+did not look at is carried through untouched.
+
+### Stage 3 was cancelled ON the road, and PCS still serves a full table
+
+The jury stopped the stage on the Col de Mont-Louis for heavy rain and hail. No
+winner was declared, and the commissaires additionally cancelled the results of
+the intermediate sprint and the mountain sprint.
+
+The existing cancelled-stage guard looks for an EMPTY results table. This page
+is not empty: PCS serves **183 rows in which every rank is "NR" and every GC
+column is stage 2's, carried forward**. Ingested as results that is 183 people
+finishing a stage nobody finished, plus one day's general classification
+repeated as the next day's — durable rule 6, broken by accident.
+
+So `scrape_stage` now checks for PCS's cancellation banner BEFORE reading any
+table, using `race_common.STAGE_CANCELLED_RE` / `page_says_cancelled()`. That
+phrase list used to live in `insert_cancelled_stages.py`; it is now shared, so
+the scraper that REFUSES a cancelled page and the script that PLACES the row
+afterwards cannot disagree about what "cancelled" looks like. A cancelled stage
+is reported as its own outcome rather than as `FAILED`, and it is excluded from
+the "re-run to retry them" warning, because there is nothing to retry.
+
+**The points arrays had to learn about the hole too.** `build_*_points.py` built
+one array entry per FILE present, and `export_gc.py` indexes it by DB stage
+position — where the cancelled stage does have a row. Stage 4's sprint points
+would have been credited to stage 3, and stage 21's dropped off the end. Both
+builders now range over `min..max` stage number and emit `{}` for a number with
+no file. (A prologue is stage 0, which is why the range starts at the lowest
+number present rather than at 1.)
+
+### Two numbers that look wrong and are not
+
+* **Total distance 3,035.6 km**, against Wikipedia's 3,310.6 — an 8.3%
+  divergence, recorded in `distance_divergence_baseline.json` and decomposed
+  against the official race site on 2026-09-15. No stage is missing; see
+  "Three sources, three totals" below for the full accounting.
+* **Winner's average speed 41.09 km/h**, up on nothing in particular. It sits
+  inside the 40.25-42.65 band of 2021-2025. The DB's summed stage times gave
+  74:04:28 against PCS's official 73:52:55 — 693 s out, the usual reason the
+  curated winner time outranks the sum.
+
+### Three sources, three totals (reconciled 2026-09-15)
+
+2026 is the edition that makes the difference between "planned" and "raced"
+impossible to ignore, because **three stages were altered and the sources
+updated at different moments.** Per stage:
+
+| source | all 21 | as raced | what it actually is |
+|---|---|---|---|
+| PCS / our DB | 3,209.6 | **3,035.6** | as-raced; matches PCS's own `/route` page to the decimal |
+| official lavuelta.es stage list | 3,231.9 | 3,057.9 | as-raced, and it DID update for the in-race changes |
+| Wikipedia stage table | 3,291.2 | — | the pre-race route book, never updated |
+| Wikipedia infobox | **3,310.6** | — | does not even match Wikipedia's own table (+19.4) |
+
+**The 275.0 km between Wikipedia's headline and what we display:**
+
+| km | cause |
+|---:|---|
+| 166.7 | stage 3, cancelled on the road — excluded here, planned length still counted there |
+| 71.0 | stage 15, shortened for extreme heat (raced 110.2; Wikipedia still lists 181.2) |
+| 28.8 | stages 2 and 8 — planned vs raced (stage 2 confirmed; stage 8 unexplained), see below |
+| 19.4 | Wikipedia's infobox exceeding Wikipedia's own stage table |
+| −10.9 | net across the other 17 stages, 0.1–5.7 km each |
+
+**Stage 20's landslide reroute contributes nothing**, which is worth knowing
+before hunting for it: that change predates both route tables, so Wikipedia's
+187.0 and the raced 186.8 already agree to 0.2 km. Only a change made *during*
+the race (stage 15, stage 3) splits the sources.
+
+**Beware a third figure for stage 15.** Press coverage gives the original as
+189.7 km; Wikipedia's route table says 181.2. Neither is our number and neither
+needs to be — we store the 110.2 that was raced — but do not adopt either as
+"the planned distance" without a source that says which it is.
+
+### Stages 2 and 8: one resolved, one accepted unexplained (2026-09-15)
+
+`lavuelta.es` lists stage 2 at **214.3 km** and stage 8 at **171.0 km**; PCS
+says **202.1** and **161.0**, and those are the figures we store. Every other
+stage agrees to within 0.1 km, so this was never general drift — two specific
+stages, 22.3 km between them, 0.7% of the race.
+
+**Stage 2 is settled, and PCS is right.** 214.3 km is the distance published in
+the race guidebook when the route was unveiled. Roughly 12 km was trimmed from
+the day **before the flag dropped**, for late logistical and road-safety
+reasons in the South of France; 202.1 km is what the peloton actually rode to
+Manosque. So the two numbers are not in conflict at all — they are the planned
+and the raced distance, and this archive stores raced. (Established by Eric,
+2026-09-15, from the route documentation.) It is the same split as stage 15,
+just made an hour earlier, which is why no in-race report mentions it.
+
+**Stage 8 has no explanation and we are keeping PCS's 161.0 anyway** — Eric's
+call, 2026-09-15, taken with the absence of a reason understood rather than
+assumed away. What was ruled out first:
+
+* **Not a stale official page.** That same list carries stage 15 at the
+  shortened 110.2, so it was updated after the race.
+* **Not confirmable from PCS.** PCS's stated distance divided by the winner's
+  time reproduces PCS's own published average speed exactly — which proves only
+  that PCS derived one from the other. **The check is circular; it validates
+  nothing.** Do not cite it as corroboration.
+* **Not something either page explains.** Neither PCS's "Story of the day" nor
+  Wikipedia mentions a change to stage 8; Wikipedia records only stage 3.
+
+Given stage 2, a pre-start trim is the obvious reading — but that is inference
+from a neighbour, not evidence, and it is written here as a hypothesis so the
+next person does not find it restated as fact. What would settle it is the road
+book or a report giving stage 8's competitive distance. The value stays PCS's
+because the whole edition came from PCS, and mixing one organiser distance into
+it would make the total reproduce neither source.
+
+### What was verified against something it could not produce itself
+
+* Final GC: our top six reproduce PCS's published classification **to the
+  second** (Mas 73:52:55, then +135 / +164 / +414 / +525 / +568).
+* Points and KOM jersey winners match PCS's own standings.
+* Four name swaps (stages 2, 19, 21) were confirmed by TEAM before repair —
+  in each the name moved while bib and team stayed, e.g. stage 21 showing
+  "116 Brenner Marco | NSN" when Brenner rides bib 171 for Tudor all race.
+  The re-scrape after the parser fix reverted all four and the automatic
+  `--replay` put them straight back, which is that mechanism working.
+* Cancelled stage 3 renders exactly as the Vuelta 1991's does: no distance bar,
+  grey elevation and difficulty bars, excluded from both totals.
+
+### Still open, deliberately
+
+**Six riders in each classification disagree with PCS's own published totals**
+by 1-10 points, several in offsetting pairs (Bisiaux +10 / Omrzel -10,
+Debruyne +5 / Vermaerke -5, Buitrago -4 on KOM). Every stage page was re-read
+directly and reproduces our figures, so PCS's per-stage tables and PCS's
+classification disagree with each other. Nothing in this source can settle it,
+and a reconciliation would be invention. Riders who ABANDON also appear to
+"disagree" — Pogačar carries 102 sprint points in our per-stage sums and none
+in the standings — but that is correct and deliberate: a classification ranks
+only riders still in the race.
 
 ---
 
@@ -5029,12 +5281,13 @@ python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
 
-# Unit tests — 569 as of 2026-09-14
+# Unit tests — 573 as of 2026-09-14
 python3 -m unittest discover -p "test_*.py"
 
-# Exported-JSON checks (run after any export). 469 files, 0 errors and
-# 84 warnings is the expected clean result as of 2026-09-14 — compare the
-# COUNT against that baseline rather than expecting zero.
+# Exported-JSON checks (run after any export). 470 files, 0 errors and
+# 84 warnings is the expected clean result as of 2026-09-14 (the 470th is
+# the 2026 Vuelta) — compare the COUNT against that baseline rather than
+# expecting zero.
 python3 validate_exports.py
 python3 validate_db.py               # 0 errors, 9 warnings expected (2026-09-14)
                                      # Warnings are a standing worklist, not noise —

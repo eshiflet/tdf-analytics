@@ -123,5 +123,15 @@
     "source": "procyclingstats.com/race/tour-de-france/1982/stage-5: \"Team Time Trial was cancelled due to a protest of local farmers.\""
    }
   }
+ },
+ "Vuelta a España": {
+  "2026": {
+   "3": {
+    "slug": "stage-3",
+    "route": "Gruissan - Aude -> Font Romeu",
+    "note": "Cancelled in progress: stopped on the Col de Mont-Louis for extreme weather (heavy rain and hail). No winner was declared, and the President of the Commissaires' Panel also cancelled the results of the intermediate sprint and the mountain sprint, so no sprint or KOM points were awarded either. PCS still serves a full 183-row table for this stage: every rank is \"NR\" and every GC column is stage 2's carried forward, so it must NOT be ingested as results — scrape_race.py refuses to write a file for it.",
+    "source": "PCS stage-3 page banner + Story of the day (read 2026-09-14)"
+   }
+  }
  }
 }

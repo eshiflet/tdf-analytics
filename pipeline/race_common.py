@@ -416,6 +416,40 @@ CLASSICS: dict[str, ClassicInfo] = {
 }
 
 
+# ── Cancelled stages ────────────────────────────────────────────────────────
+# PCS does not use a fixed phrase for a stage that was called off. Every
+# variant below is one it actually prints, and requiring the literal word
+# "stage" missed the 1982 Tour's cancelled team time trial ("Team Time Trial
+# was cancelled due to a protest of local farmers"), which then sat in the DB
+# as raced, with 0 km and 160 results that were really GC standings.
+#
+# ONE definition, because two readers need it and they must agree:
+# scrape_race.scrape_stage refuses to write a results file for such a page, and
+# insert_cancelled_stages.py places the row afterwards with cancelled=1 and no
+# results at all.
+STAGE_CANCELLED_RE = re.compile(
+    r"(race/stage is cancelled"
+    r"|stage (?:was|is) cancelled"
+    r"|stage cancelled"
+    r"|(?:individual |team )?time trial was cancelled"
+    r"|was cancelled due to)", re.I)
+
+
+def page_says_cancelled(html: str) -> bool:
+    """True when a PCS stage page declares the stage called off.
+
+    Read the whole page, not just the results table. A cancelled stage does not
+    reliably arrive as an empty table: the Vuelta 2026's stage 3 — abandoned on
+    the Col de Mont-Louis for hail — serves a FULL 183-row table in which every
+    rank is "NR" and every GC column is stage 2's, carried forward. Ingesting
+    that would record 183 finishers of a stage nobody finished and repeat one
+    day's general classification as the next day's, which is invention.
+    """
+    if not html:
+        return False
+    return bool(STAGE_CANCELLED_RE.search(" ".join(re.sub(r"<[^>]+>", " ", html).split())))
+
+
 # ── Scrape-file layout ──────────────────────────────────────────────────────
 # ONE place that knows where a stage race's scraped rows live and how to read
 # them back. All three now share the same layout — <race>_scrapes/YEAR/stage_N.json

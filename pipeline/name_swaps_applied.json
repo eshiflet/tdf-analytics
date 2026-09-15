@@ -650,6 +650,46 @@
    "name_a": "Carapaz Richard",
    "name_b": "Cattaneo Mattia",
    "recorded": "2026-09-10"
+  },
+  {
+   "race": "vuelta",
+   "year": 2026,
+   "stage": 2,
+   "bib_a": "2",
+   "bib_b": "134",
+   "name_a": "Fisher-Black Finn",
+   "name_b": "Johannessen Tobias Halland",
+   "recorded": "2026-09-14"
+  },
+  {
+   "race": "vuelta",
+   "year": 2026,
+   "stage": 19,
+   "bib_a": "17",
+   "bib_b": "211",
+   "name_a": "Vermaerke Kevin",
+   "name_b": "Hamilton Chris",
+   "recorded": "2026-09-14"
+  },
+  {
+   "race": "vuelta",
+   "year": 2026,
+   "stage": 19,
+   "bib_a": "181",
+   "bib_b": "35",
+   "name_a": "Tejada Harold",
+   "name_b": "Kuss Sepp",
+   "recorded": "2026-09-14"
+  },
+  {
+   "race": "vuelta",
+   "year": 2026,
+   "stage": 21,
+   "bib_a": "171",
+   "bib_b": "116",
+   "name_a": "Brenner Marco",
+   "name_b": "Martí Pau",
+   "recorded": "2026-09-14"
   }
  ]
 }

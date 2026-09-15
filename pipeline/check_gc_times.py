@@ -177,7 +177,19 @@ def main(argv=None):
             winner_times = {int(k): v for k, v in json.load(f).items()
                             if not k.startswith("_")}
 
+    # Seeded from the file on disk, exactly as winner_times is above. Without
+    # this a YEAR-SCOPED run rewrote the corrections file with only the years
+    # it examined: `check_vuelta_gc_times.py 2026` cut it from 78 entries to 1
+    # on 2026-09-14, silently discarding every correction recorded since 1935.
+    # Years this run did not look at are carried through untouched; a year it
+    # DID look at gets this run's verdict, including removal once it agrees
+    # with PCS again (see `checked` below).
     discrepancies = {}
+    if os.path.exists(corrections_path):
+        with open(corrections_path) as f:
+            discrepancies = {int(k): v for k, v in json.load(f).items()
+                             if not k.startswith("_")}
+    checked = set()
     missing = []
 
     for edition in editions:
@@ -236,12 +248,17 @@ def main(argv=None):
             discrepancies[year] = pcs_time
         else:
             print(f"{year}: OK  {pcs_time_str}")
+            # A year that now agrees with PCS has no correction to apply. It
+            # was examined, so dropping it is this run's finding, not the
+            # scoping accident the seed above prevents.
+            discrepancies.pop(year, None)
+        checked.add(year)
 
     conn.close()
 
     print(f"\n--- Summary ---")
     print(f"Winner times recorded: {len(winner_times)} years")
-    print(f"Mismatches: {len(discrepancies)} years")
+    print(f"Mismatches: {len([y for y in checked if y in discrepancies])} years (of {len(checked)} checked)")
     if missing:
         print(f"Could not check: {missing}")
 
@@ -250,10 +267,11 @@ def main(argv=None):
             json.dump({str(k): v for k, v in sorted(winner_times.items())}, f, indent=2)
         print(f"Winner times written to {winner_times_path}")
 
-    if discrepancies:
+    if checked:
         with open(corrections_path, "w") as f:
             json.dump({str(k): v for k, v in sorted(discrepancies.items())}, f, indent=2)
-        print(f"Corrections written to {corrections_path}")
+        print(f"Corrections written to {corrections_path} "
+              f"({len(discrepancies)} year(s); {len(checked)} checked this run)")
     return 0
 
 
