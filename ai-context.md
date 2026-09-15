@@ -4188,14 +4188,93 @@ After the fix the 2026 Vuelta's cumulative sprint points reproduce PCS's
 published points classification **exactly** for the whole top six (326 / 273 /
 216 / 141 / 116 / 115).
 
-> **Every Giro and Vuelta year still carries the old values.** Per-stage points
-> live inside each scrape file, written at scrape time, so only a re-scrape
-> moves them; `build_*_points.py` just copies. 2026 was re-scraped and is
-> correct. **Nothing else has been**, and that is a deliberate stop — it is a
-> large data change across ~190 editions and wants its own pass with its own
-> change table. The jersey WINNERS are not affected: those come from
-> `classification_standings`, scraped from PCS's official tables by
+> ~~**Every Giro and Vuelta year still carries the old values.**~~ — **DONE
+> 2026-09-15**, all 95 affected editions. See "The points refresh" below: exact
+> agreement with PCS's published classifications went from **25.5% to 89.9%**
+> across 1,435 rider-classifications. The jersey WINNERS were never affected:
+> those come from `classification_standings`, scraped by
 > `scrape_classifications.py`, which has always had its own correct parser.
+
+### The points refresh: 95 editions, and two more defects (2026-09-15)
+
+Re-reading the points pages for every Giro and Vuelta year that has them.
+`refresh_stage_points.py` does it, and deliberately **is not**
+`scrape_race.py --all`: both defects live in how points were READ, so it
+rewrites ONLY `sprint_points` and `kom_points` and asserts every other key is
+unchanged before saving. A full re-scrape would rewrite every result row to fix
+two dictionary keys, reverting name-swap repairs on the way through, and cost
+four times the requests against a small site.
+
+**Result, measured against something it could not produce itself** — our
+cumulative totals vs PCS's *published* points and KOM classifications, every
+listed rider, 10 editions:
+
+| | before | after |
+|---|---|---|
+| exact agreement | **25.5%** | **89.9%** |
+
+Giro 1993 and 1995 land at **100%** on both classifications. The residual is
+PCS disagreeing with itself — see the last note below.
+
+### 4. Old KOM pages have no points column, and we were storing riders' AGES
+
+The worse of the two. On pre-1990 KOM pages PCS lists who crossed each climb
+with **no `pnt` column at all**, and the old "last numeric cell in the row"
+rule fell through to the **Age** column. Giro 1961 stage 15 stored Bahamontes
+on 32 and Taccone on 21 — their ages. Stage 7 stored Delberghe on 25; his Age
+cell reads 25. Two independent confirmations: the page's `data-code` list has
+no `pnt`, and each stored value equals that rider's Age cell.
+
+This was never "points read from the wrong column". It was fabricated data
+sitting in the archive, and the honest replacement is nothing at all.
+
+**The guard that found it, and why it had to be loosened.** The refresher
+refused, at first, to let any stage LOSE points — a rate-limit, a Cloudflare
+challenge and an honest "no points awarded" all parse to `{}`, and writing the
+wrong one deletes real data silently. That rule fired immediately on Giro 1961,
+and chasing *why* is what surfaced the ages. The rule is now the distinction
+that actually matters: **a drop is allowed when we SAW the page and it has no
+points column; refused when the fetch failed.** Removals are counted and
+reported separately so they can never be read as ordinary corrections.
+
+### 5. The Giro's Intergiro sprint counts toward the points classification
+
+`parse_points_page` matched `Sprint |` and `Points at finish`. The Giro also
+prints **`Intergiro Sprint | ...`**, and PCS counts it. Measured, not assumed:
+including it takes the 2024 Giro from **39/110** listed riders matching PCS to
+**102/110**, and 1993/1995 to 100%.
+
+It was tempting to exclude it on the history — the Intergiro had its own blue
+jersey in the 1990s — and a first check seemed to show it changed nothing for
+1990 and 2005. That check was wrong: it compared how many riders MATCHED, not
+the values, so it hid a change that moved values without moving the count. The
+re-run then altered 1990-1998, exactly the era where wrongly including it would
+do damage. What settles it is the direction of the error: with Intergiro in, we
+are **LOW where we differ and essentially never HIGH** (2024: high on 2,
+low on 6). Over-counting would look the opposite.
+
+### The residual is PCS disagreeing with PCS
+
+Giro 2005 sits at 62% and 2015 at 71%, and no heading explains it. Summing
+**every heading on every stage page** — including ones that should not count —
+gives Bettini 152 against the classification's 162, and Nizzolo 164 against
+181. The points are not published per-stage at all, so there is nothing to
+extract and a reconciliation would be invention. Same shape as the Vuelta
+2026's six-rider gap, larger in some Giro years.
+
+### Two operational lessons from the run itself
+
+* **`pgrep -f "python3 <script>"` does not match.** The real command line is
+  `.../Python <script>.py`, so the pattern silently matches nothing — which
+  reads exactly like "the job finished". A waiter built on it fired instantly
+  and launched the next race while the first was still running. Match on the
+  script name, or better, check the lock file's PID with `ps -p`.
+* **Two copies ran concurrently** before `refresh_stage_points.py` had a lock.
+  Nothing corrupted a scrape file (each write is one atomic `os.replace` of a
+  value both processes computed identically), but they doubled the request rate
+  and interleaved writes to the resume file, whose last writer wins — three
+  finished years came back unmarked. It now takes a PID lock and clears a stale
+  one from a dead process.
 
 ### 3. A year-scoped `check_gc_times.py` run wiped 77 years of corrections
 
@@ -5281,7 +5360,7 @@ python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
 
-# Unit tests — 573 as of 2026-09-14
+# Unit tests — 575 as of 2026-09-15
 python3 -m unittest discover -p "test_*.py"
 
 # Exported-JSON checks (run after any export). 470 files, 0 errors and

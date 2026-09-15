@@ -428,6 +428,21 @@ class TestPointsPage(unittest.TestCase):
                 pts = SV.parse_points_page(self._page("Points at finish", boni), "sprint")
                 self.assertEqual(pts, {"rider/a": 30, "rider/b": 25, "rider/c": 19})
 
+    def test_the_giros_intergiro_sprint_counts_toward_points(self):
+        """PCS's points classification includes it, and the measurement is not
+        close: counting it takes the 2024 Giro from 39 of 110 listed riders
+        matching PCS's published total to 102. Years without the heading are
+        unaffected, which is why this is safe to apply to every year."""
+        pts = SV.parse_points_page(
+            self._page("Intergiro Sprint | Altare (116.5 km)", False), "sprint")
+        self.assertEqual(pts, {"rider/a": 30, "rider/b": 25, "rider/c": 19})
+
+    def test_a_kom_heading_is_not_counted_as_a_sprint(self):
+        """The two classifications must not leak into each other."""
+        self.assertEqual(
+            SV.parse_points_page(self._page("KOM Sprint (1) Somewhere (50 km)", False),
+                                 "sprint"), {})
+
     def test_kom_tables_read_the_same_column(self):
         pts = SV.parse_points_page(self._page("KOM Sprint (1) Somewhere (50 km)", False), "kom")
         self.assertEqual(pts, {"rider/a": 30, "rider/b": 25, "rider/c": 19})

@@ -494,7 +494,16 @@ def parse_points_page(html: str, point_type: str) -> dict:
         text = td_text(h4.group(1))
         match = False
         if point_type == "sprint":
-            match = text.startswith("Sprint |") or text == "Points at finish"
+            # "Intergiro Sprint" is the Giro's own second intermediate sprint.
+            # PCS counts it toward the points classification where it appears,
+            # and measuring says so unambiguously: including it takes the 2024
+            # Giro from 39/110 riders matching PCS's published points
+            # classification to 102/110. It is additive on years that do not
+            # have it (1990 and 2005 are byte-identical either way), because
+            # those pages carry no such heading with a `pnt` column.
+            match = (text.startswith("Sprint |")
+                     or text.startswith("Intergiro Sprint")
+                     or text == "Points at finish")
         else:
             match = text.startswith("KOM Sprint") or text.startswith("GPM Sprint")
         if not match:

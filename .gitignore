@@ -77,3 +77,8 @@ pipeline/gravel_scrapes/_survey.json
 # race-year, ~270 of them — a local cache so re-parsing costs no requests, on the
 # same footing as the bikeraceinfo and Athlinks caches above.
 pipeline/classification_scrapes/
+
+# refresh_stage_points.py run state — resume marks and the concurrency lock,
+# both local to one machine and meaningless in history.
+pipeline/.refresh_stage_points_done.json
+pipeline/.refresh_stage_points.lock
