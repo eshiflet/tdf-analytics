@@ -33,9 +33,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      # setup-node v5 began caching automatically when package.json has a
+      # `packageManager` field, and v6 narrowed that to npm. This repo has no
+      # such field and sets `cache` explicitly below, so the automatic path
+      # never engages and the behaviour is unchanged.
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -79,7 +83,13 @@ jobs:
         working-directory: cycling-app
 
       # Nothing to publish from a PR — it has not been merged yet.
-      - uses: actions/upload-pages-artifact@v3
+      #
+      # v4 of this action stopped including hidden files (dotfiles) in the
+      # artifact. Checked before bumping: `cycling-app/build/` contains none,
+      # and nothing here needs a `.nojekyll` — artifact-based Pages deployment
+      # does not run Jekyll. v5 is the one that carries upload-artifact v7,
+      # which is what actually clears the transitive Node 20 deprecation.
+      - uses: actions/upload-pages-artifact@v5
         if: github.event_name != 'pull_request'
         with:
           path: cycling-app/build
@@ -97,5 +107,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v5
         id: deployment
