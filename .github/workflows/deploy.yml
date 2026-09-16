@@ -39,9 +39,14 @@ jobs:
       # `packageManager` field, and v6 narrowed that to npm. This repo has no
       # such field and sets `cache` explicitly below, so the automatic path
       # never engages and the behaviour is unchanged.
+      # 24, matching what the site is actually built with locally (24.17 at
+      # the time of the bump) and what the pre-push hook has been building and
+      # payload-checking on all along. Node 20 is past end-of-life, and CI
+      # building on a different major from every developer is how a build-only
+      # failure hides until release day.
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: cycling-app/package-lock.json
 
