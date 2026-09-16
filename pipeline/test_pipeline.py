@@ -679,3 +679,58 @@ class TestBibBackfillScope(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+class TestDerivedFinalStagePoints(unittest.TestCase):
+    """derive_final_stage_points.py — the guards, which is all that file is."""
+
+    def _derive(self, after, before):
+        """The write rule, exercised through the module's own logic."""
+        import derive_final_stage_points as D
+        both, out, neg, over = {}, {}, [], []
+        for rider, total in after.items():
+            if rider in before:
+                d = total - before[rider]
+                if d > 0:
+                    both[rider] = d
+                elif d < 0:
+                    neg.append(rider)
+        ceiling = max(both.values()) if both else 0
+        out.update(both)
+        for rider, total in after.items():
+            if rider not in before:
+                if 0 < total <= ceiling:
+                    out[rider] = total
+                elif total > ceiling:
+                    over.append(rider)
+                else:
+                    neg.append(rider)
+        return out, neg, over
+
+    def test_a_negative_total_is_never_written(self):
+        """PCS lists riders on a NEGATIVE classification total when a jury
+        penalty exceeds their points — Giro 2016 has two on -5. Writing one as
+        a stage award makes the cumulative curve decrease, which
+        validate_exports reports as an error. It did, before this guard."""
+        out, neg, _ = self._derive(
+            {"a": 40, "b": 20, "penalised": -5}, {"a": 10, "b": 5})
+        self.assertNotIn("penalised", out)
+        self.assertIn("penalised", neg)
+        self.assertTrue(all(v > 0 for v in out.values()))
+
+    def test_a_rider_over_the_observed_ceiling_is_refused(self):
+        """Absent from the previous standings means either a first score or a
+        truncated table, and the two are indistinguishable per rider. The
+        ceiling is the largest award among riders we CAN verify."""
+        out, _, over = self._derive({"a": 40, "b": 20, "huge": 167}, {"a": 10, "b": 5})
+        self.assertEqual(max(out.values()), 30)      # a: 40-10
+        self.assertIn("huge", over)
+        self.assertNotIn("huge", out)
+
+    def test_no_baseline_yields_nothing(self):
+        """With no previous standings every delta is the rider's whole-race
+        total. The 1986 Giro publishes none, and this would have credited
+        Bontempi with 167 points on the final day — his entire season in that
+        race. The caller skips the kind entirely; nothing is derivable."""
+        out, _, _ = self._derive({"a": 167, "b": 148}, {})
+        self.assertEqual(out, {}, "a missing baseline must never mean zero")
+

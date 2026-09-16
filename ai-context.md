@@ -4300,14 +4300,61 @@ do damage. What settles it is the direction of the error: with Intergiro in, we
 are **LOW where we differ and essentially never HIGH** (2024: high on 2,
 low on 6). Over-counting would look the opposite.
 
-### The residual is PCS disagreeing with PCS
+### The residual was mostly the MISSING FINALE, not PCS disagreeing with itself
 
-Giro 2005 sits at 62% and 2015 at 71%, and no heading explains it. Summing
-**every heading on every stage page** — including ones that should not count —
-gives Bettini 152 against the classification's 162, and Nizzolo 164 against
-181. The points are not published per-stage at all, so there is nothing to
-extract and a reconciliation would be invention. Same shape as the Vuelta
-2026's six-rider gap, larger in some Giro years.
+**This section said the opposite and was wrong.** It read: "the points are not
+published per-stage at all, so there is nothing to extract and a reconciliation
+would be invention." The first half is true and the conclusion does not follow.
+
+Giro 2005 sat at 62% and 2015 at 71%, and summing every heading on every stage
+page gives Bettini 152 against a published 162, Nizzolo 164 against 181. What
+that actually proves is only that the STAGE PAGES do not have it. PCS publishes
+the **cumulative** points and KOM classification on every stage page, so the
+finale's award is simply (classification after the last stage) − (classification
+after the one before). That is PCS's own data.
+
+41 editions carried points for every stage but the last, because PCS 500s a
+finale's `-points` page and for most years the stage page has no tables either.
+Nizzolo's missing 17 = **+22 on stage 21, −5 for a jury penalty on stage 16**,
+exactly. `derive_final_stage_points.py` recovers them; see "Recovering a
+finale from the classifications" below.
+
+Giro 2005 **62% → 80%**, Giro 2015 **71% → 90%**, overall **89.9% → 93.0%**.
+
+What genuinely IS upstream inconsistency is the remainder — and it is much
+smaller than this section used to claim.
+
+### Recovering a finale from the classifications (2026-09-15)
+
+`derive_final_stage_points.py`. Four guards, each of which caught something
+real, and the tool is mostly those guards:
+
+1. **A baseline is mandatory.** With no penultimate standings every delta
+   becomes the rider's whole-race total. The 1986 Giro publishes none, and the
+   first run credited Bontempi with **167 points on the final day** — his
+   entire classification. "No baseline" must mean skip, never assume zero.
+2. **A rider absent from the previous standings** either scored their first
+   points on the finale or the earlier table was truncated, and per rider those
+   are indistinguishable. Accept one only up to the largest award observed
+   among riders that CAN be verified — a ceiling read from the stage's own
+   data, not a magic number.
+3. **Never write a non-positive value.** PCS lists riders on a NEGATIVE
+   classification total when a penalty exceeds their points (Giro 2016 has two
+   on −5). The first version's ceiling test passed those straight through, the
+   cumulative curve decreased, and `validate_exports` failed with 2 errors.
+   That is the validator doing its job on a defect this doc's author
+   introduced.
+4. **The write is gated on measured improvement.** For each classification it
+   computes agreement with PCS's published table before and after, and writes
+   only if it improves. This is not ceremony: it refused **Vuelta 2000 POINTS,
+   which would have gone 66 → 26 exact**, plus two KOM regressions. 17
+   classifications were dropped as unproven.
+
+Derived editions are recorded in `derived_final_stage_points.json`, and
+`refresh_stage_points.py` reads that file so a later refresh cannot purge them
+— to the refresher, a page with no points tables is exactly why they were
+derived in the first place. Re-run this after any refresh, like
+`fix_name_swaps --replay` after a re-scrape.
 
 ### Two operational lessons from the run itself
 
@@ -5407,7 +5454,7 @@ python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
 
-# Unit tests — 575 as of 2026-09-16
+# Unit tests — 578 as of 2026-09-16
 python3 -m unittest discover -p "test_*.py"
 
 # Exported-JSON checks (run after any export). 470 files, 0 errors and

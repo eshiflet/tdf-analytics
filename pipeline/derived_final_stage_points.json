@@ -1,0 +1,416 @@
+{
+ "giro": {
+  "1936": {
+   "stage": 21,
+   "slug": "stage-19",
+   "sprint_riders": 0,
+   "sprint_points": 0,
+   "kom_riders": 13,
+   "kom_points": 28,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "1969": {
+   "stage": 24,
+   "slug": "stage-23",
+   "sprint_riders": 0,
+   "sprint_points": 0,
+   "kom_riders": 2,
+   "kom_points": 20,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "1999": {
+   "stage": 22,
+   "slug": "stage-22",
+   "sprint_riders": 17,
+   "sprint_points": 166,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2000": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 16,
+   "sprint_points": 166,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2001": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 18,
+   "sprint_points": 166,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2002": {
+   "stage": 20,
+   "slug": "stage-20",
+   "sprint_riders": 18,
+   "sprint_points": 166,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2003": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 14,
+   "sprint_points": 158,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2004": {
+   "stage": 20,
+   "slug": "stage-20",
+   "sprint_riders": 18,
+   "sprint_points": 162,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2005": {
+   "stage": 20,
+   "slug": "stage-20",
+   "sprint_riders": 19,
+   "sprint_points": 166,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2006": {
+   "stage": 20,
+   "slug": "stage-20",
+   "sprint_riders": 20,
+   "sprint_points": 166,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2007": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 20,
+   "sprint_points": 141,
+   "kom_riders": 3,
+   "kom_points": 6,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2008": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 15,
+   "sprint_points": 138,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2009": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 29,
+   "sprint_points": 135,
+   "kom_riders": 5,
+   "kom_points": 5,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2010": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 13,
+   "sprint_points": 132,
+   "kom_riders": 3,
+   "kom_points": 6,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2011": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 15,
+   "sprint_points": 142,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2013": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 33,
+   "sprint_points": 198,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2014": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 29,
+   "sprint_points": 405,
+   "kom_riders": 3,
+   "kom_points": 6,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2015": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 23,
+   "sprint_points": 286,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2016": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 27,
+   "sprint_points": 312,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2017": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 10,
+   "sprint_points": 64,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2018": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 27,
+   "sprint_points": 312,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2020": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 10,
+   "sprint_points": 64,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2021": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 10,
+   "sprint_points": 64,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2022": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 10,
+   "sprint_points": 64,
+   "kom_riders": 2,
+   "kom_points": 3,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  }
+ },
+ "vuelta": {
+  "1955": {
+   "stage": 15,
+   "slug": "stage-15",
+   "sprint_riders": 0,
+   "sprint_points": 0,
+   "kom_riders": 11,
+   "kom_points": 84,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "1965": {
+   "stage": 20,
+   "slug": "stage-18",
+   "sprint_riders": 0,
+   "sprint_points": 0,
+   "kom_riders": 15,
+   "kom_points": 117,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2001": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 6,
+   "sprint_points": 94,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2004": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 15,
+   "sprint_points": 142,
+   "kom_riders": 1,
+   "kom_points": 3,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2006": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 7,
+   "sprint_points": 105,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2007": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 10,
+   "sprint_points": 119,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2008": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 20,
+   "sprint_points": 156,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2009": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 8,
+   "sprint_points": 95,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2010": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 19,
+   "sprint_points": 156,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2011": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 18,
+   "sprint_points": 156,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2012": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 6,
+   "sprint_points": 91,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2013": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 24,
+   "sprint_points": 166,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2014": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 15,
+   "sprint_points": 142,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2016": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 10,
+   "sprint_points": 115,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2017": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 17,
+   "sprint_points": 149,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2018": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 18,
+   "sprint_points": 149,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  },
+  "2019": {
+   "stage": 21,
+   "slug": "stage-21",
+   "sprint_riders": 18,
+   "sprint_points": 149,
+   "kom_riders": 0,
+   "kom_points": 0,
+   "method": "PCS classification after the final stage minus after the one before it",
+   "derived_on": "2026-09-15"
+  }
+ }
+}

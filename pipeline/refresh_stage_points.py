@@ -136,6 +136,27 @@ def fetch_points(race_info, year, slug, need_stage_page):
 # back byte-identical, which is the whole reason for not re-scraping.
 MUTABLE = {"sprint_points", "kom_points"}
 
+DERIVED_RECORD = os.path.join(HERE, "derived_final_stage_points.json")
+
+
+def derived_finales():
+    """{(race, year, stage)} filled by derive_final_stage_points.py.
+
+    Those finales hold points taken from PCS's cumulative classifications
+    because the stage page publishes none. To this tool that page looks exactly
+    like "no points awarded", so without this set a refresh would purge them —
+    the same shape as a re-scrape undoing a name-swap repair.
+    """
+    if not os.path.exists(DERIVED_RECORD):
+        return set()
+    with open(DERIVED_RECORD, encoding="utf-8") as f:
+        rec = json.load(f)
+    return {(race, int(y), e["stage"]) for race, years in rec.items()
+            for y, e in years.items()}
+
+
+DERIVED = derived_finales()
+
 
 def refresh_year(race, race_info, year, apply_changes, probe_only):
     files = stage_files(race, year)
@@ -178,6 +199,11 @@ def refresh_year(race, race_info, year, apply_changes, probe_only):
         # 21, which are their ages, not points.
         drop_sprint = bool(before[0]) and not sprint
         drop_kom = bool(before[1]) and not kom
+        if (drop_sprint or drop_kom) and (race, year, n) in DERIVED:
+            # Derived from the classifications, not from this page. The page
+            # having nothing is exactly why they were derived.
+            time.sleep(SR.DELAY * 0.5)
+            continue
         if (drop_sprint and not saw["sprint"]) or (drop_kom and not saw["kom"]):
             lost.append((n, slug, before, (sprint, kom)))
             time.sleep(SR.DELAY * 0.5)
