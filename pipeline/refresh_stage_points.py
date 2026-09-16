@@ -136,11 +136,11 @@ def fetch_points(race_info, year, slug, need_stage_page):
 # back byte-identical, which is the whole reason for not re-scraping.
 MUTABLE = {"sprint_points", "kom_points"}
 
-DERIVED_RECORD = os.path.join(HERE, "derived_final_stage_points.json")
+DERIVED_RECORD = os.path.join(HERE, "derived_stage_points.json")
 
 
 def derived_finales():
-    """{(race, year, stage)} filled by derive_final_stage_points.py.
+    """{(race, year, stage)} filled by derive_missing_stage_points.py.
 
     Those finales hold points taken from PCS's cumulative classifications
     because the stage page publishes none. To this tool that page looks exactly

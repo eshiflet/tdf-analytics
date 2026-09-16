@@ -88,7 +88,15 @@
    "kom_riders": 0,
    "kom_points": 0,
    "method": "PCS classification after the final stage minus after the one before it",
-   "derived_on": "2026-09-15"
+   "derived_on": "2026-09-15",
+   "10": {
+    "slug": "stage-10",
+    "keys": [
+     "kom_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   }
   },
   "2006": {
    "stage": 20,
@@ -239,6 +247,16 @@
    "kom_points": 3,
    "method": "PCS classification after the final stage minus after the one before it",
    "derived_on": "2026-09-15"
+  },
+  "2012": {
+   "10": {
+    "slug": "stage-10",
+    "keys": [
+     "kom_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   }
   }
  },
  "vuelta": {
@@ -410,7 +428,63 @@
    "kom_riders": 0,
    "kom_points": 0,
    "method": "PCS classification after the final stage minus after the one before it",
-   "derived_on": "2026-09-15"
+   "derived_on": "2026-09-15",
+   "6": {
+    "slug": "stage-6",
+    "keys": [
+     "sprint_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   },
+   "9": {
+    "slug": "stage-9",
+    "keys": [
+     "sprint_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   },
+   "10": {
+    "slug": "stage-10",
+    "keys": [
+     "sprint_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   },
+   "11": {
+    "slug": "stage-11",
+    "keys": [
+     "sprint_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   },
+   "17": {
+    "slug": "stage-17",
+    "keys": [
+     "sprint_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   },
+   "19": {
+    "slug": "stage-19",
+    "keys": [
+     "sprint_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   },
+   "20": {
+    "slug": "stage-20",
+    "keys": [
+     "sprint_points"
+    ],
+    "method": "PCS classification delta across consecutive stages",
+    "derived_on": "2026-09-16"
+   }
   }
  }
 }

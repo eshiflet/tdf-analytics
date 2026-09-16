@@ -681,11 +681,11 @@ if __name__ == "__main__":
     unittest.main(verbosity=2)
 
 class TestDerivedFinalStagePoints(unittest.TestCase):
-    """derive_final_stage_points.py — the guards, which is all that file is."""
+    """derive_missing_stage_points.py — the guards, which is all that file is."""
 
     def _derive(self, after, before):
         """The write rule, exercised through the module's own logic."""
-        import derive_final_stage_points as D
+        import derive_missing_stage_points as D
         both, out, neg, over = {}, {}, [], []
         for rider, total in after.items():
             if rider in before:

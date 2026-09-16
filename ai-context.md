@@ -2549,6 +2549,19 @@ tdf-analytics/
     ├── build_giro_points.py          # Extracts sprint/KOM points from giro_scrapes/ → giro_*_points.json
     │                                 #   Indexes by STAGE NUMBER over a contiguous range, not by file
     │                                 #   order: a cancelled stage has no file but does have a DB row
+    ├── derive_missing_stage_points.py # Fills an EMPTY stage's sprint/KOM points from PCS's own
+    │                                 #   cumulative classifications: (after stage N) - (after N-1).
+    │                                 #   Four guards, each of which caught something real — a baseline is
+    │                                 #   mandatory, a rider absent from the baseline is capped by the
+    │                                 #   largest verifiable award, non-positive values are never written
+    │                                 #   (PCS lists penalised riders on -5), and every write is gated on
+    │                                 #   MEASURED improvement vs PCS's published table. Records what it
+    │                                 #   derived in derived_stage_points.json. Never overwrites scraped
+    │                                 #   data, and never touches a PARTIAL stage
+    ├── audit_points_residual.py      # How far our per-stage points are from PCS's published
+    │                                 #   classifications, and --localize says WHY: PENALTY / SCALE /
+    │                                 #   JITTER / UNEXPLAINED. Built because "the residual is upstream"
+    │                                 #   was asserted twice here and was wrong both times
     ├── refresh_stage_points.py       # Re-reads ONLY sprint_points/kom_points into existing scrape files,
     │                                 #   for giro + vuelta. --probe/--dry-run/--apply/--resume, PID-locked.
     │                                 #   Asserts no other key changes before saving, so it can never
@@ -4316,7 +4329,7 @@ after the one before). That is PCS's own data.
 41 editions carried points for every stage but the last, because PCS 500s a
 finale's `-points` page and for most years the stage page has no tables either.
 Nizzolo's missing 17 = **+22 on stage 21, −5 for a jury penalty on stage 16**,
-exactly. `derive_final_stage_points.py` recovers them; see "Recovering a
+exactly. `derive_missing_stage_points.py` recovers them; see "Recovering a
 finale from the classifications" below.
 
 Giro 2005 **62% → 80%**, Giro 2015 **71% → 90%**, overall **89.9% → 93.0%**.
@@ -4324,9 +4337,94 @@ Giro 2005 **62% → 80%**, Giro 2015 **71% → 90%**, overall **89.9% → 93.0%*
 What genuinely IS upstream inconsistency is the remainder — and it is much
 smaller than this section used to claim.
 
+### What the points residual actually IS — bounded, 2026-09-16
+
+`audit_points_residual.py` exists so nobody has to guess again. It compares our
+summed per-stage points to PCS's published classifications, and `--localize`
+walks PCS's stage-by-stage standings to say WHY each rider disagrees.
+
+**First: one number was hiding two different things.**
+
+| | |
+|---|---|
+| classifications where we HAVE per-stage data | Giro **87.7%**, Vuelta **88.2%** exact |
+| classifications where we have NOTHING | 59 Giro + 94 Vuelta, **1,129 riders** |
+
+That second group is old editions where PCS publishes a small final
+classification (3-16 riders) and no per-stage points pages at all. Those finals
+ARE in the database, via `classification_standings` — they are missing from the
+by-stage CHART by necessity, not by defect. Quoting the combined figure (81% /
+74%) conflates a real residual with an era that never had per-stage data.
+
+**Second, where the real disagreements come from** (localized, sampled):
+
+| category | what it is |
+|---|---|
+| **PENALTY** | a jury deduction. PCS applies it to the classification and shows nothing on the stage page, so we read HIGH. The largest single identified cause — 51% of the Giro sample. Giro 2016 lists two riders on **-5**, a penalty exceeding everything they scored. |
+| **SCALE** | PCS's classification delta is a consistent multiple of its own stage page's award. The Vuelta 2024's stage 19 gains 30/25/22/19 where the page says 20/17/15/13. PCS disagreeing with PCS; believing either page is a choice, not a fix. |
+| **JITTER** | the award is credited to an adjacent stage. |
+| **UNEXPLAINED** | Giro 23%, Vuelta 28% of disagreements. **This is the number worth quoting** — not the whole residual. |
+
+Modelling penalties would need negative per-stage values and a DECREASING
+cumulative line, which `validate_exports` currently treats as an error. That is
+a modelling decision, not a bug fix, and it is deliberately not taken.
+
+### Extending the derivation past the finale was nearly worthless (2026-09-16)
+
+`derive_final_stage_points.py` became `derive_missing_stage_points.py` and now
+fills ANY empty stage, not just the last. Measured across the 35 modern
+editions that have one (111 stages), **3 editions passed the improvement gate**:
+
+| | | |
+|---|---|---|
+| Vuelta 2019 POINTS | 7 stages, 58 riders, 475 pts | 22% -> **46%** |
+| Giro 2005 KOM | 1 stage, 3 pts | 94% -> 98% |
+| Giro 2012 KOM | 1 stage, 6 pts | 97% -> **100%** |
+
+**The gate refused 16 classifications**, six of which would have made things
+worse — Vuelta 2000 POINTS **66 -> 26 exact**, Giro 2013 POINTS 80 -> 75,
+Vuelta 2013 KOM 48 -> 44. And the four 1990s Vueltas with 12-20 empty stages
+each (1990, 1992, 1995, 1999) all came back **0 -> 0**, exactly as the audit
+predicted: no usable published classification to derive from.
+
+**So the finale fill had already captured essentially all the recoverable
+value.** Record the negative result rather than repeating the sweep.
+
+### Three ways a stage page goes wrong, all seen in the 2019 Vuelta
+
+Worth knowing before diagnosing a thin year, because they look identical in our
+data (an empty or short dict) and are not the same problem:
+
+1. **PCS has no points tables at all.** Stage 10, a 36.2 km ITT: the points
+   page carries only "Team day classification".
+2. **PCS has the tables and the SCALE but no riders.** Stage 17 publishes
+   "Intermediate sprint | Atienza" and "Points at finish" with a proper `pnt`
+   column reading 25, 20, 16 — and every rider cell is empty
+   (`<td class="ridername "><div class="cont"></div></td>`). Our parser is
+   right to credit nothing; this was briefly written up here as a parser bug
+   and it is not one.
+3. **PCS has an intermediate sprint and NO "Points at finish".** Stages 4 and 7
+   hold 3 riders / 7 points for a "Sprint of large group" finish. These are
+   PARTIAL, not empty, so the derivation skips them by design — **scraped data
+   always wins, and replacing it with derived values is a provenance
+   downgrade.** Quantified and left alone.
+
+### Scope a networked sweep LOCALLY before running it
+
+The first unscoped run of the generalized tool spent **4.5 hours and emitted
+one line**. It was fetching standings for every "empty" stage of the pre-1960
+Giro, where no published classification exists to measure against, so every
+result was discarded after the fetching — and PCS began timing out, which the
+tool (correctly) treats as "no standings", making a slow run's output
+indistinguishable from a real absence. The work set was computable from files
+already on disk with ZERO fetches: 537 stages, narrowing to 111 once the
+no-classification era was excluded. `derive_missing_stage_points.py` now skips
+a year with no points era at all. **Count the work locally first; a sweep whose
+gaps you cannot tell from real absences is not worth running.**
+
 ### Recovering a finale from the classifications (2026-09-15)
 
-`derive_final_stage_points.py`. Four guards, each of which caught something
+`derive_missing_stage_points.py`. Four guards, each of which caught something
 real, and the tool is mostly those guards:
 
 1. **A baseline is mandatory.** With no penultimate standings every delta
@@ -4350,7 +4448,7 @@ real, and the tool is mostly those guards:
    which would have gone 66 → 26 exact**, plus two KOM regressions. 17
    classifications were dropped as unproven.
 
-Derived editions are recorded in `derived_final_stage_points.json`, and
+Derived editions are recorded in `derived_stage_points.json`, and
 `refresh_stage_points.py` reads that file so a later refresh cannot purge them
 — to the refresher, a page with no points tables is exactly why they were
 derived in the first place. Re-run this after any refresh, like
