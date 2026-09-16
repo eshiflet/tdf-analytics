@@ -2457,7 +2457,8 @@ tdf-analytics/
 │   │                                 #   pages are generated from, so renaming a meta tag here now
 │   │                                 #   fails the generator loudly instead of silently
 │   ├── vite.config.ts                # base: "/tdf-analytics/" — required for GitHub Pages.
-│   │                                 #   rollupOptions.input is DERIVED from race-page-meta.mjs
+│   │                                 #   rolldownOptions.input is DERIVED from race-page-meta.mjs
+│   │                                 #   (`rollupOptions` pre-Vite-8; the old key still works)
 │   ├── race-page-meta.mjs            # Data-only: SITE (canonical host) + per-race title/description/
 │   │                                 #   image/alt. Read by BOTH the generator and vite.config.ts
 │   ├── generate-race-pages.mjs       # prebuild/predev: writes <race>/index.html, public/sitemap.xml
@@ -2489,26 +2490,26 @@ tdf-analytics/
 │           ├── tour/                 # Tour de France — 113 years, 1903–2026
 │           │   ├── gc_by_stage_YEAR.json  # One per year, lazy-loaded, one chunk each
 │           │   ├── all_races_summary.json # Cross-year aggregate for the All Years view
-│           │   └── riders_index.json      # 5,471 riders / 633 teams — 787 KB
+│           │   └── riders_index.json      # 5,471 riders / 632 teams — 815 KB
 │           ├── giro/                 # Giro d'Italia — 109 years, 1909–2026
 │           │   ├── gc_by_stage_YEAR.json
 │           │   ├── all_races_summary.json # built by export_race_summary.py --race giro
-│           │   └── riders_index.json      # 4,718 riders / 712 teams — 666 KB
-│           ├── vuelta/               # Vuelta a España — 80 years, 1935–2025 (2026 not run yet)
+│           │   └── riders_index.json      # 4,722 riders / 733 teams — 698 KB
+│           ├── vuelta/               # Vuelta a España — 81 years, 1935–2026
 │           │   ├── gc_by_stage_YEAR.json
 │           │   ├── all_races_summary.json
-│           │   └── riders_index.json      # 4,430 riders / 581 teams — 593 KB
+│           │   └── riders_index.json      # 4,491 riders / 601 teams — 637 KB
 │           ├── classics/             # One-day classics — 134 years, 1892–2026
 │           │   ├── gc_by_stage_YEAR.json  # An aggregate "season": N races ordered by stage_date,
 │           │   │                          #   NOT stages of one race. See "by-Stage Table for an
 │           │   │                          #   aggregate race"
 │           │   ├── race_history.json      # Per-race small multiples. No all_races_summary.json
-│           │   └── riders_index.json      # 11,934 riders / 1,637 teams — 2,078 KB, the largest
+│           │   └── riders_index.json      # 11,934 riders / 1,637 teams — 2,271 KB, the largest
 │           │                              #   single asset the app ships
 │           └── gravel/               # Life Time off-road races — 33 years, 1994–2026
 │               ├── gc_by_stage_YEAR.json  # Aggregate season, same shape as classics
 │               ├── race_history.json      # No all_races_summary.json — this set awards no points
-│               └── riders_index.json      # 3,569 riders / 0 teams (no team data off-road) — 436 KB
+│               └── riders_index.json      # 3,901 riders / 32 teams — 478 KB
 └── pipeline/                         # Data pipeline — not deployed
     ├── cycling.db                    # SQLite DB (gitignored, ~140MB, NOT regenerable — back up with db_backup.py)
     ├── db_backup.py                  # Rotating DB backups → db_backups/ (auto-run by add_stages.py before deletes)
@@ -2546,6 +2547,14 @@ tdf-analytics/
     │                                 #   (merged from old ingest_giro.py/ingest_vuelta.py 2026-07-18; see
     │                                 #   "Pipeline consolidation" note above)
     ├── build_giro_points.py          # Extracts sprint/KOM points from giro_scrapes/ → giro_*_points.json
+    │                                 #   Indexes by STAGE NUMBER over a contiguous range, not by file
+    │                                 #   order: a cancelled stage has no file but does have a DB row
+    ├── refresh_stage_points.py       # Re-reads ONLY sprint_points/kom_points into existing scrape files,
+    │                                 #   for giro + vuelta. --probe/--dry-run/--apply/--resume, PID-locked.
+    │                                 #   Asserts no other key changes before saving, so it can never
+    │                                 #   revert a name-swap repair the way a full re-scrape would.
+    │                                 #   A stage may LOSE points only if the page was fetched and has no
+    │                                 #   points column — a failed fetch is refused, not written as empty
     ├── fix_giro_rider_names.py       # Fixes single-word rider names in the Giro data by reconstructing
     │                                 #   "LASTNAME Firstname" from the rider slug (e.g. rider/fausto-coppi → "Coppi Fausto")
     │                                 #   Strips disambiguation digits (rider/pozzi2 → pozzi). Auto-run by ingest_race.py --race giro.
@@ -3056,7 +3065,7 @@ Deliberately **not** part of `npm run build` — it needs a browser binary, and 
 
 **`generate-race-pages.mjs` fails loudly now.** Every metadata rewrite goes through `sub()`, which throws if its pattern matched nothing. `String.replace` on a non-matching regex is a silent no-op, and that is how the script rotted: it kept rewriting a `<p class="subtitle">` that commit `58ce75f` had deleted from index.html, so the per-race subtitle copy silently did nothing for months. The dead `subtitle` field is gone. It also generates `public/sitemap.xml` and `public/robots.txt`, so the race list and the host each live in exactly one place.
 
-**Static landing pages must be listed in TWO places, and now aren't.** `generate-race-pages.mjs` writes `<race>/index.html` from `race-page-meta.mjs`'s `RACES`, and `vite.config.ts` needs each one in `rollupOptions.input` or it never reaches `build/`. `classics/` was generated but not listed, so `/classics/` 404'd on the live site **while working perfectly in dev**, where Vite serves the file straight off disk. (The cross-race footer links that surfaced that 404 were removed 2026-08-19 as redundant with the race dropdown. The URLs are still built and still in `sitemap.xml`, so the failure mode is unchanged — it would just surface via the sitemap now rather than a click, which is slower to notice.) `vite.config.ts` now derives its input map from the same `RACES` object. `race-page-meta.mjs` is data-only for exactly this reason — importing the generator would run its file writes every time the Vite config loads.
+**Static landing pages must be listed in TWO places, and now aren't.** `generate-race-pages.mjs` writes `<race>/index.html` from `race-page-meta.mjs`'s `RACES`, and `vite.config.ts` needs each one in `rolldownOptions.input` (named `rollupOptions` before Vite 8; the old key is still honoured) or it never reaches `build/`. `classics/` was generated but not listed, so `/classics/` 404'd on the live site **while working perfectly in dev**, where Vite serves the file straight off disk. (The cross-race footer links that surfaced that 404 were removed 2026-08-19 as redundant with the race dropdown. The URLs are still built and still in `sitemap.xml`, so the failure mode is unchanged — it would just surface via the sitemap now rather than a click, which is slower to notice.) `vite.config.ts` now derives its input map from the same `RACES` object. `race-page-meta.mjs` is data-only for exactly this reason — importing the generator would run its file writes every time the Vite config loads.
 
 **No-data overlays**: If `currentMetric === "points"` and `year < 1953`, or `currentMetric === "kom"` and `year < 1933`, the chart area shows an explanatory text message instead of chart elements.
 
@@ -3103,6 +3112,44 @@ npm run build                # verify production build compiles
 node verify.mjs              # smoke-test the built bundle (year switching, axes, tooltips)
 node verify-views.mjs        # deep-link/view regressions (default-hash load, riders grid/detail, allraces, overview)
 ```
+
+---
+
+## Build toolchain (current as of 2026-09-16)
+
+| | version | note |
+|---|---|---|
+| Node (CI **and** local) | **24** | was pinned to 20 in CI, which is past EOL and a different major from every developer |
+| Vite | **8.3** | builds with **rolldown**, not Rollup; Oxc and Lightning CSS, not esbuild |
+| `actions/checkout`, `actions/setup-node` | **v7** | |
+| `actions/upload-pages-artifact`, `actions/deploy-pages` | **v5** | |
+| `npm audit` | **0 vulnerabilities** | |
+
+**Four things here that are easy to get wrong:**
+
+* **`npm audit fix --force` proposed the wrong upgrade.** The only advisory that
+  needed a real version bump was `esbuild <=0.24.2`, reachable through Vite, and
+  `--force` wanted Vite 8. But **Vite 7 already fixes it** (`esbuild ^0.27 ||
+  ^0.28`) *and keeps Rollup*. Taking `--force` would have swapped the bundler
+  inside a security patch for no security benefit. Check the MINIMUM version
+  that clears an advisory before accepting what `--force` offers.
+* **That esbuild advisory is a DEV-SERVER issue** (GHSA-67mh-4wv8-2f99 — a
+  website can read responses from the dev server). It does not affect the built
+  site, so it never warranted rushing.
+* **The rolldown swap barely moved the artifact.** 152 files before and after,
+  and only `main.js` (-1,482 B) and `main.css` (-98 B) changed size at all;
+  every data JSON, image and HTML byte-identical, payload budget -1.9 KB. If a
+  future bundler change moves more than that, it is worth understanding why.
+* **`build.rollupOptions` still works on Vite 8.** It is renamed
+  `rolldownOptions`, and this repo uses the new name — but the old one emits all
+  six entry points and a byte-identical bundle with no deprecation warning
+  (verified by building with it, 2026-09-16). A comment in `vite.config.ts` once
+  claimed otherwise; do not reinstate that claim.
+
+The two Node runtimes are separate and get confused: the one the ACTIONS run on
+(fixed by bumping the action pins) and `node-version:`, the one the SITE is
+BUILT with. The Node 20 deprecation warnings were about the first; they went
+2 -> 0 with the action bumps alone.
 
 ---
 
@@ -5360,11 +5407,11 @@ python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
 
-# Unit tests — 575 as of 2026-09-15
+# Unit tests — 575 as of 2026-09-16
 python3 -m unittest discover -p "test_*.py"
 
 # Exported-JSON checks (run after any export). 470 files, 0 errors and
-# 84 warnings is the expected clean result as of 2026-09-14 (the 470th is
+# 84 warnings is the expected clean result as of 2026-09-16 (the 470th is
 # the 2026 Vuelta) — compare the COUNT against that baseline rather than
 # expecting zero.
 python3 validate_exports.py
