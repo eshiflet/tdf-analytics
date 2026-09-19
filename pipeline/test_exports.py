@@ -1301,12 +1301,66 @@ class TestAiContextHeadlineCounts(unittest.TestCase):
         self.assertEqual(int(m.group(1).replace(",", "")), actual)
 
     def test_the_edition_counts_are_current(self):
+        """Read out of the opening headline, which is where the file states them.
+
+        This used to ask only whether the number appeared ANYWHERE in the file,
+        which in six thousand lines it always does: when the Tour reaches 114
+        editions the string "114" is already present five times over, so the
+        check passed for every value it could ever be asked about. Verified by
+        mutation on 2026-09-19 — all five deliberate staleness mutations
+        survived it. A test that cannot fail is worse than no test, because it
+        is counted as coverage.
+        """
+        import re
         conn = self.db()
-        for race, label in (("Tour de France", "113"), ("Vuelta a España", "81"),
-                            ("Giro d'Italia", "109")):
+        for race in ("Tour de France", "Vuelta a España", "Giro d'Italia"):
             n = conn.execute(
                 """SELECT COUNT(*) FROM race_editions e JOIN races r USING(race_id)
                     WHERE r.name = ?""", (race,)).fetchone()[0]
             with self.subTest(race=race):
-                self.assertIn(str(n), self.doc,
-                              f"{race} has {n} editions; ai-context.md does not say so")
+                m = re.search(r"\*\*" + re.escape(race) + r"\*\* \((?:all )?([\d,]+) editions",
+                              self.doc)
+                self.assertIsNotNone(
+                    m, f"the headline no longer states {race}'s edition count in "
+                       "the shape this reads")
+                self.assertEqual(int(m.group(1).replace(",", "")), n,
+                                 f"{race} has {n} editions")
+
+    def test_the_gc_ladder_triage_counts_are_current(self):
+        """The four numbers ai-context.md quotes for the backwards GC ladders.
+
+        These are the ones most likely to go stale, because the whole point of
+        the bullet is that they shrink as the re-scrape closes them — a repair
+        that fixed 40 stages and left the file saying 342 would read as no
+        progress at all. Derived through audit_gc_ladders' own classifier, so
+        the file and the tool cannot drift apart either.
+        """
+        import re
+        import audit_gc_ladders
+        from collections import Counter
+        conn = self.db()
+        stages, _meta, _ranks = audit_gc_ladders.load(conn)
+        tally = Counter()
+        for rows in stages.values():
+            verdict = audit_gc_ladders.classify(sorted(rows))[0]
+            if verdict:
+                tally[verdict] += 1
+        # Each number is matched IN ITS OWN SENTENCE, not looked for loose in
+        # the file. A bare `assertIn("342", doc)` passes on any long document —
+        # the first draft of this test did exactly that and survived all five
+        # mutations, including deleting the bullet it was meant to guard.
+        expected = [
+            (r"\*\*([\d,]+) stages hold a GC ladder that runs backwards\*\*",
+             sum(tally.values()), "the stage total"),
+            (r"\*\*([\d,]+) ONE ROW\*\*", tally["ONE ROW"], "ONE ROW"),
+            (r"\*\*([\d,]+) PAIR\*\*", tally["PAIR"], "PAIR"),
+            (r"\*\*([\d,]+) LADDER\*\*", tally["LADDER"], "LADDER"),
+        ]
+        for pattern, n, label in expected:
+            with self.subTest(count=label):
+                m = re.search(pattern, self.doc)
+                self.assertIsNotNone(
+                    m, f"ai-context.md no longer states {label} in the shape this "
+                       f"reads; re-anchor the test or restore the sentence")
+                self.assertEqual(int(m.group(1).replace(",", "")), n,
+                                 f"{label} is {n} in the database")
