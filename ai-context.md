@@ -2,7 +2,7 @@
 
 Interactive cycling analytics app covering **21 races in five sets**: the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), the **Vuelta a España** (81 editions, back to 1935), **11 one-day classics** (1892–2026) and **7 off-road races** (gravel and MTB, 1994–2026). The 2026 Tour de France is **complete** — all 21 stages are in the DB, Pogačar won in **73:56:26** and the slowest finisher was Cees Bol at **+6:22:08** (finalized 2026-08-15; see "Finalizing a completed year" below for what changed). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
-**Riders, as of 2026-09-19**: **18,038**, and `riders` holds exactly that many — 17 gravel riders were merged and one split on 2026-09-19 (see "Athlinks' racerId"), taking it from 18,054 — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. (18,050 before the 2026 Vuelta landed that evening; it introduced 4 riders new to the whole archive.) On the 18,050 snapshot, 11,095 appeared in exactly one race set and 36 in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,775 of its 3,885 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
+**Riders, as of 2026-09-19**: **18,037**, and `riders` holds exactly that many — 17 gravel riders were merged and one split on 2026-09-19 (see "Athlinks' racerId"), taking it from 18,054 — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. (18,050 before the 2026 Vuelta landed that evening; it introduced 4 riders new to the whole archive.) On the 18,050 snapshot, 11,095 appeared in exactly one race set and 36 in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,775 of its 3,885 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
 
 ---
 
@@ -514,7 +514,7 @@ against the very placeholder it existed to catch** — found by mutation, not by
 reading it. It now looks for a `?` anywhere in the row. All three fail with
 `displayName()` reverted.
 
-### The `?` that is NOT a placeholder — 2 riders, NOT applied
+### The `?` that is NOT a placeholder — 2 riders, 1 since merged
 
 Two names carry a `?` inside a word: **`S?ren Nissen`** (Leadville 2015) and
 **`Vojt?ch Marvan`** (Unbound 2024). That is mojibake, not a placeholder, and
@@ -525,20 +525,36 @@ placeholder dot the same way.
 **It is upstream.** `gravel_scrapes/_raw/470827_701199.json`, the raw Athlinks
 response, already says `"S?ren Nissen"` — our parser did not break it.
 
-**Nothing here is safely fixable offline, so nothing was:**
-- `S?ren` could be `Søren` or `Sören`, and the archive holds a SECOND rider,
-  `rider/soren-nissen` (Unbound 2018), whose Athlinks record spells it `Soren`.
-  They are very likely one man — Nissen is Luxembourgish and the 2015 row's
-  `us` is a registration locality — but `racerId` is **0** on all three raw
-  records, so Athlinks offers no identity link and a merge would be my
-  inference, not the data's ([[project_rider_identity_files]] is the right
-  route, and it is Eric's call).
-- Renaming picks a letter no source states. [[feedback_no_fabricated_data]].
+**MERGED 2026-09-19, on Eric's decision** — and the merge, not a rename, is
+what removed the corruption. `rider/s-ren-nissen` is absorbed into
+`rider/soren-nissen`, whose Athlinks record for Unbound 2018 spells him
+`Soren`. The surviving id carries no `?` in either the slug or the name, so the
+defect is gone without anyone having to choose between `Søren` and `Sören`.
+
+**The ages settled it, not the names.** A name match is what created the
+problem; matching on it again would only compound it. Athlinks gives **age 30
+at Leadville 2015** and **age 33 at Unbound 2018** — three years apart across a
+three-year gap. Both rows are male, they share no stage (the test that would
+have disproved it), and `racerId` is **0** on all three raw records, so
+Athlinks offers no identity link of its own. The nationalities disagree, `us`
+against `lu`, and `lu` is right: Nissen is Luxembourgish, and Leadville records
+where a rider registered from.
+
+He now holds both results — Leadville 2015 (5th) and Unbound 2018 (39th). One
+rider row gone, one result re-pointed, and **nothing else in 790,373 rows
+moved**. `rider_aliases.json` carries the evidence and is read at ingest, so a
+rebuild cannot recreate the id; the redirect map went **142 -> 143**, so the
+dead `/rider/s-ren-nissen` link now resolves instead of dying.
+
+**Marvan stays, and is now the only row the check reports.** He has no clean
+twin to merge into, and renaming him would pick a letter no source states —
+`Vojtěch` is near-certain for a Czech name of that shape, which is not the same
+as published. [[feedback_no_fabricated_data]].
 
 `validate_db.check_corrupt_rider_names()` reports them, so they stay a standing
 worklist item rather than something someone noticed once. **It draws the line
 deliberately**: a `?` between two letters is reported, a `?`, `??`, `???` or `.`
-standing alone after a surname is not. Reporting both would bury two real
+standing alone after a surname is not. Reporting both would bury the real
 defects under 16 rows that are working as intended. It also PROVES the minted
 id rather than inferring it from the shape — `slugify("S?ren Nissen")` is
 literally `s-ren-nissen` — because a hyphen is not evidence; every two-word

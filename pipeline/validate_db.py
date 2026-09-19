@@ -272,15 +272,23 @@ def check_corrupt_rider_names(c):
     riders carry one, the frontend stops rendering it (see displayName()), and
     they are deliberately NOT reported here.
 
-    The two that are: `S?ren Nissen` and `Vojt?ch Marvan`. Both are upstream —
-    the raw Athlinks response already says `S?ren` — and both had their
-    rider_id MINTED from the corrupt string, so this also names the ids. Left
-    unrepaired on purpose: `S?ren` could be `Søren` or `Sören`, no source
-    states which, and the archive's second `soren-nissen` is very likely the
-    same man but `racerId` is 0 on every raw record, so a merge would be
-    inference. See ai-context.md, "Pujol ?" is not a man's name.
+    It found two: `S?ren Nissen` and `Vojt?ch Marvan`. Both are upstream — the
+    raw Athlinks response already says `S?ren` — and both had their rider_id
+    MINTED from the corrupt string, so this also names the ids.
 
-    A count ABOVE the two means a new scrape brought in more; read the raw file
+    **Nissen was merged away on 2026-09-19** into `rider/soren-nissen`, the
+    same man filed twice because Athlinks spelled him two ways. The ages
+    decided it, not the names: 30 at Leadville 2015 and 33 at Unbound 2018.
+    That removed the corrupt id and the corrupt name together; the evidence is
+    in `rider_aliases.json`, which the ingest reads, so a rebuild cannot
+    recreate either.
+
+    **Marvan stays**, and is now the only row here. He has no clean twin to
+    merge into, and renaming him would pick a letter no source states
+    (`Vojtěch` is near-certain for a Czech name of that shape, which is not the
+    same as published).
+
+    A count ABOVE one means a new scrape brought in more; read the raw file
     before touching the name, because the corruption is usually already there.
     """
     rows = c.execute(
@@ -308,7 +316,7 @@ def check_corrupt_rider_names(c):
          f"rather than PCS's placeholder for an unrecorded first name. "
          f"{len(minted)} had an id minted from the corrupt string. The raw "
          f"scrape usually holds the same corruption — check it before renaming, "
-         f"and see ai-context.md for why these two are not repaired offline. "
+         f"and see ai-context.md for why these are not repaired offline. "
          + ", ".join(f"{rid} ({name!r})" for rid, name in bad[:4]))
 
 
