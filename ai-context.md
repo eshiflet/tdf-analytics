@@ -1680,18 +1680,68 @@ on `Berrettini-Russell Cycles`, Antonio Buelli on `Berettini-`. The evidence is
 in `bikeraceinfo_teams/_pages/*.html`; the classics scrapes carry **no team
 column at all**, so none of this attribution came from PCS.
 
-**There are 83 more team-name pairs one edit apart** (`Molteani`/`Molteni`,
-`Salvaran`/`Salvarani`, `Pelforth` with five separate typos), and
-`normalize_team_names.py` deliberately does **not** touch them. The tell is
-strong — the typo almost always has 0 riders while the correct spelling has
-hundreds — but a tell is not a source page, and some pairs in that list are two
-real teams. `test_an_unlisted_typo_is_not_guessed` pins that refusal down.
+### The rider count decides it (Eric's rule, 2026-09-19)
 
-**`Berettini - Monza` (1923, PCS, 8 riders) is NOT in the map.** It is a
-different sponsor pairing with no correct-spelling sibling to merge into, and
-it came from PCS rather than bikeraceinfo. Almost certainly the same firm with
-a dropped `r` — but "almost certainly" is how a team gets renamed to something
-no source ever published.
+72 further pairs sat one edit apart. **Where one spelling carries the riders
+and the other carries none, the crowded one is the team and the empty one is a
+typo** — `Molteani` 0 against `Molteni` 3,203, `Salvaran` and `Savarani` 0
+against `Salvarani` 2,206, five separate manglings of
+`Pelforth - Sauvage - Lejeune` against its 1,354. Extended to a 4:1 ratio it
+also settles the cases where the typo caught a stray rider or two
+(`Peugeot-Wober` 1 against `Peugeot - Wolber` 287). That is **50 spellings
+across 53 team rows**, all listed in `MISSPELLINGS`.
+
+Pairs are unioned into **connected components before a winner is picked**, so a
+name that is one edit from two others cannot produce a chain — the whole
+component merges onto its most-ridden spelling at once. `Marc Zeepcentrale -
+Superia` absorbs three manglings that way.
+
+**`RENAMES` is the separate, signed-off path.** `Berettini - Monza` (1923, PCS,
+8 riders) is the same Italian firm that appears as `Berrettini` in 1924, 1926
+and 1927, but it came from PCS while the others came via bikeraceinfo, so
+nothing in the database spells *that pairing* correctly and there is no row to
+merge onto. A rename cannot be justified by evidence already in the DB, which
+is exactly why it needs a person: Eric's call, 2026-09-19. The guard runs both
+ways — a `MISSPELLINGS` target that does not exist stops the run, and a
+`RENAMES` target that *does* exist stops it too, because that is a merge.
+
+### What this map refuses to guess
+
+**21 groups are still open**, and they are the ones the rule cannot reach:
+
+* **Both spellings carry riders in comparable numbers** — `Aquilano` (2, 1942)
+  vs `Aquiliano` (1, 1943), `Prina - Hutchinson` vs `Peina-Hutchinson` (1 each),
+  `Helyett-Splendor-Hutchinson` vs `Helyett-Splendor-Hutchonson` (1 each).
+* **The counts contradict other evidence.** `Legnano-Torpedo` has 5 riders and
+  `Legnano-Torpado` 1, so the rule says Torpedo — but one row up,
+  `Torpado - Girardengo` has 161 riders against `Torpedo-Girardengo`'s 0, and
+  Torpado is the real marque. One of those two conclusions is wrong and the
+  counts cannot say which.
+* **`Individuals` (2,055) vs `individual` (3)** is not a typo at all. It is the
+  not-on-a-team marker, and collapsing it is a semantic decision about a
+  category, not a spelling fix.
+* **15 groups where neither spelling has a single rider** (`Gan-Mercier` /
+  `Gan-Maercier`, `San Pellegrino` / `San Pellegino` / `San Pellerino`). The
+  rule has nothing to weigh, and they are **invisible in the app anyway** — the
+  dropdown is built from riders' team attributions, so a team with no riders
+  never appears in it. DB hygiene, not a user-facing defect.
+
+`test_an_unlisted_typo_is_not_guessed` uses `Aquilano`/`Aquiliano` to pin the
+refusal down. Note it originally used `Molteani`/`Molteni`, which stopped being
+an unlisted pair the moment the rule was applied — **an example chosen from
+live data is a test that can go stale**.
+
+### The initials class is separate and still open
+
+14 pairs differ only in how initials are punctuated: `R.M.O.` (595) vs `RMO`
+(207), `G.B.C. - Libertas` (347) vs `GBC-Libertas` (0), and nine variations of
+`J.B. Louvet`. Folding cannot merge them because `J.B.` folds to `j b` and `JB`
+to `jb`. This is a **rule-shaped** class, not a per-name one — joining runs of
+single letters would catch all 14 — but the rider counts point different ways
+inside the `J.B. Louvet` family (`J.B. Louvet - Soly` has 1 against
+`JB Louvet-Soly`'s 6, while `J.B. Louvet - Wolber` has 30 against 8), so
+deciding by count would leave the family spelled inconsistently. It wants one
+house rule, not fifty counts.
 
 ### Two things the re-export surfaced that were not the rename
 

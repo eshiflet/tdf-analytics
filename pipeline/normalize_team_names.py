@@ -83,6 +83,72 @@ DB_PATH = os.path.join(HERE, "cycling.db")
 MISSPELLINGS = {
     "Berretini-Hutchinson": "Berrettini-Hutchinson",
     "Berettini-Russell Cycles": "Berrettini-Russell Cycles",
+    # Eric's rule, 2026-09-19: where one spelling carries the riders and the
+    # other carries none (or a handful against 4x as many), the crowded one is
+    # the team and the empty one is a typo. Every entry below was read off that
+    # comparison; the ones the rule could NOT decide are deliberately absent —
+    # see "What this map refuses to guess".
+    "Benotto-Levrieri": "Benotto - Levriere",
+    "Bertin-Porter 39-Miremo": "Bertin - Porter 39 - Milremo",
+    "Botttecchia-Ursus": "Bottecchia - Ursus",
+    "Carpenter-Zeep centrale-Splendor": "Carpenter - Zeepcentrale - Splendor",
+    "Dielcta-Wolber": "Dilecta - Wolber",
+    "Dilcta-Wolber": "Dilecta - Wolber",
+    "Dreherforte": "Dreher Forte",
+    "FLandria-De Clercq": "Flandria - De Clerck",
+    "Flandria-De Clerk": "Flandria - De Clerck",
+    "Frane Sport-Wolber": "France Sport-Wolber",
+    "Gitane-Frigicreme": "Gitane - Frigécrème",
+    "Golkdor-Gerka": "Goldor - Gerka",
+    "Helyett-Fynsec-Hutchnson": "Helyett - Fynsec - Hutchinson",
+    "Helyett-Hutchison": "Helyett - Hutchinson",
+    "Ijsboercke-Colnago": "Ijsboerke - Colnago",
+    "Il Littorale": "Il Littoriale",
+    "AS-Kaskol": "Kas - Kaskol",
+    "Locomotif-Vredestein": "Locomotief - Vredestein",
+    "Lygie-Settebelo": "Lygie - Settebello",
+    "Magnflex": "Magniflex",
+    "Main-Bergougnan": "Maino - Bergougnan",
+    "Man-Grundig": "Mann - Grundig",
+    "Marc Zeep Centrale-Superia": "Marc Zeepcentrale - Superia",
+    "Marc-Zeepcentale-Superia": "Marc Zeepcentrale - Superia",
+    "Marc-Zeepsentrale-Superia": "Marc Zeepcentrale - Superia",
+    "Margnat-Paloma-Inuris-Dunlop": "Margnat - Paloma - Inuri - Dunlop",
+    "Molteani": "Molteni",
+    "Métopole-Dunlop": "Métropole - Dunlop",
+    "Nivea-Fuschs": "Nivea - Fuchs",
+    "Pelfort-Sauvage-Lejeune": "Pelforth - Sauvage - Lejeune",
+    "Pelforth-Saivage-Lejeune": "Pelforth - Sauvage - Lejeune",
+    "Pelforth-Sauvag-Lejeune": "Pelforth - Sauvage - Lejeune",
+    "Pelforth-Sauvage-Lejeun": "Pelforth - Sauvage - Lejeune",
+    "Pelfoth-Sauvage-Lejeune": "Pelforth - Sauvage - Lejeune",
+    "Peugeot-Wober": "Peugeot - Wolber",
+    "Peugeot-Wolbert": "Peugeot - Wolber",
+    "Plume Vainquer": "Plume-Vainqueur",
+    "Plume-Vanqueur-Regina": "Plume-Vainqueur - Regina",
+    "Salvaran": "Salvarani",
+    "Savarani": "Salvarani",
+    "Senio-Polack": "Senior - Polack",
+    "Stella-Duinlop": "Stella - Dunlop",
+    "Televizier-Betavis": "Televizier - Batavus",
+    "Televizier-Betavus": "Televizier - Batavus",
+    "Torpedo-Girardengo": "Torpado - Girardengo",
+    "Touring-Pierelli": "Touring-Pirelli",
+    "Tricolfilina-Coppi": "Tricofilina - Coppi",
+    "Vitadello": "Vittadello",
+    "Willem II-Gaxelle": "Willem II - Gazelle",
+}
+
+# A typo with NO correctly-spelled sibling to merge into. This renames rather
+# than merges, so it cannot be justified by another row in the database and
+# needs a person to say so — each entry records who and when.
+#
+# `Berettini - Monza` is the 1923 edition of the same Italian firm that appears
+# as `Berrettini` in 1924, 1926 and 1927. It came from PCS (the others came via
+# bikeraceinfo), which is why nothing else in the database spells this pairing
+# correctly. Eric's call, 2026-09-19.
+RENAMES = {
+    "Berettini - Monza": "Berrettini - Monza",
 }
 
 # Case-only merges where the count points at a spelling that is wrong about
@@ -136,12 +202,23 @@ def plan(cur):
             raise SystemExit(
                 f"MISSPELLINGS maps {wrong!r} onto {right!r}, which is not a "
                 "team in this database — correct the map rather than inventing "
-                "the team.")
+                "the team. A typo with no correct sibling belongs in RENAMES, "
+                "which a person has to sign off on.")
         merges.append((right, sorted((t, n) for t, n in rows if n == wrong)))
 
+    for wrong, right in sorted(RENAMES.items()):
+        if wrong not in present:
+            continue
+        if right in present:
+            raise SystemExit(
+                f"RENAMES maps {wrong!r} onto {right!r}, which already exists — "
+                "that is a merge, so move it to MISSPELLINGS.")
+        merges.append((right, sorted((t, n) for t, n in rows if n == wrong)))
+
+    handled = set(MISSPELLINGS) | set(RENAMES)
     groups = defaultdict(lambda: defaultdict(list))
     for team_id, name in rows:
-        if name in MISSPELLINGS and name in present:
+        if name in handled:
             continue          # handled above, and must not steer a fold group
         groups[fold(name)][name].append(team_id)
 

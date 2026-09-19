@@ -148,12 +148,29 @@ class PlanTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             ntn.plan(self.cur)
 
+    def test_renames_a_typo_that_has_no_correct_sibling(self):
+        """RENAMES is the signed-off path: nothing in the DB spells it right,
+        so no other row can justify the change."""
+        self.team("team/berettini-monza-1923", "Berettini - Monza")
+        merges = ntn.plan(self.cur)
+        self.assertEqual(merges, [("Berrettini - Monza",
+                                   [("team/berettini-monza-1923",
+                                     "Berettini - Monza")])])
+
+    def test_a_rename_onto_an_existing_team_is_refused(self):
+        """That is a merge, and merges answer to MISSPELLINGS' evidence rule."""
+        self.team("team/berettini-monza-1923", "Berettini - Monza")
+        self.team("team/berrettini-monza-1924", "Berrettini - Monza")
+        with self.assertRaises(SystemExit):
+            ntn.plan(self.cur)
+
     def test_an_unlisted_typo_is_not_guessed(self):
-        """`Molteani`/`Molteni` is one edit apart and almost certainly a typo,
-        but nothing here may act on that without the source page. Only names
-        listed in MISSPELLINGS merge."""
-        self.team("team/molteani-1959", "Molteani")
-        self.team("team/molteni-1959", "Molteni")
+        """`Aquilano`/`Aquiliano` is one edit apart and looks like a typo, but
+        they are different years and the rider counts (2 and 1) settle
+        nothing. Only names listed in MISSPELLINGS merge; proximity alone
+        never does."""
+        self.team("team/aquilano-1942", "Aquilano")
+        self.team("team/aquiliano-1943", "Aquiliano")
         self.assertEqual(ntn.plan(self.cur), [])
 
     def test_never_touches_a_team_id(self):
