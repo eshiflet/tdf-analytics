@@ -69,6 +69,22 @@ from race_common import SOURCE_DERIVED, record_provenance
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
 
+# Upstream typos: a name one letter from the right one. Folding cannot reach
+# these — the letters themselves differ, and no rule can tell a typo from a
+# real name, so each is listed only once the source page has been read and
+# shown to spell the SAME team both ways. The target must already exist in the
+# database; a name that does not is a typo in this map and stops the run.
+#
+# `Berrettini` appears 8 times across the saved bikeraceinfo pages and
+# `Berretini` once, on Antonio Pancera's row of Milan-San Remo 1927 — the same
+# page that spells Giuseppe Pancera's 1927 team correctly. The 1926 page does
+# it again: four riders on `Berrettini-Russell Cycles`, Antonio Buelli on
+# `Berettini-`.
+MISSPELLINGS = {
+    "Berretini-Hutchinson": "Berrettini-Hutchinson",
+    "Berettini-Russell Cycles": "Berrettini-Russell Cycles",
+}
+
 # Case-only merges where the count points at a spelling that is wrong about
 # the name itself. Keyed by folded name -> the spelling to keep.
 STYLE_OVERRIDES = {
@@ -109,11 +125,26 @@ def plan(cur):
         "SELECT team_id, COUNT(*) FROM stage_results "
         "WHERE team_id IS NOT NULL GROUP BY team_id").fetchall())
 
-    groups = defaultdict(lambda: defaultdict(list))
-    for team_id, name in cur.execute("SELECT team_id, name FROM teams"):
-        groups[fold(name)][name].append(team_id)
+    rows = cur.execute("SELECT team_id, name FROM teams").fetchall()
+    present = {n for _, n in rows}
 
     merges = []
+    for wrong, right in sorted(MISSPELLINGS.items()):
+        if wrong not in present:
+            continue
+        if right not in present:
+            raise SystemExit(
+                f"MISSPELLINGS maps {wrong!r} onto {right!r}, which is not a "
+                "team in this database — correct the map rather than inventing "
+                "the team.")
+        merges.append((right, sorted((t, n) for t, n in rows if n == wrong)))
+
+    groups = defaultdict(lambda: defaultdict(list))
+    for team_id, name in rows:
+        if name in MISSPELLINGS and name in present:
+            continue          # handled above, and must not steer a fold group
+        groups[fold(name)][name].append(team_id)
+
     for key, by_name in sorted(groups.items()):
         if len(by_name) < 2:
             continue

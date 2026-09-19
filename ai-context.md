@@ -1663,6 +1663,36 @@ anything present in the data.
 **`Ricci?` is left alone.** The `?` is PCS's own uncertainty marker; merging it
 into `Ricci` would assert something the source does not.
 
+### Upstream typos need a source page, not a rule (2026-09-19)
+
+Folding cannot reach a name that is one *letter* wrong —
+`Berretini-Hutchinson` for `Berrettini-Hutchinson` — and no rule can tell a
+typo from a real name. `MISSPELLINGS` is therefore an explicit map, and a name
+goes in it only once the source page has been read and shown to spell **the
+same team both ways**. The target must already exist in the DB; one that does
+not stops the run rather than inventing a team.
+
+Two are listed, both upstream in bikeraceinfo and both proved the same way:
+`Berrettini` appears **8 times across the saved pages and `Berretini` once**,
+on Antonio Pancera's row of Milan-San Remo 1927 — the same page that spells
+Giuseppe Pancera's 1927 team correctly. The 1926 page repeats it: four riders
+on `Berrettini-Russell Cycles`, Antonio Buelli on `Berettini-`. The evidence is
+in `bikeraceinfo_teams/_pages/*.html`; the classics scrapes carry **no team
+column at all**, so none of this attribution came from PCS.
+
+**There are 83 more team-name pairs one edit apart** (`Molteani`/`Molteni`,
+`Salvaran`/`Salvarani`, `Pelforth` with five separate typos), and
+`normalize_team_names.py` deliberately does **not** touch them. The tell is
+strong — the typo almost always has 0 riders while the correct spelling has
+hundreds — but a tell is not a source page, and some pairs in that list are two
+real teams. `test_an_unlisted_typo_is_not_guessed` pins that refusal down.
+
+**`Berettini - Monza` (1923, PCS, 8 riders) is NOT in the map.** It is a
+different sponsor pairing with no correct-spelling sibling to merge into, and
+it came from PCS rather than bikeraceinfo. Almost certainly the same firm with
+a dropped `r` — but "almost certainly" is how a team gets renamed to something
+no source ever published.
+
 ### Two things the re-export surfaced that were not the rename
 
 Worth recording because both look alarming in a diff and neither is a defect

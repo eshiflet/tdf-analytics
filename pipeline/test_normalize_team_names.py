@@ -131,6 +131,31 @@ class PlanTest(unittest.TestCase):
                                  (canonical, team_id))
         self.assertEqual(ntn.plan(self.cur), [])
 
+    def test_merges_a_listed_upstream_typo(self):
+        """One letter apart, so folding cannot reach it — see MISSPELLINGS."""
+        self.team("team/berretini-hutchinson-1927", "Berretini-Hutchinson")
+        self.team("team/berrettini-hutchinson-1927", "Berrettini-Hutchinson")
+        merges = ntn.plan(self.cur)
+        self.assertIn(("Berrettini-Hutchinson",
+                       [("team/berretini-hutchinson-1927",
+                         "Berretini-Hutchinson")]), merges)
+
+    def test_a_typo_alone_is_left_alone(self):
+        """The map corrects onto a team that EXISTS. With no correct spelling
+        in the database there is nothing to merge into, and inventing one
+        would be fabricating a team."""
+        self.team("team/berretini-hutchinson-1927", "Berretini-Hutchinson")
+        with self.assertRaises(SystemExit):
+            ntn.plan(self.cur)
+
+    def test_an_unlisted_typo_is_not_guessed(self):
+        """`Molteani`/`Molteni` is one edit apart and almost certainly a typo,
+        but nothing here may act on that without the source page. Only names
+        listed in MISSPELLINGS merge."""
+        self.team("team/molteani-1959", "Molteani")
+        self.team("team/molteni-1959", "Molteni")
+        self.assertEqual(ntn.plan(self.cur), [])
+
     def test_never_touches_a_team_id(self):
         self.team("team/alcyon-dunlop-1909", "Alcyon - Dunlop")
         self.team("team/alcyon-dunlop-1936", "Alcyon-Dunlop")
