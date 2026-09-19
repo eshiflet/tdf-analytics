@@ -1888,6 +1888,10 @@ class GcSourcePageTest(unittest.TestCase):
     stale"), retracted within the hour. These tests pin the gate that stops it.
     """
 
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
     def page(self, winner="rider/w", n=3, gc=()):
         return {"result_rows": [["1", "", "", "", "", "", winner]] * n,
                 "gc_rows": list(gc)}
@@ -2035,6 +2039,83 @@ class GcSourcePageTest(unittest.TestCase):
             self.ladder_page(["36:35:42", "", "0:41"]))
         self.assertIsNone(reason)
         self.assertEqual(gaps, {"rider/r0": 0, "rider/r2": 41})
+
+    # ── the stored HTML page, a third artifact family ───────────────────────
+
+    def html_page(self, tabs):
+        """A minimal page in the shape tab_blocks reads: a nav naming each
+        table by data-id, then one resTab div per table."""
+        nav = "".join(f'<li data-id="t{i}">{name}</li>'
+                      for i, name in enumerate(tabs))
+        body = ""
+        for i, (name, rows) in enumerate(tabs.items()):
+            trs = "".join(
+                f'<tr><td>{"<font>*0:04</font>" if marked else "0:04"}</td>'
+                f'<td><a href="{rider}">x</a></td></tr>'
+                for rider, marked in rows)
+            body += f'<div class="resTab" data-id="t{i}">{trs}</div>'
+        return f'<ul class="tabs tabnav resultTabs">{nav}</ul>{body}'
+
+    def write_page(self, year, stage, html):
+        d = os.path.join(self.tmp, "classification_scrapes")
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, f"race_giro_d_italia_{year}_stage_{stage}.html"),
+                  "w", encoding="utf-8") as f:
+            f.write(html)
+
+    def stage_rows(self, *riders):
+        return [["1", "", "", "", "", "", r] for r in riders]
+
+    def marked(self, tabs, riders=("rider/a", "rider/b")):
+        self.write_page(1990, 1, self.html_page(tabs))
+        return gc_source.marked_in_classification_html(
+            "Giro d'Italia", 1990, 1, self.stage_rows(*riders), root=self.tmp)
+
+    def test_a_mark_in_the_STAGE_or_GC_table_is_read(self):
+        self.assertEqual(
+            self.marked({"STAGE": [("rider/a", True), ("rider/b", False)]}),
+            {"rider/a"})
+        self.assertEqual(
+            self.marked({"STAGE": [("rider/a", False), ("rider/b", False)],
+                         "GC": [("rider/b", True)]}),
+            {"rider/b"})
+
+    def test_a_mark_in_a_POINTS_table_is_ignored(self):
+        """Its column is points, not a time. Marks never appear there in the
+        archive — 0 against 226 in STAGE — and reading one would flag a rider
+        over something that is not a time at all."""
+        self.assertEqual(
+            self.marked({"STAGE": [("rider/a", False), ("rider/b", False)],
+                         "POINTS": [("rider/a", True)],
+                         "KOM": [("rider/b", True)],
+                         "TEAMS": [("rider/a", True)]}),
+            set())
+
+    def test_a_page_whose_winner_is_not_ours_is_refused(self):
+        """167 of the 1,023 files are not the stage their name claims — Giro
+        1935-1937 among them, where our numbering expands PCS's split days and
+        theirs does not."""
+        self.assertEqual(
+            self.marked({"STAGE": [("rider/x", True), ("rider/b", False)]}),
+            set())
+
+    def test_a_page_with_a_different_field_size_is_refused(self):
+        self.assertEqual(
+            self.marked({"STAGE": [("rider/a", True)]}), set())
+
+    def test_a_missing_page_is_empty_not_an_error(self):
+        self.assertEqual(
+            gc_source.marked_in_classification_html(
+                "Giro d'Italia", 1888, 1, self.stage_rows("rider/a"), root=self.tmp),
+            set())
+
+    def test_no_stage_rows_means_no_gate_and_so_no_marks(self):
+        """Without the stage file there is nothing to verify the page against,
+        and an unverified page is worth less than none."""
+        self.write_page(1990, 1, self.html_page({"STAGE": [("rider/a", True)]}))
+        self.assertEqual(
+            gc_source.marked_in_classification_html(
+                "Giro d'Italia", 1990, 1, [], root=self.tmp), set())
 
 
 class TimeAdjustedExemptionTest(DBCheckTest):

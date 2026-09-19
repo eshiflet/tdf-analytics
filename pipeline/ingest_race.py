@@ -475,7 +475,10 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         time_adjusted_here = (
             gc_source.marked_in_stage_rows(rows)
             | gc_source.marked_in_stage_rows((_page or {}).get("result_rows"))
-            | gc_source.marked_riders(_page))
+            | gc_source.marked_riders(_page)
+            # The stored HTML page is a third copy and carries 810 marks the
+            # other two do not, mostly on the Giro and the Vuelta.
+            | gc_source.marked_in_classification_html(race_name, year, n, rows))
 
         # Provenance. Route fields come from this stage file's PCS scrape; the
         # scrape file path plus the slug pins down exactly which page. Elevation

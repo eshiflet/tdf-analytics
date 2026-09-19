@@ -94,8 +94,9 @@ def find_adjusted(conn, race=None):
         # found 67 marks on the 1990 Vuelta where a re-ingest finds 138, which
         # is how the gap was noticed: a backfill that disagrees with the ingest
         # is a backfill the next rebuild undoes.
-        marked = gc_source.marked_in_stage_rows(
-            stage_file_rows(name, year, number))
+        rows = stage_file_rows(name, year, number)
+        marked = (gc_source.marked_in_stage_rows(rows)
+                  | gc_source.marked_in_classification_html(name, year, number, rows))
         page = gc_source.gc_page(name, year, number, slug)
         if page is None:
             stats["unverified"] += 1

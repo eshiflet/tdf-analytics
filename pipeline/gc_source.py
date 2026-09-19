@@ -67,6 +67,19 @@ import re
 SCRAPE_DIR = {"Tour de France": "tour_scrapes", "Giro d'Italia": "giro_scrapes",
               "Vuelta a España": "vuelta_scrapes"}
 
+# classification_scrapes stores one HTML page per stage, named for OUR stage
+# number. Used only for the marker; nothing is parsed out of it for values.
+PAGE_SLUG = {"Tour de France": "tour_de_france", "Giro d'Italia": "giro_d_italia",
+             "Vuelta a España": "vuelta_a_espana"}
+
+# The only tabs on such a page whose column is a TIME. Marks appear in STAGE
+# (226), YOUTH (112), GC (84) and TEAMS (8) and NEVER in POINTS or KOM, whose
+# columns are points — which is the clearest evidence available that the
+# asterisk annotates a time. TEAMS is excluded because its time belongs to a
+# team rather than a rider, and YOUTH because it is the same classification
+# time as GC filtered to young riders, so a mark there is already in GC.
+TIMED_TABS = ("STAGE", "GC")
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # The repeated unit must contain a colon. The scraper concatenates PCS's visible
@@ -75,6 +88,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # eleven-second gap silently becomes a one-second one.
 _DOUBLED = re.compile(r"\*?((?:\d+:)+\d{2})\1")
 _CLOCK = re.compile(r"\d+(?::\d{2})*")
+_ROW = re.compile(r"<tr\b.*?</tr>", re.S)
+_RIDER = re.compile(r'href="(rider/[^"]+)"')
 
 
 def parse_gap(cell):
@@ -230,6 +245,52 @@ def gc_gaps_with_reason(page):
             return None, "absolute times"
         out[r[2]] = seconds
     return out, None
+
+
+def marked_in_classification_html(race, year, stage_number, stage_rows, root=None):
+    """Rider ids the stored HTML page marks, from its STAGE and GC tables.
+
+    A THIRD artifact family, and it needs its own gate for the same reason the
+    others do: 167 of the 1,023 files are NOT the stage their name claims —
+    Giro 1935-1937 among them, where our numbering expands PCS's split days and
+    theirs does not. The gate is the STAGE tab's own first rider and row count
+    against `stage_rows`, which is the stage file the ingest already trusts.
+
+    Scoped by TAB, never by position. scrape_classifications.tab_blocks() keys
+    each table by the page's own nav, and without it a mark cannot be attributed
+    to a table at all: this is the trap that produced a wrong bug report about
+    Carretero, and a struck rank in the POINTS table says nothing about a time.
+    """
+    # No separate "did we get stage rows" test: an empty list cannot match the
+    # page's row count, so the gate below already refuses it. Stating it twice
+    # would be a condition no input can reach.
+    slug = PAGE_SLUG.get(race)
+    if not slug:
+        return set()
+    path = os.path.join(root or HERE, "classification_scrapes",
+                        f"race_{slug}_{year}_stage_{stage_number}.html")
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            html = f.read()
+    except OSError:
+        return set()
+    from scrape_classifications import tab_blocks
+    blocks = tab_blocks(html)
+    rows = [r for r in _ROW.findall(blocks.get("STAGE", "")) if 'href="rider/' in r]
+    if not rows or len(rows) != len(stage_rows):
+        return set()
+    winner = _RIDER.search(rows[0])
+    if not winner or winner.group(1) != stage_rows[0][6]:
+        return set()
+    out = set()
+    for tab in TIMED_TABS:
+        for tr in _ROW.findall(blocks.get(tab, "")):
+            if "<font>*" not in tr:
+                continue
+            rider = _RIDER.search(tr)
+            if rider:
+                out.add(rider.group(1))
+    return out
 
 
 def gc_ladder(page):
