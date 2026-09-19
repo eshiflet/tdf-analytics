@@ -6,7 +6,6 @@
 // all four, colored/patterned per classification.
 import type { RaceId } from "./raceRegistry";
 import { RACES, RACE_ABBR } from "./raceRegistry";
-import { raceConfig } from "./state";
 import { tooltipEl } from "./dom";
 import { positionTooltip } from "./tooltip";
 import type { RiderEntry } from "./riderIndexData";
@@ -38,21 +37,6 @@ export function komJerseySvg(dotColor = "#E4002B"): string {
 
 export const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint winner", kom: "KOM winner", youth: "Young rider winner" } as const;
 export const JERSEY_SIMPLE_LABEL: Record<JerseyCategory, string> = { gc: "GC", sprint: "Sprint", kom: "KOM", youth: "Youth" };
-// UNWIRED, and kept deliberately — see ai-context.md's open items.
-//
-// This is the last reader of `RaceConfig.jerseyTooltips`, and nothing calls it,
-// so the per-race copy those configs carry ("Yellow jersey — GC winner",
-// "Maglia rosa — GC winner") reaches no reader. The riders grid shows
-// jerseyIconTitle()'s "TDF - GC" instead, which names the RACE — the thing that
-// matters once one grid merges five of them, and which the jersey-colour
-// wording cannot do.
-//
-// Deleting this would also delete twenty written strings; re-wiring it is a
-// copy decision (probably "TDF — Yellow jersey, GC winner"). Neither is mine to
-// make, so both stay until Eric picks one.
-export function jerseyTooltipLabel(category: JerseyCategory): string {
-  return raceConfig().jerseyTooltips[category];
-}
 
 // Computed once per race, not per call: the riders grid asks for this once per
 // rider PER RACE (14,260 x 4 per rebuild), and a fresh filtered array each time

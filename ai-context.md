@@ -305,19 +305,33 @@ their own module and merely over-exported (`ROUTE_MULTIPLIER`,
 `isoToFlagEmoji`, `jerseySvg`). Dropping the keyword is churn with no reader
 benefit, so they were left.
 
-### Open for Eric: twenty tooltip strings nobody sees
+### The twenty tooltip strings nobody saw are gone (Eric's call, 2026-09-19)
 
-`jerseyTooltipLabel()` is the fourth dead function and was **kept**, because it
-is the last reader of `RaceConfig.jerseyTooltips` — five races x four strings
-of written copy: *"Yellow jersey — GC winner"*, *"Maglia rosa — GC winner"*.
-Nothing shows them. The riders grid shows `jerseyIconTitle()`'s **"TDF - GC"**
-instead, which names the RACE, and that is the thing that matters once one grid
-merges five of them.
+`jerseyTooltipLabel()` was the fourth dead function, and the last reader of
+`RaceConfig.jerseyTooltips` — five races x four strings that nothing showed.
+**Removed**, along with the config field, all five blocks, and
+`JerseyCategoryId`, which existed only to type them and duplicated
+`JerseyCategory`.
 
-So it is not a regression to undo blindly: deleting loses the copy, re-wiring
-loses the race name. The good answer is probably a composed
-**"TDF — Yellow jersey, GC winner"**, but that is a copy decision. Both the
-function and the config stay, with a comment at the function saying why.
+**Keeping them would have been worse than it looked.** Their copy named the
+jersey COLOUR — *"Yellow jersey — GC winner"*, *"Pink jersey — GC winner"* —
+which says nothing about WHICH race once the riders grid merges five of them.
+And for two race sets they were not copy at all: the classics block is
+`"Classics win"` four times over and gravel is `"Off-road win"` four times, so
+they could not even distinguish a GC from a KOM.
+
+`jerseyIconTitle()` composes the race instead, and a correction to an earlier
+note in this file: it renders **"Tour de France - GC"**, not "TDF - GC".
+`RACE_ABBR` holds full names despite its name — `RACE_SHORT_LABEL` is the one
+with the short forms.
+
+**−131 bytes gzipped**, which unlike the dead functions is real: a string in a
+live config object is not tree-shaken. Three checks in `verify-views.mjs`
+assert every jersey icon names its race and its classification, and that none
+carries the removed colour copy; they search for Merckx first, because the grid
+is virtualised and its first alphabetical window contains nobody who has won
+anything. A mutant that drops the race from the title reports
+`GC | Sprint | KOM | Winner` and fails.
 
 ## A GC position of 1000, in a field of 198 (2026-09-19)
 

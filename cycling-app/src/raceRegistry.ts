@@ -6,7 +6,6 @@
 // data path, the race dropdown, and the URL hash.
 
 export type RaceId = "tour" | "giro" | "vuelta" | "classics" | "gravel";
-export type JerseyCategoryId = "gc" | "sprint" | "kom" | "youth";
 
 export interface RaceConfig {
   name: string;
@@ -14,7 +13,6 @@ export interface RaceConfig {
   chart: { gc: string; sprint: string; kom: string };
   /** Jersey icon fills; kom is a solid jersey or white with polka dots. */
   jersey: { gc: string; sprint: string; kom: { solid: string } | { dots: string } };
-  jerseyTooltips: Record<JerseyCategoryId, string>;
   /** Shaded no-race bands on the All Races Overview. */
   warBands: { start: number; end: number; label: string }[];
   /** Youth-classification wins tracked in the pipeline for this race? */
@@ -63,10 +61,6 @@ export const RACES: Record<RaceId, RaceConfig> = {
     name: "Tour de France",
     chart: { gc: "var(--accent)", sprint: "#22c55e", kom: "#ef4444" },
     jersey: { gc: "#FFD400", sprint: "#3FA535", kom: { dots: "#E4002B" } },
-    jerseyTooltips: {
-      gc: "Yellow jersey — GC winner", sprint: "Green jersey — Sprint winner",
-      kom: "Polka dot jersey — KOM winner", youth: "White jersey — Young rider winner",
-    },
     warBands: [
       { start: 1914.5, end: 1918.5, label: "WWI" },
       { start: 1939.5, end: 1946.5, label: "WWII" },
@@ -83,10 +77,6 @@ export const RACES: Record<RaceId, RaceConfig> = {
     name: "Giro d'Italia",
     chart: { gc: "#E4007C", sprint: "#8B1FA1", kom: "#0083CA" },
     jersey: { gc: "#E4007C", sprint: "#8B1FA1", kom: { solid: "#0083CA" } },
-    jerseyTooltips: {
-      gc: "Pink jersey — GC winner", sprint: "Purple jersey — Sprint winner",
-      kom: "Blue jersey — KOM winner", youth: "White jersey — Young rider winner",
-    },
     warBands: [
       { start: 1914.5, end: 1918.5, label: "WWI" },
       { start: 1940.5, end: 1945.5, label: "WWII" },
@@ -103,10 +93,6 @@ export const RACES: Record<RaceId, RaceConfig> = {
     name: "Vuelta a España",
     chart: { gc: "#E30613", sprint: "#3FA535", kom: "#0057B8" },
     jersey: { gc: "#E30613", sprint: "#3FA535", kom: { dots: "#0057B8" } },
-    jerseyTooltips: {
-      gc: "Red jersey — GC winner", sprint: "Green jersey — Sprint winner",
-      kom: "Polka dot jersey — KOM winner", youth: "White jersey — Young rider winner",
-    },
     warBands: [
       { start: 1935.5, end: 1944.5, label: "Civil War / WWII" },
     ],
@@ -133,10 +119,6 @@ export const RACES: Record<RaceId, RaceConfig> = {
     // aggregated" and stays legible against the dark background.
     chart: { gc: "#9ca3af", sprint: "#9ca3af", kom: "#9ca3af" },
     jersey: { gc: "#9ca3af", sprint: "#9ca3af", kom: { solid: "#9ca3af" } },
-    jerseyTooltips: {
-      gc: "Classics win", sprint: "Classics win",
-      kom: "Classics win", youth: "Classics win",
-    },
     // No war bands: the classics series here starts in 1990.
     warBands: [],
     hasYouth: false,
@@ -165,10 +147,6 @@ export const RACES: Record<RaceId, RaceConfig> = {
     // the surface they all share and stays legible on the dark background.
     chart: { gc: "#b4794a", sprint: "#b4794a", kom: "#b4794a" },
     jersey: { gc: "#b4794a", sprint: "#b4794a", kom: { solid: "#b4794a" } },
-    jerseyTooltips: {
-      gc: "Off-road win", sprint: "Off-road win",
-      kom: "Off-road win", youth: "Off-road win",
-    },
     // No war bands: the archive starts in 1994.
     warBands: [],
     hasYouth: false,

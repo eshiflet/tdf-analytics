@@ -1037,5 +1037,34 @@ function check(name, cond, detail) {
     before === read() ? `${before.split("|").length} labels stable` : "positions moved");
 }
 
+// The jersey icons in the riders grid must name the RACE they belong to. That
+// grid merges five race sets into one list, so "GC winner" alone cannot say
+// whose GC — which is why RaceConfig.jerseyTooltips was removed on 2026-09-19
+// rather than re-wired: its strings named the jersey COLOUR ("Yellow jersey —
+// GC winner") and, for the classics and gravel, were the same four words
+// repeated ("Classics win" x4). jerseyIconTitle() composes the race instead.
+{
+  const doc = await boot("#riders");
+  // The grid is virtualised and its first window is alphabetical, where nobody
+  // has won anything — search for someone who has.
+  const input = doc.querySelector(".riders-search-input");
+  input.value = "Merckx";
+  input.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 400));
+  const titles = [...doc.querySelectorAll(".jersey-icon")]
+    .map((el) => el.getAttribute("title") ?? "");
+  check("a rider with wins renders jersey icons", titles.length > 0,
+    `${titles.length} icons for Merckx`);
+  const named = titles.filter((t) => / - /.test(t));
+  check("every jersey icon names its race and its classification",
+    titles.length > 0 && named.length === titles.length,
+    [...new Set(titles)].slice(0, 5).join(" | "));
+  // The removed copy is gone for good: no icon should say "jersey" or fall
+  // back to a race-less phrase.
+  const generic = titles.filter((t) => /jersey|^Classics win$|^Off-road win$/i.test(t));
+  check("no icon carries the removed colour-named copy", generic.length === 0,
+    [...new Set(generic)].slice(0, 3).join(" | ") || "none");
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);
