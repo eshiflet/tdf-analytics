@@ -4911,14 +4911,51 @@ Racer 367460791 is a single Unbound 2018 row, **Wilmette, Illinois**, implying
 **1972**. Ten years and two states from a set that is internally perfect across
 thirteen. Not yet split; the Unbound row is the one that would move.
 
-**Leadville's field collapses after 2015 and it is not the source thinning.**
-1994-2015 store exactly 100 rows each (`FIELD_CAP`); 2016 onward store 43, 18,
-37, 55, 53, 79, 78, 70, 66, 67. The ingest is faithful — the scrape files
-themselves hold those counts — so the loss is in course resolution or the
-scraper's selection, upstream of ingest. **2017 is the worst and is visibly
-incoherent**: 18 rows whose ranks are not time-ordered, rank 14 finishing in
-10.47h beside rank 15 in 6.54h. That is what makes `sam-benedict` undecidable,
-and it is a coverage defect in its own right. Open.
+### Leadville's "coverage cliff" is a definition change, and it hides a real bug
+
+**The cliff is not data loss.** 1994-2015 store exactly 100 rows (`FIELD_CAP`);
+2016 onward store 43, 18, 37, 55, 53, 79, 78, 70, 66, 67. The cause is visible in
+one field of each scrape file's `info`: **every year through 2015 has
+`division_id: null`, and every year from 2016 selects a division** — `ProM`,
+then `Pro Male`, then `Pro Male, Grand Prix Male`. Leadville began publishing a
+pro category on Athlinks in 2016 and the resolver picks it, so the stored field
+changed meaning from *the top 100 of the whole men's race* to *the entire pro
+division*. 2026 needs no division because its course is already
+"Leadville 100 MTB - Elite Men". Deliberate, but a **comparability break nothing
+records**: a rank in 2015 and a rank in 2016 are not the same quantity, and the
+2016-17 "Pro" division is a registration category, not a performance tier — it
+contains 10.9h finishers.
+
+**The real defect is underneath it. `division_rank()` assumes that a row fetched
+from `/division/{id}/results` carries its rank IN that division, and Leadville
+2016 disproves it.** There, Athlinks' `primary` tracks the OVERALL field, so the
+stored classification runs 1, 2, 3, 4, 5, 6, 8, ... 804 **in a 43-rider race** —
+Richard La China is recorded as finishing 804th. 2017 is fine on that count
+(`primary` really is 1..14 there), which is exactly what makes the bug hard to
+see: the same code path is right one year and wrong the next.
+
+Two riders are also placed against their own clock: **Albert Lake** (2016, 7.05h
+stored at rank 278, behind 24 slower riders) and **Enrique Saborio** (2017, 6.54h
+at rank 15, behind 12 slower). Both carry an `overall` wildly inconsistent with
+their time — Lake 1449th on 7.05h — which is the signature of a checkpoint split
+kept as a finish, the same class as the impossible times cleared in September.
+Measured corpus-wide, only **7 rows in 94 gravel editions** are out of clock
+order, so this is a small, nameable set, not a systemic problem.
+
+**`validate_db.check_gravel_rank_integrity()` now reports both symptoms.** It
+sorts the oversized editions by RATIO rather than absolute rank, which is what
+separates a real defect from a harmless one: Leadville 2016 is **18.7x** its own
+field, while The Traka's 1.2-1.6x is just PCS's place in a wider published field
+and Unbound 2016's 100-vs-98 is a FIELD_CAP window that later lost a duplicate.
+The check does NOT guess which cause applies — it prints the ratio.
+
+**Not repaired, and deliberately so.** The fix is a scraper change plus a
+re-ingest, and the obvious version — rank the division by the clock — is the one
+this repo already got wrong: `division_rank()`'s docstring records that clock
+ranking replaced Sea Otter 2023's real podium, because a handful of rows carry a
+checkpoint time. Any repair has to clear the unreliable TIMES first (Lake,
+Saborio) and only then re-rank. **Decision open.** That 2016/2017 mess is also
+what makes `sam-benedict` undecidable above.
 
 **`ike-pantone` is a different man and must never be merged into him.** Ike rode
 Unbound 2021 in 50th at 46,807s; Jake rode the same edition in 42nd at 45,855s.

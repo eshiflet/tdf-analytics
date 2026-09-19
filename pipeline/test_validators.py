@@ -1175,3 +1175,119 @@ class OrphanRiderTest(DBCheckTest):
         self.rider("rider/stranded")
         validate_db.check_orphan_riders(self.cur)
         self.assertNoErrors()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# validate_db.check_gravel_rank_integrity — a classification against its clock
+# ══════════════════════════════════════════════════════════════════════════
+
+class GravelRankIntegrityTest(DBCheckTest):
+    """Leadville 2016 stores 43 finishers and calls one of them 804th.
+
+    The gravel scraper reads a rider's place from Athlinks' `primary` ranking
+    on the documented assumption that a row fetched from a division's results
+    carries its rank IN that division. Leadville 2016 disproves it: `primary`
+    there tracks the overall field, so the stored classification runs
+    1, 2, 3, 4, 5, 6, 8 ... 804. Nothing noticed for as long as the data has
+    existed, because no check ever compared a classification against either its
+    own size or its own clock.
+    """
+
+    def assertWarningMatching(self, fragment):
+        joined = "\n".join(validate_db.warnings)
+        self.assertIn(fragment, joined,
+                      f"no warning containing {fragment!r}; warnings were {validate_db.warnings}")
+
+    def gravel_edition(self, year, rows, race_id=9, edition_id=9, stage_id=9):
+        """rows = [(rank, finish_seconds), ...]"""
+        self.race(race_id, "Leadville Trail 100 MTB", race_type="gravel", country="USA")
+        self.edition(edition_id, race_id, year)
+        self.stage(stage_id, edition_id, 1)
+        for i, (rank, secs) in enumerate(rows):
+            self.result(stage_id, f"rider/r{i}", stage_rank=rank,
+                        finish_time_seconds=secs, status="FINISHED")
+
+    def test_a_rank_past_the_size_of_the_field_warns(self):
+        self.gravel_edition(2016, [(1, 100), (2, 200), (804, 300)])
+        validate_db.check_gravel_rank_integrity(self.cur)
+        self.assertWarningMatching("past the size of the field")
+        self.assertWarningMatching("ranked up to 804")
+
+    def test_the_report_leads_with_the_worst_RATIO_not_the_worst_rank(self):
+        """A field we merely store a subset of overshoots slightly; a field whose
+        numbers are not places at all overshoots hugely. Sorting by absolute rank
+        would bury the second behind the first."""
+        self.gravel_edition(2016, [(1, 100), (2, 200), (804, 300)])
+        self.race(8, "The Traka 360", race_type="gravel", country="Spain")
+        self.edition(8, 8, 2025)
+        self.stage(8, 8, 1)
+        for i, rank in enumerate([1, 2, 3, 4, 900]):     # bigger max, tiny ratio
+            self.result(8, f"rider/t{i}", stage_rank=rank,
+                        finish_time_seconds=100 * (i + 1), status="FINISHED")
+        for i in range(600):
+            self.result(8, f"rider/pad{i}", stage_rank=None,
+                        finish_time_seconds=None, status="FINISHED")
+        validate_db.check_gravel_rank_integrity(self.cur)
+        joined = "\n".join(validate_db.warnings)
+        self.assertLess(joined.index("804"), joined.index("900"),
+                        "the 268x edition must be reported before the 180x one")
+
+    def test_a_finisher_ranked_ahead_of_a_faster_one_warns(self):
+        self.gravel_edition(2017, [(1, 100), (2, 200), (3, 150)])
+        validate_db.check_gravel_rank_integrity(self.cur)
+        self.assertWarningMatching("out of clock order")
+
+    def test_one_misplaced_rider_counts_as_one_not_as_every_pair(self):
+        """Enrique Saborio is a single bad row at Leadville 2017, but he is
+        faster than twelve riders ranked above him. Counting pairs would report
+        one defect as twelve and make the number meaningless."""
+        rows = [(i + 1, 1000 + i * 10) for i in range(12)]   # clean 1..12
+        rows.append((13, 1))                                 # one row, wildly fast
+        self.gravel_edition(2017, rows)
+        validate_db.check_gravel_rank_integrity(self.cur)
+        self.assertWarningMatching("1 gravel finisher(s)")
+        # The pair count for this fixture is 12. If the check ever reports that
+        # instead, the number has stopped meaning "rows that are wrong".
+        self.assertNotIn("12 gravel finisher(s)", "\n".join(validate_db.warnings))
+
+    def test_a_clean_edition_says_nothing(self):
+        self.gravel_edition(2015, [(i + 1, 100 * (i + 1)) for i in range(10)])
+        validate_db.check_gravel_rank_integrity(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_a_ranked_row_with_no_time_does_not_count_as_disorder(self):
+        """The row that actually exercises the NULL guard is a RANKED one with
+        no clock — 11 time trials and a scatter of gravel rows are exactly that.
+        A DNF would not do: it has no rank either, so the query never sees it.
+        Treating the NULL as 0 would sort that rider to the front and report the
+        whole edition as out of order."""
+        self.gravel_edition(2019, [(1, 100), (2, 200), (3, 300)])
+        self.result(9, "rider/no-clock", stage_rank=4, finish_time_seconds=None,
+                    status="FINISHED")
+        validate_db.check_gravel_rank_integrity(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_it_is_a_warning_and_never_an_error(self):
+        """The values are what Athlinks served. The repair is a scraper change
+        and a re-ingest, not something a validator should fail the build over."""
+        self.gravel_edition(2016, [(1, 100), (804, 300)])
+        validate_db.check_gravel_rank_integrity(self.cur)
+        self.assertNoErrors()
+
+    def test_the_live_database_still_shows_leadville_2016(self):
+        """A live-data canary. If this ever stops firing the scraper was fixed
+        and re-ingested, and this test should be deleted with that commit —
+        not quietly relaxed."""
+        import sqlite3
+        conn = sqlite3.connect(f"file:{validate_db.DB_PATH}?mode=ro", uri=True)
+        self.addCleanup(conn.close)
+        n, mx = conn.execute(
+            """SELECT COUNT(*), MAX(sr.stage_rank) FROM stage_results sr
+                 JOIN stages s ON s.stage_id=sr.stage_id
+                 JOIN race_editions re ON re.edition_id=s.edition_id
+                 JOIN races ra ON ra.race_id=re.race_id
+                WHERE ra.name LIKE 'Leadville%' AND re.year=2016
+                  AND sr.stage_rank IS NOT NULL""").fetchone()
+        self.assertGreater(mx, n * 2,
+                           "Leadville 2016's ranks are no longer oversized — if "
+                           "that was deliberate, delete this test in the same commit")

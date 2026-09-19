@@ -26,6 +26,7 @@ Usage:
 """
 
 import argparse
+import bisect
 import json
 import os
 import sqlite3
@@ -568,6 +569,88 @@ def check_split_slug_provenance(c):
              f"{', '.join(suspect[:8])}" + (" ..." if len(suspect) > 8 else ""))
 
 
+def check_gravel_rank_integrity(c):
+    """A gravel classification that disagrees with its own clock, or numbers
+    itself past its own size.
+
+    Both come from how the gravel scraper ranks a DIVISION field. Where an
+    edition publishes a Pro/Elite division, scrape_athlinks takes the whole
+    division and reads each rider's place from Athlinks' `primary` ranking,
+    on the documented assumption that a row fetched from /division/{id}/results
+    carries its rank IN that division. **That assumption is not always true.**
+    Leadville 2016 returns 43 riders whose `primary` tracks the OVERALL field
+    instead, so the stored classification runs 1, 2, 3, 4, 5, 6, 8 ... 804 in a
+    43-rider race, and Richard La China is recorded as finishing 804th.
+
+    Two symptoms, checked separately because they catch different things:
+
+    * **Ranks that run past the size of the field.** Three different causes
+      produce this and the check does NOT guess between them, because two are
+      harmless: a PCS-sourced edition stores PCS's own place in a field wider
+      than the rows we keep (The Traka, ~1.1-1.6x), and a FIELD_CAP edition can
+      lose a row to de-duplication after the window is taken (Unbound 2016 at
+      98 of 100). Leadville 2016 is the one that is not explained that way at
+      **18.7x**, so the report sorts by that ratio and leaves the reading to a
+      human rather than asserting a bug.
+    * **Finishers out of clock order.** Rarer and more interesting: 7 rows in
+      the whole gravel corpus, and each one is a row whose time disagrees with
+      its own ranking. They are the same class as the impossible times cleared
+      in September 2026 — a checkpoint split stored as a finish — which is why
+      Enrique Saborio is ranked 15th at Leadville 2017 on a 6.54h clock that
+      would have put him 3rd.
+
+    WARN, not ERROR. The underlying values are what Athlinks served, and the
+    repair is a scraper change plus a re-ingest, not something a validator
+    should imply is a one-line fix.
+    """
+    editions = defaultdict(list)
+    for nm, yr, rk, t in c.execute(
+            """SELECT ra.name, re.year, sr.stage_rank, sr.finish_time_seconds
+                 FROM stage_results sr
+                 JOIN stages s ON s.stage_id=sr.stage_id
+                 JOIN race_editions re ON re.edition_id=s.edition_id
+                 JOIN races ra ON ra.race_id=re.race_id
+                WHERE ra.race_type='gravel' AND sr.stage_rank IS NOT NULL
+                ORDER BY ra.name, re.year, sr.stage_rank"""):
+        editions[(nm, yr)].append((rk, t))
+
+    oversized, disordered = [], []
+    for (nm, yr), rows in editions.items():
+        ranks = [rk for rk, _ in rows]
+        if max(ranks) > len(ranks):
+            oversized.append((nm, yr, len(ranks), max(ranks)))
+        # Count the rows that would have to move, not the pairs that disagree:
+        # one badly placed rider otherwise reports as dozens of violations.
+        times = [t for _, t in rows if t is not None]
+        tails = []
+        for x in times:
+            i = bisect.bisect_right(tails, x)
+            if i == len(tails):
+                tails.append(x)
+            else:
+                tails[i] = x
+        if len(times) - len(tails):
+            disordered.append((nm, yr, len(times) - len(tails)))
+
+    if oversized:
+        # Sorted by RATIO, not by absolute rank: that is what separates a field
+        # we merely store a subset of from one whose ranks are not places at all.
+        worst = sorted(oversized, key=lambda e: -(e[3] / e[2]))[:4]
+        warn(f"{len(oversized)} gravel edition(s) number their finishers past the "
+             f"size of the field. Expected where we keep a subset of a wider "
+             f"published field (PCS editions, or a FIELD_CAP window that later "
+             f"loses a duplicate); a LARGE ratio instead means the stored numbers "
+             f"are not places in this field at all. "
+             + "; ".join(f"{nm} {yr}: {n} finishers ranked up to {mx} ({mx / n:.1f}x)"
+                         for nm, yr, n, mx in worst))
+    if disordered:
+        warn(f"{sum(e[2] for e in disordered)} gravel finisher(s) across "
+             f"{len(disordered)} edition(s) are ranked out of clock order. Each is "
+             f"a row whose stored time disagrees with its own rank, usually a "
+             f"checkpoint split kept as a finish. "
+             + "; ".join(f"{nm} {yr} ({n})" for nm, yr, n in sorted(disordered)))
+
+
 def check_results(c):
     multi = c.execute("""
         SELECT ra.name, re.year, s.stage_number, s.route_type, COUNT(*) n
@@ -787,6 +870,7 @@ def main():
     check_editions(cur, races)
     check_split_slug_provenance(cur)
     check_results(cur)
+    check_gravel_rank_integrity(cur)
     check_phantom_split_days(cur)
     check_intentional_gaps(cur)
     conn.close()
