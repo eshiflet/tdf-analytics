@@ -1622,13 +1622,19 @@ class GcGapMonotonicityTest(DBCheckTest):
 # ══════════════════════════════════════════════════════════════════════════
 
 class GcGapZeroFillerTest(DBCheckTest):
-    """PCS's "+0:00" filler, stored as a real zero instead of a NULL.
+    """A GC gap of zero sitting below a positive one, whatever put it there.
 
     The test must be comparative, and that is the whole difficulty: 7,735 riders
     in the archive genuinely share the leader's time, so a check that condemned
     zeros would condemn ordinary bunch finishes. Only a zero sitting BELOW a
     positive gap is impossible — a rider cannot be level with the leader while
     the man ranked ahead of him is a minute down.
+
+    These tests pin the DETECTOR, deliberately not a cause. The cause was first
+    written up as PCS's "+0:00" filler and is actually this repo's own stage-1
+    fallback in ingest_race (1,093 of 1,095 rows); the check was unchanged by
+    that discovery, which is the point of testing the shape rather than the
+    story attached to it.
     """
 
     def assertWarningMatching(self, fragment):
@@ -1655,8 +1661,8 @@ class GcGapZeroFillerTest(DBCheckTest):
         self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=60)
         self.result(1, "rider/c", gc_rank=3, gc_gap_seconds=0)
         validate_db.check_gc_gap_zero_filler(self.cur)
-        self.assertWarningMatching("filler")
         self.assertWarningMatching("1 GC gap(s)")
+        self.assertWarningMatching("already behind")
 
     def test_the_leader_is_never_the_fault(self):
         """Rank 1 is zero by definition. Counting it would report every stage."""
@@ -1715,9 +1721,9 @@ class GcGapZeroFillerTest(DBCheckTest):
         self.assertEqual(validate_db.warnings, [])
 
     def test_it_is_a_warning_and_never_an_error(self):
-        """A re-ingest recreates every one from the same cells, so the ingest
-        has to change before the data can — Eric's call, like its sibling in
-        finish_time_seconds."""
+        """The repair is an ingest question — stop giving a stage-1 rider his
+        stage placing as a GC position — and it would move 26,315 rows, so it
+        is Eric's call rather than a cleanup."""
         self.setup_stage()
         self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
         self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=60)

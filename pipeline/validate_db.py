@@ -727,28 +727,38 @@ def check_gc_gap_monotonicity(c):
 def check_gc_gap_zero_filler(c):
     """A stored GC gap of 0 that sits below a positive one cannot be a real tie.
 
-    PCS writes "+0:00" in a cell it has no value for, and the ingest stores that
-    as a zero rather than a NULL. In the finish-time column this repo has known
-    about it for a while (see "Times that no race produced", 54 rows); the
-    general classification has the same hole and nothing looked.
+    WHAT THIS ACTUALLY FINDS, corrected 2026-09-19 after the first reading was
+    wrong. It was written up as PCS's "+0:00" filler read as a real zero, the
+    same defect null_itt_filler_times.py fixed in the stage TIME column. It is
+    not: 1,093 of the 1,095 rows are on STAGE 1 and carry gc_rank == stage_rank,
+    which is the signature of this repo's own ingest.
 
-    THE TEST HAS TO BE COMPARATIVE, because most zeros are real: 7,735 riders
-    genuinely share the leader's time, and nulling them would destroy ordinary
-    data on a whole bunch finish. A zero is only impossible when some BETTER
-    rank in the same stage already carries a positive gap — a rider cannot be
-    level with the leader while the man ahead of him is a minute down. That is
-    1,095 rows in 30 stages, against those 7,735 legitimate ones.
+    `ingest_race` has a fallback -- `if not gc_pos and n == 1` -- that gives a
+    stage-1 rider his STAGE placing as a GC position and his stage gap as a GC
+    gap. PCS publishes a GC position for very few riders after stage 1 (three
+    of 180 on Vuelta 1996 stage 1: the top three, reordered by bonifications),
+    so the fallback invents one for everybody else. The invented positions then
+    collide with the real ones, which is why 748 stage-1 GC ranks in the archive
+    are held by more than one rider, and why the invented gap of 0 sits below
+    the published gap of +0:10 at the same rank.
 
-    Reported apart from the backwards-ladder warning even though 28 of its 30
-    stages appear there too, because this names a CAUSE where that names a
-    shape: these rows have one known origin and one honest repair. The other
-    two stages are invisible to the ladder check entirely.
+    So the zero is usually TRUE -- a bunch rider really did finish on the
+    winner's time -- and the RANK beside it is the fabricated half. Nulling
+    these gaps would remove the true value and leave the false one, which is
+    why nothing has been nulled.
 
-    A WARNING, and deliberately not repaired here. NULL is the honest value,
-    but the sibling defect in `finish_time_seconds` is recorded as Eric's
-    decision and this is the same call: a re-ingest would recreate every one of
-    them from the same "+0:00" cells unless ingest_race stops reading them as
-    zeros first.
+    The two exceptions are the real thing: `rider/andris-nauduzs` on Giro 2004
+    stages 11 and 12, whose gc_lag cell is "+0:00" while his stage gap is 15:20.
+
+    The test is still comparative and still correct as a DETECTOR, whatever the
+    cause: 7,735 riders genuinely share the leader's time, so only a zero with a
+    positive gap already seen at a BETTER rank is impossible. Exempt for the
+    usual two reasons -- a disqualified rider and one whose time PCS marks as
+    awarded rather than raced are legitimately out of step with their rank.
+
+    A WARNING. The repair is an ingest question (stop fabricating a stage-1 GC
+    position, or prefer gc_standings for it) and it would move 26,315 rows, so
+    it is Eric's call rather than a cleanup.
     """
     rows = c.execute("""
         SELECT s.stage_id, ra.name, re.year, s.stage_number, sr.gc_rank,
@@ -758,7 +768,12 @@ def check_gc_gap_zero_filler(c):
           JOIN race_editions re ON re.edition_id = s.edition_id
           JOIN races ra ON ra.race_id = re.race_id
          WHERE sr.gc_rank IS NOT NULL AND sr.gc_gap_seconds IS NOT NULL
-         ORDER BY s.stage_id, sr.gc_rank""").fetchall()
+         -- gc_gap_seconds in the sort, not just the rank: two riders can share
+         -- a rank, and without it SQLite may hand back the positive gap first
+         -- and make the zero beside it look like it sits BELOW one. That is
+         -- worth exactly two rows here, which is two too many for a number
+         -- this reports as a count of defects.
+         ORDER BY s.stage_id, sr.gc_rank, sr.gc_gap_seconds""").fetchall()
     SID, NAME, YEAR, STAGE, RANK, GAP, FLAG = range(7)
     by_stage = defaultdict(list)
     for r in rows:
@@ -779,10 +794,11 @@ def check_gc_gap_zero_filler(c):
     worst = ", ".join(f"{n.split()[0]} {y} ({k})" for (n, y), k in
                       sorted(per_edition.items(), key=lambda kv: -kv[1])[:4])
     warn(f"{total} GC gap(s) across {len(stages)} stage(s) are stored as 0 while a "
-         f"better rank in the same stage is already behind — PCS's \"+0:00\" filler "
-         f"read as a real zero, not a tie with the leader. NULL is the honest value, "
-         f"but a re-ingest recreates them from the same cells, so this wants the "
-         f"ingest fixed first. Worst: {worst}")
+         f"better rank in the same stage is already behind. Nearly all are stage 1, "
+         f"where ingest_race gives a rider PCS left out of the classification his "
+         f"STAGE placing instead — the invented rank then collides with a published "
+         f"one. The zero is usually true and the rank beside it is not, so do NOT "
+         f"null these. Worst: {worst}")
 
 
 def check_field_definition(c):
