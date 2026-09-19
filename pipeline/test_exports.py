@@ -706,6 +706,78 @@ class TestCompactRiderNames(unittest.TestCase):
                           f"{mod.__name__}.build_index does not compact names")
 
 
+class TestDataSourcesCounts(unittest.TestCase):
+    """The numbers DATA_SOURCES.md states about provenance must be the DB's.
+
+    That file is what somebody reads before deciding whether a source is worth
+    fetching, and its `unknown` row in particular is read as a debt to pay
+    down. It had a row count that was off by a factor of five (sportmaniacs
+    4,695 against 911) for long enough that nobody noticed.
+
+    Only the elevation claims are checked here, not the whole at-a-glance
+    table: those totals move with every ingest and the file says so and gives
+    the query. The elevation numbers are different — they are the RESULT of a
+    deliberate pass, quoted as an achievement, and a stale one would read as a
+    current one. Each is anchored inside its own sentence and parsed, never
+    merely searched for, because in a 300-line document every small integer is
+    already present somewhere.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        path = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "DATA_SOURCES.md"))
+        if not os.path.exists(path):
+            raise unittest.SkipTest("DATA_SOURCES.md is not present")
+        with open(path, encoding="utf-8") as f:
+            cls.doc = f.read()
+
+    def db(self):
+        import sqlite3
+        from race_common import DB_PATH
+        if not os.path.exists(DB_PATH):
+            self.skipTest("no database")
+        conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        self.addCleanup(conn.close)
+        return conn
+
+    def elevation(self, source):
+        return self.db().execute(
+            """SELECT COUNT(*) FROM data_provenance p
+                 JOIN stages s ON s.stage_id = p.entity_id
+                WHERE p.entity='stages' AND p.field='vertical_meters'
+                  AND s.vertical_meters IS NOT NULL AND p.source = ?""",
+            (source,)).fetchone()[0]
+
+    def test_the_proven_elevation_count_is_current(self):
+        import re
+        m = re.search(r"\*\*Elevation is now [\d.]+% proven\*\* — ([\d,]+) `pcs`, "
+                      r"([\d,]+) `unknown`", self.doc)
+        self.assertIsNotNone(m, "could not find the elevation headline")
+        self.assertEqual(int(m.group(1).replace(",", "")), self.elevation("pcs"))
+        self.assertEqual(int(m.group(2).replace(",", "")), self.elevation("unknown"))
+
+    def test_the_proven_elevation_percentage_is_current(self):
+        import re
+        m = re.search(r"\*\*Elevation is now ([\d.]+)% proven\*\*", self.doc)
+        self.assertIsNotNone(m)
+        total = self.db().execute(
+            "SELECT COUNT(*) FROM stages WHERE vertical_meters IS NOT NULL").fetchone()[0]
+        self.assertAlmostEqual(float(m.group(1)), self.elevation("pcs") / total * 100,
+                               places=1)
+
+    def test_no_elevation_value_lacks_a_provenance_row(self):
+        """The claim the whole pass rests on. If this ever fails, some writer
+        put a figure in without recording where it came from."""
+        missing = self.db().execute(
+            """SELECT COUNT(*) FROM stages s WHERE s.vertical_meters IS NOT NULL
+                 AND NOT EXISTS (SELECT 1 FROM data_provenance p
+                       WHERE p.entity='stages' AND p.entity_id = s.stage_id
+                         AND p.field='vertical_meters')""").fetchone()[0]
+        self.assertEqual(missing, 0)
+        self.assertIn("0 with no row", self.doc)
+
+
 class TestDistanceBaseline(unittest.TestCase):
     """
     export_race_summary.report_distance_divergences — the Giro/Vuelta distance

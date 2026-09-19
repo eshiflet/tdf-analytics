@@ -133,14 +133,35 @@ flowchart TD
   build; its exclusions (cancelled stages, DNF finish times, the fields PCS has no source
   for) are what keep it readable, and each one is pinned by `test_coverage.py`.
 
+- **Importing a pipeline module must not touch the database.** Every script keeps its
+  writes behind `main()` and an `if __name__ == "__main__"` guard, because the test suite
+  imports modules by design — `test_every_networked_script_still_imports` does it
+  deliberately — and a suite that mutates the data it validates is the worst possible
+  place for a silent write. `patch_giro_2026_elevation.py` had no guard until 2026-09-19:
+  its connect/UPDATE/commit ran at module top level, and merely importing it to read a
+  constant rewrote 21 stages. `test_no_pipeline_module_writes_to_the_db_at_import` asserts
+  this by PARSING every module — importing to find out whether importing is safe is the
+  bug it is checking for.
+
 - **validate_exports.py** — a post-export sanity check (not a data source): catches
   decreasing cumulative point totals, malformed stage sequences, and KOM-total drift
   against a reference. Runs locally after any export, and again in CI before every build so
   a bad export can never reach production.
 
-- **validate_db.py / audit_stage_counts.py** — integrity checks on the *database*, where
-  `validate_exports.py` only sees the JSON that was already written. `validate_db.py`
-  catches numbering gaps, duplicate or missing `source_slug`, orphaned provenance, and
+  Since 2026-09-19 it ALSO opens `cycling.db`, which is the one thing it never used to do.
+  `check_exports_match_db()` compares `gc_rank`/`gc_gap_seconds` for the three stage races
+  — 680,000 rows against 303 files in under two seconds — and ERRORs with the exact
+  `export_gc.py` command that fixes each stale year. Every other check here asks whether a
+  file is internally CONSISTENT, which a stale file happily is, so a DB repair followed by
+  a forgotten re-export had been invisible to everything: three Vuelta editions were
+  serving a stage-1 classification the database had already removed.
+  **It covers `gc_by_stage_*.json` only.** The summaries are derived-from-derived, and
+  validating them against the DB would mean restating the exporters' own rules (including
+  the sparse-elevation cut-off), so keeping them current is procedural — see "After ANY
+  change to the database" in ai-context.md.
+
+- **validate_db.py / audit_stage_counts.py** — integrity checks on the *database*.
+  `validate_db.py` catches numbering gaps, duplicate or missing `source_slug`, orphaned provenance, and
   distances copied from a neighbouring stage; ERROR exits 1, WARN reports a known upstream
   limit. `audit_stage_counts.py` reconciles each edition against PCS's own published stage
   list **by route**, which is the only way to catch an edition that simply ends early or

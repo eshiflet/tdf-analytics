@@ -16,19 +16,26 @@ a claim. If no source has it, it stays NULL and `coverage.py` counts it.
 
 ## At a glance
 
+Row counts are `data_provenance` rows, measured **2026-09-19** (143,332 total).
+They move with every ingest — re-measure rather than trusting them:
+
+```sql
+SELECT source, COUNT(*) FROM data_provenance GROUP BY 1 ORDER BY 2 DESC;
+```
+
 | source | rows | reach it with | good for |
 |---|---|---|---|
-| [`pcs`](#pcs--procyclingstatscom) | 112,138 | plain HTTP | everything, for every race |
-| [`athlinks`](#athlinks) | 17,365 | public JSON API | Life Time gravel/MTB results |
-| [`derived`](#derived) | 6,686 | — computed here | never fetched; always second-best |
-| [`sportmaniacs`](#sportmaniacs) | 4,695 | JSON API | The Traka 2023-2026 |
+| [`pcs`](#pcs--procyclingstatscom) | 112,189 | plain HTTP | everything, for every race |
+| [`athlinks`](#athlinks) | 16,294 | public JSON API | Life Time gravel/MTB results |
+| [`derived`](#derived) | 6,840 | — computed here | never fetched; always second-best |
+| [`unknown`](#unknown) | 4,236 | — | origin unproven. **Read its section — this number going UP can mean things got better** |
 | [`bikeraceinfo`](#bikeraceinfo) | 2,046 | plain HTTP | Tour cross-checking, KOM, distances |
-| [`tretzesports`](#tretzesports) | 1,147 | JSON API | The Traka 2021-2022 |
-| [`manual`](#manual) | 13 | — | hand-entered, with a reason |
-| [`wikipedia`](#wikipedia) | 12 | plain HTTP | a specific corrected value |
+| [`sportmaniacs`](#sportmaniacs) | 911 | JSON API | The Traka 2023-2026 |
+| [`tretzesports`](#tretzesports) | 726 | JSON API | The Traka 2021-2022 |
+| [`manual`](#manual) | 53 | — | hand-entered, with a reason |
+| [`wikipedia`](#wikipedia) | 35 | plain HTTP | a specific corrected value |
 | [letour.fr](#letourfr--the-races-own-site) | 1, as `manual` | plain HTTP (year archive needs a browser) | the Tour's own record, for gaps PCS has |
 | [`cyclingflash`](#cyclingflash) | 2 | **Chrome extension only** | elevation, **2000 onward** |
-| [`unknown`](#unknown) | 3,480 | — | predates provenance; origin unproven |
 
 ---
 
@@ -69,6 +76,22 @@ against other sources, not assumed:
 is authoritative for exactly one thing: the `rider_id` string, because our ids
 are its slugs by convention. That is a naming convention, not a truth claim,
 and the Bélanger-Barrette row above is the case where the two come apart.
+
+**PCS publishes elevation on TWO surfaces, and they are not independent**
+(established 2026-09-19 by fetching 81 editions):
+- The **stage page** carries `Vertical meters` in its info block. That is where
+  2,879 of the archive's values came from, matched exactly out of the stored
+  scrape files.
+- The **route page** carries the same table for the whole edition, and is the
+  only surface for stages whose stage page PCS serves empty — **76 of the 77
+  such stages are the edition's FINAL one**, the Paris/Madrid finale. 78 values
+  were proven from it.
+- Where both exist **they agree**. So the two are one source checked twice, not
+  two sources — which is exactly what makes the seven stages that match
+  NEITHER (Tour 2005 st14, six 2006 stages, Tour 2016 st13) a real anomaly
+  rather than a choice between two publishers. Use
+  `scrape_route_overview_elevation.py --verify-unknown` to re-establish this;
+  it records provenance and never writes a value.
 
 **Known silences, all verified rather than assumed:**
 - No elevation before ~1963 on the route page, and none at all for the 1954-62
@@ -235,9 +258,39 @@ for a value a human established and no fetch can reproduce.
 
 ## unknown
 
-Predates provenance tracking; origin unproven. Not a source, a debt.
-`audit_elevation.py` upgrades `unknown` to `pcs` where it can verify the stored
-value against the page, which is how this number goes down.
+Origin unproven. Not a source, a debt — and a deliberately recorded one.
+
+**The count going UP can mean things got better.** It rose from 3,480 to 4,236
+on 2026-09-19 in the same pass that PROVED 2,957 elevation values, because
+`backfill_provenance.py` also wrote an honest `unknown` for 2,751
+`profile_score` values that had had **no row at all**. A field with no
+provenance row is invisible; a field with an `unknown` row is on a list. Count
+"values with no row" separately from "values recorded as unknown" — the first
+is the failure.
+
+**How an `unknown` becomes proven.** Only by matching an artifact, never by
+assumption — a wrong `pcs` invites the bulk re-scrape that destroys good
+patched values, whereas `unknown` is just a to-do list.
+
+- `backfill_provenance.py` reads the value out of the stage scrape file and
+  claims `pcs` only when it MATCHES and the file is gated to that stage by its
+  own Distance or Date. `stage_<n>.json` is not a stable key across a split day,
+  so the filename is never enough. This proved **2,879** elevation values and
+  127 profile scores.
+- `scrape_route_overview_elevation.py --verify-unknown` does the same against
+  PCS's ROUTE page, for the stages whose stage page carries no figure — mostly
+  the Paris/Madrid finales, where PCS serves an empty stage page. **78 more.**
+  It records provenance and never writes a stage value.
+- `audit_elevation.py` verifies a stored value against the page directly.
+- `--upgrade-unknown` (on `backfill_provenance.py`) replaces an `unknown`
+  placeholder with a proven source and nothing else. Verified across all
+  143,332 rows on 2026-09-19: the only transitions were 231 `unknown -> pcs`
+  and 92 `unknown -> derived`, **0 away from a real source**.
+
+**Elevation is now 99.59% proven** — 3,421 `pcs`, 8 `unknown`, 0 with no row,
+against 2,964 unproven that morning. The 8 that remain are listed under "Open
+items" in `ai-context.md`; seven of them hold a figure that matches **neither**
+PCS surface, and the eighth is a cancelled stage.
 
 ---
 

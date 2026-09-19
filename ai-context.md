@@ -46,9 +46,36 @@ The frontend is race-aware via the `RACES` registry in raceRegistry.ts (see "Rac
 
 ---
 
-## Open items as of 2026-09-14
+## Open items as of 2026-09-19
 
 Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
+
+**Closed 2026-09-19 (the app/cleanup session) — read the dated sections below
+for each:**
+- **Every rider shipped his name twice** — `n` dropped where `ln + " " + fn`
+  rebuilds it. **145 KB gzipped, 11.7% of the rider-index payload.**
+- **PCS's placeholder was being rendered as a name** — "Pujol ?",
+  "Lecrenier ???", "Van Muyten .". 16 riders, one funnel (`displayName()`).
+- **The chart's end labels were a smear** on the DEFAULT view — 2.9px apart in
+  a 10px font, with no de-collision — and had ALWAYS been clipped, because
+  `margin.right` was a constant 36 against names up to 70px wide.
+- **718 GC gaps filled** from verified pages already on disk, which also moved
+  **330 `totalTimeSeconds`** off an incomplete stage-sum onto winner-time+gap.
+- **Nibali's `gc_rank` of 1000** (Vuelta 2015 st2) — PCS's placeholder on a DSQ
+  row, stored as a rank. Backwards ladders 54 -> 53.
+- **`S?ren Nissen` merged into `soren-nissen`** on the AGES (30 at Leadville
+  2015, 33 at Unbound 2018), which removed the mojibake id and name without
+  anyone choosing between `Søren` and `Sören`. Riders 18,038 -> 18,037.
+- **The jersey tooltips nobody saw are deleted** (Eric's call). Their copy named
+  the jersey COLOUR and, for the classics and gravel, was the same four words
+  repeated. `jerseyIconTitle()`'s "Tour de France - GC" names the race, which is
+  what matters once one grid merges five of them.
+- **Three editions were serving data the DB had already repaired** — Vuelta
+  1968/1942/1941, all on stage 1. `validate_exports` now compares against the DB.
+- **A script rewrote the database by being imported** —
+  `patch_giro_2026_elevation.py` had no `__main__` guard.
+- **Elevation provenance: 2,964 unproven -> 8.** The scrape files held 2,879 of
+  them and the route page proved 78 more.
 
 **Decisions waiting on Eric (do not guess):**
 - **Project rename** — analysed and **deferred**; see "Renaming the project". If revived, take the subdomain step first.
@@ -72,6 +99,39 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **37 impossible gravel times** — a confirmed finisher timed faster than the winner he finished behind, Athlinks asserting both. `ingest_gravel` now clears the time AND the derived `gap_seconds`, since a -9754s gap is the same claim in another column. 37 -> 0 on both counts, all 8,142 gravel results kept.
 - **5,759 stale `data_provenance` rows** purged (it was 34 in the morning; the day's re-ingests and merges grew it).
 - **23 typo-variant rider ids merged**, 2 merges reversed after research, 3 pairs recorded as deliberately separate. Audit reads SAME 0, REVIEW 0.
+
+**Opened 2026-09-19 — each has enough written down to resume cold:**
+- **8 elevation values match NEITHER PCS surface.** Tour 2005 st14, 2006
+  st4/5/6/10/13, 2016 st13 store figures the stage page and the ROUTE page both
+  contradict (4,188 against 4,175; 3,595 against 3,509; 752 against 685). Six of
+  the eight are one edition, which suggests one unrecorded 2006 patch rather
+  than eight accidents. They are `unknown` provenance and UNCHANGED — deciding
+  between our number and PCS's needs a third source, not a rule. The eighth,
+  **Tour 1982 st5, is the odd one**: `cancelled=1`, 0 results, `distance_km`
+  0.0, and yet 556 m of climbing — the Orchies–Fontaine-au-Pire stage that was
+  never raced. `scrape_route_overview_elevation.py` filters `cancelled=0`, so
+  nothing will ever reach it; whether a cancelled stage should carry a planned
+  route's elevation at all is the real question.
+- **`Vojt?ch Marvan` is the last mojibake rider.** Unbound 2024, id minted from
+  the corrupt string (`rider/vojt-ch-marvan`). Unlike Nissen he has no clean
+  twin to merge into, so fixing him means choosing a letter no source states —
+  `Vojtěch` is near-certain for a Czech name of that shape, which is not the
+  same as published. Reported by `validate_db.check_corrupt_rider_names()`.
+- **Nothing checks that a SUMMARY export is current.** `check_exports_match_db()`
+  compares `gc_by_stage` files against the DB and cannot see
+  `all_races_summary.json` — which had been stale for hours on 2026-09-19,
+  because `slowestFinisherTimeSeconds` derives from `totalTimeSeconds`. A
+  summary is derived-from-derived and validating it against the DB would mean
+  restating the exporter's own sparse-elevation rules, which is how a second
+  implementation goes quietly wrong. Mitigated procedurally — see "After ANY
+  change to the database" under Validation Tools — but a real check is open.
+- **The 7-stage Van Springel run is one defect, not seven.** Tour 1966 stages
+  4-10: his gap is one second short of his rank on every one of them, entering
+  at a split day (stage 4's slug is `stage-3b`) and carried forward. PCS's
+  stored `gc_pages` for those stages hold 15 rows and he is 16th, so the source
+  that would settle whether the gap or the rank is wrong does not cover him.
+  `audit_gc_ladders.py` now prints runs like this, and says the 18 ONE ROW
+  stages are 12 distinct causes.
 
 **Open work, ready to pick up:**
 - **171 duplicate-rider candidates remain open** after the 2026-09-14 sweep, and the sweep classifies them so nobody re-derives the triage: 139 have no birth year on one or both sides and nothing this archive knows can decide them, 26 have conflicting nationalities and are probably two people, 6 disagree on birth year by more than rounding. Re-run the pairwise scan from "Rider identity"; the audit now prints each candidate's home towns, which is the signal most likely to settle one.
@@ -6668,7 +6728,7 @@ python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
 
-# Unit tests — 769 as of 2026-09-19
+# Unit tests — 798 as of 2026-09-19
 python3 -m unittest discover -p "test_*.py"
 
 # Exported-JSON checks (run after any export). 470 files, 0 errors and
@@ -6691,6 +6751,58 @@ python3 validate_db.py               # 0 errors, 12 warnings expected (2026-09-1
 # only needs running by hand after some OTHER writer touches a riders_index.json.
 python3 link_rider_race_sets.py --check     # report drift, write nothing
 ```
+
+### After ANY change to the database — the full re-export recipe
+
+Learned the hard way twice on 2026-09-19. Both times the year files were
+re-exported and something downstream was not, and every check still passed
+because nothing compared the two.
+
+```bash
+cd pipeline
+# 1. the year files for the race-years you touched
+python3 export_gc.py --race tour --year 1923      # --year is its OWN flag
+python3 export_classics.py                        # aggregates rebuild whole
+python3 export_gravel.py
+
+# 2. THE SUMMARIES. Forgetting these is the failure mode.
+#    slowestFinisherTimeSeconds derives from totalTimeSeconds, and
+#    totalElevationM from the stages — both move when the DB moves.
+python3 export_race_summary.py --race tdf
+python3 export_race_summary.py --race giro
+python3 export_race_summary.py --race vuelta
+python3 export_all_races_summary.py
+python3 export_classics_history.py
+
+# 3. the rider indexes, if riders were merged/split/renamed
+python3 export_riders_index.py --race tour        # (+ giro, vuelta)
+python3 link_rider_race_sets.py                   # bitmask + redirect map
+
+# 4. prove it
+python3 validate_exports.py     # errors if a gc_by_stage year disagrees with the DB
+python3 validate_db.py
+python3 -m unittest discover -p "test_*.py"
+```
+
+**`validate_exports.py` catches a stale `gc_by_stage_*.json` and nothing else.**
+`check_exports_match_db()` (2026-09-19) compares `gc_rank` and
+`gc_gap_seconds` for the three stage races — 680,000 rows against 303 files in
+under two seconds — and names the `export_gc.py` command that fixes each one.
+It does NOT see `all_races_summary.json`, `races_summary.json` or the rider
+indexes: a summary is derived-from-derived, and checking it against the DB
+would mean restating the exporter's own rules, including the sparse-elevation
+cut-off. Step 2 above is the mitigation, and it is procedural on purpose.
+
+### The checks added on 2026-09-19
+
+| check | what it reports | live count |
+|---|---|---|
+| `validate_db.check_corrupt_rider_names()` | a `?` INSIDE a word — mojibake, as opposed to PCS's placeholder for an unrecorded first name | 1 (Vojt?ch Marvan) |
+| `validate_db.check_gc_rank_beyond_field()` | a top GC position more than double the next, in a classification of 50+ | 0 |
+| `validate_exports.check_exports_match_db()` | an exported year that no longer agrees with the DB | 0 |
+| `test_scrapers.test_no_pipeline_module_writes_to_the_db_at_import` | a module whose top level runs SQL | 0 |
+| `test_scrapers.test_verify_unknown_never_fills_a_value` | `--verify-unknown`'s loops ungated | — |
+| `test_backfill_provenance.ScrapeDirsTest` | a race missing from `SCRAPE_DIRS`, asserted against the disk | — |
 
 ### coverage.py — what is missing, and where (re-run 2026-09-11)
 
