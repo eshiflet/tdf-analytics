@@ -2073,16 +2073,30 @@ It covers 2022–2026 and Grand Prix athletes only, so it verifies the modern
 editions and says nothing about Leadville 1994 — which is still the half where
 the course structure changes most.
 
-Its last run: **385 results agree with Life Time on both place and time.** The 92
-that do not are grouped by edition, and every one is a systematic difference
-between two sources rather than a wrong course:
+Its last run (**2026-09-19**): **390 results agree with Life Time on both place
+and time**, against 54 place and 36 time mismatches. Grouped by edition, and
+every one is a systematic difference between two sources rather than a wrong
+course:
 
 | edition | agree | what differs |
 |---|---|---|
-| Leadville 2022 | 0 | **every** time +60s. Two clocks, not sixty defects |
-| Sea Otter 2026 | 53 | 19 times, median +19s — Life Time publishes chip, the division was scored on gun |
-| Unbound 2026 | 7 | 33 places, median +3 — the two sources count a different field |
+| Leadville 2022 | 0 | **every** time +60s. Two clocks, not eleven defects |
+| Sea Otter 2026 | 53 | 18 times, median +19s — Life Time publishes chip, the division was scored on gun |
+| Unbound 2026 | 8 | 32 places, median +3 — the two sources count a different field |
 | Leadville 2024 | 9 | one rider (Vermeulen: Life Time says 113th, we say 57th — overall place vs place among pros) |
+| Leadville 2025 | 15 | 9 places, median −2 |
+| Big Sugar / Unbound 2022, Sea Otter 2023 | 24 | 6 places, all within 1–10 |
+
+The 385 in the previous revision of this table was from 2026-08; the counts
+moved when the 2026 rounds landed and again when the off-road ranks were
+repaired on 2026-09-19. **Re-run it before quoting it** — an agreement count is
+exactly the kind of number that reads as current long after it stops being so.
+
+**Checked 2026-09-19 that Unbound 2026 is not tie handling.** Our field has nine
+tied groups; scoring them densely would put Seewald at 18 where Life Time says
+24 and we say 25. The gap grows with depth (+1 by 25th, +2 by 32nd), so we
+include one or two riders in the top 32 that Life Time does not count. Which
+source is right needs Life Time's own finisher list, not its per-athlete pages.
 
 **None of those place gaps is an error — all three are Life Time answering a
 different question**, and it is worth writing down which, because the next
