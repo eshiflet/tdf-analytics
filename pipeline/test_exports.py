@@ -27,6 +27,7 @@ import json
 import os
 import shutil
 import sqlite3
+import subprocess
 import sys
 import tempfile
 from unittest import mock
@@ -935,3 +936,152 @@ class TestMergedRiderRedirectMap(unittest.TestCase):
             exported = json.load(f)
         missing = sorted(t for t in exported.values() if t not in known)
         self.assertEqual(missing, [], "redirect target(s) in no index")
+
+
+class TestPayloadBreakdown(unittest.TestCase):
+    """check-payload.mjs names every payload that MOVED, not just the total.
+
+    The 2% tolerance cannot stop sub-threshold drift accumulating: 8.2 KB of
+    real points data landed in the giro and vuelta year files across two commits
+    with no re-baseline, each far under 2%, and the PASS line reported only a
+    growing "+5.8 KB vs baseline" that named nothing. Answering "is that mine?"
+    a month later meant diffing 42 files by hand.
+
+    RUNS THE REAL SCRIPT against a SYNTHETIC payload. check-payload.mjs resolves
+    build/assets, src/data and payload-baseline.json relative to its own
+    import.meta.url, so a copy of it beside a handful of invented files
+    exercises the whole path — measure, attribute, compare, report.
+
+    Two reasons not to point it at the real build. It never touches the
+    committed baseline, which a crashed test would otherwise leave mutated, and
+    a wrong baseline passes silently by definition. And it does not need
+    `npm run build` to have run: against the real 470-asset build these six
+    cases gzip 2,800 files at level 9 and take 9.5 SECONDS, against a pre-push
+    hook whose whole measured unit-test budget is 0.5s.
+    """
+
+    # Filler is INCOMPRESSIBLE (random hex), not repeated characters, and the
+    # sizes are chosen so each bucket gzips to a few KB. A run of "x" collapses
+    # to a few dozen bytes, and then the 10-40 byte perturbations these tests
+    # make are 20% of a payload and trip the regression guard instead of
+    # exercising the sub-threshold path they are written for.
+    #                      name                      bytes of filler
+    DATA = [("giro", "gc_by_stage_2000.json", 8000),
+            ("giro", "riders_index.json", 6000),
+            ("vuelta", "gc_by_stage_2001.json", 7000),
+            ("vuelta", "riders_index.json", 5000)]
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "cycling-app"))
+        cls.node = shutil.which("node")
+        cls.script = os.path.join(cls.app, "check-payload.mjs")
+
+    def setUp(self):
+        if not self.node:
+            self.skipTest("node is not on PATH")
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        shutil.copy2(self.script, os.path.join(self.tmp, "check-payload.mjs"))
+
+        assets = os.path.join(self.tmp, "build", "assets")
+        os.makedirs(assets)
+        # Distinct sizes on purpose: attribution is keyed on basename:rawBytes,
+        # and two files sharing both would be split evenly across their races.
+        for i, (race, name, size) in enumerate(self.DATA):
+            body = json.dumps({"pad": os.urandom(size // 2).hex()})
+            os.makedirs(os.path.join(self.tmp, "src", "data", race), exist_ok=True)
+            with open(os.path.join(self.tmp, "src", "data", race, name), "w") as f:
+                f.write(body)
+            # Vite copies data assets verbatim and fingerprints the name; the
+            # script strips exactly 8 hash characters back off.
+            stem, ext = os.path.splitext(name)
+            with open(os.path.join(assets, f"{stem}-hash{i:04d}{ext}"), "w") as f:
+                f.write(body)
+        for entry, size in (("main-abcd1234.js", 18000), ("main-abcd1234.css", 9000)):
+            with open(os.path.join(assets, entry), "w") as f:
+                f.write(os.urandom(size // 2).hex())
+
+        code, out = self._run(["--update"])
+        self.assertEqual(code, 0, out)
+        with open(os.path.join(self.tmp, "payload-baseline.json")) as f:
+            self.baseline = json.load(f)
+        # The fixture has to produce the buckets the assertions name, or a typo
+        # in it would look like the script losing a payload.
+        for key in ("years:giro", "years:vuelta", "entry:main.css",
+                    "riders_index:giro", "total:assets"):
+            self.assertIn(key, self.baseline, f"fixture produced {list(self.baseline)}")
+
+    def _run(self, argv=()):
+        proc = subprocess.run([self.node, "check-payload.mjs", *argv], cwd=self.tmp,
+                              capture_output=True, text=True)
+        return proc.returncode, proc.stdout + proc.stderr
+
+    def run_check(self, baseline):
+        """(exit code, stdout) for one run against `baseline`."""
+        with open(os.path.join(self.tmp, "payload-baseline.json"), "w") as f:
+            json.dump(baseline, f)
+        return self._run()
+
+    def test_a_run_with_nothing_moved_stays_quiet(self):
+        """The state right after a re-baseline, and the one this is trying to
+        make normal again. A breakdown on every run would be noise."""
+        code, out = self.run_check(self.baseline)
+        self.assertEqual(code, 0, out)
+        self.assertIn("PASS", out)
+        self.assertNotIn("differ from the baseline", out)
+
+    def test_drift_under_the_tolerance_is_named(self):
+        """The whole point: it passes, and it says WHAT grew."""
+        b = dict(self.baseline)
+        b["years:giro"] -= 10            # current is now 10 B above baseline
+        b["total:assets"] -= 10
+        code, out = self.run_check(b)
+        self.assertEqual(code, 0, out)
+        self.assertIn("differ from the baseline", out)
+        self.assertIn("years:giro", out)
+
+    def test_an_offsetting_pair_is_still_named(self):
+        """The reason this keys on buckets that MOVED rather than on the total
+        being non-zero. One payload growing while another shrinks by the same
+        amount nets to a reassuring +0.0 KB."""
+        b = dict(self.baseline)
+        b["years:giro"] -= 40
+        b["years:vuelta"] += 40          # total:assets deliberately unchanged
+        code, out = self.run_check(b)
+        self.assertEqual(code, 0, out)
+        self.assertIn("+0.0 KB vs baseline", out)
+        self.assertIn("differ from the baseline", out)
+        self.assertIn("years:giro", out)
+        self.assertIn("years:vuelta", out)
+
+    def test_a_sub_kilobyte_move_prints_bytes(self):
+        """A 21-byte move rendered "0.0 KB" reads as nothing moving, which is
+        the opposite of what this section exists to say."""
+        b = dict(self.baseline)
+        b["entry:main.css"] -= 21
+        b["total:assets"] -= 21
+        code, out = self.run_check(b)
+        self.assertEqual(code, 0, out)
+        self.assertIn("21 B", out)
+        self.assertNotIn("0.0 KB    ", out)
+
+    def test_a_real_regression_still_fails_and_exits_one(self):
+        """The guard's actual job, unchanged by the breakdown."""
+        b = dict(self.baseline)
+        b["riders_index:giro"] = int(b["riders_index:giro"] * 0.5)
+        code, out = self.run_check(b)
+        self.assertEqual(code, 1, out)
+        self.assertIn("REGRESSED", out)
+        self.assertIn("FAIL", out)
+
+    def test_the_breakdown_never_pre_empts_a_failure(self):
+        """It prints after process.exit(1), so a failing run shows the
+        REGRESSED lines and not a softer "none is a regression" paragraph
+        contradicting them."""
+        b = dict(self.baseline)
+        b["riders_index:giro"] = int(b["riders_index:giro"] * 0.5)
+        _code, out = self.run_check(b)
+        self.assertNotIn("differ from the baseline", out)
+        self.assertNotIn("None is a regression", out)

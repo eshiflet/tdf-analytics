@@ -4161,6 +4161,24 @@ nothing moved, which is the state right after a re-baseline and the state this
 exists to make normal again. The FAIL path is untouched: it already itemises its
 regressions, and the breakdown prints after the exit.
 
+**`test_exports.TestPayloadBreakdown` runs the real script** — the first test in
+this repo to shell out to node — against a SYNTHETIC payload rather than the real
+build. `check-payload.mjs` resolves `build/assets`, `src/data` and the baseline
+relative to its own `import.meta.url`, so a copy of it beside a handful of
+invented files exercises measure, attribute, compare and report end to end. Two
+reasons not to point it at the real build: it never touches the committed
+baseline, which a crashed test would leave mutated and which passes silently when
+wrong; and it needs no `npm run build`, so it runs in CI, where the Python suite
+executes BEFORE the build step. Against the real 470-asset build the same six
+cases gzip 2,800 files and take **9.5s**, against a pre-push hook whose entire
+measured unit-test budget is 0.5s; synthetic, they take **0.33s**.
+
+The fixture's filler is **incompressible random hex, not repeated characters** —
+a run of `"x"` gzips to a few dozen bytes, and then the 10-40 byte perturbations
+these tests make are 20% of a payload and trip the regression guard instead of
+exercising the sub-threshold path they exist for. That was a real first draft,
+not a hypothetical.
+
 ```
 6 payload(s) differ from the baseline. None is a regression, but drift that
 nobody re-baselines accumulates until an unrelated change trips the 2% guard:
