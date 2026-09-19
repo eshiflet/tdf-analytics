@@ -19,6 +19,7 @@ the only "trick" involved; no key, no cookie, no login.
 import json
 import os
 import time
+from datetime import datetime, timezone
 import urllib.error
 import urllib.request
 
@@ -99,6 +100,31 @@ def event_metadata(event_id):
 def _cache_path(event_id, course_id, division_id):
     name = f"{event_id}_{course_id}" + (f"_d{division_id}" if division_id else "")
     return os.path.join(RAW_CACHE, f"{name}.json")
+
+
+def cached_at(event_id, course_id, division_id=None):
+    """When the raw response behind this request was FETCHED, or None if we
+    hold no cache for it.
+
+    `results()` serves from `_raw/` whenever a cache file exists and tells the
+    caller nothing about which happened, so a scrape file that recorded
+    `datetime.now()` claimed to have been fetched at the moment it was last
+    RE-DERIVED. `scrape_athlinks.py --force` re-derives every edition from the
+    cache without touching the network, so one run restamped 88 files whose
+    data had not changed since August and buried a six-file repair in timestamp
+    churn.
+
+    The cache file's mtime answers it in both directions without the caller
+    having to know: a real fetch writes the file, so the mtime is now; a
+    re-derive leaves it alone, so the mtime is still the original fetch. That is
+    why this reports the CACHE's age rather than returning a "did we fetch" flag
+    — there is nothing to branch on.
+    """
+    try:
+        ts = os.path.getmtime(_cache_path(event_id, course_id, division_id))
+    except OSError:
+        return None
+    return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="seconds")
 
 
 def results(event_id, course_id, division_id=None, page=100, cap=20000,

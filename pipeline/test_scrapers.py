@@ -29,6 +29,8 @@ import re
 import shutil
 import sys
 import tempfile
+import json
+from datetime import datetime, timezone
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -1210,3 +1212,98 @@ class HelpNeverScrapesTest(unittest.TestCase):
     def test_the_guard_is_a_no_op_without_the_flag(self):
         from race_common import exit_on_help
         exit_on_help("usage", ["x", "--year", "2020"])      # must not raise
+
+
+class TestFetchedAtRecordsTheFetch(unittest.TestCase):
+    """`info.fetched_at` must date the DATA, not the file.
+
+    scrape_athlinks.py --force re-derives every edition from the gitignored
+    `_raw/` cache and touches the network for none of them. Stamping
+    datetime.now() made each run claim a fetch that never happened: one --force
+    rewrote 88 files whose data had not changed since August, which buried a
+    six-edition repair in timestamp churn and cost a manual content-diff to dig
+    back out. It also made --force non-idempotent — two runs in a row produced
+    different bytes for identical data.
+
+    athlinks_api.cached_at() reads the mtime of the cache file the rows came
+    from, which is `now` after a real fetch and the original date after a
+    re-derive, so one expression is right in both directions and there is no
+    "did we fetch" flag to thread through.
+    """
+
+    def setUp(self):
+        import athlinks_api
+        self.api = athlinks_api
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        original = athlinks_api.RAW_CACHE
+        self.addCleanup(lambda: setattr(athlinks_api, "RAW_CACHE", original))
+        athlinks_api.RAW_CACHE = self.tmp
+
+    def _cache(self, event, course, division=None, mtime=None):
+        path = self.api._cache_path(event, course, division)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"total": 0, "rows": []}, f)
+        if mtime is not None:
+            os.utime(path, (mtime, mtime))
+        return path
+
+    def test_cached_at_reports_the_cache_files_mtime(self):
+        self._cache(1, 2, mtime=1755000000)       # 2025-08-12T12:00:00Z
+        self.assertEqual(self.api.cached_at(1, 2), "2025-08-12T12:00:00+00:00")
+
+    def test_cached_at_is_none_when_nothing_is_cached(self):
+        self.assertIsNone(self.api.cached_at(1, 2))
+
+    def test_a_re_derive_reports_the_original_fetch_not_today(self):
+        """The whole point. An August cache must still say August."""
+        import scrape_athlinks
+        self._cache(1, 2, 3, mtime=1755000000)
+        got = scrape_athlinks.data_fetched_at({"event_id": 1, "course_id": 2},
+                                              [{"id": 3}])
+        self.assertEqual(got, "2025-08-12T12:00:00+00:00")
+        self.assertNotEqual(got[:7], datetime.now(timezone.utc).strftime("%Y-%m"),
+                            "a re-derive must not stamp the current month")
+
+    def test_a_union_of_two_divisions_takes_the_NEWEST(self):
+        """Leadville 2023 is 'Pro Male' plus 'Grand Prix Male'. A file is only
+        as fresh as its most recent input."""
+        import scrape_athlinks
+        self._cache(1, 2, 3, mtime=1755000000)
+        self._cache(1, 2, 4, mtime=1756000000)    # newer
+        got = scrape_athlinks.data_fetched_at({"event_id": 1, "course_id": 2},
+                                              [{"id": 3}, {"id": 4}])
+        self.assertEqual(got, "2025-08-24T01:46:40+00:00")
+
+    def test_no_division_reads_the_plain_course_cache(self):
+        import scrape_athlinks
+        self._cache(1, 2, None, mtime=1755000000)
+        self.assertEqual(scrape_athlinks.data_fetched_at(
+            {"event_id": 1, "course_id": 2}, []), "2025-08-12T12:00:00+00:00")
+
+    def test_with_no_cache_at_all_it_falls_back_to_now(self):
+        """A fetch made with use_cache=False writes no cache file. `now` is
+        then the honest answer, not a failure."""
+        import scrape_athlinks
+        got = scrape_athlinks.data_fetched_at({"event_id": 9, "course_id": 9}, [])
+        self.assertTrue(got.startswith(str(datetime.now(timezone.utc).year)))
+
+    def test_a_cancelled_edition_keeps_the_date_already_recorded(self):
+        """The cancelled branch writes a file without fetching any results, so
+        there is no cache to date it by and a re-derive must not invent one."""
+        import scrape_athlinks
+        p = os.path.join(self.tmp, "cancelled.json")
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump({"info": {"fetched_at": "2020-01-01T00:00:00+00:00"},
+                       "cancelled": True, "rows": []}, f)
+        self.assertEqual(scrape_athlinks.previous_fetched_at(p),
+                         "2020-01-01T00:00:00+00:00")
+
+    def test_previous_fetched_at_is_none_for_a_missing_or_broken_file(self):
+        import scrape_athlinks
+        self.assertIsNone(scrape_athlinks.previous_fetched_at(
+            os.path.join(self.tmp, "nope.json")))
+        p = os.path.join(self.tmp, "junk.json")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write("{not json")
+        self.assertIsNone(scrape_athlinks.previous_fetched_at(p))

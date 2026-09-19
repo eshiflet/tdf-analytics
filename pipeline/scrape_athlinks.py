@@ -34,7 +34,7 @@ import re
 import sys
 from datetime import datetime, timezone
 
-from athlinks_api import event_metadata, results
+from athlinks_api import cached_at, event_metadata, results
 from race_common import GRAVEL, fix_mojibake
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -531,6 +531,43 @@ def to_row(r, rank_type):
     }
 
 
+def data_fetched_at(entry, div_used):
+    """`info.fetched_at` for one edition: when its DATA was fetched.
+
+    Not when this file was last written. `--force` re-derives every edition
+    from the gitignored `_raw/` cache and touches the network for none of them,
+    so stamping `now()` made 88 files claim a fetch that never happened and hid
+    a six-file repair in the diff. athlinks_api.cached_at() reads the mtime of
+    the cache file the rows actually came from, which is `now` after a real
+    fetch and the original date after a re-derive.
+
+    An edition's field can be unioned from two divisions fetched at different
+    times (Leadville 2023 is "Pro Male" plus "Grand Prix Male"), so the NEWEST
+    wins: the file is only as fresh as its most recent input. Falling back to
+    `now()` covers the one case with no cache to read — a fetch made with
+    use_cache=False.
+    """
+    keys = [d["id"] for d in div_used] or [None]
+    stamps = [t for t in (cached_at(entry["event_id"], entry["course_id"], k)
+                          for k in keys) if t]
+    return (max(stamps) if stamps
+            else datetime.now(timezone.utc).isoformat(timespec="seconds"))
+
+
+def previous_fetched_at(path):
+    """The `fetched_at` already recorded in a scrape file, if it has one.
+
+    For the CANCELLED branch, which writes a file without fetching any results
+    at all — there is no cache to date it by, and re-deriving it must not claim
+    a new fetch either.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            return (json.load(f).get("info") or {}).get("fetched_at")
+    except (OSError, ValueError):
+        return None
+
+
 def scrape_one(slug, year, entry, force=False):
     out_dir = os.path.join(SCRAPES, slug)
     os.makedirs(out_dir, exist_ok=True)
@@ -561,7 +598,8 @@ def scrape_one(slug, year, entry, force=False):
             "info": {"race_slug": slug, "year": year, "date": entry["date"],
                      "event_id": entry["event_id"], "event_name": entry.get("event_name"),
                      "discipline": info.discipline, "rule": "cancelled",
-                     "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds")},
+                     "fetched_at": (previous_fetched_at(path)
+                                    or datetime.now(timezone.utc).isoformat(timespec="seconds"))},
             "cancelled": True, "rows": [],
         }
         with open(path, "w", encoding="utf-8") as f:
@@ -659,7 +697,7 @@ def scrape_one(slug, year, entry, force=False):
                            f"/Course/{entry['course_id']}/Results"),
             "api_url": (f"https://reignite-api.athlinks.com/event/{entry['event_id']}"
                         f"/race/{entry['course_id']}/results"),
-            "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "fetched_at": data_fetched_at(entry, div_used),
         },
         "cancelled": False,
         "rows": out_rows,

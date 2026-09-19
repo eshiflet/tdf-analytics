@@ -4979,10 +4979,21 @@ same majority guard as the winner rule refuses to act when a fifth of the field
 disagrees — then the ORDER is the suspect side, not the clocks.
 
 Both halves are re-derived from the gitignored `_raw/` cache with
-`scrape_athlinks.py --force`, so the repair cost no network at all. Note that
-`--force` restamps `info.fetched_at` on every file although it fetched nothing,
-which rewrites 88 scrape files that did not change; diff them by parsed content
-and restore the rest, or the repair drowns.
+`scrape_athlinks.py --force`, so the repair cost no network at all.
+
+**`--force` is now idempotent (fixed 2026-09-19).** It used to stamp
+`info.fetched_at` with `datetime.now()` on every file it re-derived, so a run
+that fetched nothing claimed 88 fresh fetches and buried the six-edition repair
+above in timestamp churn — the repair had to be dug back out with a
+content-level diff. `info.fetched_at` now comes from
+`athlinks_api.cached_at()`, the mtime of the `_raw/` file the rows actually came
+from: **`now` after a real fetch and the original date after a re-derive**, so
+one expression is right in both directions and no "did we fetch" flag has to be
+threaded through `results()`. A field unioned from two divisions takes the
+NEWEST, because a file is only as fresh as its most recent input; the cancelled
+branch fetches nothing at all and keeps whatever date was already recorded. Two
+consecutive `--force` runs now produce byte-identical files, which they did not
+before.
 
 `sam-benedict` stays undecidable — the repair fixes the ORDER of Leadville
 2016/2017, not the thinness of those fields.
