@@ -866,17 +866,33 @@ def check_results(c):
     # covering that the day a second non-stage-race type ('gravel') arrived.
     # Naming what DOES have a GC cannot rot the same way.
     nogc = c.execute("""
-        SELECT COUNT(*) FROM race_editions re
+        SELECT r.name, re.year FROM race_editions re
         JOIN races r ON r.race_id = re.race_id
         WHERE r.race_type = 'stage_race' AND NOT EXISTS (
           SELECT 1 FROM stage_results sr JOIN stages s ON sr.stage_id=s.stage_id
           WHERE s.edition_id=re.edition_id AND sr.gc_rank=1
             AND s.stage_number=(SELECT MAX(stage_number) FROM stages WHERE edition_id=re.edition_id))
-        """).fetchone()[0]
+        ORDER BY r.name, re.year
+        """).fetchall()
     if nogc:
-        warn(f"{nogc} edition(s) have no gc_rank=1 on their final stage — the final "
-             "stage's result set is sparse, which also makes slowestFinisherTimeSeconds "
-             "unreliable for those years")
+        # NAMED, because this one has a worklist. The missing rank 1 is a PROOF
+        # rather than a symptom: the overall leader is necessarily in a complete
+        # final classification, so an edition without one demonstrably does not
+        # have the whole field. That makes its slowestFinisherTimeSeconds the
+        # largest gap among the handful of riders stored — around 10th place in
+        # these Giro years — and the All Races view charts it as "Slowest
+        # Finisher" regardless.
+        #
+        # The house fix is to RESEARCH the real figure, not to suppress it: four
+        # Vuelta years already carry one in vuelta_races_summary_overrides.json.
+        # So the list matters more than the count.
+        who = ", ".join(f"{n.split()[0]} {y}" for n, y in nogc[:6])
+        warn(f"{len(nogc)} edition(s) have no gc_rank=1 on their final stage, so the "
+             "stored classification provably is not the whole field — and their "
+             "slowestFinisherTimeSeconds, which the All Races view charts as "
+             "'Slowest Finisher', is the slowest of the few riders held rather than "
+             f"the lanterne rouge. Research the figure or override it: {who}"
+             + (f" ... and {len(nogc) - 6} more" if len(nogc) > 6 else ""))
 
 
 def main():
