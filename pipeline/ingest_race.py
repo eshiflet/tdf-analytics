@@ -24,6 +24,7 @@ import sqlite3
 import sys
 from glob import glob
 
+import gc_source
 from backfill_source_slugs import backfill_edition_slugs
 from race_common import (
     RACES,
@@ -431,6 +432,16 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         )
         stage_id = cur.lastrowid
 
+        # PCS marks a rider whose PLACE the jury moved while his TIME stood.
+        # Read it here so a rebuild recreates the flag rather than losing it —
+        # backfill_relegations.py put it on existing rows, and without this a
+        # re-ingest would silently drop all 718 again. gc_source refuses a page
+        # it cannot prove belongs to this stage, so an edition with misnamed
+        # pages (the 1992 Giro) yields an empty set rather than another
+        # stage's relegations.
+        relegated_here = gc_source.marked_riders(
+            gc_source.gc_page(race_name, year, n, slug))
+
         # Provenance. Route fields come from this stage file's PCS scrape; the
         # scrape file path plus the slug pins down exactly which page. Elevation
         # is deliberately NOT claimed here — it was carried over from whatever
@@ -626,8 +637,8 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                    (stage_id, rider_id, team_id, bib_number, stage_rank, status,
                     finish_time_seconds, gap_seconds, bonus_seconds, penalty_seconds,
                     uci_points, pcs_points, gc_rank, gc_gap_seconds, age_at_race,
-                    disqualified)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    disqualified, relegated)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     stage_id, rider_slug,
                     team_slug if team_slug else None,
@@ -636,6 +647,7 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                     parse_int(uci_pts), parse_int(pcs_pts),
                     gc_rank, gc_gap_secs,
                     parse_int(age), dsq,
+                    1 if rider_slug in relegated_here else 0,
                 ),
             )
             total_results += 1

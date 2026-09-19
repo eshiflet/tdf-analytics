@@ -61,6 +61,8 @@ import sqlite3
 import sys
 from collections import Counter, defaultdict
 
+import gc_source
+
 from race_common import DB_PATH, exit_on_help
 
 RACE_ALIASES = {
@@ -78,8 +80,11 @@ def backwards_steps(ladder):
 
     Exempt for the same reason as there: out of rank 1 PCS lists the stripped
     and the promoted rider together and the promoted one keeps the gap he held
-    to the man ahead, and a row marked `disqualified` carries the classification
-    it was removed from on either side of a step.
+    to the man ahead, and a row marked `disqualified` OR `relegated` carries a
+    classification the row beside it is not on. The third element of each tuple
+    is that combined flag, not `disqualified` alone — a relegated rider's place
+    was moved by the jury and his time was not, so PCS's own ladder steps
+    backwards there and ours is right to follow it.
     """
     return [i for i, (a, b) in enumerate(zip(ladder, ladder[1:]))
             if b[1] < a[1] and a[0] != 1 and not a[2] and not b[2]]
@@ -139,81 +144,12 @@ def mirror_ranks(rows_by_rank):
             if any(s == rk for _, s in rows) and any(s != rk for _, s in rows)]
 
 
-# ── The source page, which is already on disk ───────────────────────────────
-# Read from the scrape artifacts rather than the network: 288 of the 342
-# affected stages have their GC page stored under <race>_scrapes/<year>/
-# gc_pages/<source_slug>.json, so the question "what does PCS say" is offline.
-#
-# ALWAYS BY source_slug, NEVER by stage_number. The 1978 Tour opens with a
-# prologue, so its stage 8 is PCS's `stage-7`, and reading stage-8.json puts a
-# different rider on every row — which is how this was nearly mis-reported.
 
-SCRAPE_DIR = {"Tour de France": "tour_scrapes", "Giro d'Italia": "giro_scrapes",
-              "Vuelta a España": "vuelta_scrapes"}
-
-# The repeated unit must contain a colon. Without that, a bare "11" reads as
-# "1" doubled and an 11-second gap silently becomes 1 — every real cell is
-# h:mm:ss or m:ss, so requiring the colon costs nothing and closes that.
-_DOUBLED = re.compile(r"\*?((?:\d+:)+\d{2})\1")
-
-
-def source_seconds(cell):
-    """(seconds, starred) for one PCS gap cell, or (None, starred) if unreadable.
-
-    Three shapes appear in 43,088 stored cells and no others:
-
-      "10:42"        plain
-      "*0:040:04"    the visible text and PCS's hidden sort span, concatenated
-                     by the scraper, with the asterisk PCS prints on the
-                     visible one
-      ""             no published gap
-
-    The asterisk is the whole reason this function returns a second value. PCS
-    prints it on a rider whose PLACE was changed by the jury while his TIME was
-    not — "Tim Merlier relegated from 2nd to 89th" is the Giro 2024 stage 11
-    case, and the page carries a Penalties & Fines tab saying so. His stored
-    time is then smaller than that of riders now ranked above him, which is
-    exactly the backwards ladder this script triages, and it is PCS's own data
-    rather than a defect of ours.
-    """
-    cell = (cell or "").strip()
-    starred = cell.startswith("*")
-    m = _DOUBLED.fullmatch(cell)
-    if m:
-        cell = m.group(1)
-    cell = cell.lstrip("*+")
-    if not re.fullmatch(r"\d+(?::\d{2})*", cell):
-        return None, starred
-    total = 0
-    for part in cell.split(":"):
-        total = total * 60 + int(part)
-    return total, starred
-
-
-def source_ladder(race, year, slug):
-    """{rider_id: (rank, seconds, starred)} from the stored GC page, or None.
-
-    The leading row carries the leader's ABSOLUTE time, not a gap, so it is
-    read as zero rather than parsed.
-    """
-    directory = SCRAPE_DIR.get(race)
-    if not directory or not slug:
-        return None
-    path = os.path.join(directory, str(year), "gc_pages", f"{slug}.json")
-    if not os.path.exists(path):
-        return None
-    try:
-        with open(path, encoding="utf-8") as f:
-            rows = json.load(f).get("gc_rows") or []
-    except (ValueError, OSError):
-        return None
-    if not rows:
-        return None
-    out = {}
-    for i, r in enumerate(rows):
-        seconds, starred = (0, False) if i == 0 else source_seconds(r[4])
-        out[r[2]] = (int(r[0]), seconds, starred)
-    return out
+# ── The source page ─────────────────────────────────────────────────────────
+# gc_source does the reading, the parsing and — the part that matters — the
+# check that the stored page really is this stage's page. It was three copies
+# of that logic before, and the copy in this file had no verification at all,
+# which is how the 1992 Giro was reported broken when it is fine.
 
 
 def source_verdict(ladder):
@@ -221,19 +157,25 @@ def source_verdict(ladder):
 
     "EXPLAINED" means PCS itself marks a row here, so the contradiction is the
     jury's and the values are correct as stored — nothing to repair but the
-    lost marker. It deliberately does NOT check that the marked row is the same
-    one we implicated: a stage can hold several relegations, and a marker
-    anywhere in the ladder is enough to say the shape is PCS's.
+    lost marker. It deliberately does NOT check that the marked row is the one
+    we implicated: a stage can hold several relegations, and a marker anywhere
+    is enough to say the shape is PCS's.
+
+    "NO SOURCE" covers a missing page AND a page that failed verification,
+    because both mean the same thing to a reader: nothing here has been
+    checked. Folding either into UNEXPLAINED would put stages on a worklist
+    that nothing has looked at, beside stages that something has.
     """
     if ladder is None:
         return "NO SOURCE"
     return "EXPLAINED" if any(s for _, _, s in ladder.values()) else "UNEXPLAINED"
 
+
 def load(conn, race=None, year=None):
     sql = """
         SELECT s.stage_id, ra.name, re.year, s.stage_number, sr.gc_rank,
-               sr.gc_gap_seconds, sr.disqualified, sr.rider_id, sr.stage_rank,
-               s.source_slug
+               sr.gc_gap_seconds, sr.disqualified OR sr.relegated,
+               sr.rider_id, sr.stage_rank, s.source_slug
           FROM stage_results sr
           JOIN stages s ON s.stage_id = sr.stage_id
           JOIN race_editions re ON re.edition_id = s.edition_id
@@ -276,7 +218,8 @@ def main():
         if not verdict:
             continue
         race_name, yr, num, slug = meta[sid]
-        ladder = source_ladder(race_name, yr, slug)
+        page = gc_source.gc_page(race_name, yr, num, slug)
+        ladder = gc_source.gc_ladder(page) if page else None
         found[verdict].append({
             "race": race_name, "year": yr, "stage": num,
             "verdict": verdict, "source": source_verdict(ladder),

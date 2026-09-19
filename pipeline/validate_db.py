@@ -594,6 +594,10 @@ def check_gc_rank_gap_consistency(c):
       most are small — but the largest is Tour 1904 stage 6, where rank 2 holds
       388s and 18,945s, five hours apart.
 
+    Rows PCS marks as RELEGATED are excluded outright: the jury moved the
+    rider's place and left his time, so his gap genuinely does not match the
+    rank beside it and there is nothing to decide. See gc_source.py.
+
     A WARNING: the values are PCS's own, the annulment cases are correct as
     stored, and deciding which of two gaps is right needs the source page rather
     than a rule.
@@ -612,6 +616,7 @@ def check_gc_rank_gap_consistency(c):
           JOIN race_editions re ON re.edition_id = s.edition_id
           JOIN races ra ON ra.race_id = re.race_id
          WHERE sr.gc_rank IS NOT NULL AND sr.gc_gap_seconds IS NOT NULL
+           AND sr.relegated = 0
          GROUP BY s.stage_id, sr.gc_rank
         HAVING COUNT(*) > 1 AND COUNT(DISTINCT sr.gc_gap_seconds) > 1
          ORDER BY spread DESC""").fetchall()
@@ -649,11 +654,14 @@ def check_gc_gap_monotonicity(c):
     THIS IS THE WIDER VIEW OF check_gc_rank_gap_consistency, NOT ITS REPLACEMENT.
     That check finds two riders stored on one rank with different gaps; this one
     finds a gap that is out of order whether or not anything collides with it.
-    Most corruption never collides, so the tie check sees 49 stages where this
-    sees 342 — but 14 of its 49 are invisible here, because a tie whose two gaps
-    both fall inside the surrounding ranks' window keeps the ladder ascending
-    while still contradicting itself. Neither check contains the other and both
-    are needed.
+    Most corruption never collides, so the tie check saw 49 stages where this saw
+    342 — but 14 of its 49 are invisible here, because a tie whose two gaps both
+    fall inside the surrounding ranks' window keeps the ladder ascending while
+    still contradicting itself. Neither check contains the other.
+
+    Both now exclude rows PCS marks as RELEGATED, which took the 342 to 113: the
+    jury moved those riders' places and left their times, so PCS's own ladder
+    steps backwards and ours is right to follow it. See gc_source.py.
 
     Exempt, for the same reason as there: at rank 1 PCS lists the stripped rider
     and the promoted one together, and the promoted rider keeps the gap he held
@@ -670,7 +678,8 @@ def check_gc_gap_monotonicity(c):
     """
     rows = c.execute("""
         SELECT s.stage_id, ra.name, re.year, s.stage_number,
-               sr.gc_rank, sr.gc_gap_seconds, sr.disqualified
+               sr.gc_rank, sr.gc_gap_seconds,
+               sr.disqualified OR sr.relegated
           FROM stage_results sr
           JOIN stages s ON s.stage_id = sr.stage_id
           JOIN race_editions re ON re.edition_id = s.edition_id
@@ -678,6 +687,11 @@ def check_gc_gap_monotonicity(c):
          WHERE sr.gc_rank IS NOT NULL AND sr.gc_gap_seconds IS NOT NULL
          ORDER BY s.stage_id, sr.gc_rank, sr.gc_gap_seconds""").fetchall()
     # main()'s connection has no row_factory, so every read here is BY INDEX.
+    # The last column is `disqualified OR relegated`: a step into or out of
+    # either says nothing about the rows around it, and the two are exempt for
+    # the same reason. A relegated rider's PLACE was moved by the jury and his
+    # TIME was not, so PCS's own ladder steps backwards there and ours is right
+    # to follow it — see gc_source.py.
     SID, NAME, YEAR, STAGE, RANK, GAP, DQ = range(7)
     by_stage = defaultdict(list)
     for r in rows:
@@ -706,8 +720,9 @@ def check_gc_gap_monotonicity(c):
         for _, a, b in worst_per_stage[:3])
     warn(f"{len(worst_per_stage)} stage(s) hold a GC ladder that runs backwards — "
          f"a later rank stored CLOSER to the leader than an earlier one, which no "
-         f"race can produce. audit_gc_ladders.py triages these into the 144 where "
-         f"one row can be named and bounded and the rest that need the whole "
+         f"race can produce. Rows PCS marks as relegated are already excluded. "
+         f"audit_gc_ladders.py triages what is left into the stages where one row "
+         f"can be named and bounded and the rest that need the whole "
          f"classification. Worst: {examples}")
 
 def check_field_definition(c):

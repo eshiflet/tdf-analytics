@@ -25,6 +25,7 @@ tests cannot drift from the real schema the way an inlined copy did before.
 """
 import audit_disqualifications
 import audit_gc_ladders
+import gc_source
 import contextlib
 import io
 import json
@@ -1739,33 +1740,8 @@ class GcLadderTriageTest(unittest.TestCase):
         self.assertEqual(audit_gc_ladders.mirror_ranks({7: [(25, 73)]}), [])
 
     # ── what PCS's own page says about the ladder ───────────────────────────
-
-    def test_a_plain_gap_cell_reads_as_seconds(self):
-        self.assertEqual(audit_gc_ladders.source_seconds("10:42"), (642, False))
-        self.assertEqual(audit_gc_ladders.source_seconds("1:06:45"), (4005, False))
-        self.assertEqual(audit_gc_ladders.source_seconds("+1:30"), (90, False))
-
-    def test_the_doubled_cell_is_collapsed(self):
-        """The scraper concatenates PCS's visible text with its hidden sort
-        span, so a marked cell arrives as "*0:04" + "0:04". Reading that
-        literally would give a nonsense gap and hide the marker."""
-        self.assertEqual(audit_gc_ladders.source_seconds("*0:040:04"), (4, True))
-        self.assertEqual(audit_gc_ladders.source_seconds("9:029:02"), (542, False))
-
-    def test_a_repeated_digit_is_not_a_doubled_cell(self):
-        """The trap in collapsing repeats: "11" is one eleven-second gap, not
-        "1" written twice. Requiring a colon in the repeated unit is what keeps
-        an 11-second gap from silently becoming a 1-second one."""
-        self.assertEqual(audit_gc_ladders.source_seconds("11"), (11, False))
-        self.assertEqual(audit_gc_ladders.source_seconds("22"), (22, False))
-
-    def test_an_unreadable_cell_still_reports_its_marker(self):
-        """The marker is the load-bearing half. A cell we cannot turn into
-        seconds still tells us PCS flagged the row, and dropping that with the
-        number would put the stage back in the unexplained pile."""
-        self.assertEqual(audit_gc_ladders.source_seconds(""), (None, False))
-        self.assertEqual(audit_gc_ladders.source_seconds(None), (None, False))
-        self.assertEqual(audit_gc_ladders.source_seconds("*n/a"), (None, True))
+    # The cell parsing that used to be tested here moved to gc_source with the
+    # reader itself; GcSourcePageTest covers it, alignment gate included.
 
     def test_a_marked_row_anywhere_explains_the_stage(self):
         """PCS moved a rider's PLACE and left his TIME, so the ladder it prints
@@ -1784,3 +1760,146 @@ class GcLadderTriageTest(unittest.TestCase):
         UNEXPLAINED would put 54 stages on a worklist that nothing has looked
         at, next to 58 that something has."""
         self.assertEqual(audit_gc_ladders.source_verdict(None), "NO SOURCE")
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# gc_source — the stored PCS page, and the check that it is the right one
+# ══════════════════════════════════════════════════════════════════════════
+
+class GcSourcePageTest(unittest.TestCase):
+    """A stored page is only evidence once it is proved to be THIS stage's page.
+
+    The 1992 Giro's twenty gc_pages files each hold the NEXT stage's page.
+    Trusting the filename there produced a tidy 100% agreement with the wrong
+    stage and a confident, wrong bug report ("the 1992 Giro's GC is a stage
+    stale"), retracted within the hour. These tests pin the gate that stops it.
+    """
+
+    def page(self, winner="rider/w", n=3, gc=()):
+        return {"result_rows": [["1", "", "", "", "", "", winner]] * n,
+                "gc_rows": list(gc)}
+
+    def stage_file(self, winner="rider/w", n=3):
+        return {"rows": [["1", "", "", "", "", "", winner]] * n}
+
+    def test_a_matching_page_is_accepted(self):
+        self.assertTrue(gc_source.page_is_this_stage(self.page(), self.stage_file()))
+
+    def test_a_different_winner_is_refused(self):
+        """The 1992 Giro shape: the page is a real page, just not this stage's."""
+        self.assertFalse(gc_source.page_is_this_stage(
+            self.page(winner="rider/other"), self.stage_file()))
+
+    def test_a_different_field_size_is_refused(self):
+        """Two stages can share a winner. The field size separates them."""
+        self.assertFalse(gc_source.page_is_this_stage(
+            self.page(n=4), self.stage_file(n=3)))
+
+    def test_an_empty_side_is_refused_rather_than_trusted(self):
+        self.assertFalse(gc_source.page_is_this_stage(self.page(n=0), self.stage_file()))
+        self.assertFalse(gc_source.page_is_this_stage(self.page(), self.stage_file(n=0)))
+        self.assertFalse(gc_source.page_is_this_stage(None, None))
+
+    def test_the_gate_ignores_the_date(self):
+        """Deliberately not compared: the same stage is dated '18 July 1926' in
+        one file and '1926-07-18' in the other. Gating on it rejected a thousand
+        good pages on the first attempt."""
+        page = self.page(); page["info"] = {"Date": "18 July 1926"}
+        stage = self.stage_file(); stage["info"] = {"Date": "1926-07-18"}
+        self.assertTrue(gc_source.page_is_this_stage(page, stage))
+
+    # ── the marker ──────────────────────────────────────────────────────────
+
+    def test_a_plain_cell_reads_as_seconds(self):
+        self.assertEqual(gc_source.parse_gap("10:42"), (642, False))
+        self.assertEqual(gc_source.parse_gap("1:06:45"), (4005, False))
+        self.assertEqual(gc_source.parse_gap("+1:30"), (90, False))
+
+    def test_the_doubled_cell_is_collapsed_and_its_marker_kept(self):
+        """The scraper concatenates PCS's visible cell with its hidden sort
+        span, so a marked cell arrives as "*0:04" + "0:04"."""
+        self.assertEqual(gc_source.parse_gap("*0:040:04"), (4, True))
+        self.assertEqual(gc_source.parse_gap("9:029:02"), (542, False))
+
+    def test_a_repeated_digit_is_not_a_doubled_cell(self):
+        """"11" is one eleven-second gap, not "1" written twice. Requiring a
+        colon in the repeated unit is what keeps eleven seconds from becoming
+        one."""
+        self.assertEqual(gc_source.parse_gap("11"), (11, False))
+        self.assertEqual(gc_source.parse_gap("22"), (22, False))
+
+    def test_an_unreadable_cell_still_reports_its_marker(self):
+        self.assertEqual(gc_source.parse_gap(""), (None, False))
+        self.assertEqual(gc_source.parse_gap(None), (None, False))
+        self.assertEqual(gc_source.parse_gap("*n/a"), (None, True))
+
+    def test_the_leading_row_is_never_marked(self):
+        """The first GC row carries the leader's ABSOLUTE time, not a gap.
+        Parsing it as one would read "37:58:58" as a gap and, worse, a leading
+        asterisk as a relegation of the race leader."""
+        page = {"gc_rows": [["1", "", "rider/leader", "", "*37:58:58"],
+                            ["2", "", "rider/second", "", "*2:07"]]}
+        self.assertEqual(gc_source.marked_riders(page), {"rider/second"})
+        self.assertEqual(gc_source.gc_ladder(page)["rider/leader"], (1, 0, False))
+
+    def test_marked_riders_is_empty_without_a_page(self):
+        """A caller that could not verify a page must get "nothing marked", not
+        an exception — that is the whole reason the ingest can call it blind."""
+        self.assertEqual(gc_source.marked_riders(None), set())
+        self.assertEqual(gc_source.marked_riders({}), set())
+
+
+class RelegationExemptionTest(DBCheckTest):
+    """Both GC checks must ignore a rider PCS marks as relegated.
+
+    The jury moved his PLACE and left his TIME, so his gap really is smaller
+    than that of the riders now ranked above him. PCS's own ladder steps
+    backwards there and ours is right to follow it — reporting it as a defect
+    sends someone to 229 stages to repair values that are already correct.
+    """
+
+    def setup_stage(self):
+        self.race(1, "Tour de France")
+        self.edition(1, 1, 1983)
+        self.stage(1, 1, 1)
+
+    def test_the_schema_has_the_column(self):
+        """schema.sql, not just the live DB. The live column arrived by ALTER
+        TABLE; a DB rebuilt from this file would be unwritable by the ingest
+        without it."""
+        cols = [r[1] for r in self.cur.execute("PRAGMA table_info(stage_results)")]
+        self.assertIn("relegated", cols)
+
+    def test_a_relegated_row_does_not_break_the_ladder(self):
+        self.setup_stage()
+        for rank, gap in ((1, 0), (2, 30), (3, 60)):
+            self.result(1, f"rider/r{rank}", gc_rank=rank, gc_gap_seconds=gap)
+        self.result(1, "rider/relegated", gc_rank=4, gc_gap_seconds=5, relegated=1)
+        self.result(1, "rider/after", gc_rank=5, gc_gap_seconds=70)
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_an_unmarked_row_in_the_same_shape_still_warns(self):
+        """The control. Without it this class would pass against a check that
+        had simply stopped reporting anything."""
+        self.setup_stage()
+        for rank, gap in ((1, 0), (2, 30), (3, 60)):
+            self.result(1, f"rider/r{rank}", gc_rank=rank, gc_gap_seconds=gap)
+        self.result(1, "rider/plain", gc_rank=4, gc_gap_seconds=5, relegated=0)
+        self.result(1, "rider/after", gc_rank=5, gc_gap_seconds=70)
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertTrue(validate_db.warnings, "an unmarked backwards step must warn")
+
+    def test_a_relegated_row_is_not_a_tie_contradiction(self):
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=7, gc_gap_seconds=36)
+        self.result(1, "rider/b", gc_rank=7, gc_gap_seconds=0, relegated=1)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_the_same_tie_unmarked_still_warns(self):
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=7, gc_gap_seconds=36)
+        self.result(1, "rider/b", gc_rank=7, gc_gap_seconds=0)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertTrue(validate_db.warnings)
