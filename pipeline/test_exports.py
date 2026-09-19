@@ -1219,3 +1219,41 @@ class TestSocialCardAltMatchesTheCard(unittest.TestCase):
                     year, rendered[image],
                     f"{image}: the alt text says {year} but the card is "
                     f"screenshotted from {rendered[image]}")
+
+
+class TestElevationCoverageThresholdIsShared(unittest.TestCase):
+    """The pipeline and the frontend must suppress a sparse elevation total at
+    the same point.
+
+    Two views show a season's elevation: the all-races TABLE, whose value the
+    pipeline computes and nulls below `ELEVATION_MIN_COVERAGE`, and the Race
+    Overview HEADER, which sums what it was given. Until 2026-09-19 the header
+    had no threshold at all — it printed a total whenever any stage carried a
+    figure — so 74 race-seasons showed a partial sum, and eight Giro years
+    showed a number in the header while the table beside them showed nothing.
+
+    They now share the rule, but not the literal: one is Python and one is
+    TypeScript. A drift between them puts the contradiction straight back.
+    """
+
+    def ts_threshold(self):
+        import re
+        path = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "cycling-app", "src", "views", "overview.ts"))
+        with open(path, encoding="utf-8") as f:
+            m = re.search(r"const ELEVATION_MIN_COVERAGE = ([0-9.]+);", f.read())
+        return float(m.group(1)) if m else None
+
+    def test_the_frontend_declares_one_at_all(self):
+        """A parse that finds nothing would make the comparison below vacuous,
+        and 'no threshold' is precisely the bug this guards."""
+        self.assertIsNotNone(self.ts_threshold(),
+                             "overview.ts declares no ELEVATION_MIN_COVERAGE")
+
+    def test_both_sides_suppress_at_the_same_coverage(self):
+        import export_race_summary
+        self.assertEqual(self.ts_threshold(),
+                         export_race_summary.ELEVATION_MIN_COVERAGE,
+                         "the Race Overview header and the all-races table would "
+                         "disagree about whether a season has a total")
