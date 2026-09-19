@@ -79,6 +79,28 @@ def extract(html):
     return vm, ps
 
 
+def eta(n, delay=None):
+    """How long a run of `n` fetches will take, as a human phrase.
+
+    The count alone does not convey it. "Auditing 1671 Tour de France stage(s)"
+    reads like a status line; at the 2.0s of politeness this script owes PCS it
+    is 56 minutes of network before the first summary, and an unscoped run
+    started by accident looks identical to one started on purpose until it is
+    still going an hour later.
+
+    Deliberately a FLOOR, and says so: it counts the delay between requests and
+    not the requests themselves, so the real figure is larger. An estimate that
+    might read low is worth more than none; one that reads high would be
+    ignored.
+    """
+    secs = int(n * (DELAY if delay is None else delay))
+    if secs < 90:
+        return f"~{secs}s"
+    if secs < 3600:
+        return f"~{secs // 60}m"
+    return f"~{secs // 3600}h{(secs % 3600) // 60:02d}m"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--race", choices=sorted(RACE_PATH), default="tdf")
@@ -112,7 +134,13 @@ def main():
         rows = sorted(random.sample(list(rows), args.limit),
                       key=lambda r: (r["year"], r["stage_number"]))
 
-    print(f"Auditing {len(rows)} {race_name} stage(s) against PCS by source_slug\n")
+    scoped = args.limit or args.split_only
+    print(f"Auditing {len(rows)} {race_name} stage(s) against PCS by source_slug "
+          f"— {eta(len(rows))} at {DELAY}s between fetches, at least."
+          + ("" if scoped else
+             "\n  Unscoped. --limit N samples, --split-only takes the stages most "
+             "at risk, --race picks another.")
+          + "\n")
     match = mismatch = missing = failed = 0
     bad = []
 

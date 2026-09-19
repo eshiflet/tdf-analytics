@@ -1307,3 +1307,39 @@ class TestFetchedAtRecordsTheFetch(unittest.TestCase):
         with open(p, "w", encoding="utf-8") as f:
             f.write("{not json")
         self.assertIsNone(scrape_athlinks.previous_fetched_at(p))
+
+
+class TestNetworkedAuditAnnouncesItsCost(unittest.TestCase):
+    """A multi-hour fetch loop should say so before it starts.
+
+    audit_elevation.py already printed its work SET — "Auditing 1671 Tour de
+    France stage(s)" — which reads like a status line. At the 2.0s of politeness
+    it owes PCS that is 56 minutes of network before the first summary, and an
+    unscoped run started by accident looks exactly like one started on purpose
+    until it is still going an hour later. I started one by accident while
+    working on something else; the count was on screen and told me nothing.
+    """
+
+    def test_it_reads_as_seconds_minutes_or_hours(self):
+        from audit_elevation import eta
+        self.assertEqual(eta(5, delay=2), "~10s")
+        self.assertEqual(eta(60, delay=2), "~2m")
+        self.assertEqual(eta(1671, delay=2), "~55m")
+        self.assertEqual(eta(7288, delay=2), "~4h02m")
+
+    def test_the_hour_form_pads_its_minutes(self):
+        """"~4h2m" reads as four hours two, or as a typo. Padding removes the
+        question."""
+        from audit_elevation import eta
+        self.assertEqual(eta(1830, delay=2), "~1h01m")
+
+    def test_it_is_a_floor_and_not_a_guess(self):
+        """It counts the delay BETWEEN requests, not the requests themselves, so
+        the real run is always longer. An estimate that may read low is worth
+        more than none; one that reads high gets ignored."""
+        from audit_elevation import eta
+        self.assertEqual(eta(100, delay=1), "~1m")
+
+    def test_zero_work_does_not_claim_an_hour(self):
+        from audit_elevation import eta
+        self.assertEqual(eta(0, delay=2), "~0s")

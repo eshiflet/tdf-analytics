@@ -100,6 +100,27 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## A networked audit now says how long it will take (2026-09-19)
+
+`audit_elevation.py` fetches every stage from PCS by its own `source_slug`, and
+printed only its work SET before starting: *"Auditing 1671 Tour de France
+stage(s)"*. That reads like a status line. At the 2.0s of politeness it owes PCS
+it is **56 minutes of network** before the first summary — and an unscoped run
+started by accident is indistinguishable from a deliberate one until it is still
+going an hour later. It now prints `~55m at 2.0s between fetches, at least`, and
+when nothing scoped the run, the three flags that would.
+
+The estimate is deliberately a **floor** and says so: it counts the delay
+between requests and not the requests themselves. An estimate that may read low
+is worth more than none; one that reads high gets ignored.
+
+**The script was not at fault and neither were its guards** — `--race`,
+`--limit` and `--split-only` all exist, and writes are already behind
+`--apply-provenance`, so the aborted run wrote nothing. I started it with no
+scope while looking at something else, and piped it through `tail -6`, which
+buffered away the very line that would have told me. Both mistakes were mine;
+the missing runtime is the one thing that would have caught either.
+
 ## The Vuelta landing page advertised the wrong decade-end (2026-09-19)
 
 `race-page-meta.mjs` holds the hand-maintained SEO copy for the five static
