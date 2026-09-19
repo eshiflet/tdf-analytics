@@ -880,5 +880,41 @@ function check(name, cond, detail) {
     doc.querySelector(".history-caveat")?.textContent ?? "none");
 }
 
+// A PARTIAL elevation sum is not a total. 74 race-seasons printed one:
+// the classics in 1950 know one race in eight and showed that figure labelled
+// "Total Elevation", understating the season eightfold while looking
+// authoritative. The old guard asked whether ANY stage had a figure, which was
+// written when the off-road set had none at all — PCS gravel elevation arrived
+// on 2026-09-09 and turned that assumption into the bug.
+{
+  const doc = await boot("#classics/1950/overview");
+  const vals = [...doc.querySelectorAll(".overview-summary-value")];
+  const elev = vals[vals.length - 1];
+  check("a season known for 1 race in 8 shows no elevation total",
+    elev?.textContent.trim() === "\u2014", elev?.textContent.trim());
+  check("and says how many it does know, rather than only a dash",
+    /1 of 8/.test(elev?.getAttribute("title") ?? ""),
+    elev?.getAttribute("title") ?? "no title");
+}
+
+// The rule must not eat a real total. A full season still shows one.
+{
+  const doc = await boot("#2026/overview");
+  const vals = [...doc.querySelectorAll(".overview-summary-value")];
+  const elev = vals[vals.length - 1];
+  check("a fully measured season still totals its elevation",
+    /\d,\d{3} m$/.test(elev?.textContent.trim() ?? ""), elev?.textContent.trim());
+}
+
+// Nothing known at all is a plain dash: there is no count worth offering.
+{
+  const doc = await boot("#gravel/2025/overview");
+  const vals = [...doc.querySelectorAll(".overview-summary-value")];
+  const elev = vals[vals.length - 1];
+  check("a season with no elevation anywhere shows a bare dash",
+    elev?.textContent.trim() === "\u2014" && !elev?.getAttribute("title"),
+    `${elev?.textContent.trim()} title=${elev?.getAttribute("title") ?? "none"}`);
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);

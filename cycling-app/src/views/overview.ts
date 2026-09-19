@@ -10,6 +10,13 @@ import { ROUTE_COLOR, ROUTE_LABEL, difficultyScore, stageTitle } from "../format
 const KM_TO_MI = 0.621371;
 const M_TO_FT = 3.28084;
 
+/** Below this share of ridden stages carrying a figure, a sum is not a total.
+ *
+ *  Mirrors export_race_summary.ELEVATION_MIN_COVERAGE, which suppresses the
+ *  same number for the same reason in the all-races table. Two places showing
+ *  a season's elevation under two different rules would be worse than either. */
+const ELEVATION_MIN_COVERAGE = 0.5;
+
 export function drawOverview() {
   if (!state.dataset) return; // initial fetch in flight; loadDataset() redraws
   overviewChartEl.innerHTML = "";
@@ -28,19 +35,37 @@ export function drawOverview() {
   const distDisplay = imperial
     ? `${Math.round(totalDistKm * KM_TO_MI).toLocaleString()} mi`
     : `${Math.round(totalDistKm).toLocaleString()} km`;
-  // A season with no elevation data anywhere sums to zero, and printing
-  // "0 m" claims these races are flat. The off-road set carries no elevation
-  // at all (Athlinks publishes none), so it would say that about Leadville.
-  const anyElev = ridden.some((st) => (st.vertical_meters ?? 0) > 0);
-  const elevDisplay = !anyElev
+  // A PARTIAL sum is not a total, and printing one is worse than printing
+  // nothing: the classics in 1950 know the elevation of one race in eight, and
+  // showing that figure labelled "Total Elevation" understates the season by a
+  // factor of eight while looking authoritative. 74 race-seasons did exactly
+  // that, including gravel 2026 — where The Traka's 4,198 m stood for a season
+  // that also ran Leadville, Unbound and Sea Otter.
+  //
+  // The threshold is the pipeline's own: export_race_summary.ELEVATION_MIN_COVERAGE
+  // suppresses the same sum for the same reason in the all-races table, and the
+  // two disagreeing about what a total is would be worse than either rule.
+  //
+  // The old guard was "does ANY stage have elevation", written when the
+  // off-road set had none at all. PCS gravel elevation arrived on 2026-09-09
+  // and turned that assumption into this bug.
+  const withElev = ridden.filter((st) => (st.vertical_meters ?? 0) > 0).length;
+  const elevCoverage = ridden.length ? withElev / ridden.length : 0;
+  const elevDisplay = elevCoverage < ELEVATION_MIN_COVERAGE
     ? "—"
     : imperial
       ? `${Math.round(totalElevM * M_TO_FT).toLocaleString()} ft`
       : `${totalElevM.toLocaleString()} m`;
+  // A bare dash says "unknown" where the truth is "known for some of them". The
+  // count goes in the title so a reader who wonders can find out without it
+  // competing with the number beside it.
+  const elevTitle = elevCoverage < ELEVATION_MIN_COVERAGE && withElev > 0
+    ? ` title="Elevation is known for ${withElev} of ${ridden.length} — too few to total"`
+    : "";
   overviewSummaryEl.innerHTML = `
     <span class="overview-summary-item"><span class="overview-summary-label">Total Distance</span> <span class="overview-summary-value">${distDisplay}</span></span>
     <span class="overview-summary-sep">·</span>
-    <span class="overview-summary-item"><span class="overview-summary-label">Total Elevation</span> <span class="overview-summary-value">${elevDisplay}</span></span>
+    <span class="overview-summary-item"><span class="overview-summary-label">Total Elevation</span> <span class="overview-summary-value"${elevTitle}>${elevDisplay}</span></span>
   `;
 
   const containerRect = overviewChartEl.getBoundingClientRect();

@@ -188,6 +188,37 @@ The test inserts its rows in REVERSE calendar order on purpose — that is what
 makes "first row returned" and "first race of the season" different answers.
 Without it the test passes whether or not the sort exists.
 
+## 74 seasons showed a partial elevation sum as a total (2026-09-19)
+
+The Race Overview header printed **Total Elevation** whenever *any* stage of the
+season carried a figure. The classics in 1950 know the elevation of **one race in
+eight**, so the header stated that race's 2,003 m as the season's total —
+understating it roughly eightfold while looking authoritative. Gravel 2026 was
+the case that surfaced it: The Traka's **4,198 m** presented as the total for a
+season that also ran Leadville, Unbound and Sea Otter.
+
+**74 race-seasons** were doing this: the classics from 1911 to 2011 almost
+continuously, eight Giro years (1992–1999, as low as 1 stage in 23), and gravel
+2026.
+
+The overview now applies the pipeline's own threshold —
+`export_race_summary.ELEVATION_MIN_COVERAGE`, 50% of ridden stages — and shows
+`—` below it. **Two places showing a season's elevation under two different
+rules would be worse than either.** A suppressed value carries the count in its
+`title` ("Elevation is known for 1 of 8 — too few to total"), because a bare dash
+says *unknown* where the truth is *known for some*. A season with nothing at all
+keeps the bare dash: there is no count worth offering.
+
+**The old guard was correct when it was written.** Its comment says the off-road
+set "carries no elevation at all (Athlinks publishes none)" — true until PCS
+gravel elevation landed on 2026-09-09, which turned a sound assumption into this
+bug. Worth remembering when writing a guard around what a source does *not*
+have.
+
+Three scenarios in `verify-views.mjs`, mutation-checked: reverting to the
+any-stage guard, suppressing every total, dropping the count, and showing a
+count when nothing is known each fail one.
+
 ## A chart that read as a race collapsing (2026-09-19)
 
 The race-history view's third metric was labelled **"Finishers"** for every race
