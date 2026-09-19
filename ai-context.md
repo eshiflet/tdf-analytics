@@ -4889,6 +4889,37 @@ of the three communities of Ogden Valley, Weber County, Utah, and the `CO`
 beside Huntsville is *Leadville's* state, the documented region artefact.
 Recorded in `rider_splits.json`'s `rejected`.
 
+**All 12 mirror leads are now run down (2026-09-18).** Ten are one person with
+two or three Athlinks registrations and are recorded in `rider_splits.json`'s
+`rejected`; one is examined-but-undecided; one is a real split candidate.
+
+| lead | verdict |
+|---|---|
+| `aaron-campbell` | one man. Its 6-year birth spread sits INSIDE one account — racer 397998872 carries both the 1982-implying and 1976-implying rows — so it cannot be two people. Farmington and Kaysville are neighbouring Davis County, Utah towns. |
+| `alex-wild` | one man. **Bib 73 across five different 2024 races** — one Life Time Grand Prix number. Old account replaced in 2021. |
+| `ryan-petry` | one man. The two ids are **five integers apart** (84638762/84638767): one person registering twice. Leadville seeding binds it — 11th in 2014, bib 11 in 2015. |
+| `nathan-keck` | one man. `57783, SD` is the ZIP for Spearfish, South Dakota, which the other rows spell out. |
+| `mark-walker`, `matti-rowe`, `matt-acker`, `mark-currie` | one man each; single implied birth year, one home town, second id appears at a re-registration or a move. |
+| `elliot-bach` | one man on thin evidence — two rows, one age. Recorded so the thinness is not re-derived. |
+| `sam-benedict` | **examined and deliberately NOT decided.** Two rows, one age. The blocker is our own Leadville coverage, below. |
+| `mark-wallace` | **the one real split candidate — see below.** |
+
+**`rider/mark-wallace` holds two men.** Racer 301499916 is five Leadvilles,
+2000-2013, every row located Golden, CO, and every one implying **1962 exactly**
+— bound internally by an exact seeding hit, 37th in 2004 and bib 37 in 2005.
+Racer 367460791 is a single Unbound 2018 row, **Wilmette, Illinois**, implying
+**1972**. Ten years and two states from a set that is internally perfect across
+thirteen. Not yet split; the Unbound row is the one that would move.
+
+**Leadville's field collapses after 2015 and it is not the source thinning.**
+1994-2015 store exactly 100 rows each (`FIELD_CAP`); 2016 onward store 43, 18,
+37, 55, 53, 79, 78, 70, 66, 67. The ingest is faithful — the scrape files
+themselves hold those counts — so the loss is in course resolution or the
+scraper's selection, upstream of ingest. **2017 is the worst and is visibly
+incoherent**: 18 rows whose ranks are not time-ordered, rank 14 finishing in
+10.47h beside rank 15 in 6.54h. That is what makes `sam-benedict` undecidable,
+and it is a coverage defect in its own right. Open.
+
 **`ike-pantone` is a different man and must never be merged into him.** Ike rode
 Unbound 2021 in 50th at 46,807s; Jake rode the same edition in 42nd at 45,855s.
 They share a stage, which is the test that proves two people — Ike is Ogden,

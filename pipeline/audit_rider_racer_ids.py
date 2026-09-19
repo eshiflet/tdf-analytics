@@ -269,7 +269,7 @@ def main():
         # not meet the bar. jake-pantone is the second kind — three racer ids,
         # one man, checked 2026-09-18.
         adjudicated = adjudicated_ids()
-        settled = {k: v for k, v in multi.items() if k in adjudicated}
+        on_record = {k: v for k, v in multi.items() if k in adjudicated}
         open_leads = {k: v for k, v in multi.items() if k not in adjudicated}
         print(f"\n{len(multi)} rider id(s) carry more than one racer id. This is NOT "
               "evidence of two people — a rider can hold two Athlinks accounts — but "
@@ -278,8 +278,12 @@ def main():
             print(f"\n  {len(open_leads)} not yet looked at:")
             for rid, rs in sorted(open_leads.items()):
                 print(f"    {rid.removeprefix('rider/'):<30}{sorted(rs)}")
-        for rid, rs in sorted(settled.items()):
-            print(f"\n  SETTLED  {rid.removeprefix('rider/')} {sorted(rs)}"
+        # "ON RECORD", not "SETTLED": one of these entries records a lead that
+        # was examined and could NOT be decided (sam-benedict), and calling that
+        # settled would overstate it. What the label promises is only that
+        # somebody has already spent the time.
+        for rid, rs in sorted(on_record.items()):
+            print(f"\n  ON RECORD  {rid.removeprefix('rider/')} {sorted(rs)}"
                   f"\n    {adjudicated[rid]}")
 
     pct = stats["nulls"] / stats["rows"] * 100 if stats["rows"] else 0
