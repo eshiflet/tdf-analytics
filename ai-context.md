@@ -1147,6 +1147,7 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `resolve_traka_events.py` | picks which event is The Traka 360 each year; `--report`, `--force` |
 | `scrape_traka.py` | The Traka → the standard gravel scrape-file shape, men only |
 | `backfill_rider_team_provenance.py` | provenance for pre-tracking `riders`/`teams` rows; companion to `backfill_provenance.py` (which covers `stages`) |
+| `normalize_team_names.py` | merges one team's several spellings into one display name; groups by folded name, never by slug stem |
 | `patch_cyclingflash_elevation.py` | 2001/2006 s20 from cyclingflash.com; guards on distance before writing |
 | `null_itt_filler_times.py` | NULLs the 4,040 fabricated ITT finish times; re-run after any re-ingest of those editions |
 | `audit_rider_racer_ids.py` | gravel riders stored under >1 id, found via Athlinks' own persistent `racer_id`; never merges, `--json` feeds `merge_rider_duplicates.py` |
@@ -1606,6 +1607,80 @@ scraper is. `fix_mojibake()` is therefore wired into all five writers
 stored corrupted — narrowly: only when `fix_mojibake(stored) == repaired`, so
 it can un-corrupt a name but never rename a team.
 `test_gravel.TestIngestRepairsMojibake` covers both, including that negative.
+
+---
+
+## One team, several spellings (2026-09-19)
+
+PCS spells the same team more than one way across seasons, and the team filter
+lists display names, so each spelling arrived as its own dropdown entry:
+`Alcyon - Dunlop` and `Alcyon-Dunlop`, `AG2R Prevoyance` and `AG2R Prévoyance`,
+`Française des Jeux` and `Francaise des Jeux`. `normalize_team_names.py`
+merges them — **292 team rows, 135 spellings retired across 130 teams**, and
+**75 duplicate dropdown entries gone** (classics 1,628 -> 1,570, tour 635 ->
+630, vuelta 601 -> 593, giro 736 -> 732), with zero spelling duplicates left in
+any race.
+
+Same policy as the mojibake repair: **`team_id` is never touched.** It came out
+of a PCS href and is PCS's own key. Only `teams.name` changes, and its
+provenance becomes `derived` — the string is ours now, and leaving it `pcs`
+would misattribute it.
+
+### The slug stem is not a safe merge key
+
+The obvious approach is to group by the slug minus its trailing year, since
+`team/ag2r-prevoyance-2000` and `-2001` differ only in display name. **It is
+wrong, and it fails in the expensive direction.** 172 stems carry more than one
+name, but many are a team whose *sponsors changed* under a slug PCS minted once
+and kept: `team/bianchi-1958` is named `Bianchi - Campagnolo`, and
+`team/hitachi-*` spans `Hitachi`, `Hitachi - Marc` and
+`Hitachi - Marc - Splendor`. Merging by stem silently destroys a sponsor
+change.
+
+So the merge groups by **folded name** instead: accents stripped, case folded,
+every run of punctuation and whitespace collapsed to one space. Two names merge
+only when the *words already match* — spelling is negotiable, content is not.
+`Centre/Nord-est` and `Nord-est/Centre` stay apart too, because word order is
+content. `test_normalize_team_names.py` pins down what must NOT merge; that is
+most of what it tests.
+
+### Which spelling wins
+
+1. **The accented one.** Dropping an accent loses information; adding one does
+   not. `Isolés` over `Isoles`, `St. Raphaël-Géminiani` over
+   `St. Raphael-Geminiani` — even where the bare form is commoner.
+2. **The one PCS actually uses most**, counted in rider results then team rows.
+3. **The spaced `A - B` form** on an exact tie — the majority house style,
+   1,836 team rows to 832.
+
+`STYLE_OVERRIDES` sits in front of all three, for the case-only merges where
+the count argues for a spelling that is simply wrong about the name: PCS's
+title-caser writes `Mss` for an acronym and `Van De Ven` for a Dutch particle.
+Those are `KAS`, `Milaneza - MSS`, `Safir - Van de Ven`, `'t Belfort` — listed
+explicitly, because what decides them is knowledge about the name rather than
+anything present in the data.
+
+**`Ricci?` is left alone.** The `?` is PCS's own uncertainty marker; merging it
+into `Ricci` would assert something the source does not.
+
+### Two things the re-export surfaced that were not the rename
+
+Worth recording because both look alarming in a diff and neither is a defect
+this introduced:
+
+* **35,250 changed integers under `/riders/*/ym/*`** are the *team index*, not
+  data. `race_set_export.tidx()` stores a rider's team as a position in the
+  file's `teams` array, so a shorter array renumbers every entry after the gap.
+* **5 `adj` flags appeared in `vuelta/gc_by_stage_2022.json`** — Vuelta 2022
+  stages 11 and 16. The pre-change backup DB already held all five, so the
+  committed export was **stale**, and the full re-export corrected it. Same
+  failure mode as the three Vuelta classifications in "Exports can go stale".
+
+Also confirmed *not* caused by this: filtering the app by a merged team returns
+133 riders where the DB says 133 — except `louis-heusghem`, who rode
+Milan-San Remo 1912 for `Alcyon` and Paris-Roubaix 1912 for `Alcyon - Dunlop`.
+`ym` holds one team per year, so the second is shadowed. **HEAD shadows it
+identically**; the merge only made the count exact enough to notice.
 
 ---
 
