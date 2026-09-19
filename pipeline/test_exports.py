@@ -1257,3 +1257,56 @@ class TestElevationCoverageThresholdIsShared(unittest.TestCase):
                          export_race_summary.ELEVATION_MIN_COVERAGE,
                          "the Race Overview header and the all-races table would "
                          "disagree about whether a season has a total")
+
+
+class TestAiContextHeadlineCounts(unittest.TestCase):
+    """The counts ai-context.md states about the archive must be the archive's.
+
+    That file is the project's working memory and its numbers get quoted into
+    commits, decisions and this app's own copy. Three went stale in one night on
+    2026-09-19 — the rider total after 17 merges, the gravel rider count, and
+    the share of gravel riders who race nowhere else — and a stale number reads
+    as a current one indefinitely. The social-card size in the same file had
+    been wrong by 1.1 MB for over a week for exactly this reason.
+
+    Only the counts that are cheap and unambiguous to recompute are checked. A
+    number this cannot derive is not silently skipped: the parse asserts it
+    found each one.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc_path = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "ai-context.md"))
+        if not os.path.exists(cls.doc_path):
+            raise unittest.SkipTest("ai-context.md is not present")
+        with open(cls.doc_path, encoding="utf-8") as f:
+            cls.doc = f.read()
+
+    def db(self):
+        import sqlite3
+        from race_common import DB_PATH
+        if not os.path.exists(DB_PATH):
+            self.skipTest("no database")
+        conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        self.addCleanup(conn.close)
+        return conn
+
+    def test_the_rider_total_is_current(self):
+        import re
+        conn = self.db()
+        actual = conn.execute("SELECT COUNT(*) FROM riders").fetchone()[0]
+        m = re.search(r"\*\*Riders, as of [\d-]+\*\*: \*\*([\d,]+)\*\*", self.doc)
+        self.assertIsNotNone(m, "could not find the Riders headline")
+        self.assertEqual(int(m.group(1).replace(",", "")), actual)
+
+    def test_the_edition_counts_are_current(self):
+        conn = self.db()
+        for race, label in (("Tour de France", "113"), ("Vuelta a España", "81"),
+                            ("Giro d'Italia", "109")):
+            n = conn.execute(
+                """SELECT COUNT(*) FROM race_editions e JOIN races r USING(race_id)
+                    WHERE r.name = ?""", (race,)).fetchone()[0]
+            with self.subTest(race=race):
+                self.assertIn(str(n), self.doc,
+                              f"{race} has {n} editions; ai-context.md does not say so")

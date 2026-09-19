@@ -2,7 +2,7 @@
 
 Interactive cycling analytics app covering **21 races in five sets**: the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), the **Vuelta a España** (81 editions, back to 1935), **11 one-day classics** (1892–2026) and **7 off-road races** (gravel and MTB, 1994–2026). The 2026 Tour de France is **complete** — all 21 stages are in the DB, Pogačar won in **73:56:26** and the slowest finisher was Cees Bol at **+6:22:08** (finalized 2026-08-15; see "Finalizing a completed year" below for what changed). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
-**Riders, as of 2026-09-14**: **18,054**, and `riders` holds exactly that many — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. (18,050 before the 2026 Vuelta landed that evening; it introduced 4 riders new to the whole archive.) On the 18,050 snapshot, 11,095 appeared in exactly one race set and 36 in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,791 of its 3,901 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
+**Riders, as of 2026-09-19**: **18,038**, and `riders` holds exactly that many — 17 gravel riders were merged and one split on 2026-09-19 (see "Athlinks' racerId"), taking it from 18,054 — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. (18,050 before the 2026 Vuelta landed that evening; it introduced 4 riders new to the whole archive.) On the 18,050 snapshot, 11,095 appeared in exactly one race set and 36 in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,775 of its 3,885 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
 
 ---
 
@@ -2778,7 +2778,7 @@ tdf-analytics/
 │           └── gravel/               # Life Time off-road races — 33 years, 1994–2026
 │               ├── gc_by_stage_YEAR.json  # Aggregate season, same shape as classics
 │               ├── race_history.json      # No all_races_summary.json — this set awards no points
-│               └── riders_index.json      # 3,901 riders / 32 teams — 478 KB
+│               └── riders_index.json      # 3,885 riders / 32 teams — 477 KB
 └── pipeline/                         # Data pipeline — not deployed
     ├── cycling.db                    # SQLite DB (gitignored, ~140MB, NOT regenerable — back up with db_backup.py)
     ├── db_backup.py                  # Rotating DB backups → db_backups/ (auto-run by add_stages.py before deletes)
