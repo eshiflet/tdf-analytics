@@ -38,6 +38,18 @@ export function komJerseySvg(dotColor = "#E4002B"): string {
 
 export const JERSEY_LABELS = { gc: "GC winner", sprint: "Sprint winner", kom: "KOM winner", youth: "Young rider winner" } as const;
 export const JERSEY_SIMPLE_LABEL: Record<JerseyCategory, string> = { gc: "GC", sprint: "Sprint", kom: "KOM", youth: "Youth" };
+// UNWIRED, and kept deliberately — see ai-context.md's open items.
+//
+// This is the last reader of `RaceConfig.jerseyTooltips`, and nothing calls it,
+// so the per-race copy those configs carry ("Yellow jersey — GC winner",
+// "Maglia rosa — GC winner") reaches no reader. The riders grid shows
+// jerseyIconTitle()'s "TDF - GC" instead, which names the RACE — the thing that
+// matters once one grid merges five of them, and which the jersey-colour
+// wording cannot do.
+//
+// Deleting this would also delete twenty written strings; re-wiring it is a
+// copy decision (probably "TDF — Yellow jersey, GC winner"). Neither is mine to
+// make, so both stay until Eric picks one.
 export function jerseyTooltipLabel(category: JerseyCategory): string {
   return raceConfig().jerseyTooltips[category];
 }
@@ -119,16 +131,6 @@ function computeJerseyYearsWon(entry: RiderEntry): Record<JerseyCategory, number
   };
 }
 
-export function jerseyIconSvg(category: JerseyCategory): string {
-  const jersey = raceConfig().jersey;
-  if (category === "gc") return jerseySvg(jersey.gc);
-  if (category === "sprint") return jerseySvg(jersey.sprint);
-  if (category === "kom") {
-    return "dots" in jersey.kom ? komJerseySvg(jersey.kom.dots) : jerseySvg(jersey.kom.solid);
-  }
-  return jerseySvg("#FFFFFF", "#888888");
-}
-
 export function jerseyIconSvgForRace(category: JerseyCategory, race: RaceId): string {
   const jersey = RACES[race].jersey;
   if (category === "gc") return jerseySvg(jersey.gc);
@@ -142,20 +144,6 @@ export function jerseyIconSvgForRace(category: JerseyCategory, race: RaceId): st
     return "dots" in jersey.kom ? komJerseySvg(jersey.kom.dots) : jerseySvg(jersey.kom.solid);
   }
   return jerseySvg("#FFFFFF", "#888888");
-}
-
-/** Small jersey <span> icons for every classification a rider has won. */
-export function jerseyIconsEl(entry: RiderEntry): HTMLSpanElement[] {
-  const years = jerseyYearsWon(entry);
-  return (Object.keys(JERSEY_LABELS) as JerseyCategory[])
-    .filter((category) => years[category].length > 0)
-    .map((category) => {
-      const el = document.createElement("span");
-      el.className = "jersey-icon";
-      el.title = JERSEY_LABELS[category];
-      el.innerHTML = jerseyIconSvg(category);
-      return el;
-    });
 }
 
 /** Jersey icons for the riders grid, one per race that the rider won a

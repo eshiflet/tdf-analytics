@@ -373,10 +373,6 @@ function buildIndexFromRaw(race: RaceId, raw: RawRiderIndex): void {
   riderIndexBuilt[race] = true;
 }
 
-export async function ensureRiderIndex(): Promise<void> {
-  return ensureRiderIndexFor(state.currentRace);
-}
-
 /** Every race set this rider has results in, from the cross-race bitmask —
  *  or null if no index that mentions them has been built yet.
  *

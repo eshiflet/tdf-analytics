@@ -135,6 +135,47 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## Four single-race helpers the multi-race migration left behind (2026-09-19)
+
+An audit of every exported name in `cycling-app/src` — 134 of them — against
+every other module found four functions nothing calls. They are not random
+dead code: each reads the CURRENT race out of global state, and each has a
+replacement that takes the race explicitly. They are the residue of the
+multi-race work.
+
+| removed | the live replacement |
+|---|---|
+| `jerseyIconsEl(entry)` | `jerseyIconsElMultiRace(entry, races, years)` |
+| `jerseyIconSvg(category)` | `jerseyIconSvgForRace(category, race)` |
+| `ensureRiderIndex()` | `ensureRiderIndexFor(race)` |
+
+`jerseyIconSvg` only became unreachable once `jerseyIconsEl` went — the one
+caller was the other dead function, which is why a single pass over exports
+found both.
+
+**This saves 1 byte.** Vite was already tree-shaking all of it; the point is
+that the source no longer offers a next reader two ways to do the same thing,
+one of which silently assumes a single race. No payload claim attaches to it.
+
+**Most of the other 16 "unused" exports are not dead** — they are used inside
+their own module and merely over-exported (`ROUTE_MULTIPLIER`,
+`isoToFlagEmoji`, `jerseySvg`). Dropping the keyword is churn with no reader
+benefit, so they were left.
+
+### Open for Eric: twenty tooltip strings nobody sees
+
+`jerseyTooltipLabel()` is the fourth dead function and was **kept**, because it
+is the last reader of `RaceConfig.jerseyTooltips` — five races x four strings
+of written copy: *"Yellow jersey — GC winner"*, *"Maglia rosa — GC winner"*.
+Nothing shows them. The riders grid shows `jerseyIconTitle()`'s **"TDF - GC"**
+instead, which names the RACE, and that is the thing that matters once one grid
+merges five of them.
+
+So it is not a regression to undo blindly: deleting loses the copy, re-wiring
+loses the race name. The good answer is probably a composed
+**"TDF — Yellow jersey, GC winner"**, but that is a copy decision. Both the
+function and the config stay, with a comment at the function saying why.
+
 ## A GC position of 1000, in a field of 198 (2026-09-19)
 
 Vuelta 2015 st2 is the stage Nibali was thrown off the race for holding a team
