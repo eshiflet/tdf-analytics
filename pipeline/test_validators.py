@@ -24,6 +24,7 @@ The DB fixtures are built from schema.sql rather than a copy of it, so the
 tests cannot drift from the real schema the way an inlined copy did before.
 """
 import audit_disqualifications
+import audit_gc_ladders
 import contextlib
 import io
 import json
@@ -1455,3 +1456,284 @@ class GcRankGapConsistencyTest(DBCheckTest):
         self.result(1, "rider/b", gc_rank=7, gc_gap_seconds=0)
         validate_db.check_gc_rank_gap_consistency(self.cur)
         self.assertNoErrors()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# validate_db.check_gc_gap_monotonicity — a ladder that runs backwards
+# ══════════════════════════════════════════════════════════════════════════
+
+class GcGapMonotonicityTest(DBCheckTest):
+    """The GC is the ranking of aggregate time, so the gap can only grow as the
+    rank grows. A later rank stored closer to the leader is arithmetically
+    impossible, whatever happened in the race.
+
+    This is the wider view of GcRankGapConsistencyTest above, not a replacement
+    for it: that one needs two riders to collide on one rank, which most
+    corruption never does (49 stages against 342), while a tie whose two gaps
+    both sit inside the surrounding window keeps this ladder ascending (14
+    stages it cannot see). test_a_self_contradicting_tie_can_still_ascend pins
+    that the two checks really are independent.
+    """
+
+    def assertWarningMatching(self, fragment):
+        joined = "\n".join(validate_db.warnings)
+        self.assertIn(fragment, joined, f"warnings were {validate_db.warnings}")
+
+    def setup_stage(self, stage_id=1, number=1):
+        if stage_id == 1:
+            self.race(1, "Tour de France")
+            self.edition(1, 1, 1983)
+        self.stage(stage_id, 1, number)
+
+    def ladder(self, stage_id, gaps, start=1, **kw):
+        """Ranks start..start+n-1 carrying `gaps` in order."""
+        for i, gap in enumerate(gaps):
+            self.result(stage_id, f"rider/s{stage_id}r{start + i}",
+                        gc_rank=start + i, gc_gap_seconds=gap, **kw)
+
+    def test_an_ascending_ladder_is_silent(self):
+        self.setup_stage()
+        self.ladder(1, [0, 12, 12, 40, 300])
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_a_backwards_step_warns(self):
+        """Rank 4 is 300s down and rank 5 only 40s: one of them is wrong."""
+        self.setup_stage()
+        self.ladder(1, [0, 12, 12, 300, 40])
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertWarningMatching("runs backwards")
+        self.assertWarningMatching("rank 4 is 300s down, rank 5 only 40s")
+
+    def test_the_count_is_STAGES_not_steps(self):
+        """A stage whose ladder is scrambled holds many backwards steps, and
+        reporting each would make one broken stage look like twenty. The unit of
+        repair is the stage — its whole ladder gets re-fetched — so the unit of
+        the report is the stage, and only its worst step is quoted."""
+        self.setup_stage()
+        self.ladder(1, [0, 900, 10, 800, 20, 700])
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertEqual(len(validate_db.warnings), 1)
+        self.assertWarningMatching("1 stage(s)")
+        # 900 -> 10 is the deepest drop, so it is the one quoted.
+        self.assertWarningMatching("rank 2 is 900s down, rank 3 only 10s")
+
+    def test_rank_1_may_step_backwards(self):
+        """The annulment shape: PCS lists the stripped rider and the promoted
+        one both at rank 1, the promoted rider keeping the gap he had to the man
+        ahead. The step out of that pair is expected, not a fault.
+
+        Run twice, and the UNFLAGGED case is the one that matters: only 4 of the
+        5 rank-1 pairs in the archive hold a row marked `disqualified`, so on the
+        fifth the disqualified exemption does not apply and the rank-1 clause is
+        the only thing standing between it and a false report."""
+        for flagged in (True, False):
+            with self.subTest(flagged=flagged):
+                self.setUp()
+                self.setup_stage()
+                self.result(1, "rider/stripped", gc_rank=1, gc_gap_seconds=0,
+                            disqualified=1 if flagged else 0)
+                # The promoted rider's 370s is his gap to the STRIPPED rider,
+                # while rank 2's 100s is measured from the promoted rider who
+                # now leads. Two baselines in one ladder, so it steps backwards.
+                self.result(1, "rider/promoted", gc_rank=1, gc_gap_seconds=370)
+                self.result(1, "rider/third", gc_rank=2, gc_gap_seconds=100)
+                validate_db.check_gc_gap_monotonicity(self.cur)
+                self.assertEqual(validate_db.warnings, [])
+
+    def test_a_disqualified_row_is_exempt_on_either_side(self):
+        """A stripped rider keeps the classification he was removed from, so a
+        step into or out of his row says nothing about the rows around it."""
+        for dq_rank in (5, 6):
+            with self.subTest(dq_rank=dq_rank):
+                self.setUp()
+                self.setup_stage()
+                self.ladder(1, [0, 10, 20, 30], start=1)
+                self.result(1, "rider/x", gc_rank=5, gc_gap_seconds=900,
+                            disqualified=1 if dq_rank == 5 else 0)
+                self.result(1, "rider/y", gc_rank=6, gc_gap_seconds=40,
+                            disqualified=1 if dq_rank == 6 else 0)
+                validate_db.check_gc_gap_monotonicity(self.cur)
+                self.assertEqual(validate_db.warnings, [])
+
+    def test_a_self_contradicting_tie_can_still_ascend(self):
+        """Why the tie check is not redundant. Rank 3 holds 20s and 25s — one of
+        them is wrong — but both fall between rank 2's 12s and rank 4's 30s, so
+        the ladder never steps backwards and this check is blind to it."""
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
+        self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=12)
+        self.result(1, "rider/c", gc_rank=3, gc_gap_seconds=20)
+        self.result(1, "rider/d", gc_rank=3, gc_gap_seconds=25)
+        self.result(1, "rider/e", gc_rank=4, gc_gap_seconds=30)
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertWarningMatching("below rank 1")
+
+    def test_a_tie_is_ordered_by_gap_before_comparing(self):
+        """Two gaps on one rank are not themselves a backwards step: sorting the
+        stage by (rank, gap) puts the smaller first, so a tie is only counted
+        here when it disagrees with its NEIGHBOURS. Without that ordering every
+        self-contradicting tie would be double-reported by both checks."""
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
+        self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=25)
+        self.result(1, "rider/c", gc_rank=2, gc_gap_seconds=20)
+        self.result(1, "rider/d", gc_rank=3, gc_gap_seconds=30)
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_stages_are_compared_separately(self):
+        """Gaps are only comparable inside one classification. Without the
+        per-stage split, every stage that opened tighter than the last one
+        closed would read as a fault."""
+        self.setup_stage(1, 1)
+        self.setup_stage(2, 2)
+        self.ladder(1, [0, 600])
+        self.ladder(2, [0, 30])
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_a_null_gap_breaks_nothing(self):
+        """An unrecorded gap is not a claim about order, and treating NULL as 0
+        would make every stage holding one look like it ran backwards."""
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
+        self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=None)
+        self.result(1, "rider/c", gc_rank=3, gc_gap_seconds=30)
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_it_is_a_warning_and_never_an_error(self):
+        """It says the pair cannot both be right, never which one to keep --
+        rank is not recoverable from gap (equal times take different ranks on a
+        tiebreak we do not store) and gap is not recoverable from rank. That
+        needs the source page, so this is a worklist, not a gate."""
+        self.setup_stage()
+        self.ladder(1, [0, 300, 40])
+        validate_db.check_gc_gap_monotonicity(self.cur)
+        self.assertNoErrors()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# audit_gc_ladders — which ROW of a backwards ladder is the wrong one
+# ══════════════════════════════════════════════════════════════════════════
+
+class GcLadderTriageTest(unittest.TestCase):
+    """validate_db says a ladder runs backwards; this says which row to check.
+
+    It never says what the row should hold. Rank is not recoverable from gap
+    (riders on equal time take different ranks on a tiebreak we do not store)
+    and gap is not recoverable from rank, so the most the ladder can do is
+    implicate a row and bound it. These tests pin that limit as hard as they
+    pin the detection: a verdict that named a VALUE would be fabricating one.
+    """
+
+    def ladder(self, *pairs):
+        """(rank, gap) pairs -> the (rank, gap, disqualified, rider_id) rows
+        classify() takes, already in its (rank, gap) order."""
+        return [(rk, gap, 0, f"rider/r{i}") for i, (rk, gap) in enumerate(pairs)]
+
+    def test_an_ascending_ladder_has_no_verdict(self):
+        v, suspects, window = audit_gc_ladders.classify(
+            self.ladder((1, 0), (2, 10), (3, 10), (4, 90)))
+        self.assertIsNone(v)
+        self.assertEqual(suspects, [])
+
+    def test_the_later_row_is_named_when_only_it_explains_the_step(self):
+        """Tour 1978 st8 in miniature: rank 3 is 289s down and rank 4 stores 4s,
+        with rank 5 at 304s. Dropping rank 4 leaves a clean ladder and dropping
+        rank 3 does not, so rank 4 is the row carrying the contradiction."""
+        v, suspects, window = audit_gc_ladders.classify(
+            self.ladder((1, 0), (2, 10), (3, 289), (4, 4), (5, 304)))
+        self.assertEqual(v, "ONE ROW")
+        self.assertEqual([(s[0], s[1]) for s in suspects], [(4, 4)])
+        self.assertEqual(window, (289, 304))
+
+    def test_the_earlier_row_is_named_when_only_it_explains_the_step(self):
+        """The mirror image, and not a case the obvious implementation gets
+        right: reading the step left-to-right and always blaming the second row
+        would convict rank 3 here, which is the one good value in the pair."""
+        v, suspects, window = audit_gc_ladders.classify(
+            self.ladder((1, 0), (2, 500), (3, 10), (4, 20)))
+        self.assertEqual(v, "ONE ROW")
+        self.assertEqual([(s[0], s[1]) for s in suspects], [(2, 500)])
+        self.assertEqual(window, (0, 10))
+
+    def test_a_window_stays_open_at_the_end_of_the_ladder(self):
+        """A stored classification usually stops short of the full field, so a
+        suspect in the last row has nothing above it. The bound is then one
+        sided, and claiming a closed range would invent the upper end."""
+        v, suspects, window = audit_gc_ladders.classify(
+            self.ladder((1, 0), (2, 10), (3, 300), (4, 5)))
+        self.assertEqual(v, "ONE ROW")
+        self.assertEqual(window, (300, None))
+
+    def test_PAIR_when_either_row_would_explain_it(self):
+        """Both removals leave a clean ladder, so the evidence does not choose.
+        Calling this ONE ROW would send someone to check an innocent row."""
+        v, suspects, window = audit_gc_ladders.classify(
+            self.ladder((1, 0), (2, 50), (3, 20), (4, 100)))
+        self.assertEqual(v, "PAIR")
+        self.assertEqual([(s[0], s[1]) for s in suspects], [(2, 50), (3, 20)])
+        self.assertIsNone(window)
+
+    def test_LADDER_when_several_steps_run_backwards(self):
+        v, suspects, _ = audit_gc_ladders.classify(
+            self.ladder((1, 0), (2, 90), (3, 10), (4, 80), (5, 20)))
+        self.assertEqual(v, "LADDER")
+        self.assertEqual(suspects, [])
+
+    def test_LADDER_when_one_step_but_neither_row_explains_it(self):
+        """One backwards step does not mean one bad row. Here the corruption
+        spans the pair — removing either leaves the ladder still descending —
+        so the classification has to be re-fetched rather than one cell fixed."""
+        v, suspects, _ = audit_gc_ladders.classify(
+            self.ladder((1, 0), (2, 10), (3, 50), (4, 5), (5, 7)))
+        self.assertEqual(v, "LADDER")
+        self.assertEqual(suspects, [])
+
+    def test_the_annulment_step_out_of_rank_1_is_not_triaged(self):
+        """PCS lists the stripped and the promoted rider together at rank 1 and
+        the promoted one keeps his old gap, so the ladder legitimately steps
+        backwards leaving that pair. Triaging it would send someone to check a
+        row that is correct as stored."""
+        v, _, _ = audit_gc_ladders.classify(
+            self.ladder((1, 0), (1, 370), (2, 100)))
+        self.assertIsNone(v)
+
+    def test_a_disqualified_row_is_exempt_on_either_side(self):
+        for dq_at in (0, 1):
+            with self.subTest(dq_at=dq_at):
+                rows = self.ladder((1, 0), (2, 500), (3, 10))
+                rows[1 + dq_at] = rows[1 + dq_at][:2] + (1,) + rows[1 + dq_at][3:]
+                self.assertIsNone(audit_gc_ladders.classify(rows)[0])
+
+    # ── the two-interleaved-classifications signature ───────────────────────
+
+    def test_a_rank_holding_two_ladders_is_flagged(self):
+        """Tour 1987 st1 stores rank 15 twice: once at 23s with gc_rank copied
+        from stage_rank, once at the real 30s. That is a ladder to remove, not
+        a value to correct, so it is counted apart."""
+        self.assertEqual(
+            audit_gc_ladders.mirror_ranks({15: [(23, 15), (30, 73)]}), [15])
+
+    def test_a_bunch_finish_is_not_two_ladders(self):
+        """On a flat opening stage every rider legitimately holds
+        gc_rank == stage_rank on one time. Matching that alone would flag the
+        cleanest stages in the archive."""
+        self.assertEqual(audit_gc_ladders.mirror_ranks({7: [(0, 7), (0, 7)]}), [])
+
+    def test_two_real_rows_on_one_rank_are_not_two_ladders(self):
+        """Two riders stored on one rank with different gaps is the tie
+        contradiction validate_db.check_gc_rank_gap_consistency reports, and it
+        is a different repair. The interleaving signature needs one of the two
+        to have had its rank copied from the stage result — without that, this
+        is one ladder with a bad cell in it."""
+        self.assertEqual(
+            audit_gc_ladders.mirror_ranks({15: [(30, 73), (31, 80)]}), [])
+
+    def test_one_row_on_a_rank_is_never_two_ladders(self):
+        self.assertEqual(audit_gc_ladders.mirror_ranks({7: [(0, 7)]}), [])
+        self.assertEqual(audit_gc_ladders.mirror_ranks({7: [(25, 73)]}), [])

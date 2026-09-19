@@ -597,6 +597,11 @@ def check_gc_rank_gap_consistency(c):
     A WARNING: the values are PCS's own, the annulment cases are correct as
     stored, and deciding which of two gaps is right needs the source page rather
     than a rule.
+
+    check_gc_gap_monotonicity() is the wider view of the same defect and catches
+    293 stages this one cannot see. It does not replace this: a tie whose two
+    gaps both sit inside the surrounding ranks' window leaves the ladder
+    ascending, so 14 of the stages below are invisible there.
     """
     rows = c.execute("""
         SELECT ra.name, re.year, s.stage_number, sr.gc_rank,
@@ -631,6 +636,79 @@ def check_gc_rank_gap_consistency(c):
              f"{sum(1 for r in rest if r[DQ])} involve a disqualified rider, so "
              f"most are not annulment fallout. Worst: {worst}")
 
+
+def check_gc_gap_monotonicity(c):
+    """A GC gap can never shrink as the rank grows.
+
+    The general classification IS the ranking of aggregate time, so rank 29 is
+    by definition no closer to the leader than rank 28. A ladder that runs
+    backwards is therefore not a judgement call or an upstream quirk the way a
+    missing value is — it is arithmetically impossible, and one of the two rows
+    is wrong however the race was run.
+
+    THIS IS THE WIDER VIEW OF check_gc_rank_gap_consistency, NOT ITS REPLACEMENT.
+    That check finds two riders stored on one rank with different gaps; this one
+    finds a gap that is out of order whether or not anything collides with it.
+    Most corruption never collides, so the tie check sees 49 stages where this
+    sees 342 — but 14 of its 49 are invisible here, because a tie whose two gaps
+    both fall inside the surrounding ranks' window keeps the ladder ascending
+    while still contradicting itself. Neither check contains the other and both
+    are needed.
+
+    Exempt, for the same reason as there: at rank 1 PCS lists the stripped rider
+    and the promoted one together, and the promoted rider keeps the gap he held
+    to the man ahead of him, so the ladder legitimately steps backwards out of
+    the annulment. Rows flagged `disqualified` are skipped on either side of a
+    step for the same reason.
+
+    A WARNING, not an error. The values are PCS's own and this says only that
+    the pair cannot both be right, never which one to keep: rank is not
+    recoverable from gap (riders on equal time take DIFFERENT ranks, split by a
+    tiebreak we do not store — deriving rank from gap alone moves 71,806 rows),
+    and gap is not recoverable from rank. Closing one of these needs the source
+    page, so this is a worklist for a re-scrape rather than a gate.
+    """
+    rows = c.execute("""
+        SELECT s.stage_id, ra.name, re.year, s.stage_number,
+               sr.gc_rank, sr.gc_gap_seconds, sr.disqualified
+          FROM stage_results sr
+          JOIN stages s ON s.stage_id = sr.stage_id
+          JOIN race_editions re ON re.edition_id = s.edition_id
+          JOIN races ra ON ra.race_id = re.race_id
+         WHERE sr.gc_rank IS NOT NULL AND sr.gc_gap_seconds IS NOT NULL
+         ORDER BY s.stage_id, sr.gc_rank, sr.gc_gap_seconds""").fetchall()
+    # main()'s connection has no row_factory, so every read here is BY INDEX.
+    SID, NAME, YEAR, STAGE, RANK, GAP, DQ = range(7)
+    by_stage = defaultdict(list)
+    for r in rows:
+        by_stage[r[SID]].append(r)
+
+    # Sorting each stage by (rank, gap) puts a tie's smaller gap first, so a tie
+    # is only counted as a step backwards when it disagrees with its NEIGHBOURS
+    # rather than with itself — that case belongs to the check above.
+    worst_per_stage = []
+    for stage_rows in by_stage.values():
+        worst = None
+        for a, b in zip(stage_rows, stage_rows[1:]):
+            if b[GAP] >= a[GAP] or a[RANK] == 1 or a[DQ] or b[DQ]:
+                continue
+            drop = a[GAP] - b[GAP]
+            if worst is None or drop > worst[0]:
+                worst = (drop, a, b)
+        if worst:
+            worst_per_stage.append(worst)
+    if not worst_per_stage:
+        return
+    worst_per_stage.sort(key=lambda w: -w[0])
+    examples = ", ".join(
+        f"{a[NAME].split()[0]} {a[YEAR]} st{a[STAGE]} (rank {a[RANK]} is {a[GAP]}s "
+        f"down, rank {b[RANK]} only {b[GAP]}s)"
+        for _, a, b in worst_per_stage[:3])
+    warn(f"{len(worst_per_stage)} stage(s) hold a GC ladder that runs backwards — "
+         f"a later rank stored CLOSER to the leader than an earlier one, which no "
+         f"race can produce. audit_gc_ladders.py triages these into the 144 where "
+         f"one row can be named and bounded and the rest that need the whole "
+         f"classification. Worst: {examples}")
 
 def check_field_definition(c):
     """Every off-road edition must say what field its ranks are over.
@@ -1006,6 +1084,7 @@ def main():
     check_gravel_rank_integrity(cur)
     check_field_definition(cur)
     check_gc_rank_gap_consistency(cur)
+    check_gc_gap_monotonicity(cur)
     check_phantom_split_days(cur)
     check_intentional_gaps(cur)
     conn.close()
