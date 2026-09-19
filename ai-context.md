@@ -96,7 +96,7 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **10 duplicate-bib collisions in TDF 1931/1932** — upstream PCS, both riders and both results correct. The repair tools ignore them by design. NOT to be confused with a rider holding TWO bibs in one edition, which is a name swap: six such riders in 1931 and 1933 blocked `backfill_bib_numbers` entirely until the swaps behind them were repaired on 2026-09-11.
 
 **Cost/quality items worth revisiting:**
-- **Social cards are ~1.8 MB committed** across 6 PNGs; `pngquant` would roughly halve them.
+- ~~**Social cards are ~1.8 MB committed** across 6 PNGs; `pngquant` would roughly halve them.~~ — **ALREADY DONE and this line was stale (corrected 2026-09-19).** `render-og-images.sh` has quantised every card since 2026-09-11; the six total **714 KB** (730,884 bytes), not 1.8 MB. The 1.8 MB figure is the pre-quantisation size the script's own comment quotes, read here as if it were current.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
