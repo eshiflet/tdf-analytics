@@ -46,9 +46,16 @@ PCS itself names as relegated (Tim Merlier) carries NO marker, while four
 sprinters around him do. PCS does not publish what each mark means, so nothing
 here claims a reason -- only that the mark is present.
 
-What the mark reliably identifies is the SHAPE: across every stored GC page,
-717 marked rows are out of order and 227,820 unmarked rows are not, 100%
-against 0.00%. We store the rank and the time faithfully and drop the marker,
+What the mark reliably identifies is the SHAPE, and in one direction only:
+across every stored GC page, all 332 backwards steps sit on marked rows and
+NONE of the 227,820 unmarked rows is out of order. The converse is false — 385
+of the 717 marked rows are in order, because an awarded time need not land out
+of sequence. So the mark is NECESSARY for a backwards step, not sufficient,
+which is exactly what an exemption needs. (First measured as "100% against
+0.00%" by carrying a running maximum down the ladder, which let one corrupt
+cell — Tour 1996 st21 rank 43 reads "743:02:43" — condemn all 86 rows below
+it. Compare each row with the one directly above it, never with a maximum.)
+We store the rank and the time faithfully and drop the marker,
 which is what makes the pair look self-contradictory downstream. This module is
 how the marker gets back.
 """

@@ -149,8 +149,11 @@ CREATE TABLE IF NOT EXISTS stage_results (
     -- other and the classification appears to run backwards. Both values are
     -- correct; the marker is what says they are on different bases. We stored
     -- the pair and dropped the marker, which is the whole reason 229 stages
-    -- read as self-contradictory. Separation is total: across every stored GC
-    -- page, 717 marked rows are out of order and 227,820 unmarked rows are not.
+    -- read as self-contradictory. The evidence, stated in the one direction it
+    -- actually holds: all 332 backwards steps across every stored GC page sit
+    -- on marked rows, and NONE of the 227,820 unmarked rows is out of order.
+    -- 385 of the 717 marked rows are in order, so the mark is NECESSARY for a
+    -- backwards step and not sufficient -- which is what an exemption needs.
     --
     -- Distinct from `disqualified` (the result annulled after the fact, rank
     -- struck through) and from status='DSQ' (thrown out on the day, no rank).

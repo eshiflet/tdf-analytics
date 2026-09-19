@@ -17,22 +17,31 @@ type Cell = {
   // higher-is-better (points).
   goodness: number | null;
   colorable: boolean;
+  // PCS recorded this stage's time as awarded rather than raced. Marked only
+  // under the GC metric, because that is the pair the flag explains: the
+  // rider's time and his position here do not follow from each other. The
+  // column is where it matters most — a table lets you read straight down it
+  // and see a gap that shrinks where it cannot.
+  adjusted?: boolean;
 };
 
 /** Builds one cell from a rider's entry for a stage. `sp` is undefined when
  *  the rider has no data there (race not run yet, or they'd already exited
  *  the race by an earlier stage). */
-function cellFor(sp: RiderStagePoint | undefined): Cell {
+function cellFor(sp: RiderStagePoint | undefined, adjusted = false): Cell {
   if (!sp) return { text: "", goodness: null, colorable: false };
   if (sp.status !== "FINISHED") return { text: sp.status, goodness: null, colorable: false };
 
   if (state.currentMetric === "gc") {
+    const mark = adjusted ? { adjusted: true } : {};
     if (state.gcDisplayMode === "time") {
       const v = sp.gcGapSeconds;
-      return { text: fmtGapHM(v, sp.gcRank), goodness: v == null ? null : -v, colorable: v != null };
+      return { text: fmtGapHM(v, sp.gcRank), goodness: v == null ? null : -v,
+               colorable: v != null, ...mark };
     }
     const v = sp.gcRank;
-    return { text: v == null ? "—" : String(v), goodness: v == null ? null : -v, colorable: v != null };
+    return { text: v == null ? "—" : String(v), goodness: v == null ? null : -v,
+             colorable: v != null, ...mark };
   }
 
   if (state.currentMetric === "points") {
@@ -410,7 +419,9 @@ export function drawStageTable() {
   const cellsFor = (rider: RiderSeries): Cell[] => {
     const byStage = new Map<number, RiderStagePoint>();
     for (const sp of rider.byStage) byStage.set(sp.stage, sp);
-    return stages.map((s) => cellFor(byStage.get(s.stage_number)));
+    const adjusted = new Set(rider.adj ?? []);
+    return stages.map((s) =>
+      cellFor(byStage.get(s.stage_number), adjusted.has(s.stage_number)));
   };
   const grid: Cell[][] = riders.map(cellsFor);
   // Built from EVERY rider, not just the visible ones: the ramp answers "how
@@ -526,6 +537,19 @@ export function drawStageTable() {
     grid[ri].forEach((cell, si) => {
       const td = document.createElement("td");
       td.textContent = cell.text;
+      if (cell.adjusted) {
+        // PCS's own asterisk, for the same reason the GC legend uses it:
+        // reproducing the source's annotation claims exactly what we know,
+        // and PCS does not publish what each mark is for.
+        const mark = document.createElement("span");
+        mark.className = "stage-table-adj";
+        mark.textContent = "*";
+        mark.title = "PCS records this time as awarded rather than raced — "
+          + "credited with a group's time, usually after a crash inside the "
+          + "final kilometres, while keeping the place he finished in";
+        mark.setAttribute("aria-label", mark.title);
+        td.appendChild(mark);
+      }
       if (cell.colorable && cell.goodness != null) {
         td.style.background = colorScales[si](cell.goodness);
       } else if (cell.text && cell.text !== "—") {

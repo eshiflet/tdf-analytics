@@ -646,7 +646,12 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
       <div class="t-name">${displayName(rider)}</div>
       <div class="t-team">${rider.team ?? ""}</div>
       <div>${stageTitle(point.stage)} &middot; ${raceConfig().hasCumulativeGc ? "GC" : "Result"} #${point.gcRank ?? "—"}</div>
-      <div>Gap: ${fmtGap(point.gcGapSeconds, point.gcRank)}</div>
+      <div>Gap: ${fmtGap(point.gcGapSeconds, point.gcRank)}${
+        rider.adj?.includes(point.stage) ? " *" : ""}</div>
+      ${rider.adj?.includes(point.stage)
+        ? `<div class="t-adj">* time awarded, not raced — credited with a group's `
+          + `time while keeping the place he finished in</div>`
+        : ""}
       ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
     `;
   } else {
