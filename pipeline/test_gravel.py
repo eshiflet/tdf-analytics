@@ -15,8 +15,10 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import json
 import os
 import sqlite3
+import tempfile
 
 import ingest_classics
 import ingest_gravel
@@ -1137,3 +1139,178 @@ class TestHomeTownsAreReadable(unittest.TestCase):
         from link_gravel_riders import normalize_place
         forms = ["Las Vegas", "LAS VEGAS", "Las Vegas Nv"]
         self.assertEqual(len({normalize_place(f) for f in forms}), 1)
+
+
+class TestRacerIdAudit(unittest.TestCase):
+    """audit_rider_racer_ids.py reads Athlinks' own persistent `racer_id`, the
+    one identity signal in the gravel corpus that does not depend on how a name
+    was spelt at a registration desk. These tests pin the things that would make
+    it silently find nothing — the wrong identity key, the fetch cache, an alias
+    it forgot to resolve — because 'no groups' is also what a correct run prints
+    now that the backlog is merged, and a broken sweep looks identical to a
+    clean one.
+    """
+
+    def _fixture(self, tmp, rows_by_file, ids):
+        """Write a gravel_scrapes tree and point the module at it."""
+        import audit_rider_racer_ids as aud
+        for rel, rows in rows_by_file.items():
+            path = os.path.join(tmp, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"info": {}, "cancelled": False, "rows": rows}, f)
+        with open(os.path.join(tmp, "_rider_ids.json"), "w", encoding="utf-8") as f:
+            json.dump({k: {"rider_id": v} for k, v in ids.items()}, f)
+        # Both are module-level and both are restored: a temp dir that no longer
+        # exists, or a stubbed alias loader, would otherwise leak into whatever
+        # test runs next and make a real failure look like a fixture problem.
+        original = (aud.SCRAPES, aud.load_rider_aliases)
+        self.addCleanup(lambda: setattr(aud, "SCRAPES", original[0]))
+        self.addCleanup(lambda: setattr(aud, "load_rider_aliases", original[1]))
+        aud.SCRAPES = tmp
+        return aud
+
+    def _db(self):
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.executescript(
+            "CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT, "
+            "  nationality_code TEXT);"
+            "CREATE TABLE stages (stage_id INTEGER PRIMARY KEY);"
+            "CREATE TABLE stage_results (result_id INTEGER PRIMARY KEY, "
+            "  stage_id INTEGER, rider_id TEXT);")
+        return conn
+
+    def test_one_racer_id_across_two_ids_is_grouped(self):
+        """The whole point: two ids, one human, no name similarity at all."""
+        with tempfile.TemporaryDirectory() as tmp:
+            aud = self._fixture(tmp, {"unbound/2024.json": [
+                {"name": "Torbj R", "racer_id": 77},
+                {"name": "Torbjørn Andre Røed", "racer_id": 77}]},
+                {"torbj r": "rider/torbj-r",
+                 "torbjorn andre roed": "rider/torbjorn-andre-roed"})
+            aud.load_rider_aliases = lambda *a, **k: {}
+            fuse, _fission, stats = aud.collect()
+            self.assertEqual(set(fuse[77]),
+                             {"rider/torbj-r", "rider/torbjorn-andre-roed"})
+            self.assertEqual(stats["unmatched"], 0)
+
+    def test_an_already_aliased_pair_is_not_proposed_again(self):
+        """Without this the sweep re-proposes every merge already made, on every
+        run, and the next --apply re-does decided work."""
+        with tempfile.TemporaryDirectory() as tmp:
+            aud = self._fixture(tmp, {"unbound/2024.json": [
+                {"name": "Joe Goettl", "racer_id": 88},
+                {"name": "Joseph Goettl", "racer_id": 88}]},
+                {"joe goettl": "rider/joe-goettl",
+                 "joseph goettl": "rider/joseph-goettl"})
+            aud.load_rider_aliases = lambda *a, **k: {
+                "rider/joe-goettl": "rider/joseph-goettl"}
+            fuse, _fission, _stats = aud.collect()
+            self.assertEqual(set(fuse[88]), {"rider/joseph-goettl"},
+                             "an absorbed id must resolve to its canonical "
+                             "before grouping, leaving one id and no group")
+
+    def test_the_identity_key_strips_leadvilles_series_flag(self):
+        """_rider_ids.json is keyed on fold(strip_series_flag(name)). Folding
+        alone leaves 'LM' in the key, the lookup misses, and every Leadman row
+        in 2011 and 2013 drops out of the sweep unnoticed."""
+        with tempfile.TemporaryDirectory() as tmp:
+            aud = self._fixture(tmp, {"leadville/2013.json": [
+                {"name": "Marvin Sandoval LM", "racer_id": 99}]},
+                {"marvin sandoval": "rider/marvin-sandoval"})
+            aud.load_rider_aliases = lambda *a, **k: {}
+            _fuse, fission, stats = aud.collect()
+            self.assertEqual(stats["unmatched"], 0,
+                             "the Leadman flag must be stripped before folding")
+            self.assertIn("rider/marvin-sandoval", fission)
+
+    def test_the_raw_fetch_cache_is_not_read(self):
+        """_raw/ holds Athlinks' own key names and editions that were considered
+        and NOT selected. Reading it credits riders to races they never rode."""
+        with tempfile.TemporaryDirectory() as tmp:
+            aud = self._fixture(tmp, {
+                "unbound/2024.json": [{"name": "Real Rider", "racer_id": 5}],
+                "_raw/1234_5678.json": [{"name": "Real Rider", "racer_id": 5}]},
+                {"real rider": "rider/real-rider"})
+            aud.load_rider_aliases = lambda *a, **k: {}
+            _fuse, _fission, stats = aud.collect()
+            self.assertEqual(stats["rows"], 1, "only the curated file is read")
+
+    def test_rows_without_a_racer_id_are_counted_not_grouped(self):
+        """78% of the corpus. They are the sweep's blind spot and the summary
+        has to say so, or a clean run reads as proof there is nothing left."""
+        with tempfile.TemporaryDirectory() as tmp:
+            aud = self._fixture(tmp, {"unbound/2024.json": [
+                {"name": "A Rider", "racer_id": None},
+                {"name": "A Rider", "racer_id": 0},
+                {"name": "A Rider", "racer_id": 7}]},
+                {"a rider": "rider/a-rider"})
+            aud.load_rider_aliases = lambda *a, **k: {}
+            _fuse, _fission, stats = aud.collect()
+            self.assertEqual((stats["rows"], stats["nulls"]), (3, 2),
+                             "Athlinks writes both null and 0 for 'no racer'")
+
+    def test_a_shared_stage_overrules_the_source(self):
+        """Nobody rides one race twice. This is the only test allowed to
+        contradict Athlinks' own racer id, and it must win."""
+        import audit_rider_racer_ids as aud
+        conn = self._db()
+        conn.executescript(
+            "INSERT INTO riders VALUES ('rider/a','A','us'),('rider/b','B','us');"
+            "INSERT INTO stages VALUES (1);"
+            "INSERT INTO stage_results VALUES (1,1,'rider/a'),(2,1,'rider/b');")
+        verdict, why = aud.classify(conn.cursor(), ["rider/a", "rider/b"])
+        self.assertEqual(verdict, "DIFFERENT")
+        self.assertIn("share", why)
+
+    def test_a_nationality_clash_is_review_not_different(self):
+        """The deliberate asymmetry with audit_rider_duplicates.py. Athlinks'
+        country is where an entrant LIVES: Røed rode as `us` from Grand Junction
+        and `no` from Asker, and both are him. Against a name match a clash
+        separates; against the source's own racer id it does not."""
+        import audit_rider_racer_ids as aud
+        conn = self._db()
+        conn.execute("INSERT INTO riders VALUES ('rider/a','A','us')")
+        conn.execute("INSERT INTO riders VALUES ('rider/b','B','no')")
+        verdict, _why = aud.classify(conn.cursor(), ["rider/a", "rider/b"])
+        self.assertEqual(verdict, "REVIEW",
+                         "a nationality clash must not silently rule out a "
+                         "merge the source itself asserts")
+
+    def test_a_clean_pair_is_same(self):
+        import audit_rider_racer_ids as aud
+        conn = self._db()
+        conn.execute("INSERT INTO riders VALUES ('rider/a','A','us')")
+        conn.execute("INSERT INTO riders VALUES ('rider/b','B','us')")
+        verdict, _why = aud.classify(conn.cursor(), ["rider/a", "rider/b"])
+        self.assertEqual(verdict, "SAME")
+
+    def test_it_will_not_propose_undoing_a_deliberate_split(self):
+        """The same regression TestRiderSplits guards for the name-based audit.
+        A split's two halves share a name exactly and never share a stage, so
+        every heuristic here says SAME unless it reads rider_splits.json."""
+        import audit_rider_racer_ids as aud
+        from race_common import load_rider_splits
+        conn = self._db()
+        for (src, _race, _year), rule in load_rider_splits().items():
+            conn.execute("INSERT OR IGNORE INTO riders VALUES (?,?,?)", (src, "x", "us"))
+            conn.execute("INSERT OR IGNORE INTO riders VALUES (?,?,?)",
+                         (rule["rider_id"], "x", "us"))
+            verdict, _why = aud.classify(conn.cursor(), [src, rule["rider_id"]])
+            self.assertEqual(verdict, "SETTLED",
+                             f"{src} and {rule['rider_id']} are the halves of a "
+                             f"deliberate split and the audit said {verdict}")
+
+    def test_it_will_not_propose_a_pair_a_human_separated(self):
+        import audit_rider_racer_ids as aud
+        from race_common import load_rider_separations
+        conn = self._db()
+        for pair in load_rider_separations():
+            a, b = (f"rider/{x}" for x in pair)
+            conn.execute("INSERT OR IGNORE INTO riders VALUES (?,?,?)", (a, "x", "us"))
+            conn.execute("INSERT OR IGNORE INTO riders VALUES (?,?,?)", (b, "x", "us"))
+            verdict, _why = aud.classify(conn.cursor(), [a, b])
+            self.assertEqual(verdict, "SETTLED",
+                             f"{a}/{b} were ruled different people and the "
+                             f"audit said {verdict}")

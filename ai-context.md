@@ -211,6 +211,7 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `backfill_rider_team_provenance.py` | provenance for pre-tracking `riders`/`teams` rows; companion to `backfill_provenance.py` (which covers `stages`) |
 | `patch_cyclingflash_elevation.py` | 2001/2006 s20 from cyclingflash.com; guards on distance before writing |
 | `null_itt_filler_times.py` | NULLs the 4,040 fabricated ITT finish times; re-run after any re-ingest of those editions |
+| `audit_rider_racer_ids.py` | gravel riders stored under >1 id, found via Athlinks' own persistent `racer_id`; never merges, `--json` feeds `merge_rider_duplicates.py` |
 
 ### State as of 2026-08-11
 
@@ -4842,6 +4843,56 @@ Nationality is what separates the genuine collisions — `camile-leroy` (be,
 1919-24) from `camille-leroy` (fr, 1938), `michael-andersson` (se) from
 `michael-anderson` (us), `peter-godde` (nl) from `peter-goode` (us). Career
 span longer than 25 years separates the rest.
+
+### `audit_rider_racer_ids.py` — the source's own identity, which nothing read
+
+Added 2026-09-18. Its sibling above asks whether two ids LOOK like one person
+and must be conservative, because a name is all it has. This asks a better
+question: every Athlinks row carries **`racer_id`**, the timer's persistent id
+for a human being, and where two of our ids share one, the SOURCE says they are
+one person. Stronger than any name, locality or age test we can run.
+
+**It sat unread for months.** `link_gravel_riders.py` dismisses it in a comment
+as "null on most rows" — true, and beside the point. It is null on **78%** of
+rows and decisive on the rest. The first run found **21 fractured riders**; six
+were already aliased, fifteen were merged that day, and the sweep reads **0
+today**.
+
+It is the only thing that can pair a TRUNCATED name with its rider. Athlinks
+cuts `displayName` at the first non-ASCII byte **per registration**, not per
+rider, so `Torbjørn Andre Røed` arrives as `Torbj R` and `Andrew L'Esperance`
+as `Andrew L` on some entries while the same season spells them correctly on
+others. No name-similarity test can pair `torbj-r` with `torbjorn-andre-roed`.
+
+**Two deliberate differences from the name-based audit:**
+
+- **A nationality clash is REVIEW, not DIFFERENT.** Athlinks' `country` is where
+  an entrant LIVES, not their passport. Røed rode as `us` from Grand Junction
+  and `no` from Asker; Yuki Ikeda reads `us` for four Leadvilles before `jp`
+  appears. Against a mere name match a clash is good evidence of two people;
+  against the source's own racer id it is good evidence of a rider who moved.
+- **The mirror direction is a lead, never a verdict.** Several racer ids on ONE
+  of our ids is where a conflation would show, and 12 ids have that today — but
+  a person can hold two Athlinks accounts, and `rider/ryan-petry`'s two are
+  84638762 and 84638767, five apart. Printed as REVIEW, never classified.
+
+**The blind spot is stated in the output, because it cost a find.** A pair whose
+rows all lack a racer id is invisible here — Nathan/Nathaniel Spratt is exactly
+that, one man on two ids, missed because his 2026 rows carry nothing to join on.
+He was found instead by noticing that he and his brother Marcus register together
+on ADJACENT bibs (1699/1700, 158/159, 86/87, 108/109). **A clean run does not
+mean the corpus is whole**; run `audit_rider_duplicates.py` beside it.
+
+The identity key must be built exactly as `link_gravel_riders` built
+`_rider_ids.json` — `fold(strip_series_flag(name))`. Folding alone leaves
+Leadville's Leadman marker in the key, the lookup misses, and every `(l)` row in
+2011 and `LM` row in 2013 drops out unnoticed; there is a test for it.
+
+```bash
+python3 audit_rider_racer_ids.py                    # both directions, classified
+python3 audit_rider_racer_ids.py --json out.json    # then READ it
+python3 merge_rider_duplicates.py --groups out.json # dry run, then --apply
+```
 
 ### Canonical spelling is researched, not guessed — and two merges were reversed
 
