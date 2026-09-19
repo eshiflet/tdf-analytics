@@ -4874,7 +4874,25 @@ others. No name-similarity test can pair `torbj-r` with `torbjorn-andre-roed`.
 - **The mirror direction is a lead, never a verdict.** Several racer ids on ONE
   of our ids is where a conflation would show, and 12 ids have that today — but
   a person can hold two Athlinks accounts, and `rider/ryan-petry`'s two are
-  84638762 and 84638767, five apart. Printed as REVIEW, never classified.
+  84638762 and 84638767, five apart. Printed as REVIEW, never classified, and
+  **split into open leads and SETTLED ones** by reading both halves of
+  `rider_splits.json`, so a question somebody already answered is not re-asked.
+  11 open, 1 settled.
+
+**`jake-pantone` was the first of those leads run down, 2026-09-18.** Three
+racer ids — 176052831 (Leadville 2011), 333542089 (Unbound 2018), 165673321
+(Unbound 2019 and 2021) — and **one man with three registrations**. The birth
+year decides it: ages 30, 37, 38 and 40 in those four years imply **1981 every
+time**, zero variance over a decade, where this archive's noise floor is ±3-5.
+The localities agree — Eden on three rows and Huntsville on the fourth are two
+of the three communities of Ogden Valley, Weber County, Utah, and the `CO`
+beside Huntsville is *Leadville's* state, the documented region artefact.
+Recorded in `rider_splits.json`'s `rejected`.
+
+**`ike-pantone` is a different man and must never be merged into him.** Ike rode
+Unbound 2021 in 50th at 46,807s; Jake rode the same edition in 42nd at 45,855s.
+They share a stage, which is the test that proves two people — Ike is Ogden,
+born 1985, twelve miles down the canyon and almost certainly a relative.
 
 **The blind spot is stated in the output, because it cost a find.** A pair whose
 rows all lack a racer id is invisible here — Nathan/Nathaniel Spratt is exactly

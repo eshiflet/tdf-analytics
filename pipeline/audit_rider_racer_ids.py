@@ -148,6 +148,25 @@ def collect():
             {"rows": rows, "nulls": nulls, "unmatched": unmatched})
 
 
+def adjudicated_ids():
+    """rider_id -> why a conflation candidate was decided, from rider_splits.json.
+
+    Both of that file's sections answer the question the mirror section below
+    asks. `splits` is an id somebody DID fission; `rejected` is a candidate
+    examined and left alone, which is the harder thing to remember and the whole
+    reason that section exists. Either way the id is not an open lead.
+    """
+    path = os.path.join(HERE, "rider_splits.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        raw = json.load(f)
+    out = {rid: str(why) for rid, why in (raw.get("rejected") or {}).items()}
+    for rid in (raw.get("splits") or {}):
+        out.setdefault(rid, "SPLIT into two riders — see rider_splits.json")
+    return out
+
+
 def share_a_stage(cur, ids):
     """The disconfirming test, and the only thing that can OVERRULE the source.
 
@@ -243,11 +262,25 @@ def main():
     # The mirror direction. A LEAD only — see the module docstring.
     multi = {rid: rs for rid, rs in fission.items() if len(rs) > 1}
     if multi and not args.same:
+        # A lead somebody already ran down is not an open question, and printing
+        # it as one invites the next reader to re-derive an answer that is
+        # written down. rider_splits.json records both directions: `splits` for
+        # an id that really was two people, `rejected` for a candidate that did
+        # not meet the bar. jake-pantone is the second kind — three racer ids,
+        # one man, checked 2026-09-18.
+        adjudicated = adjudicated_ids()
+        settled = {k: v for k, v in multi.items() if k in adjudicated}
+        open_leads = {k: v for k, v in multi.items() if k not in adjudicated}
         print(f"\n{len(multi)} rider id(s) carry more than one racer id. This is NOT "
               "evidence of two people — a rider can hold two Athlinks accounts — but "
-              "it is where a conflation would show. Check against rider_splits.json:")
-        for rid, rs in sorted(multi.items()):
-            print(f"    {rid.removeprefix('rider/'):<30}{sorted(rs)}")
+              "it is where a conflation would show.")
+        if open_leads:
+            print(f"\n  {len(open_leads)} not yet looked at:")
+            for rid, rs in sorted(open_leads.items()):
+                print(f"    {rid.removeprefix('rider/'):<30}{sorted(rs)}")
+        for rid, rs in sorted(settled.items()):
+            print(f"\n  SETTLED  {rid.removeprefix('rider/')} {sorted(rs)}"
+                  f"\n    {adjudicated[rid]}")
 
     pct = stats["nulls"] / stats["rows"] * 100 if stats["rows"] else 0
     print(f"\nRead {stats['rows']:,} gravel rows; {stats['nulls']:,} ({pct:.0f}%) carry no "

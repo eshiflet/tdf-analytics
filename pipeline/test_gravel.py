@@ -26,6 +26,7 @@ import scrape_athlinks
 import scrape_pcs_gravel
 import scrape_traka
 from resolve_traka_events import pick_360
+import race_common
 from race_common import GRAVEL, gravel_route_type
 from link_gravel_riders import decide, fold, slugify, tokens
 from scrape_athlinks import (
@@ -1314,3 +1315,40 @@ class TestRacerIdAudit(unittest.TestCase):
             self.assertEqual(verdict, "SETTLED",
                              f"{a}/{b} were ruled different people and the "
                              f"audit said {verdict}")
+
+    def test_adjudicated_ids_reads_both_halves_of_rider_splits(self):
+        """A lead somebody already ran down is not an open question. Both
+        sections answer it: `splits` is an id that WAS fissioned, `rejected` is
+        a candidate examined and left alone — the harder one to remember, and
+        the whole reason that section exists."""
+        import audit_rider_racer_ids as aud
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "rider_splits.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"splits": {"rider/was-split": {"rules": []}},
+                           "rejected": {"rider/looked-at": "NOT split, because ..."}}, f)
+            original = aud.HERE
+            self.addCleanup(lambda: setattr(aud, "HERE", original))
+            aud.HERE = tmp
+            got = aud.adjudicated_ids()
+        self.assertIn("rider/looked-at", got)
+        self.assertIn("rider/was-split", got)
+        self.assertIn("NOT split", got["rider/looked-at"])
+
+    def test_the_live_file_answers_the_lead_this_sweep_raised(self):
+        """jake-pantone carries three racer ids, which is the shape a conflation
+        has. It was checked on 2026-09-18 and is one man with three
+        registrations. Without the record the sweep re-raises it forever."""
+        import audit_rider_racer_ids as aud
+        self.assertIn("rider/jake-pantone", aud.adjudicated_ids())
+
+    def test_ike_and_jake_pantone_share_a_stage_so_can_never_be_merged(self):
+        """The structural guard behind that record. They are two people, and
+        the proof is that both rode Unbound 2021."""
+        import audit_rider_racer_ids as aud
+        conn = sqlite3.connect(f"file:{race_common.DB_PATH}?mode=ro", uri=True)
+        self.addCleanup(conn.close)
+        n = aud.share_a_stage(conn.cursor(),
+                              ["rider/jake-pantone", "rider/ike-pantone"])
+        self.assertGreater(n, 0, "if these ever stop sharing a stage the "
+                                 "merge guard protecting them is gone")
