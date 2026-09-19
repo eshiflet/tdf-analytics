@@ -24,7 +24,7 @@
   "truncated": false,
   "source_url": "https://www.athlinks.com/event/1023337/results/Event/1023337/Course/2309089/Results",
   "api_url": "https://reignite-api.athlinks.com/event/1023337/race/2309089/results",
-  "fetched_at": "2026-08-21T17:29:19+00:00"
+  "fetched_at": "2026-09-19T04:29:20+00:00"
  },
  "cancelled": false,
  "rows": [
@@ -1524,24 +1524,6 @@
   },
   {
    "rank": 84,
-   "name": "Quinten Kirby",
-   "first_name": "Quinten",
-   "last_name": "Kirby",
-   "bib": "362",
-   "age": 27,
-   "gender": "M",
-   "country": "us",
-   "locality": "San Diego",
-   "region": "California",
-   "finish_seconds": 23786,
-   "status": "FINISHED",
-   "athlinks_id": 60510839,
-   "racer_id": null,
-   "rank_overall": 326,
-   "gap_seconds": 9165
-  },
-  {
-   "rank": 85,
    "name": "Brock Curry",
    "first_name": "Brock",
    "last_name": "Curry",
@@ -1557,6 +1539,24 @@
    "racer_id": null,
    "rank_overall": 247,
    "gap_seconds": -4559
+  },
+  {
+   "rank": 85,
+   "name": "Quinten Kirby",
+   "first_name": "Quinten",
+   "last_name": "Kirby",
+   "bib": "362",
+   "age": 27,
+   "gender": "M",
+   "country": "us",
+   "locality": "San Diego",
+   "region": "California",
+   "finish_seconds": 23786,
+   "status": "FINISHED",
+   "athlinks_id": 60510839,
+   "racer_id": null,
+   "rank_overall": 326,
+   "gap_seconds": 9165
   },
   {
    "rank": 86,
@@ -1632,24 +1632,6 @@
   },
   {
    "rank": null,
-   "name": "John Nobil",
-   "first_name": "John",
-   "last_name": "Nobil",
-   "bib": "424",
-   "age": 50,
-   "gender": "M",
-   "country": "us",
-   "locality": "La Jolla",
-   "region": "California",
-   "finish_seconds": null,
-   "status": "DNF",
-   "athlinks_id": 60812371,
-   "racer_id": null,
-   "rank_overall": 92,
-   "gap_seconds": null
-  },
-  {
-   "rank": null,
    "name": "Payson McElveen",
    "first_name": "Payson",
    "last_name": "McElveen",
@@ -1664,6 +1646,24 @@
    "athlinks_id": 60787962,
    "racer_id": null,
    "rank_overall": 34,
+   "gap_seconds": null
+  },
+  {
+   "rank": null,
+   "name": "John Nobil",
+   "first_name": "John",
+   "last_name": "Nobil",
+   "bib": "424",
+   "age": 50,
+   "gender": "M",
+   "country": "us",
+   "locality": "La Jolla",
+   "region": "California",
+   "finish_seconds": null,
+   "status": "DNF",
+   "athlinks_id": 60812371,
+   "racer_id": null,
+   "rank_overall": 92,
    "gap_seconds": null
   },
   {

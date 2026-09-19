@@ -24,7 +24,7 @@
   "truncated": false,
   "source_url": "https://www.athlinks.com/event/593620/results/Event/593620/Course/893256/Results",
   "api_url": "https://reignite-api.athlinks.com/event/593620/race/893256/results",
-  "fetched_at": "2026-08-21T17:29:38+00:00"
+  "fetched_at": "2026-09-19T04:29:39+00:00"
  },
  "cancelled": false,
  "rows": [
@@ -246,6 +246,24 @@
   },
   {
    "rank": 13,
+   "name": "Enrique Saborío",
+   "first_name": "Enrique",
+   "last_name": "Saborío",
+   "bib": "1934",
+   "age": 50,
+   "gender": "M",
+   "country": "us",
+   "locality": "Miami",
+   "region": "Florida",
+   "finish_seconds": 23561,
+   "status": "FINISHED",
+   "athlinks_id": 25968825,
+   "racer_id": null,
+   "rank_overall": 344,
+   "gap_seconds": 1067
+  },
+  {
+   "rank": 14,
    "name": "Felipe Montiel",
    "first_name": "Felipe",
    "last_name": "Montiel",
@@ -263,7 +281,7 @@
    "gap_seconds": 14151
   },
   {
-   "rank": 14,
+   "rank": 15,
    "name": "Sam Benedict",
    "first_name": "Sam",
    "last_name": "Benedict",
@@ -279,24 +297,6 @@
    "racer_id": 302976180,
    "rank_overall": 650,
    "gap_seconds": 15212
-  },
-  {
-   "rank": 15,
-   "name": "Enrique Saborío",
-   "first_name": "Enrique",
-   "last_name": "Saborío",
-   "bib": "1934",
-   "age": 50,
-   "gender": "M",
-   "country": "us",
-   "locality": "Miami",
-   "region": "Florida",
-   "finish_seconds": 23561,
-   "status": "FINISHED",
-   "athlinks_id": 25968825,
-   "racer_id": null,
-   "rank_overall": 344,
-   "gap_seconds": 1067
   },
   {
    "rank": null,

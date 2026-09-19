@@ -4949,13 +4949,43 @@ field, while The Traka's 1.2-1.6x is just PCS's place in a wider published field
 and Unbound 2016's 100-vs-98 is a FIELD_CAP window that later lost a duplicate.
 The check does NOT guess which cause applies — it prints the ratio.
 
-**Not repaired, and deliberately so.** The fix is a scraper change plus a
-re-ingest, and the obvious version — rank the division by the clock — is the one
-this repo already got wrong: `division_rank()`'s docstring records that clock
-ranking replaced Sea Otter 2023's real podium, because a handful of rows carry a
-checkpoint time. Any repair has to clear the unreliable TIMES first (Lake,
-Saborio) and only then re-rank. **Decision open.** That 2016/2017 mess is also
-what makes `sam-benedict` undecidable above.
+**REPAIRED 2026-09-18, in two halves.**
+
+*The places.* `scrape_athlinks.is_a_classification()` now asks whether published
+places are places in THIS field: they must be DISTINCT and none past the size of
+the listing the timer served. Neither is a judgement call, which is what makes it
+safe on every edition. Two details decide whether it misfires:
+
+- It is judged **over finishers only**. Leadville 2021, Sea Otter 2024 and
+  Unbound 2022 all publish a flawless classification beside a DNF carrying a
+  `999999` sentinel, and judging every row would throw all three away.
+- It is bounded by the rows the timer **published**, not the rows that survive
+  de-duplication. A division served as 100 rows and deduped to 98 still has a
+  real 100th place. This is a bound, not a threshold — no magic number.
+
+When places fail that test the division is renumbered **in `overall` order, not
+by the clock**. That is the whole lesson of Sea Otter 2023, where clock ranking
+replaced a podium three sources agree on: `overall` is a separate witness and
+stays right when the clock does not. Six editions were renumbered; **Leadville
+2016 went from 1..804 to a contiguous 1..43**.
+
+*The times.* `ingest_gravel.rows_contradicting_their_rank()` extends the winner
+rule to the subtler case — a rider whose clock beats riders ranked ahead of him
+while still trailing the winner. It returns the complement of the longest
+non-decreasing run of times in rank order: the FEWEST rows that must be wrong
+for the rest to agree. Counting disagreeing pairs would call Saborio's one bad
+row twelve defects. **6 rows** nulled across 6 editions, placing kept, and the
+same majority guard as the winner rule refuses to act when a fifth of the field
+disagrees — then the ORDER is the suspect side, not the clocks.
+
+Both halves are re-derived from the gitignored `_raw/` cache with
+`scrape_athlinks.py --force`, so the repair cost no network at all. Note that
+`--force` restamps `info.fetched_at` on every file although it fetched nothing,
+which rewrites 88 scrape files that did not change; diff them by parsed content
+and restore the rest, or the repair drowns.
+
+`sam-benedict` stays undecidable — the repair fixes the ORDER of Leadville
+2016/2017, not the thinness of those fields.
 
 **`ike-pantone` is a different man and must never be merged into him.** Ike rode
 Unbound 2021 in 50th at 46,807s; Jake rode the same edition in 42nd at 45,855s.

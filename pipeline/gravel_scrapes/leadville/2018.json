@@ -24,7 +24,7 @@
   "truncated": false,
   "source_url": "https://www.athlinks.com/event/680196/results/Event/680196/Course/1090830/Results",
   "api_url": "https://reignite-api.athlinks.com/event/680196/race/1090830/results",
-  "fetched_at": "2026-08-21T17:29:37+00:00"
+  "fetched_at": "2026-09-19T04:29:39+00:00"
  },
  "cancelled": false,
  "rows": [
@@ -444,24 +444,6 @@
   },
   {
    "rank": 24,
-   "name": "Andres Bruna",
-   "first_name": "Andres",
-   "last_name": "Bruna",
-   "bib": "1515",
-   "age": 35,
-   "gender": "M",
-   "country": "cr",
-   "locality": "San Jose",
-   "region": "San José",
-   "finish_seconds": 32695,
-   "status": "FINISHED",
-   "athlinks_id": 34263542,
-   "racer_id": null,
-   "rank_overall": 254,
-   "gap_seconds": 10007
-  },
-  {
-   "rank": 25,
    "name": "Sam Benedict",
    "first_name": "Sam",
    "last_name": "Benedict",
@@ -477,6 +459,24 @@
    "racer_id": 343367626,
    "rank_overall": 208,
    "gap_seconds": -708
+  },
+  {
+   "rank": 25,
+   "name": "Andres Bruna",
+   "first_name": "Andres",
+   "last_name": "Bruna",
+   "bib": "1515",
+   "age": 35,
+   "gender": "M",
+   "country": "cr",
+   "locality": "San Jose",
+   "region": "San José",
+   "finish_seconds": 32695,
+   "status": "FINISHED",
+   "athlinks_id": 34263542,
+   "racer_id": null,
+   "rank_overall": 254,
+   "gap_seconds": 10007
   },
   {
    "rank": 26,

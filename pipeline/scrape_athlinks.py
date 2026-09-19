@@ -337,6 +337,45 @@ def fetch_field(entry):
     return rows, total, []
 
 
+def is_a_classification(ranks, n_published):
+    """Is this set of published places actually a classification of this field?
+
+    `division_rank()` reads a rider's place out of Athlinks' `primary` ranking
+    on the documented assumption that a row fetched from /division/{id}/results
+    carries its rank IN that division. The assumption holds for most editions
+    and FAILS SILENTLY where it does not, because a wrong place is still a
+    number and nothing downstream can tell.
+
+    Leadville 2016 is the case that exposed it: 43 riders in the ProM division
+    whose `primary` tracks the OVERALL field, so the places run 1, 2, 3, 4, 5,
+    6, 8 ... 804 and Richard La China is published as finishing 804th in a
+    43-rider race. Leadville 2017 fails a different way — its `primary` really
+    is 1..14, but three polluted rows repeat places 1, 5 and 14.
+
+    Two properties, and a real classification has both: the places are
+    DISTINCT, and none of them is past the size of the field. Neither is a
+    judgement call, which is what makes this safe to run on every edition.
+
+    `n_published` is how many rows the timer listed BEFORE de-duplication, not
+    how many survive it, and the difference is the whole reason this is not a
+    magic threshold. A division we deduped from 100 rows to 98 still has a
+    legitimate 100th place, and bounding against 98 would throw away a perfectly
+    good classification. Bounding against what was published cannot: Leadville
+    2016 lists 43 riders and calls one of them 804th.
+
+    JUDGE IT OVER FINISHERS ONLY. A non-finisher loses its place a few lines
+    later anyway, and Athlinks hands plenty of them a `999999` sentinel or a
+    stale repeat — Leadville 2021, Sea Otter 2024 and Unbound 2022 all publish
+    a flawless classification of their finishers and would be thrown away on
+    the strength of a DNF's junk number. Over finishers, those three pass and
+    keep the places their timer published.
+    """
+    present = [r for r in ranks if r is not None]
+    if not present:
+        return False
+    return len(set(present)) == len(present) and max(present) <= n_published
+
+
 def select_field(rows, entry):
     """Rows of the top-level men's field, ranked, per the edition's rule.
 
@@ -347,6 +386,9 @@ def select_field(rows, entry):
     """
     rule = entry["rule"]
     div_ids = [d["id"] for d in (entry.get("divisions_used") or [])]
+    # Kept before dedupe: a published place can legitimately reach the size of
+    # the list the timer served, not merely of what survives de-duplication.
+    n_published = len(rows)
     rows = dedupe(rows)
 
     if div_ids:
@@ -355,9 +397,36 @@ def select_field(rows, entry):
         # published classification, so use it verbatim.
         ranks = ([division_rank(r, div_ids[0]) for r in picked]
                  if len(div_ids) == 1 else [None] * len(picked))
-        if len(div_ids) == 1 and all(r is not None for r in ranks):
+        # The published places are only a classification of the riders who
+        # actually finished; see is_a_classification().
+        finishers = [r for r in picked if row_status(r) == "FINISHED"]
+        fin_ranks = ([division_rank(r, div_ids[0]) for r in finishers]
+                     if len(div_ids) == 1 else [])
+        if (len(div_ids) == 1 and all(r is not None for r in ranks)
+                and is_a_classification(fin_ranks, n_published)):
             for r, rk in zip(picked, ranks):
                 r["_rank"] = rk
+        elif len(div_ids) == 1 and all(r is not None for r in ranks):
+            # Places were published but they are not places in THIS field —
+            # see is_a_classification(). Renumbering by the CLOCK is the
+            # obvious repair and it is the wrong one: this scraper already
+            # learnt at Sea Otter 2023 that a handful of rows carry a
+            # checkpoint split rather than a finishing time, and ranking on
+            # that replaced a real podium. Athlinks' `overall` is a different
+            # witness from the clock and it is the one that stays right when
+            # the clock does not, so the division is renumbered in overall
+            # order — exactly what the no-division branch below does with the
+            # whole men's field, and for the same reason.
+            picked.sort(key=lambda r: ((r.get("rankings") or {}).get("overall")
+                                       or 10**9))
+            rank = 0
+            for r in picked:
+                overall = (r.get("rankings") or {}).get("overall")
+                if overall and row_status(r) == "FINISHED":
+                    rank += 1
+                    r["_rank"] = rank
+                else:
+                    r["_rank"] = None
         else:
             # A union of two divisions has two independent rank sequences, and
             # some editions publish no per-row division rank at all. Either way

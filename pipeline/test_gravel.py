@@ -29,6 +29,8 @@ from resolve_traka_events import pick_360
 import race_common
 from race_common import GRAVEL, gravel_route_type
 from link_gravel_riders import decide, fold, slugify, tokens
+from scrape_athlinks import is_a_classification
+from ingest_gravel import rows_contradicting_their_rank
 from scrape_athlinks import (
     FIELD_CAP,
     MIN_FIELD_FOR_RELATIVE,
@@ -187,12 +189,24 @@ class TestFieldSelection(unittest.TestCase):
     def test_division_rank_is_used_not_overall(self):
         # In a mass-start race the 20th pro is ~200th overall. Storing the
         # overall number would make the pro classification meaningless.
+        #
+        # The field is padded to twenty riders on purpose. A place of 20 is only
+        # a real place in a division that HAS twenty members, and a one-row
+        # fixture claiming 20th is the exact shape is_a_classification() now
+        # rejects — Leadville 2016 publishes 43 riders and calls one 804th. The
+        # assertion is unchanged; only the fixture stopped being impossible.
         r = self.row("Pro", 214, div=77)
         r["rankings"]["other"] = [{"id": 77, "rank": 20}]
         self.assertEqual(division_rank(r, 77), 20)
-        picked = select_field([r], {"rule": "elite_division",
-                                    "divisions_used": [{"id": 77}]})
-        self.assertEqual(picked[0]["_rank"], 20)
+        field = []
+        for i in range(1, 20):
+            other = self.row(f"Pro{i}", i, div=77)
+            other["rankings"]["other"] = [{"id": 77, "rank": i}]
+            field.append(other)
+        picked = select_field(field + [r], {"rule": "elite_division",
+                                            "divisions_used": [{"id": 77}]})
+        by_name = {x["displayName"]: x["_rank"] for x in picked}
+        self.assertEqual(by_name["Pro"], 20)
 
     def test_primary_rank_is_the_division_rank_when_divisions_is_absent(self):
         # Rows from /division/{id}/results before ~2024 carry no `divisions`
@@ -1352,3 +1366,175 @@ class TestRacerIdAudit(unittest.TestCase):
                               ["rider/jake-pantone", "rider/ike-pantone"])
         self.assertGreater(n, 0, "if these ever stop sharing a stage the "
                                  "merge guard protecting them is gone")
+
+
+class TestClassificationValidity(unittest.TestCase):
+    """scrape_athlinks.is_a_classification — are these published places places?
+
+    division_rank() reads a rider's place from Athlinks' `primary` ranking on
+    the assumption that a row fetched from /division/{id}/results carries its
+    rank IN that division. Leadville 2016 disproves it: 43 riders whose
+    `primary` tracks the OVERALL field, so the stored places ran 1, 2, 3, 4, 5,
+    6, 8 ... 804 and Richard La China was published as finishing 804th in a
+    43-rider race. The assumption held for most editions and failed silently
+    where it did not, because a wrong place is still a number.
+    """
+
+    def test_a_clean_run_is_a_classification(self):
+        self.assertTrue(is_a_classification([1, 2, 3, 4], 4))
+
+    def test_a_place_past_the_published_field_is_not(self):
+        self.assertFalse(is_a_classification([1, 2, 804], 43))
+
+    def test_duplicate_places_are_not(self):
+        """Leadville 2017's shape: `primary` really is 1..14, but three polluted
+        rows repeat places 1, 5 and 14."""
+        self.assertFalse(is_a_classification([1, 2, 2, 3], 10))
+
+    def test_the_athlinks_sentinel_is_not(self):
+        self.assertFalse(is_a_classification([1, 2, 999999], 3))
+
+    def test_a_deduped_field_keeps_its_top_place(self):
+        """THE false positive this has to avoid. A division served as 100 rows
+        and deduped to 98 still has a real 100th place; bounding against the
+        surviving count rather than the published one would throw away a
+        perfectly good classification."""
+        self.assertTrue(is_a_classification(list(range(1, 99)) + [100], 100))
+
+    def test_nothing_published_is_not_a_classification(self):
+        self.assertFalse(is_a_classification([None, None], 2))
+
+
+class TestBrokenDivisionRanksAreRenumbered(unittest.TestCase):
+    """What select_field does once the published places fail that test.
+
+    NOT by the clock. This scraper already learnt at Sea Otter 2023 that a
+    handful of rows carry a checkpoint split rather than a finishing time, and
+    ranking on it replaced a podium three sources agree on. Athlinks' `overall`
+    is a separate witness from the clock and stays right when the clock does
+    not, so the division is renumbered in overall order.
+    """
+
+    def row(self, name, overall, primary, secs, status="CONF"):
+        return {"displayName": name, "status": status,
+                "rankings": {"overall": overall, "primary": primary,
+                             "gender": overall},
+                "divisions": None, "bib": "1",
+                "chipTimeInMillis": secs * 1000, "gunTimeInMillis": secs * 1000}
+
+    def test_places_that_track_the_overall_field_are_renumbered_1_to_n(self):
+        """Leadville 2016 in miniature."""
+        rows = [self.row("A", 1, 1, 22783), self.row("B", 8, 8, 24919),
+                self.row("C", 543, 520, 35770), self.row("D", 871, 804, 39424)]
+        picked = select_field(rows, {"rule": "elite_division",
+                                     "divisions_used": [{"id": 5}]})
+        self.assertEqual([r["_rank"] for r in picked], [1, 2, 3, 4])
+
+    def test_it_renumbers_by_overall_and_not_by_the_clock(self):
+        """The row that separates the two rules: a rider the source ranks LAST
+        whose clock says he was fast. Sea Otter 2023 is why the source wins."""
+        rows = [self.row("Winner", 1, 1, 22000), self.row("Second", 2, 2, 23000),
+                self.row("Third", 3, 3, 24000),
+                self.row("BadClock", 900, 700, 100)]   # absurdly fast, ranked last
+        picked = select_field(rows, {"rule": "elite_division",
+                                     "divisions_used": [{"id": 5}]})
+        by_name = {r["displayName"]: r["_rank"] for r in picked}
+        self.assertEqual(by_name["BadClock"], 4,
+                         "the source's own order must win over the clock")
+        self.assertEqual(by_name["Winner"], 1)
+
+    def test_a_valid_classification_is_left_exactly_as_published(self):
+        rows = [self.row("A", 1, 1, 100), self.row("B", 50, 2, 200),
+                self.row("C", 90, 3, 300)]
+        picked = select_field(rows, {"rule": "elite_division",
+                                     "divisions_used": [{"id": 5}]})
+        self.assertEqual([r["_rank"] for r in picked], [1, 2, 3],
+                         "published places must survive untouched")
+
+    def test_a_deduped_division_keeps_its_published_places(self):
+        """THE false positive. Athlinks serves an athlete more than once — Big
+        Sugar 2023 lists two riders three times each — so dedupe shrinks the
+        field while the timer's top place still counts the duplicates. Bounding
+        against what SURVIVES dedupe would call a good classification broken.
+
+        The published order is deliberately the REVERSE of the overall order, so
+        keeping the places and renumbering by overall give different answers and
+        the test can tell which happened.
+        """
+        a = self.row("A", 30, 1, 100)
+        b = self.row("B", 20, 2, 200)
+        c = self.row("C", 10, 4, 300)          # 4th place in a 4-row listing
+        for r, i in ((a, 1), (b, 2), (c, 3)):
+            r["id"] = i
+        served = [a, b, c, dict(c)]            # 4 published, 3 after dedupe
+        picked = select_field(served, {"rule": "elite_division",
+                                       "divisions_used": [{"id": 5}]})
+        self.assertEqual(len(picked), 3, "the duplicate must be dropped")
+        self.assertEqual({r["displayName"]: r["_rank"] for r in picked},
+                         {"A": 1, "B": 2, "C": 4},
+                         "published places must survive a dedupe that shrank the field")
+
+    def test_a_dnfs_junk_place_does_not_invalidate_the_finishers(self):
+        """Leadville 2021, Sea Otter 2024 and Unbound 2022 each publish a
+        flawless classification of their finishers beside a DNF carrying the
+        999999 sentinel. Judging validity over every row instead of the
+        finishers throws all three away on the strength of that junk number.
+
+        Published order is again the reverse of overall order, so a renumbering
+        would be visible rather than coincide with the right answer.
+        """
+        rows = [self.row("A", 30, 1, 100), self.row("B", 20, 2, 200),
+                self.row("C", 10, 3, 300),
+                self.row("Quit", 999999, 999999, 0, status="DNF")]
+        picked = select_field(rows, {"rule": "elite_division",
+                                     "divisions_used": [{"id": 5}]})
+        by_name = {r["displayName"]: r["_rank"] for r in picked}
+        self.assertEqual([by_name["A"], by_name["B"], by_name["C"]], [1, 2, 3],
+                         "a DNF's sentinel must not renumber the finishers")
+        self.assertIsNone(by_name["Quit"])
+
+    def test_non_finishers_never_take_a_place_in_the_renumbering(self):
+        rows = [self.row("A", 1, 1, 22783), self.row("Quit", 2, 2, 0, status="DNF"),
+                self.row("B", 871, 804, 39424)]
+        picked = select_field(rows, {"rule": "elite_division",
+                                     "divisions_used": [{"id": 5}]})
+        by_name = {r["displayName"]: r["_rank"] for r in picked}
+        self.assertEqual(by_name["Quit"], None)
+        self.assertEqual(sorted(x for x in by_name.values() if x), [1, 2])
+
+
+class TestRowsContradictingTheirRank(unittest.TestCase):
+    """ingest_gravel.rows_contradicting_their_rank — the subtler bad clock.
+
+    The winner rule only catches a time faster than FIRST PLACE. It misses a
+    rider whose clock beats riders ranked ahead of him while still trailing the
+    winner: Leadville 2016's Albert Lake at 7.05h in 43rd, and Leadville 2017's
+    Enrique Saborio at 6.54h in a race won in 6.25h. Both carry an `overall`
+    that contradicts their own clock, which is the signature of a checkpoint
+    split stored as a finish.
+    """
+
+    def test_a_rising_clock_contradicts_nothing(self):
+        self.assertEqual(rows_contradicting_their_rank([100, 200, 300, 400]), [])
+
+    def test_the_single_bad_row_is_the_one_returned(self):
+        self.assertEqual(rows_contradicting_their_rank([100, 200, 300, 50]), [3])
+
+    def test_one_bad_row_is_ONE_defect_and_not_twelve(self):
+        """Saborio's shape. He is faster than twelve riders ranked above him, so
+        counting disagreeing PAIRS would report one defect as twelve — and sail
+        past the sanity threshold that protects a field from being nulled."""
+        times = [1000 + i * 10 for i in range(12)] + [1]
+        self.assertEqual(rows_contradicting_their_rank(times), [12])
+
+    def test_shared_times_are_a_real_result_and_not_a_contradiction(self):
+        self.assertEqual(rows_contradicting_their_rank([100, 200, 200, 300]), [])
+
+    def test_it_returns_the_MINORITY_when_one_early_row_is_wrong(self):
+        """If the first row is the liar, the answer is that row — not the eight
+        riders who agree with each other."""
+        self.assertEqual(rows_contradicting_their_rank([9999, 100, 200, 300, 400]), [0])
+
+    def test_a_field_too_short_to_judge_is_left_alone(self):
+        self.assertEqual(rows_contradicting_their_rank([300, 100]), [])
+        self.assertEqual(rows_contradicting_their_rank([]), [])

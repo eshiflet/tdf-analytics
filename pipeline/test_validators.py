@@ -1273,21 +1273,3 @@ class GravelRankIntegrityTest(DBCheckTest):
         self.gravel_edition(2016, [(1, 100), (804, 300)])
         validate_db.check_gravel_rank_integrity(self.cur)
         self.assertNoErrors()
-
-    def test_the_live_database_still_shows_leadville_2016(self):
-        """A live-data canary. If this ever stops firing the scraper was fixed
-        and re-ingested, and this test should be deleted with that commit —
-        not quietly relaxed."""
-        import sqlite3
-        conn = sqlite3.connect(f"file:{validate_db.DB_PATH}?mode=ro", uri=True)
-        self.addCleanup(conn.close)
-        n, mx = conn.execute(
-            """SELECT COUNT(*), MAX(sr.stage_rank) FROM stage_results sr
-                 JOIN stages s ON s.stage_id=sr.stage_id
-                 JOIN race_editions re ON re.edition_id=s.edition_id
-                 JOIN races ra ON ra.race_id=re.race_id
-                WHERE ra.name LIKE 'Leadville%' AND re.year=2016
-                  AND sr.stage_rank IS NOT NULL""").fetchone()
-        self.assertGreater(mx, n * 2,
-                           "Leadville 2016's ranks are no longer oversized — if "
-                           "that was deliberate, delete this test in the same commit")

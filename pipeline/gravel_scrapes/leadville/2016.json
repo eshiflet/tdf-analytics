@@ -24,7 +24,7 @@
   "truncated": false,
   "source_url": "https://www.athlinks.com/event/597302/results/Event/597302/Course/901785/Results",
   "api_url": "https://reignite-api.athlinks.com/event/597302/race/901785/results",
-  "fetched_at": "2026-08-21T17:29:39+00:00"
+  "fetched_at": "2026-09-19T04:29:40+00:00"
  },
  "cancelled": false,
  "rows": [
@@ -137,7 +137,7 @@
    "gap_seconds": 1695
   },
   {
-   "rank": 8,
+   "rank": 7,
    "name": "Cristhian Ravelo",
    "first_name": "Cristhian",
    "last_name": "Ravelo",
@@ -155,7 +155,7 @@
    "gap_seconds": 2136
   },
   {
-   "rank": 9,
+   "rank": 8,
    "name": "Nate Whitman",
    "first_name": "Nate",
    "last_name": "Whitman",
@@ -173,7 +173,7 @@
    "gap_seconds": 2233
   },
   {
-   "rank": 10,
+   "rank": 9,
    "name": "Troy Wells",
    "first_name": "Troy",
    "last_name": "Wells",
@@ -191,7 +191,7 @@
    "gap_seconds": 2284
   },
   {
-   "rank": 11,
+   "rank": 10,
    "name": "Timothy Beardall",
    "first_name": "Timothy",
    "last_name": "Beardall",
@@ -209,7 +209,7 @@
    "gap_seconds": 2311
   },
   {
-   "rank": 12,
+   "rank": 11,
    "name": "Ted King",
    "first_name": "Ted",
    "last_name": "King",
@@ -227,7 +227,7 @@
    "gap_seconds": 2686
   },
   {
-   "rank": 17,
+   "rank": 12,
    "name": "Scott Tietzel",
    "first_name": "Scott",
    "last_name": "Tietzel",
@@ -245,7 +245,7 @@
    "gap_seconds": 2904
   },
   {
-   "rank": 19,
+   "rank": 13,
    "name": "Roman Kilun - Specialized",
    "first_name": "Roman Kilun -",
    "last_name": "Specialized",
@@ -263,7 +263,7 @@
    "gap_seconds": 3356
   },
   {
-   "rank": 21,
+   "rank": 14,
    "name": "Laurens Ten Dam",
    "first_name": "Laurens",
    "last_name": "Ten Dam",
@@ -279,6 +279,150 @@
    "racer_id": null,
    "rank_overall": 22,
    "gap_seconds": 3490
+  },
+  {
+   "rank": 15,
+   "name": "Jonathan Hornbeck - Mavic",
+   "first_name": "Jonathan Hornbeck -",
+   "last_name": "Mavic",
+   "bib": "222",
+   "age": 26,
+   "gender": "M",
+   "country": "us",
+   "locality": "Temecula",
+   "region": "California",
+   "finish_seconds": 26730,
+   "status": "FINISHED",
+   "athlinks_id": 23086239,
+   "racer_id": null,
+   "rank_overall": 26,
+   "gap_seconds": 3947
+  },
+  {
+   "rank": 16,
+   "name": "Cameron Piper - Specialized",
+   "first_name": "Cameron Piper -",
+   "last_name": "Specialized",
+   "bib": "242",
+   "age": 24,
+   "gender": "M",
+   "country": "us",
+   "locality": "Morgan Hill",
+   "region": "California",
+   "finish_seconds": 26825,
+   "status": "FINISHED",
+   "athlinks_id": 23086515,
+   "racer_id": null,
+   "rank_overall": 28,
+   "gap_seconds": 4042
+  },
+  {
+   "rank": 17,
+   "name": "Timmy Duggan",
+   "first_name": "Timmy",
+   "last_name": "Duggan",
+   "bib": "82",
+   "age": 33,
+   "gender": "M",
+   "country": "us",
+   "locality": "Nederland",
+   "region": "Colorado",
+   "finish_seconds": 26835,
+   "status": "FINISHED",
+   "athlinks_id": 23102188,
+   "racer_id": null,
+   "rank_overall": 29,
+   "gap_seconds": 4052
+  },
+  {
+   "rank": 18,
+   "name": "Ryan Steers",
+   "first_name": "Ryan",
+   "last_name": "Steers",
+   "bib": "99",
+   "age": 31,
+   "gender": "M",
+   "country": "us",
+   "locality": "Los Angeles",
+   "region": "California",
+   "finish_seconds": 27022,
+   "status": "FINISHED",
+   "athlinks_id": 23086263,
+   "racer_id": 302846825,
+   "rank_overall": 32,
+   "gap_seconds": 4239
+  },
+  {
+   "rank": 19,
+   "name": "Ricky Willis",
+   "first_name": "Ricky",
+   "last_name": "Willis",
+   "bib": "78",
+   "age": 46,
+   "gender": "M",
+   "country": "us",
+   "locality": "Telluride",
+   "region": "Colorado",
+   "finish_seconds": 27259,
+   "status": "FINISHED",
+   "athlinks_id": 23086937,
+   "racer_id": null,
+   "rank_overall": 34,
+   "gap_seconds": 4476
+  },
+  {
+   "rank": 20,
+   "name": "Craig Lewis",
+   "first_name": "Craig",
+   "last_name": "Lewis",
+   "bib": "81",
+   "age": 31,
+   "gender": "M",
+   "country": "us",
+   "locality": "Boulder",
+   "region": "Colorado",
+   "finish_seconds": 27349,
+   "status": "FINISHED",
+   "athlinks_id": 23102187,
+   "racer_id": 350469836,
+   "rank_overall": 36,
+   "gap_seconds": 4566
+  },
+  {
+   "rank": 21,
+   "name": "Chris Doyle",
+   "first_name": "Chris",
+   "last_name": "Doyle",
+   "bib": "49",
+   "age": 46,
+   "gender": "M",
+   "country": "us",
+   "locality": "Vail",
+   "region": "Colorado",
+   "finish_seconds": 27510,
+   "status": "FINISHED",
+   "athlinks_id": 23086891,
+   "racer_id": null,
+   "rank_overall": 37,
+   "gap_seconds": 4727
+  },
+  {
+   "rank": 22,
+   "name": "Thomas Konecny",
+   "first_name": "Thomas",
+   "last_name": "Konecny",
+   "bib": "229",
+   "age": 39,
+   "gender": "M",
+   "country": "cz",
+   "locality": "Olesnice Na Morave",
+   "region": "Jihomoravský kraj ",
+   "finish_seconds": 27939,
+   "status": "FINISHED",
+   "athlinks_id": 19098732,
+   "racer_id": 397697725,
+   "rank_overall": 44,
+   "gap_seconds": 5156
   },
   {
    "rank": 23,
@@ -299,151 +443,7 @@
    "gap_seconds": 5331
   },
   {
-   "rank": 25,
-   "name": "Jonathan Hornbeck - Mavic",
-   "first_name": "Jonathan Hornbeck -",
-   "last_name": "Mavic",
-   "bib": "222",
-   "age": 26,
-   "gender": "M",
-   "country": "us",
-   "locality": "Temecula",
-   "region": "California",
-   "finish_seconds": 26730,
-   "status": "FINISHED",
-   "athlinks_id": 23086239,
-   "racer_id": null,
-   "rank_overall": 26,
-   "gap_seconds": 3947
-  },
-  {
-   "rank": 27,
-   "name": "Cameron Piper - Specialized",
-   "first_name": "Cameron Piper -",
-   "last_name": "Specialized",
-   "bib": "242",
-   "age": 24,
-   "gender": "M",
-   "country": "us",
-   "locality": "Morgan Hill",
-   "region": "California",
-   "finish_seconds": 26825,
-   "status": "FINISHED",
-   "athlinks_id": 23086515,
-   "racer_id": null,
-   "rank_overall": 28,
-   "gap_seconds": 4042
-  },
-  {
-   "rank": 28,
-   "name": "Timmy Duggan",
-   "first_name": "Timmy",
-   "last_name": "Duggan",
-   "bib": "82",
-   "age": 33,
-   "gender": "M",
-   "country": "us",
-   "locality": "Nederland",
-   "region": "Colorado",
-   "finish_seconds": 26835,
-   "status": "FINISHED",
-   "athlinks_id": 23102188,
-   "racer_id": null,
-   "rank_overall": 29,
-   "gap_seconds": 4052
-  },
-  {
-   "rank": 31,
-   "name": "Ryan Steers",
-   "first_name": "Ryan",
-   "last_name": "Steers",
-   "bib": "99",
-   "age": 31,
-   "gender": "M",
-   "country": "us",
-   "locality": "Los Angeles",
-   "region": "California",
-   "finish_seconds": 27022,
-   "status": "FINISHED",
-   "athlinks_id": 23086263,
-   "racer_id": 302846825,
-   "rank_overall": 32,
-   "gap_seconds": 4239
-  },
-  {
-   "rank": 33,
-   "name": "Ricky Willis",
-   "first_name": "Ricky",
-   "last_name": "Willis",
-   "bib": "78",
-   "age": 46,
-   "gender": "M",
-   "country": "us",
-   "locality": "Telluride",
-   "region": "Colorado",
-   "finish_seconds": 27259,
-   "status": "FINISHED",
-   "athlinks_id": 23086937,
-   "racer_id": null,
-   "rank_overall": 34,
-   "gap_seconds": 4476
-  },
-  {
-   "rank": 35,
-   "name": "Craig Lewis",
-   "first_name": "Craig",
-   "last_name": "Lewis",
-   "bib": "81",
-   "age": 31,
-   "gender": "M",
-   "country": "us",
-   "locality": "Boulder",
-   "region": "Colorado",
-   "finish_seconds": 27349,
-   "status": "FINISHED",
-   "athlinks_id": 23102187,
-   "racer_id": 350469836,
-   "rank_overall": 36,
-   "gap_seconds": 4566
-  },
-  {
-   "rank": 36,
-   "name": "Chris Doyle",
-   "first_name": "Chris",
-   "last_name": "Doyle",
-   "bib": "49",
-   "age": 46,
-   "gender": "M",
-   "country": "us",
-   "locality": "Vail",
-   "region": "Colorado",
-   "finish_seconds": 27510,
-   "status": "FINISHED",
-   "athlinks_id": 23086891,
-   "racer_id": null,
-   "rank_overall": 37,
-   "gap_seconds": 4727
-  },
-  {
-   "rank": 43,
-   "name": "Thomas Konecny",
-   "first_name": "Thomas",
-   "last_name": "Konecny",
-   "bib": "229",
-   "age": 39,
-   "gender": "M",
-   "country": "cz",
-   "locality": "Olesnice Na Morave",
-   "region": "Jihomoravský kraj ",
-   "finish_seconds": 27939,
-   "status": "FINISHED",
-   "athlinks_id": 19098732,
-   "racer_id": 397697725,
-   "rank_overall": 44,
-   "gap_seconds": 5156
-  },
-  {
-   "rank": 58,
+   "rank": 24,
    "name": "Geoffrey Montague - LiveView",
    "first_name": "Geoffrey Montague -",
    "last_name": "LiveView",
@@ -461,7 +461,7 @@
    "gap_seconds": 5681
   },
   {
-   "rank": 71,
+   "rank": 25,
    "name": "Yves Ketterer",
    "first_name": "Yves",
    "last_name": "Ketterer",
@@ -479,7 +479,7 @@
    "gap_seconds": 5974
   },
   {
-   "rank": 72,
+   "rank": 26,
    "name": "Gareth Feldstein",
    "first_name": "Gareth",
    "last_name": "Feldstein",
@@ -497,7 +497,7 @@
    "gap_seconds": 5984
   },
   {
-   "rank": 74,
+   "rank": 27,
    "name": "Kent McNeill",
    "first_name": "Kent",
    "last_name": "McNeill",
@@ -515,7 +515,7 @@
    "gap_seconds": 6063
   },
   {
-   "rank": 76,
+   "rank": 28,
    "name": "Matt Freeman",
    "first_name": "Matt",
    "last_name": "Freeman",
@@ -533,7 +533,7 @@
    "gap_seconds": 6154
   },
   {
-   "rank": 84,
+   "rank": 29,
    "name": "Stephane Roch",
    "first_name": "Stephane",
    "last_name": "Roch",
@@ -551,7 +551,7 @@
    "gap_seconds": 6314
   },
   {
-   "rank": 86,
+   "rank": 30,
    "name": "Jason Reynolds",
    "first_name": "Jason",
    "last_name": "Reynolds",
@@ -569,7 +569,7 @@
    "gap_seconds": 6335
   },
   {
-   "rank": 89,
+   "rank": 31,
    "name": "Clark Butcher",
    "first_name": "Clark",
    "last_name": "Butcher",
@@ -587,7 +587,7 @@
    "gap_seconds": 6409
   },
   {
-   "rank": 92,
+   "rank": 32,
    "name": "Andres Gamboa",
    "first_name": "Andres",
    "last_name": "Gamboa",
@@ -605,7 +605,7 @@
    "gap_seconds": 6625
   },
   {
-   "rank": 148,
+   "rank": 33,
    "name": "Fred Smith",
    "first_name": "Fred",
    "last_name": "Smith",
@@ -623,7 +623,7 @@
    "gap_seconds": 7956
   },
   {
-   "rank": 186,
+   "rank": 34,
    "name": "Hans-Petter Mellerud",
    "first_name": "Hans-Petter",
    "last_name": "Mellerud",
@@ -641,25 +641,7 @@
    "gap_seconds": 8544
   },
   {
-   "rank": 278,
-   "name": "Albert Lake",
-   "first_name": "Albert",
-   "last_name": "Lake",
-   "bib": "89",
-   "age": 54,
-   "gender": "M",
-   "country": "us",
-   "locality": "Washington",
-   "region": "Michigan",
-   "finish_seconds": 25395,
-   "status": "FINISHED",
-   "athlinks_id": 23086370,
-   "racer_id": null,
-   "rank_overall": 1449,
-   "gap_seconds": 2612
-  },
-  {
-   "rank": 360,
+   "rank": 35,
    "name": "Edward Cleary",
    "first_name": "Edward",
    "last_name": "Cleary",
@@ -677,7 +659,7 @@
    "gap_seconds": 10812
   },
   {
-   "rank": 399,
+   "rank": 36,
    "name": "Andrew Jordan",
    "first_name": "Andrew",
    "last_name": "Jordan",
@@ -695,7 +677,7 @@
    "gap_seconds": 11288
   },
   {
-   "rank": 429,
+   "rank": 37,
    "name": "Mason Quintana",
    "first_name": "Mason",
    "last_name": "Quintana",
@@ -713,7 +695,7 @@
    "gap_seconds": 11953
   },
   {
-   "rank": 491,
+   "rank": 38,
    "name": "Michael Edens",
    "first_name": "Michael",
    "last_name": "Edens",
@@ -731,7 +713,7 @@
    "gap_seconds": 12642
   },
   {
-   "rank": 520,
+   "rank": 39,
    "name": "Marco Gonzalez",
    "first_name": "Marco",
    "last_name": "Gonzalez",
@@ -749,7 +731,7 @@
    "gap_seconds": 12987
   },
   {
-   "rank": 790,
+   "rank": 40,
    "name": "Brian Davis",
    "first_name": "Brian",
    "last_name": "Davis",
@@ -767,7 +749,7 @@
    "gap_seconds": 16482
   },
   {
-   "rank": 792,
+   "rank": 41,
    "name": "Steve Jones",
    "first_name": "Steve",
    "last_name": "Jones",
@@ -785,7 +767,7 @@
    "gap_seconds": 16508
   },
   {
-   "rank": 804,
+   "rank": 42,
    "name": "Richard La China",
    "first_name": "Richard",
    "last_name": "La China",
@@ -801,6 +783,24 @@
    "racer_id": null,
    "rank_overall": 871,
    "gap_seconds": 16641
+  },
+  {
+   "rank": 43,
+   "name": "Albert Lake",
+   "first_name": "Albert",
+   "last_name": "Lake",
+   "bib": "89",
+   "age": 54,
+   "gender": "M",
+   "country": "us",
+   "locality": "Washington",
+   "region": "Michigan",
+   "finish_seconds": 25395,
+   "status": "FINISHED",
+   "athlinks_id": 23086370,
+   "racer_id": null,
+   "rank_overall": 1449,
+   "gap_seconds": 2612
   }
  ]
 }

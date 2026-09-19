@@ -24,7 +24,7 @@
   "truncated": false,
   "source_url": "https://www.athlinks.com/event/1064637/results/Event/1064637/Course/2413780/Results",
   "api_url": "https://reignite-api.athlinks.com/event/1064637/race/2413780/results",
-  "fetched_at": "2026-08-21T17:29:33+00:00"
+  "fetched_at": "2026-09-19T04:29:34+00:00"
  },
  "cancelled": false,
  "rows": [
@@ -894,24 +894,6 @@
   },
   {
    "rank": 49,
-   "name": "Danny Van Wagoner",
-   "first_name": "Danny",
-   "last_name": "Van Wagoner",
-   "bib": "289",
-   "age": 32,
-   "gender": "M",
-   "country": "us",
-   "locality": "Fruit Heights",
-   "region": "UT",
-   "finish_seconds": 26098,
-   "status": "FINISHED",
-   "athlinks_id": 68266914,
-   "racer_id": 363429286,
-   "rank_overall": 63,
-   "gap_seconds": 5149
-  },
-  {
-   "rank": 50,
    "name": "Evan Arthur",
    "first_name": "Evan",
    "last_name": "Arthur",
@@ -927,6 +909,24 @@
    "racer_id": null,
    "rank_overall": 62,
    "gap_seconds": -3677
+  },
+  {
+   "rank": 50,
+   "name": "Danny Van Wagoner",
+   "first_name": "Danny",
+   "last_name": "Van Wagoner",
+   "bib": "289",
+   "age": 32,
+   "gender": "M",
+   "country": "us",
+   "locality": "Fruit Heights",
+   "region": "UT",
+   "finish_seconds": 26098,
+   "status": "FINISHED",
+   "athlinks_id": 68266914,
+   "racer_id": 363429286,
+   "rank_overall": 63,
+   "gap_seconds": 5149
   },
   {
    "rank": 51,
@@ -1074,6 +1074,24 @@
   },
   {
    "rank": 59,
+   "name": "Nate Maddox",
+   "first_name": "Nate",
+   "last_name": "Maddox",
+   "bib": "290",
+   "age": 28,
+   "gender": "M",
+   "country": "us",
+   "locality": "Boulder",
+   "region": "CO",
+   "finish_seconds": 15060,
+   "status": "FINISHED",
+   "athlinks_id": 68262739,
+   "racer_id": null,
+   "rank_overall": 146,
+   "gap_seconds": -5889
+  },
+  {
+   "rank": 60,
    "name": "Jordan Schleck",
    "first_name": "Jordan",
    "last_name": "Schleck",
@@ -1091,7 +1109,7 @@
    "gap_seconds": 7809
   },
   {
-   "rank": 60,
+   "rank": 61,
    "name": "Cassius Anderson",
    "first_name": "Cassius",
    "last_name": "Anderson",
@@ -1109,7 +1127,7 @@
    "gap_seconds": 8113
   },
   {
-   "rank": 61,
+   "rank": 62,
    "name": "Michael Hand",
    "first_name": "Michael",
    "last_name": "Hand",
@@ -1127,7 +1145,7 @@
    "gap_seconds": 8738
   },
   {
-   "rank": 62,
+   "rank": 63,
    "name": "Keegan Pelton",
    "first_name": "Keegan",
    "last_name": "Pelton",
@@ -1145,7 +1163,7 @@
    "gap_seconds": 9051
   },
   {
-   "rank": 63,
+   "rank": 64,
    "name": "Cory Greenberg",
    "first_name": "Cory",
    "last_name": "Greenberg",
@@ -1161,24 +1179,6 @@
    "racer_id": 517287815,
    "rank_overall": 242,
    "gap_seconds": 9820
-  },
-  {
-   "rank": 64,
-   "name": "Nate Maddox",
-   "first_name": "Nate",
-   "last_name": "Maddox",
-   "bib": "290",
-   "age": 28,
-   "gender": "M",
-   "country": "us",
-   "locality": "Boulder",
-   "region": "CO",
-   "finish_seconds": 15060,
-   "status": "FINISHED",
-   "athlinks_id": 68262739,
-   "racer_id": null,
-   "rank_overall": 146,
-   "gap_seconds": -5889
   },
   {
    "rank": 65,

@@ -83,6 +83,45 @@ RIDER_SPLITS = load_rider_splits()
 TANDEMS = load_tandem_entries()
 
 
+def rows_contradicting_their_rank(times):
+    """Indices of the FEWEST rows that must be wrong for the rest to agree.
+
+    `times` is one edition's finisher clocks in RANK order. A classification and
+    its clock should rise together; where they do not, something is wrong, and
+    this returns the smallest set of rows whose removal makes the rest
+    non-decreasing — the complement of the longest non-decreasing subsequence.
+
+    Counting disagreeing PAIRS instead is the tempting mistake and it is badly
+    wrong: Enrique Saborio is ONE bad row at Leadville 2017, but he is faster
+    than twelve riders ranked above him, so a pair count calls one defect twelve
+    and sails past any sanity threshold meant to protect a field.
+
+    Ties are kept, not flagged — two riders sharing a time is a real result, so
+    the run is non-DEcreasing rather than strictly increasing.
+    """
+    if len(times) <= 2:
+        return []
+    best, parent = [], [-1] * len(times)
+    for i, t in enumerate(times):
+        lo, hi = 0, len(best)
+        while lo < hi:                      # rightmost slot that stays non-decreasing
+            mid = (lo + hi) // 2
+            if times[best[mid]] <= t:
+                lo = mid + 1
+            else:
+                hi = mid
+        parent[i] = best[lo - 1] if lo else -1
+        if lo == len(best):
+            best.append(i)
+        else:
+            best[lo] = i
+    keep, i = set(), (best[-1] if best else -1)
+    while i != -1:
+        keep.add(i)
+        i = parent[i]
+    return [i for i in range(len(times)) if i not in keep]
+
+
 def upsert_rider(cur, ident, source=SOURCE_ATHLINKS, source_ref=None):
     """Insert a gravel-only rider; leave an already-known rider untouched.
 
@@ -377,7 +416,60 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
                 record_provenance(cur, "stage_results", rid, field, source,
                                   source_ref=ref)
 
+    # The winner rule above only catches a time faster than FIRST PLACE. It
+    # misses the subtler form of the same defect: a rider whose clock beats
+    # riders ranked ahead of him while still trailing the winner. Leadville
+    # 2016's Albert Lake is 7.05h at 43rd, ahead of nobody and behind 24 slower
+    # men; Leadville 2017's Enrique Saborio is 6.54h at 13th in a race won in
+    # 6.25h. Both carry an Athlinks `overall` that flatly contradicts their own
+    # clock — Lake is 1449th on that 7.05h — which is the signature of a
+    # CHECKPOINT SPLIT stored as a finish.
+    #
+    # Which value loses is not a coin toss. This repo settled it at Sea Otter
+    # 2023, where ranking the field on the clock replaced a podium three
+    # independent sources agree on: the places are the reliable part and the
+    # duration is not. So the placing stays and the duration goes, exactly as
+    # in the winner rule.
+    #
+    # The contradicting rows are found as the complement of the longest
+    # non-decreasing run of times in rank order — the FEWEST rows that have to
+    # be wrong for the rest to agree. Counting disagreeing PAIRS instead would
+    # call one bad row twelve defects and blow through any sanity threshold.
+    out_of_order = []
+    ordered = cur.execute(
+        """SELECT result_id, stage_rank, finish_time_seconds, rider_id
+             FROM stage_results
+            WHERE stage_id = ? AND status = 'FINISHED' AND stage_rank IS NOT NULL
+              AND finish_time_seconds > 0
+            ORDER BY stage_rank""", (stage_id,)).fetchall()
+    if len(ordered) > 2:
+        bad = rows_contradicting_their_rank([row[2] for row in ordered])
+        out_of_order = [ordered[i] for i in bad]
+        # Same shape of guard as the winner rule: if a large minority of the
+        # field contradicts the order, the ORDER is what is wrong and nulling
+        # times would destroy good data to protect a bad ranking.
+        if out_of_order and len(out_of_order) * 5 >= len(ordered):
+            print(f"    ! {slug} {year}: {len(out_of_order)} of {len(ordered)} finishers "
+                  "contradict the published order — that is too many for the times "
+                  "to be the faulty side. Nothing changed; this needs a human.")
+            out_of_order = []
+        for rid, rank, secs, _rider in out_of_order:
+            cur.execute("UPDATE stage_results SET finish_time_seconds=NULL, "
+                        "gap_seconds=NULL WHERE result_id=?", (rid,))
+            ref = (f"{api} — {secs}s on a rider ranked {rank} is faster than riders "
+                   "the same source ranks ahead of him, and his own `overall` "
+                   "position contradicts it; the signature of a checkpoint split "
+                   "kept as a finish. Placing and status kept, the duration removed.")
+            for field in ("finish_time_seconds", "gap_seconds"):
+                record_provenance(cur, "stage_results", rid, field, source,
+                                  source_ref=ref)
+
     report_patches(f"{slug} {year}", *restore_patches(cur, edition_id, patched))
+    if out_of_order:
+        print(f"    {slug} {year}: {len(out_of_order)} finisher(s) timed faster than "
+              f"riders ranked ahead of them — time set NULL, placing kept "
+              f"({', '.join(str(r[3]).removeprefix('rider/') for r in out_of_order[:4])}"
+              f"{', ...' if len(out_of_order) > 4 else ''})")
     if impossible:
         print(f"    {slug} {year}: {len(impossible)} finisher(s) timed faster than the "
               f"winner while ranked behind him — time set NULL, placing kept "

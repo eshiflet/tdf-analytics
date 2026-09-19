@@ -24,7 +24,7 @@
   "truncated": false,
   "source_url": "https://www.athlinks.com/event/1092493/results/Event/1092493/Course/2522142/Results",
   "api_url": "https://reignite-api.athlinks.com/event/1092493/race/2522142/results",
-  "fetched_at": "2026-08-21T17:29:51+00:00"
+  "fetched_at": "2026-09-19T04:29:53+00:00"
  },
  "cancelled": false,
  "rows": [
@@ -102,24 +102,6 @@
   },
   {
    "rank": 5,
-   "name": "Henry Nelson",
-   "first_name": "Henry",
-   "last_name": "Nelson",
-   "bib": "125",
-   "age": 23,
-   "gender": "M",
-   "country": "us",
-   "locality": "Durango",
-   "region": "CO",
-   "finish_seconds": 7279,
-   "status": "FINISHED",
-   "athlinks_id": 74509755,
-   "racer_id": null,
-   "rank_overall": 20,
-   "gap_seconds": 277
-  },
-  {
-   "rank": 6,
    "name": "Nick Vaughn",
    "first_name": "Nick",
    "last_name": "Vaughn",
@@ -135,6 +117,24 @@
    "racer_id": null,
    "rank_overall": 18,
    "gap_seconds": -1336
+  },
+  {
+   "rank": 6,
+   "name": "Henry Nelson",
+   "first_name": "Henry",
+   "last_name": "Nelson",
+   "bib": "125",
+   "age": 23,
+   "gender": "M",
+   "country": "us",
+   "locality": "Durango",
+   "region": "CO",
+   "finish_seconds": 7279,
+   "status": "FINISHED",
+   "athlinks_id": 74509755,
+   "racer_id": null,
+   "rank_overall": 20,
+   "gap_seconds": 277
   },
   {
    "rank": 7,
