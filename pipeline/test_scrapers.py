@@ -22,6 +22,7 @@ signal is a column quietly going NULL months later.
 """
 
 import contextlib
+import glob
 import io
 import os
 import sqlite3
@@ -1134,6 +1135,54 @@ class HelpNeverScrapesTest(unittest.TestCase):
     # Deriving it is the same lesson as the layout split: a list somebody has to
     # remember to update is a list that silently stops being true.
     NETWORKED = networked_clis()
+
+    def test_no_pipeline_module_writes_to_the_db_at_import(self):
+        """Importing a module must not touch cycling.db.
+
+        `patch_giro_2026_elevation.py` had no ``if __name__ == "__main__"``
+        guard, so it connected, UPDATEd 21 stages and committed the moment it
+        was imported. Demonstrated on 2026-09-19 against a copy: importing it
+        put stage 8 back from the scraped 1,804 m to its 2,500 m estimate and
+        stage 21 from 1,709 m to 500 m. Reading STAGE_DATA out of it cost the
+        database twenty-one rows.
+
+        That matters here specifically because
+        test_every_networked_script_still_imports() above imports scripts by
+        design — a suite that mutates the data it validates is the worst
+        possible place for this to hide.
+
+        Checked by PARSING, never by importing: importing to find out whether
+        importing is safe is the bug. A module with the guard is exempt, since
+        nothing below the guard runs on import.
+        """
+        import ast
+        offenders = []
+        for path in sorted(glob.glob(os.path.join(HERE, "*.py"))):
+            name = os.path.basename(path)
+            if name.startswith("test_"):
+                continue
+            src = open(path, encoding="utf-8").read()
+            if '__name__' in src and '__main__' in src:
+                continue
+            try:
+                tree = ast.parse(src)
+            except SyntaxError:
+                continue
+            for node in tree.body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                     ast.ClassDef, ast.Import, ast.ImportFrom)):
+                    continue
+                for sub in ast.walk(node):
+                    if not isinstance(sub, ast.Call):
+                        continue
+                    fn = ast.unparse(sub.func)
+                    if any(k in fn for k in ("execute", "executescript",
+                                             "executemany", "commit")):
+                        offenders.append(f"{name}:{sub.lineno} {fn}")
+        self.assertEqual(offenders, [], "module-level database calls run on "
+                                        "import; put them behind a main() and "
+                                        "an if __name__ == '__main__' guard: "
+                                        + ", ".join(offenders))
 
     def test_every_networked_script_still_imports(self):
         import importlib

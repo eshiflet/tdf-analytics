@@ -135,6 +135,70 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## A script that rewrote the database by being imported (2026-09-19)
+
+`patch_giro_2026_elevation.py` had no `if __name__ == "__main__"` guard. Its
+`sqlite3.connect`, its `UPDATE stages`, and its `conn.commit()` all sat at
+module top level, so **importing it wrote to `cycling.db`**. Reading
+`STAGE_DATA` out of it cost twenty-one rows.
+
+**Demonstrated, not inferred.** The pre-fix file was pointed at a copy of the
+database and imported — nothing else:
+
+```
+BEFORE import: [(8, 1804), (21, 1709)]
+AFTER  import: [(8, 2500), (21, 500)]
+```
+
+Stage 8 went from the scraped 1,804 m back to this file's 2,500 m estimate.
+
+**It is the only one.** An AST sweep of every unguarded module in `pipeline/`
+found three with SQL keywords at top level; the other two (`gc_source.py`,
+`race_set_ingest.py`) only define query strings and make no call.
+
+**`test_no_pipeline_module_writes_to_the_db_at_import` now asserts it**, by
+PARSING rather than importing — importing to find out whether importing is safe
+is the bug. It matters most in that exact file:
+`test_every_networked_script_still_imports` imports scripts by design, so a
+suite that mutates the data it validates is the worst place for this to hide.
+Restoring the old file fails it with the offending lines named.
+
+### Two more things were wrong with it
+
+- **It wrote 21 stages with no `record_provenance()` call at all**, against the
+  rule that every writer records its source. It records both columns now, as
+  `manual` — giroitalialive.com is not one of `VALID_SOURCES` and inventing a
+  name for a one-off would make the registry meaningless — with the site in
+  `source_ref`.
+- **Running it is not idempotent, it is destructive.** 16 of its 21 values have
+  since been superseded by scraped PCS figures, so it now defaults to a dry run
+  and prints what it would replace:
+
+```
+ st   stored  this file  route
+  6      680        500  H -> F
+  8     1804       2500  H -> H
+ 21     1709        500  F -> F
+```
+
+Only stages 1-5 still match it.
+
+### Open for Eric: 86% of elevation values have no recorded source
+
+Found while chasing the above. **2,964 of the 3,434 stages that hold a
+`vertical_meters` value have no `data_provenance` row for it** — the whole
+1960s-70s Tour, 25-28 stages a year. `ingest_race.py` deliberately does not
+claim elevation ("it was carried over from whatever previously populated it,
+whose own provenance row already stands"), which is right, but for most stages
+no original writer ever recorded one.
+
+`check_provenance()` does not see this: it looks for provenance rows pointing
+at stages that no longer exist, not for stored values with no provenance at
+all. **Nothing was backfilled** — assigning a source to 2,964 values would be
+guessing one, which is the thing provenance exists to prevent. Whether to add a
+standing warning for it is a call about the warning budget, so it is here
+rather than in `validate_db.py`.
+
 ## Four single-race helpers the multi-race migration left behind (2026-09-19)
 
 An audit of every exported name in `cycling-app/src` — 134 of them — against
