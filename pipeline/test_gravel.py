@@ -1358,8 +1358,15 @@ class TestRacerIdAudit(unittest.TestCase):
 
     def test_ike_and_jake_pantone_share_a_stage_so_can_never_be_merged(self):
         """The structural guard behind that record. They are two people, and
-        the proof is that both rode Unbound 2021."""
+        the proof is that both rode Unbound 2021.
+
+        Skipped without a database, like the two tandem checks below: cycling.db
+        is gitignored and CI cannot regenerate it, so a live-data assertion has
+        to say so itself. Shipping this without the guard turned main red.
+        """
         import audit_rider_racer_ids as aud
+        if not os.path.exists(race_common.DB_PATH):
+            self.skipTest("no database")
         conn = sqlite3.connect(f"file:{race_common.DB_PATH}?mode=ro", uri=True)
         self.addCleanup(conn.close)
         n = aud.share_a_stage(conn.cursor(),
