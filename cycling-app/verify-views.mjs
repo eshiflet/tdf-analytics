@@ -916,5 +916,36 @@ function check(name, cond, detail) {
     `${elev?.textContent.trim()} title=${elev?.getAttribute("title") ?? "none"}`);
 }
 
+// The Riders search matches BOTH orderings of a name — "Eddy Merckx" as the
+// page renders it, and "Merckx Eddy" as PCS prints it. The second one is the
+// only thing the index's `n` field is still for, and since 2026-09-19 `n` is
+// OMITTED wherever it is exactly `ln + " " + fn` and rebuilt on load by
+// rawName(). So this is the check that the drop is lossless: break the
+// reconstruction and the reversed query finds nobody, while every other
+// assertion in this file keeps passing.
+{
+  const doc = await boot("#riders");
+  const input = doc.querySelector(".riders-search-input");
+  const label = () => doc.querySelector(".riders-count-label")?.textContent ?? "";
+  const matched = () => Number((label().match(/^([\d,]+)/)?.[1] ?? "0").replace(/,/g, ""));
+  // The input is debounced at 150ms; 400 leaves room without racing it.
+  const type = async (q) => {
+    input.value = q;
+    input.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    return matched();
+  };
+  const forward = await type("Eddy Merckx");
+  check("Riders search finds a rider by the name the page displays",
+    forward >= 1 && forward < 20, `"Eddy Merckx" matched ${forward}`);
+  const reversed = await type("Merckx Eddy");
+  check("...and by PCS's reversed ordering, which only the index `n` carries",
+    reversed >= 1 && reversed < 20, `"Merckx Eddy" matched ${reversed}`);
+  // A rider with no first name keeps a literal `n`; searching it must still work.
+  const surnameOnly = await type("Legaux");
+  check("a surname-only rider, whose `n` is never dropped, is still searchable",
+    surnameOnly >= 1, `"Legaux" matched ${surnameOnly}`);
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);

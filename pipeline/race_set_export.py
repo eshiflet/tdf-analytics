@@ -46,7 +46,7 @@ import sqlite3
 from dataclasses import dataclass
 
 from link_rider_race_sets import stamp as stamp_cross_race
-from race_common import CLASSICS, GRAVEL
+from race_common import CLASSICS, GRAVEL, compact_rider_names
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "cycling.db")
@@ -315,6 +315,7 @@ def build_index(years_data):
             if st.get("field_definition"):
                 fd.setdefault(str(ridx(st["stage_label"])), {})[str(year)] = \
                     fdidx(st["field_definition"])
+    compact_rider_names(riders)
     out = {"teams": teams, "races": races, "riders": riders}
     # Omitted entirely for a set where no edition declares one, rather than
     # shipping two empty containers to every reader of the classics index.

@@ -23,6 +23,7 @@ Two things are covered:
   * export_riders_index.build_index — the compact cross-year index, now pure.
 """
 
+import inspect
 import json
 import os
 import shutil
@@ -43,6 +44,8 @@ import export_gc
 import export_race_summary as ERS
 import export_riders_index as ERI
 import link_rider_race_sets as LRRS
+import race_common as rc
+import race_set_export
 from export_gc import Supplements, compute_stage_labels
 from race_common import AGGREGATE_EXPORTERS, EXPORT_RACE_INFO, resolve_race_arg
 
@@ -646,6 +649,61 @@ class TestRidersIndex(unittest.TestCase):
             ranked_years={"points": {"2020"}, "kom": {"2020"}},
         )
         self.assertEqual(idx["riders"]["a"]["y"]["1930"], [1, -1, 2, 0])
+
+
+class TestCompactRiderNames(unittest.TestCase):
+    """race_common.compact_rider_names — the exporter half of a contract whose
+    other half is rawName() in cycling-app/src/riderIndexData.ts.
+
+    `n` is dropped only where `ln + " " + fn` rebuilds it EXACTLY. The frontend
+    keeps it for two jobs: the display name when there is no `fn`/`ln` split,
+    and the reversed ordering the Riders search matches on. verify-views.mjs
+    asserts both still work against the built bundle; this asserts nothing is
+    dropped that the browser could not put back.
+    """
+
+    def test_drops_n_when_it_is_exactly_last_space_first(self):
+        riders = {"a": {"n": "Houa L\u00e9on", "fn": "L\u00e9on", "ln": "Houa"}}
+        self.assertEqual(rc.compact_rider_names(riders), 1)
+        self.assertNotIn("n", riders["a"])
+
+    def test_keeps_n_with_no_first_name(self):
+        """The 43 surname-only riders, and "Pujol ?" — nothing to rebuild from."""
+        riders = {"a": {"n": "Pujol ?", "ln": "Pujol"},
+                  "b": {"n": "Monin", "ln": "Monin"}}
+        self.assertEqual(rc.compact_rider_names(riders), 0)
+        self.assertEqual(riders["a"]["n"], "Pujol ?")
+        self.assertEqual(riders["b"]["n"], "Monin")
+
+    def test_keeps_gravel_ordering(self):
+        """Gravel's `n` is "First Last". Deriving "Stamstad John" for it would
+        silently widen what the search matches, so it is left alone."""
+        riders = {"a": {"n": "John Stamstad", "fn": "John", "ln": "Stamstad"}}
+        self.assertEqual(rc.compact_rider_names(riders), 0)
+        self.assertEqual(riders["a"]["n"], "John Stamstad")
+
+    def test_keeps_a_name_that_differs_only_in_spacing(self):
+        riders = {"a": {"n": "Van Impe  Lucien", "fn": "Lucien", "ln": "Van Impe"}}
+        self.assertEqual(rc.compact_rider_names(riders), 0)
+
+    def test_every_dropped_name_rebuilds_byte_for_byte(self):
+        """The round trip, stated as the frontend performs it."""
+        riders = {
+            "a": {"n": "Houa L\u00e9on", "fn": "L\u00e9on", "ln": "Houa"},
+            "b": {"n": "In 't Ven Adri", "fn": "Adri", "ln": "In 't Ven"},
+            "c": {"n": "O'Grady Stuart", "fn": "Stuart", "ln": "O'Grady"},
+        }
+        before = {k: v["n"] for k, v in riders.items()}
+        self.assertEqual(rc.compact_rider_names(riders), 3)
+        for k, rec in riders.items():
+            self.assertEqual(f"{rec['ln']} {rec['fn']}", before[k])
+
+    def test_both_exporters_call_it(self):
+        """A new exporter that forgets the call ships the field again, and the
+        only symptom is a bigger file — which nothing else here would notice."""
+        for mod in (ERI, race_set_export):
+            self.assertIn("compact_rider_names", inspect.getsource(mod.build_index),
+                          f"{mod.__name__}.build_index does not compact names")
 
 
 class TestDistanceBaseline(unittest.TestCase):

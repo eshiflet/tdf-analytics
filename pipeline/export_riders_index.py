@@ -63,7 +63,7 @@ import sys
 from collections import defaultdict
 
 from link_rider_race_sets import stamp as stamp_cross_race
-from race_common import DB_PATH, resolve_race_arg
+from race_common import DB_PATH, compact_rider_names, resolve_race_arg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -189,6 +189,7 @@ def build_index(datasets, youth_winners=None, final_ranks=None, ranked_years=Non
                 0 if kom_rank == 9999 else kom_rank,
             ]
 
+    compact_rider_names(riders)
     return {"teams": teams, "riders": riders}
 
 

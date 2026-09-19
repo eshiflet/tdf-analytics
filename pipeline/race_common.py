@@ -211,6 +211,34 @@ def load_rider_separations(path=RIDER_ALIASES_PATH):
 LEADMAN_SUFFIX = re.compile(r"\s*(?:\(\s*l\s*\)|\bLM)\s*$", re.IGNORECASE)
 
 
+def compact_rider_names(riders):
+    """Drop each rider-index `n` that its `fn`/`ln` already spell out.
+
+    The index shipped three names per rider: `n` as PCS prints it
+    ("Houa Léon"), plus the split `fn`/`ln`. The frontend builds its display
+    name from `fn`/`ln` and keeps `n` for two things only — a fallback for the
+    64 riders with no split, and the second, reversed ordering in the Riders
+    page's search haystack. Where `n` is exactly `ln + " " + fn` it says
+    nothing the other two do not, so it is omitted here and rebuilt on load.
+
+    NOT a blanket omission: gravel's `n` is "First Last", the same string the
+    frontend would render anyway, and deriving `"Stamstad John"` for it would
+    silently WIDEN what search matches. Only the exact PCS ordering is
+    reconstructible, so only it is dropped — 26,161 of 30,503 riders, and the
+    other 4,342 keep a literal `n`.
+
+    Mutates in place; returns the number dropped. `riderIndexData.ts` holds
+    the other half of this contract and a test asserts the pair round-trips.
+    """
+    dropped = 0
+    for rec in riders.values():
+        fn, ln = rec.get("fn"), rec.get("ln")
+        if fn and ln and rec.get("n") == f"{ln} {fn}":
+            del rec["n"]
+            dropped += 1
+    return dropped
+
+
 def strip_series_flag(name):
     """Remove a timer's series-competition flag from the end of a name."""
     return LEADMAN_SUFFIX.sub("", (name or "").strip()).strip()

@@ -135,6 +135,56 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## Every rider shipped his name twice (2026-09-19)
+
+The rider indexes carried three names per rider: `n` as PCS prints it
+("Houa Léon"), plus the split `fn`/`ln` that the name pass added in August. For
+**26,161 of 30,503 riders `n` is exactly `ln + " " + fn`** — a third name
+spelling nothing the other two do not.
+
+`race_common.compact_rider_names()` drops those and `rawName()` in
+`riderIndexData.ts` rebuilds them on load. **145 KB gzipped, 11.7% of the
+rider-index payload**, for +27 bytes of JS:
+
+| index | before | after | |
+|---|---|---|---|
+| classics | 579.0k | 511.8k | -11.6% |
+| tour | 204.8k | 175.6k | -14.3% |
+| vuelta | 166.5k | 142.5k | -14.5% |
+| giro | 179.9k | 155.4k | -13.6% |
+| gravel | 108.7k | 108.2k | -0.4% |
+
+**It is NOT a blanket omission, and the gravel row is why.** Gravel's `n` is
+"First Last" — the same string the frontend renders anyway — so deriving
+`"Stamstad John"` for it would not restore a value, it would INVENT one. The
+Riders search matches on `${entry.name}\n${displayName(entry)}`, two orderings
+in one haystack, so a derived reversal there would silently widen what the box
+matches. Only the exact PCS ordering is reconstructible, so only it is dropped;
+the other 4,342 riders keep a literal `n`, including the 43 surname-only ones
+and the handful whose name is `"Pujol ?"`.
+
+**Verified by content, not by line** ([[feedback_scoped_run_may_rewrite_whole_file]]):
+all five indexes were re-exported and compared as parsed objects against a
+backup — 26,161 `n` keys gone, every one rebuilding byte for byte, **0 other
+differences** in any field of any rider. `validate_exports.py` still reports 470
+files / 0 errors / 84 warnings and the cross-race stamp is unchanged.
+
+**Both halves are tested, and both mutants were caught.** `verify-views.mjs`
+types into the real search box and asserts a rider is found by BOTH orderings;
+stubbing `rawName()` to `""` fails the reversed check alone and leaves the other
+two passing. `TestCompactRiderNames` asserts the exporter never drops a name the
+browser could not put back, and that both `build_index` functions call it — an
+exporter that forgets the call ships the field again, and the only symptom is a
+bigger file.
+
+**Rejected while measuring:** a nation string table on top of this saves a
+further 7 KB gzipped, which does not pay for a new table in the format.
+
+**Noticed in passing:** `export_riders_index.py --help` does not print help — it
+parses `--help` as an unknown `--race` value, falls through to the default and
+exports the Tour. Harmless (no network, idempotent), and out of scope for the
+guard pass that fixed the 18 networked scripts, but it is the same shape.
+
 ## A networked audit now says how long it will take (2026-09-19)
 
 `audit_elevation.py` fetches every stage from PCS by its own `source_slug`, and
