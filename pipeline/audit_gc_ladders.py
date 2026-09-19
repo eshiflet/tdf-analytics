@@ -196,6 +196,28 @@ def load(conn, race=None, year=None):
     return stages, meta, ranks
 
 
+def group_one_row_runs(one_row):
+    """Collapse ONE ROW stages into (race, year, rider) -> [(stage, gap, window)].
+
+    A stage count overstates how much is WRONG. Tour 1966 contributes seven
+    stages to the worklist and one defect: Herman Van Springel holds a gap
+    exactly one second short of his rank on stages 4 through 10, entering at a
+    split day and carried forward untouched. Read as seven, it invites seven
+    investigations of the same number.
+
+    Returns both maps — every rider-edition, and the subset spanning more than
+    one stage — because the first is the honest count of distinct causes and
+    the second is the part worth printing.
+    """
+    by_rider = defaultdict(list)
+    for d in one_row:
+        s0 = d["suspects"][0]
+        by_rider[(d["race"], d["year"], s0["rider_id"])].append(
+            (d["stage"], s0["gc_gap_seconds"], d["window"]))
+    runs = {k: sorted(v) for k, v in by_rider.items() if len(v) > 1}
+    return by_rider, runs
+
+
 def main():
     exit_on_help(__doc__)
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
@@ -286,6 +308,28 @@ def main():
         print(f"{interleaved} of them hold TWO interleaved classifications, one with "
               "gc_rank copied from stage_rank. Those are a ladder to remove, not a "
               "value to correct — check the source before touching either.")
+    # A stage count overstates how much is WRONG. One rider carrying a bad gap
+    # for a week of racing is one defect, reported seven times, and a worklist
+    # that says "18 stages" invites eighteen separate investigations of it.
+    by_rider, runs = group_one_row_runs(found["ONE ROW"])
+    if by_rider:
+        print(f"\nThose {len(found['ONE ROW'])} ONE ROW stages are "
+              f"{len(by_rider)} distinct rider-edition(s); "
+              f"{len(runs)} of them {'spans' if len(runs)==1 else 'span'} more than one stage.")
+        for (race_name, yr, rid), v in sorted(runs.items(), key=lambda x: -len(x[1])):
+            stages_in = [st for st, _, _ in v]
+            stored = sorted({g for _, g, _ in v})
+            short = sorted({w[0] - g for _, g, w in v if w and w[0] is not None})
+            # A single shortfall across every stage of a run is the tell: the
+            # rider is carrying one wrong number forward, not failing anew each
+            # day. Tour 1966's Van Springel is 1s short on all seven.
+            tail = (f", every one short by exactly {short[0]}s"
+                    if len(short) == 1 else f", short by {short}s")
+            print(f"  {race_name} {yr} {rid}: stages {stages_in}, "
+                  f"stored {stored}{tail}")
+        print("  Check the earliest stage of a run first — a gap that is wrong "
+              "on day one and carried forward is one repair, not several.")
+
     print("Nothing was fetched and nothing was written. A ONE ROW verdict names the "
           "row to check, never the value to store: confirm it against the source "
           "page, and see feedback_no_fabricated_data before filling one in.")

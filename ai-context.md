@@ -135,6 +135,38 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## 18 backwards-ladder stages are 12 defects, and one of them is 7 (2026-09-19)
+
+`audit_gc_ladders.py` reported 18 ONE ROW stages as eighteen lines. They are
+**12 distinct rider-editions**, and one accounts for seven of them:
+
+```
+Those 18 ONE ROW stages are 12 distinct rider-edition(s); 1 of them spans more than one stage.
+  Tour de France 1966 rider/herman-van-springel: stages [4, 5, 6, 7, 8, 9, 10],
+  stored [46, 62], every one short by exactly 1s
+```
+
+**A run with a single shortfall across all of it is one carried-forward number,
+not seven daily failures.** Van Springel holds 46s where his rank needs 47s on
+stages 4-7 and 62s where it needs 63s on 8-10 — and everyone around him at
+ranks 13-19 holds the group time exactly. He is one second ahead of a group he
+is ranked behind, for a week.
+
+**Where it enters:** his gap is 47s at stage 1 and 46s from stage 3, which is a
+SPLIT DAY — stage 4's `source_slug` is `stage-3b`. The second is lost there and
+carried.
+
+**Not repairable from disk, and not guessed.** PCS's stored `gc_pages` for
+those stages hold **15 rows**, top-15 only, and he is 16th — so the source that
+would settle it does not cover him. Whether the gap is wrong or the rank is
+wrong remains exactly the open question [[project_gc_ladder_integrity]]
+describes, and `backfill_gc_gaps.py` already reports only 4 disagreements
+archive-wide, none of them here.
+
+`group_one_row_runs()` is extracted and tested rather than inline: grouping on
+the rider ALONE would fuse two unrelated editions, and a mutant that does
+exactly that fails both tests.
+
 ## A script that rewrote the database by being imported (2026-09-19)
 
 `patch_giro_2026_elevation.py` had no `if __name__ == "__main__"` guard. Its

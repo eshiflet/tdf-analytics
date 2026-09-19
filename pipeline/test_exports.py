@@ -1384,6 +1384,55 @@ class TestAiContextHeadlineCounts(unittest.TestCase):
                 self.assertEqual(int(m.group(1).replace(",", "")), n,
                                  f"{race} has {n} editions")
 
+    def test_one_row_stages_collapse_into_distinct_causes(self):
+        """audit_gc_ladders.group_one_row_runs — a stage count is not a defect
+        count.
+
+        Tour 1966 puts seven stages on the worklist and holds one defect:
+        Van Springel's gap is exactly one second short of his rank on stages 4
+        through 10, entering at a split day and carried forward untouched. The
+        run is what says so; seven separate lines invite seven investigations.
+        """
+        import audit_gc_ladders
+        mk = lambda race, yr, st, rid, gap, need: {
+            "race": race, "year": yr, "stage": st,
+            "suspects": [{"rider_id": rid, "gc_gap_seconds": gap}],
+            "window": [need, need],
+        }
+        one_row = [mk("Tour de France", 1966, st, "rider/x", 46, 47)
+                   for st in (4, 5, 6, 7)]
+        one_row += [mk("Tour de France", 1966, st, "rider/x", 62, 63)
+                    for st in (8, 9, 10)]
+        one_row.append(mk("Tour de France", 1966, 12, "rider/other", 10, 30))
+        one_row.append(mk("Giro d'Italia", 1966, 4, "rider/x", 46, 47))
+
+        by_rider, runs = audit_gc_ladders.group_one_row_runs(one_row)
+        self.assertEqual(len(one_row), 9)
+        self.assertEqual(len(by_rider), 3, "nine stages, three distinct causes")
+        self.assertEqual(len(runs), 1, "only Van Springel's spans stages")
+
+        run = runs[("Tour de France", 1966, "rider/x")]
+        self.assertEqual([st for st, _, _ in run], [4, 5, 6, 7, 8, 9, 10])
+        shortfalls = {w[0] - gap for _, gap, w in run}
+        self.assertEqual(shortfalls, {1},
+                         "the whole run is short by the same one second, which "
+                         "is the tell that it is one carried-forward number")
+
+    def test_the_same_rider_in_another_race_is_a_different_cause(self):
+        """Grouping on the rider alone would fuse two unrelated editions."""
+        import audit_gc_ladders
+        one_row = [
+            {"race": "Tour de France", "year": 1966, "stage": 4,
+             "suspects": [{"rider_id": "rider/x", "gc_gap_seconds": 46}],
+             "window": [47, 47]},
+            {"race": "Tour de France", "year": 1972, "stage": 4,
+             "suspects": [{"rider_id": "rider/x", "gc_gap_seconds": 46}],
+             "window": [47, 47]},
+        ]
+        by_rider, runs = audit_gc_ladders.group_one_row_runs(one_row)
+        self.assertEqual(len(by_rider), 2)
+        self.assertEqual(runs, {})
+
     def test_the_gc_ladder_triage_counts_are_current(self):
         """The four numbers ai-context.md quotes for the backwards GC ladders.
 
