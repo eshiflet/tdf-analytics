@@ -13,6 +13,7 @@ season ordering, a finalRank that is a best-of rather than a last, standings
 carried across races a rider skipped, and an index whose finalRank is derived
 rather than stored.
 """
+import json
 import os
 import sqlite3
 import sys
@@ -23,21 +24,19 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from race_set_export import DNF_SENTINEL, RaceSet, build_index, build_year
 
-SCHEMA = """
-CREATE TABLE races (race_id INTEGER PRIMARY KEY, name TEXT, country TEXT, race_type TEXT);
-CREATE TABLE race_editions (edition_id INTEGER PRIMARY KEY, race_id INTEGER, year INTEGER, edition_name TEXT);
-CREATE TABLE stages (stage_id INTEGER PRIMARY KEY, edition_id INTEGER, stage_number INTEGER,
-    stage_label TEXT, stage_date TEXT, start_location TEXT, finish_location TEXT,
-    distance_km REAL, vertical_meters INTEGER, profile_score INTEGER, route_type TEXT,
-    stage_type TEXT, cancelled INTEGER DEFAULT 0);
-CREATE TABLE stage_results (result_id INTEGER PRIMARY KEY, stage_id INTEGER, rider_id TEXT,
-    team_id TEXT, bib_number INTEGER, stage_rank INTEGER, status TEXT,
-    gap_seconds INTEGER, pcs_points INTEGER);
-CREATE TABLE riders (rider_id TEXT PRIMARY KEY, full_name TEXT, first_name TEXT,
-    last_name TEXT, nationality_code TEXT);
-CREATE TABLE countries (code TEXT PRIMARY KEY, name TEXT);
-CREATE TABLE teams (team_id TEXT PRIMARY KEY, name TEXT);
-"""
+# The REAL schema, not a hand-written subset.
+#
+# This was a 7-table miniature, and it drifted the moment a column was added:
+# race_set_export.py learned to SELECT stages.field_definition and fifteen tests
+# died on "no such column" — a failure that says nothing about the change that
+# caused it. schema.sql is the file the live database is built from, so building
+# the fixture from it means an exporter can only query columns that really
+# exist, which is the same lesson test_ingest.py records for route_type.
+def _schema_sql():
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "schema.sql"), encoding="utf-8") as f:
+        return f.read()
+
 
 
 @dataclass(frozen=True)
@@ -51,17 +50,22 @@ class ExportTestBase(unittest.TestCase):
         self.conn = sqlite3.connect(":memory:")
         self.conn.row_factory = sqlite3.Row
         self.cur = self.conn.cursor()
-        self.cur.executescript(SCHEMA)
-        self.cur.execute("INSERT INTO countries VALUES ('be','Belgium')")
-        self.cur.execute("INSERT INTO teams VALUES ('team/x','Team X')")
+        self.cur.executescript(_schema_sql())
+        self.cur.execute("INSERT INTO countries (code, name) VALUES ('be','Belgium')")
+        # Columns named explicitly: schema.sql's teams also has season_year,
+        # and a positional insert is what ties a fixture to a column COUNT.
+        self.cur.execute("INSERT INTO teams (team_id, name) VALUES ('team/x','Team X')")
         self._sid = 0
 
     def add_race(self, race_id, name, short):
-        self.cur.execute("INSERT INTO races VALUES (?,?,'Belgium','one_day')", (race_id, name))
+        self.cur.execute("INSERT INTO races (race_id, name, country, race_type) "
+                         "VALUES (?,?,'Belgium','one_day')", (race_id, name))
         return FakeInfo(name, short)
 
     def add_edition(self, edition_id, race_id, year):
-        self.cur.execute("INSERT INTO race_editions VALUES (?,?,?,NULL)",
+        self.cur.execute("INSERT INTO race_editions "
+                         "(edition_id, race_id, year, edition_name) "
+                         "VALUES (?,?,?,NULL)",
                          (edition_id, race_id, year))
 
     def add_stage(self, edition_id, label, date, cancelled=0):
@@ -73,7 +77,7 @@ class ExportTestBase(unittest.TestCase):
         return self._sid
 
     def add_result(self, stage_id, rider, rank, points=0, team=None):
-        self.cur.execute("INSERT OR IGNORE INTO riders VALUES (?,?,NULL,NULL,'be')",
+        self.cur.execute("INSERT OR IGNORE INTO riders (rider_id, full_name, first_name, last_name, nationality_code) VALUES (?,?,NULL,NULL,'be')",
                          (rider, rider))
         self.cur.execute(
             "INSERT INTO stage_results (stage_id, rider_id, team_id, stage_rank, "
@@ -251,3 +255,68 @@ class TestRidersIndexEncoding(ExportTestBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFieldDefinitionIsExported(unittest.TestCase):
+    """The off-road field slice reaches the browser, and only where it means
+    something.
+
+    A classic has one field and a rank is unambiguously a place in it, so a
+    null key on all 21 of its editions would be payload for no reader. An
+    off-road race is a mass start with categories inside it, and the key is
+    what makes its rank interpretable.
+    """
+
+    def test_gravel_editions_carry_it(self):
+        import glob
+        here = os.path.dirname(os.path.abspath(__file__))
+        root = os.path.join(here, "..", "cycling-app", "src", "data", "gravel")
+        files = sorted(glob.glob(os.path.join(root, "gc_by_stage_*.json")))
+        if not files:
+            self.skipTest("gravel not exported")
+        seen, missing = set(), []
+        for path in files:
+            with open(path, encoding="utf-8") as f:
+                for s in json.load(f)["stages"]:
+                    if s.get("cancelled"):
+                        continue
+                    if not s.get("field_definition"):
+                        missing.append(f"{os.path.basename(path)}:{s['stage_label']}")
+                    else:
+                        seen.add(s["field_definition"])
+        self.assertEqual(missing, [], "raced off-road editions with no field_definition")
+        self.assertTrue(seen <= {"open_field", "elite_course", "elite_division",
+                                 "pcs_field"}, f"unexpected values: {seen}")
+
+    def test_the_classics_do_not_carry_it(self):
+        import glob
+        here = os.path.dirname(os.path.abspath(__file__))
+        root = os.path.join(here, "..", "cycling-app", "src", "data", "classics")
+        files = sorted(glob.glob(os.path.join(root, "gc_by_stage_*.json")))
+        if not files:
+            self.skipTest("classics not exported")
+        for path in files:
+            with open(path, encoding="utf-8") as f:
+                for s in json.load(f)["stages"]:
+                    self.assertNotIn("field_definition", s,
+                                     f"{os.path.basename(path)} carries a key with "
+                                     "nothing to disambiguate")
+
+    def test_leadville_shows_the_2016_change(self):
+        """The case this exists for: the same race, the same rank column, two
+        different meanings either side of one year."""
+        import glob
+        here = os.path.dirname(os.path.abspath(__file__))
+        root = os.path.join(here, "..", "cycling-app", "src", "data", "gravel")
+        got = {}
+        for year in (2015, 2016, 2026):
+            path = os.path.join(root, f"gc_by_stage_{year}.json")
+            if not os.path.exists(path):
+                self.skipTest(f"gravel {year} not exported")
+            with open(path, encoding="utf-8") as f:
+                for s in json.load(f)["stages"]:
+                    if s["stage_label"].startswith("Leadville"):
+                        got[year] = s.get("field_definition")
+        self.assertEqual(got, {2015: "open_field",
+                               2016: "elite_division",
+                               2026: "elite_course"})

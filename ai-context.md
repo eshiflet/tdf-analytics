@@ -100,6 +100,57 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## What a rank is a rank OVER (2026-09-19)
+
+An off-road race is a mass start with categories inside it, and which slice the
+timer publishes changes from year to year. **Every gravel race but Little Sugar
+changes at least once; Leadville changes four times.** So Leadville's rank 3
+meant "third man across the line, of the hundred stored" through 2015 and "third
+PRO, with other men finishing between them" from 2016 — the same column, two
+different quantities, and **nothing in the database said which**.
+
+`stages.field_definition` now records it per edition, from the course map's own
+`rule`, through the ingest, the export and into the tooltip:
+
+| value | what a rank means | editions |
+|---|---|---|
+| `open_field` | place among all men; top `FIELD_CAP` stored | 59 |
+| `elite_course` | place in the race, which is elite men | 21 |
+| `elite_division` | **place in ONE CATEGORY** of a mass start — others finished between them | 12 |
+| `pcs_field` | the field as PCS publishes it (The Traka) | 2 |
+
+`elite_division` is the one that had to be said out loud; the others mean "place
+in the field that raced" and are labelled only so the contrast is visible rather
+than implied by silence. A cancelled edition stores NULL — `cancelled` is a
+course-map *rule*, not a description of a field, and storing the word would make
+it look like one more category. Grand Tours and classics store NULL too: one
+field, nothing to disambiguate, and `validate_db` errors if a road stage carries
+a value.
+
+**The tooltip is where it lands.** Hovering a race's column header:
+
+```
+Leadville Trail 100 MTB  08/15/2015 … All men — top 100 stored
+Leadville Trail 100 MTB  08/13/2016 … Pro category — others finished between these places
+Leadville Trail 100 MTB  08/15/2026 … Elite men's race
+```
+
+`formatters.fieldDefinitionLabel()` returns null for a value it does not know
+rather than printing the raw enum at a reader — `validate_db.check_field_definition()`
+is what fails in that case, and a test asserts every rule the course map uses is
+one the frontend can label.
+
+**This did not change a single rider row** — 94 stages gained a key, 0 riders
+moved. It is a fix to what the data SAYS, not to what it holds.
+
+**It also killed a fixture drift.** `test_race_set_export.py` built its DB from a
+hand-written 7-table miniature, so adding one column to `schema.sql` made fifteen
+tests die on `no such column` — a failure that says nothing about the change that
+caused it. It now builds from `schema.sql`, like `test_ingest.py` has since the
+`route_type` incident, and its inserts name their columns instead of relying on
+column COUNT. Verified by pointing an exporter at a column that does not exist
+and watching the fixture reject it.
+
 ## A link to a merged rider now redirects (2026-09-19)
 
 Merging deletes a rider id, and every link ever made to it goes dead — a

@@ -569,6 +569,60 @@ def check_split_slug_provenance(c):
              f"{', '.join(suspect[:8])}" + (" ..." if len(suspect) > 8 else ""))
 
 
+def check_field_definition(c):
+    """Every off-road edition must say what field its ranks are over.
+
+    An off-road race is a mass start with categories inside it, and which slice
+    the timer publishes changes year to year — every gravel race but Little
+    Sugar changes at least once, Leadville four times. Without this recorded,
+    rank 3 at Leadville 2015 (third man across the line) and rank 3 at Leadville
+    2016 (third PRO, with other men finishing between them) are the same number
+    meaning two different things.
+
+    Two failures, and the first is the dangerous one because it is silent: a
+    NULL on a raced edition means an ingest wrote a stage without the rule, and
+    every consumer then has to guess. The second is a value nothing understands,
+    which would reach the frontend as an unlabelled field.
+    """
+    known = {"open_field", "elite_course", "elite_division", "pcs_field"}
+    missing = c.execute(
+        """SELECT ra.name, re.year FROM stages s
+             JOIN race_editions re ON re.edition_id = s.edition_id
+             JOIN races ra ON ra.race_id = re.race_id
+            WHERE ra.race_type = 'gravel' AND s.cancelled = 0
+              AND (s.field_definition IS NULL OR s.field_definition = '')
+            ORDER BY ra.name, re.year""").fetchall()
+    if missing:
+        err(f"{len(missing)} off-road edition(s) do not record which field their "
+            f"ranks are over, so a rank cannot be interpreted: "
+            + ", ".join(f"{n} {y}" for n, y in missing[:5]))
+    unknown = c.execute(
+        """SELECT DISTINCT s.field_definition FROM stages s
+             JOIN race_editions re ON re.edition_id = s.edition_id
+             JOIN races ra ON ra.race_id = re.race_id
+            WHERE ra.race_type = 'gravel' AND s.field_definition IS NOT NULL
+              -- An empty string is an ingest that wrote nothing, and the
+              -- missing check above already owns it. Reporting it here too
+              -- double-counts one fault and sends the reader looking for a
+              -- rule called ''.
+              AND s.field_definition != ''
+              AND s.field_definition NOT IN (%s)""" % ",".join("?" * len(known)),
+        sorted(known)).fetchall()
+    if unknown:
+        err(f"unrecognised field_definition value(s): "
+            + ", ".join(repr(u[0]) for u in unknown)
+            + f". Known: {', '.join(sorted(known))}")
+    # A road stage has exactly one field, so a value there is a mis-write.
+    stray = c.execute(
+        """SELECT COUNT(*) FROM stages s
+             JOIN race_editions re ON re.edition_id = s.edition_id
+             JOIN races ra ON ra.race_id = re.race_id
+            WHERE ra.race_type != 'gravel' AND s.field_definition IS NOT NULL""").fetchone()[0]
+    if stray:
+        err(f"{stray} non-off-road stage(s) carry a field_definition; a stage "
+            "with one field has nothing to disambiguate")
+
+
 def check_gravel_rank_integrity(c):
     """A gravel classification that disagrees with its own clock, or numbers
     itself past its own size.
@@ -871,6 +925,7 @@ def main():
     check_split_slug_provenance(cur)
     check_results(cur)
     check_gravel_rank_integrity(cur)
+    check_field_definition(cur)
     check_phantom_split_days(cur)
     check_intentional_gaps(cur)
     conn.close()

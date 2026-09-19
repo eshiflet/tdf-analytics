@@ -85,6 +85,26 @@ CREATE TABLE IF NOT EXISTS stages (
     -- reconstructing 'stage-{stage_number}' silently pulls the neighbouring
     -- stage's page for every stage after a split.
     source_slug           TEXT,
+    -- WHAT FIELD THIS STAGE'S RANKS ARE OVER. Only the off-road set sets it;
+    -- NULL on a Grand Tour or a classic, where a stage has exactly one field
+    -- and a rank is unambiguously a place in it.
+    --
+    -- An off-road race is a mass start with several categories inside it, and
+    -- which slice a timer publishes changes from year to year — every gravel
+    -- race but Little Sugar changes at least once. Without this, rank 3 in
+    -- Leadville 2015 ("third man across the line, of a hundred stored") and
+    -- rank 3 in Leadville 2016 ("third PRO, with other men finishing between
+    -- them") are the same number meaning two different things, and nothing in
+    -- the database said so.
+    --
+    --   'open_field'     top FIELD_CAP of the whole men's field; rank IS the
+    --                    place among men in the race
+    --   'elite_course'   the course itself is elite men; rank is the place in
+    --                    the race that was run
+    --   'elite_division' one category inside a mass start; rank is the place
+    --                    IN THAT CATEGORY and not across the line
+    --   'pcs_field'      the field as PCS publishes it (The Traka)
+    field_definition      TEXT,
     UNIQUE(edition_id, stage_number)
 );
 

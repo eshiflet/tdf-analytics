@@ -14,6 +14,13 @@ export interface StageInfo {
   vertical_meters: number | null;
   route_type: string | null; // 'F' | 'H' | 'M' | 'TT' | 'TTT'
   profile_score: number | null; // PCS's own grade-aware climbing-difficulty score
+  /** WHAT FIELD THIS RACE'S RANKS ARE OVER. Off-road races only — a Grand Tour
+   *  stage or a classic has one field and a rank is unambiguously a place in
+   *  it. An off-road race is a mass start with categories inside it and the
+   *  timer publishes a different slice from year to year, so without this,
+   *  Leadville's rank 3 means "third man across the line" through 2015 and
+   *  "third PRO" from 2016 with no way to tell. See fieldDefinitionLabel(). */
+  field_definition?: string | null;
   cancelled?: boolean;
 }
 

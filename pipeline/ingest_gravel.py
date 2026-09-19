@@ -254,12 +254,15 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
         """INSERT INTO stages
              (edition_id, stage_number, stage_label, stage_date, distance_km,
               stage_type, route_type, cancelled, source_slug,
-              vertical_meters, profile_score)
-           VALUES (?,1,?,?,?,?,?,?,?,?,?)""",
+              vertical_meters, profile_score, field_definition)
+           VALUES (?,1,?,?,?,?,?,?,?,?,?,?)""",
         (edition_id, meta.name, info.get("date"), info.get("distance_km"),
          info.get("discipline"), route,
          1 if data["cancelled"] else 0, source_slug,
-         info.get("vertical_meters"), info.get("profile_score")),
+         info.get("vertical_meters"), info.get("profile_score"),
+         # A cancelled edition has no field at all, so it gets NULL rather than
+         # the literal "cancelled" the course map uses as its rule.
+         None if data["cancelled"] else info.get("rule")),
     )
     stage_id = cur.lastrowid
 

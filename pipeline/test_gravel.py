@@ -1545,3 +1545,81 @@ class TestRowsContradictingTheirRank(unittest.TestCase):
     def test_a_field_too_short_to_judge_is_left_alone(self):
         self.assertEqual(rows_contradicting_their_rank([300, 100]), [])
         self.assertEqual(rows_contradicting_their_rank([]), [])
+
+
+class TestFieldDefinitionIsRecorded(unittest.TestCase):
+    """Which slice of a mass start a rank is over, stored per edition.
+
+    An off-road race is a mass start with categories inside it and the timer
+    publishes a different slice from year to year — every gravel race but Little
+    Sugar changes at least once, Leadville four times. Before this, rank 3 at
+    Leadville 2015 ("third man across the line, of the hundred stored") and rank
+    3 at Leadville 2016 ("third PRO, with other men finishing between them")
+    were the same number meaning two different things and nothing said so.
+    """
+
+    def setUp(self):
+        self.conn = _schema_conn()
+        self.cur = self.conn.cursor()
+
+    def test_the_schema_has_the_column(self):
+        """schema.sql, not just the live DB. A column added by ALTER TABLE and
+        forgotten here once left a DB rebuilt from this file unwritable by the
+        ingest — see the route_type note in schema.sql."""
+        cols = [r[1] for r in self.cur.execute("PRAGMA table_info(stages)")]
+        self.assertIn("field_definition", cols)
+
+    def test_the_rule_reaches_the_stage_row(self):
+        for rule in ("open_field", "elite_course", "elite_division", "pcs_field"):
+            with self.subTest(rule=rule):
+                self.cur.execute("DELETE FROM stages")
+                self.cur.execute("DELETE FROM race_editions")
+                self.cur.execute("DELETE FROM races")
+                self.cur.execute("INSERT INTO races (race_id,name,country,race_type) "
+                                 "VALUES (1,'X','USA','gravel')")
+                self.cur.execute("INSERT INTO race_editions (edition_id,race_id,year,"
+                                 "edition_name) VALUES (1,1,2016,'2016')")
+                self.cur.execute("INSERT INTO stages (edition_id,stage_number,"
+                                 "field_definition) VALUES (1,1,?)", (rule,))
+                self.assertEqual(
+                    self.cur.execute("SELECT field_definition FROM stages").fetchone()[0],
+                    rule)
+
+    def test_every_rule_the_course_map_uses_is_one_the_app_can_label(self):
+        """The live check that keeps the pipeline and the frontend in step. A
+        new rule in the course map that nothing can label would reach a reader
+        as an unexplained rank, and the failure would be invisible."""
+        import glob
+        labelled = {"open_field", "elite_course", "elite_division", "pcs_field",
+                    "cancelled", "not_yet_run"}
+        seen = set()
+        for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "gravel_scrapes", "*", "[0-9]*.json")):
+            if os.sep + "_raw" + os.sep in f:
+                continue
+            with open(f, encoding="utf-8") as fh:
+                rule = (json.load(fh).get("info") or {}).get("rule")
+            if rule:
+                seen.add(rule)
+        self.assertTrue(seen, "no scrape files read")
+        self.assertEqual(seen - labelled, set(),
+                         "a scrape file uses a rule neither validate_db nor "
+                         "formatters.ts knows how to label")
+
+    def test_a_cancelled_edition_records_no_field(self):
+        """'cancelled' is a course-map RULE, not a description of a field. A
+        race that was not run has no field for a rank to be over, and storing
+        the word would make it look like one more category."""
+        import glob
+        here = os.path.dirname(os.path.abspath(__file__))
+        for f in glob.glob(os.path.join(here, "gravel_scrapes", "*", "[0-9]*.json")):
+            if os.sep + "_raw" + os.sep in f:
+                continue
+            with open(f, encoding="utf-8") as fh:
+                data = json.load(fh)
+            if data.get("cancelled"):
+                self.assertEqual((data.get("info") or {}).get("rule"), "cancelled",
+                                 f"{f}: a cancelled edition should carry that rule")
+                break
+        else:
+            self.skipTest("no cancelled edition in the scrape files")

@@ -106,3 +106,25 @@ export function difficultyScore(stage: StageInfo): number {
   const mult = ROUTE_MULTIPLIER[stage.route_type ?? "F"] ?? 1.0;
   return (vm * vm) / (dk * 1000) * mult;
 }
+
+/** Plain-English gloss for StageInfo.field_definition.
+ *
+ *  The one that has to be said out loud is `elite_division`: those ranks are
+ *  places within a category of a mass-start race, so riders outside the
+ *  category finished between them and the number is NOT a finishing position
+ *  in the race. The others all mean "place in the field that raced" and are
+ *  labelled only so the contrast is visible rather than implied by silence.
+ *
+ *  Returns null for an unknown value rather than printing the raw enum: a new
+ *  rule reaching the frontend unlabelled is better than one shown as
+ *  `elite_division_v2` to a reader. validate_db.check_field_definition() is
+ *  what fails in that case. */
+export function fieldDefinitionLabel(v: string | null | undefined): string | null {
+  switch (v) {
+    case "open_field":     return "All men — top 100 stored";
+    case "elite_course":   return "Elite men's race";
+    case "elite_division": return "Pro category — others finished between these places";
+    case "pcs_field":      return "Field as PCS publishes it";
+    default:               return null;
+  }
+}

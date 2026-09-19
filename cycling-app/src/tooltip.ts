@@ -2,6 +2,7 @@
 // content (showTooltip, keyed off the stage chart's x/y scales) lives in
 // views/stageChart.ts instead — it's tightly coupled to that view's state,
 // not a leaf utility.
+import { fieldDefinitionLabel } from "./formatters";
 import type { StageInfo } from "./types";
 import { tooltipEl, chartAreaEl } from "./dom";
 
@@ -33,11 +34,17 @@ export function showStageTooltip(event: MouseEvent, stage: StageInfo) {
     ? `${distance}, ${vertical}`
     : `${distance}, ${vertical}, ${stage.route_type ?? "—"}`;
 
+  // Only the off-road set carries this, and it is the line that makes the
+  // number above it mean something: a rank inside a pro category is not a
+  // finishing position in the race that was run.
+  const field = fieldDefinitionLabel(stage.field_definition);
+
   tooltipEl.innerHTML = `
     ${heading}
     <div>${stage.start_location ?? "—"}</div>
     <div>${stage.finish_location ?? "—"}</div>
     <div>${detail}</div>
+    ${field ? `<div class="t-team">${field}</div>` : ""}
   `;
   positionTooltip(event);
 }

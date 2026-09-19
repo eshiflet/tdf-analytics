@@ -73,7 +73,8 @@ def fetch_year(cur, race_set, year):
     cur.execute(
         """SELECT s.stage_id, r.name AS race_name, s.stage_date, s.start_location,
                   s.finish_location, s.distance_km, s.vertical_meters,
-                  s.profile_score, s.route_type, s.cancelled
+                  s.profile_score, s.route_type, s.cancelled,
+                  s.field_definition
            FROM stages s
            JOIN race_editions e USING(edition_id)
            JOIN races r USING(race_id)
@@ -125,6 +126,16 @@ def build_year(cur, race_set, year, short_of):
             "route_type": s["route_type"],
             "profile_score": s["profile_score"],
         }
+        # Emitted only when set, which is the off-road set: a classic has one
+        # field and nothing to disambiguate, and a null key on all 21 of its
+        # editions would be payload for no reader.
+        #
+        # It is what makes a rank interpretable. Leadville's rank 3 means "third
+        # man across the line" through 2015 and "third PRO, with other men
+        # finishing between them" from 2016, because the timer began publishing
+        # a pro category that year and the scraper follows it.
+        if s["field_definition"]:
+            entry["field_definition"] = s["field_definition"]
         if s["cancelled"]:
             entry["cancelled"] = True
         out_stages.append(entry)

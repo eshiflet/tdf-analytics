@@ -1273,3 +1273,91 @@ class GravelRankIntegrityTest(DBCheckTest):
         self.gravel_edition(2016, [(1, 100), (804, 300)])
         validate_db.check_gravel_rank_integrity(self.cur)
         self.assertNoErrors()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# validate_db.check_field_definition — what a rank is a rank OVER
+# ══════════════════════════════════════════════════════════════════════════
+
+class FieldDefinitionTest(DBCheckTest):
+    """Every off-road edition must say which slice of the field it ranks.
+
+    Leadville's timer began publishing a pro category in 2016 and the scraper
+    followed it, so rank 3 went from "third man across the line" to "third PRO,
+    with other men finishing between them" with nothing recording the change.
+    Four of the six gravel races switch rule at least once.
+    """
+
+    def gravel_stage(self, field_definition, cancelled=0, race_type="gravel"):
+        self.race(1, "Leadville Trail 100 MTB", race_type=race_type, country="USA")
+        self.edition(1, 1, 2016)
+        self.stage(1, 1, 1, cancelled=cancelled, field_definition=field_definition)
+
+    def test_a_raced_edition_with_no_field_definition_is_an_ERROR(self):
+        """An ERROR and not a warning: a rank nobody can interpret is not a
+        known upstream limit, it is a value the database cannot explain."""
+        self.gravel_stage(None)
+        validate_db.check_field_definition(self.cur)
+        self.assertTrue(validate_db.errors)
+        self.assertIn("which field their ranks are over",
+                      "\n".join(validate_db.errors))
+
+    def test_an_empty_string_counts_as_MISSING_not_as_unrecognised(self):
+        """Asserting the specific message, because "" trips the unknown-value
+        branch too and merely checking that SOMETHING errored passes whether or
+        not the missing check handles it. An empty string is an ingest that
+        wrote nothing, and saying "unrecognised field_definition ''" sends the
+        reader looking for a rule that does not exist."""
+        self.gravel_stage("")
+        validate_db.check_field_definition(self.cur)
+        joined = "\n".join(validate_db.errors)
+        self.assertIn("which field their ranks are over", joined)
+        self.assertNotIn("unrecognised", joined)
+
+    def test_a_known_value_is_accepted(self):
+        for rule in ("open_field", "elite_course", "elite_division", "pcs_field"):
+            with self.subTest(rule=rule):
+                validate_db.errors = []
+                self.cur.execute("DELETE FROM stages")
+                self.cur.execute("DELETE FROM race_editions")
+                self.cur.execute("DELETE FROM races")
+                self.gravel_stage(rule)
+                validate_db.check_field_definition(self.cur)
+                self.assertEqual(validate_db.errors, [])
+
+    def test_an_unknown_value_is_an_ERROR(self):
+        """A rule the frontend cannot label reaches a reader as an unexplained
+        rank, and nothing else would notice."""
+        self.gravel_stage("elite_division_v2")
+        validate_db.check_field_definition(self.cur)
+        self.assertIn("unrecognised", "\n".join(validate_db.errors))
+
+    def test_a_cancelled_edition_needs_none(self):
+        """A race that was not run has no field for a rank to be over."""
+        self.gravel_stage(None, cancelled=1)
+        validate_db.check_field_definition(self.cur)
+        self.assertEqual(validate_db.errors, [])
+
+    def test_a_ROAD_stage_carrying_one_is_an_ERROR(self):
+        """A Grand Tour stage has exactly one field. A value there is a
+        mis-write, and it would teach a reader the column means something it
+        does not."""
+        self.gravel_stage("open_field", race_type="stage_race")
+        validate_db.check_field_definition(self.cur)
+        self.assertIn("nothing to disambiguate", "\n".join(validate_db.errors))
+
+    def test_the_live_database_records_one_for_every_raced_edition(self):
+        """The invariant against real data, not a fixture."""
+        import os, sqlite3
+        if not os.path.exists(validate_db.DB_PATH):
+            # cycling.db is gitignored and CI cannot regenerate it.
+            self.skipTest("no database")
+        conn = sqlite3.connect(f"file:{validate_db.DB_PATH}?mode=ro", uri=True)
+        self.addCleanup(conn.close)
+        missing = conn.execute(
+            """SELECT COUNT(*) FROM stages s
+                 JOIN race_editions re ON re.edition_id = s.edition_id
+                 JOIN races ra ON ra.race_id = re.race_id
+                WHERE ra.race_type='gravel' AND s.cancelled=0
+                  AND (s.field_definition IS NULL OR s.field_definition='')""").fetchone()[0]
+        self.assertEqual(missing, 0)
