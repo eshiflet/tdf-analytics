@@ -31,6 +31,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import sqlite3
 import sys
@@ -57,6 +58,22 @@ def ensure_column(cur):
     return False
 
 
+def stage_file_rows(race, year, stage_number):
+    """This stage's own scrape rows, or []. No verification needed: unlike the
+    classification page, this file is named for the stage the ingest reads it
+    as."""
+    directory = gc_source.SCRAPE_DIR.get(race)
+    if not directory:
+        return []
+    path = os.path.join(gc_source.HERE, directory, str(year),
+                        f"stage_{stage_number}.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f).get("rows") or []
+    except (ValueError, OSError):
+        return []
+
+
 def find_adjusted(conn, race=None):
     """[(stage_id, race, year, stage_number, rider_id)] PCS marks, from disk."""
     sql = """SELECT s.stage_id, ra.name, re.year, s.stage_number, s.source_slug
@@ -70,24 +87,31 @@ def find_adjusted(conn, race=None):
         params.append(race)
     found, stats = [], Counter()
     for stage_id, name, year, number, slug in conn.execute(sql, params):
+        # THREE places carry the same mark and all are unioned. The stage's own
+        # scrape file needs no verification — it is the file the ingest reads
+        # for everything else about this stage — so it is read even where the
+        # classification page cannot be placed. Reading only the verified page
+        # found 67 marks on the 1990 Vuelta where a re-ingest finds 138, which
+        # is how the gap was noticed: a backfill that disagrees with the ingest
+        # is a backfill the next rebuild undoes.
+        marked = gc_source.marked_in_stage_rows(
+            stage_file_rows(name, year, number))
         page = gc_source.gc_page(name, year, number, slug)
         if page is None:
             stats["unverified"] += 1
-            continue
-        stats["verified"] += 1
-        # Both tables on the page carry the mark and both mean the same thing,
-        # so they are unioned rather than stored apart. The stage table is the
-        # one that catches a rider credited with his group's time after a
-        # crash — he is marked there and not in the classification.
-        marked = gc_source.marked_riders(page) | gc_source.marked_in_stage_rows(
-            page.get("result_rows"))
+        else:
+            stats["verified"] += 1
+            marked |= (gc_source.marked_riders(page)
+                       | gc_source.marked_in_stage_rows(page.get("result_rows")))
         if not marked:
             continue
-        # Only riders we actually store, and only where we hold a GC row: the
-        # marker explains a rank/gap pair, so it is meaningless without one.
+        # EVERY row we store for the stage, not only those holding a GC rank.
+        # The mark is about the rider's TIME being awarded rather than raced,
+        # which is true of his stage result as well, and ingest_race sets it on
+        # every row — so restricting it here would make a rebuild disagree with
+        # this script and quietly change 71 rows on the 1990 Vuelta alone.
         stored = {r[0] for r in conn.execute(
-            "SELECT rider_id FROM stage_results WHERE stage_id = ? "
-            "AND gc_rank IS NOT NULL", (stage_id,))}
+            "SELECT rider_id FROM stage_results WHERE stage_id = ?", (stage_id,))}
         for rider in sorted(marked & stored):
             found.append((stage_id, name, year, number, rider))
         stats["marked but not stored"] += len(marked - stored)

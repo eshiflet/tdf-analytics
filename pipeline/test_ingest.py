@@ -1038,3 +1038,66 @@ class TestStageOneGcFallback(IngestHarness):
                     "SELECT sr.rider_id, s.stage_number, sr.gc_rank FROM stage_results sr "
                     "JOIN stages s ON s.stage_id = sr.stage_id")}
         self.assertIsNone(rows[("rider/b", 2)])
+
+    def test_an_approximated_classification_is_recorded_as_derived(self):
+        """The `results` provenance row says `pcs`, and on these stages the
+        classification is not PCS's — nobody was given a position and no
+        standings file covers it, so every gc_rank is the finishing order read
+        across. A second row says so. Without it the invented ladder is
+        invisible, which is exactly how it survived on 254 stage-1 stages."""
+        self.write_stage(1, rows=[
+            gc_row("1", "Winner", "rider/w", "1", gap="+0:00"),
+            gc_row("2", "Second", "rider/b", "2", gap="+0:10"),
+        ])
+        self.ingest()
+        prov = {r["field"]: r["source"] for r in self.conn.execute(
+            "SELECT field, source FROM data_provenance WHERE entity = 'stages'")}
+        self.assertEqual(prov.get("results"), "pcs")
+        self.assertEqual(prov.get("gc_from_stage_order"), "derived")
+
+    def test_a_real_classification_is_not_marked_derived(self):
+        """The control: where PCS ranks somebody, nothing was approximated and
+        the marker must not appear, or it would spread doubt over real data."""
+        self.write_stage(1, rows=[
+            gc_row("1", "Winner", "rider/w", "1", gc_pos="1", gc_lag="+0:00"),
+            gc_row("2", "Second", "rider/b", "2"),
+        ])
+        self.ingest()
+        fields = {r["field"] for r in self.conn.execute(
+            "SELECT field FROM data_provenance WHERE entity = 'stages'")}
+        self.assertNotIn("gc_from_stage_order", fields)
+
+
+class TestStageEndpointSpellings(unittest.TestCase):
+    """PCS labels a stage's ends "Start"/"Finish" on some pages and
+    "Departure"/"Arrival" on others — 5,367 stage files against 866. Reading
+    only the first pair wrote NULL for the rest, and it stayed invisible
+    because those rows had been filled when the scrape used the other
+    spelling. A re-ingest on 2026-09-19 dropped the start and finish of 729
+    stages, Tour 1903 stage 1 among them: Montgeron to Lyon became None.
+    """
+
+    def test_either_spelling_is_read(self):
+        self.assertEqual(
+            ingest_race.stage_endpoint({"Start": "Montgeron"}, "Start", "Departure"),
+            "Montgeron")
+        self.assertEqual(
+            ingest_race.stage_endpoint({"Departure": "Luxembourg"}, "Start", "Departure"),
+            "Luxembourg")
+
+    def test_the_first_spelling_wins_when_both_are_present(self):
+        self.assertEqual(
+            ingest_race.stage_endpoint({"Start": "A", "Departure": "B"},
+                                       "Start", "Departure"), "A")
+
+    def test_an_empty_string_falls_through_rather_than_winning(self):
+        """A present-but-blank cell is not an answer. Returning it would look
+        like a value everywhere downstream while carrying nothing."""
+        self.assertEqual(
+            ingest_race.stage_endpoint({"Start": "   ", "Departure": "Lyon"},
+                                       "Start", "Departure"), "Lyon")
+
+    def test_neither_present_is_None_not_empty_string(self):
+        self.assertIsNone(ingest_race.stage_endpoint({}, "Start", "Departure"))
+        self.assertIsNone(
+            ingest_race.stage_endpoint({"Start": ""}, "Start", "Departure"))

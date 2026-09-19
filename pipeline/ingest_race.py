@@ -107,6 +107,23 @@ def find_stage_files_for_year(scrapes_dir: str, year: int, flat_fallback: bool) 
     return []
 
 
+def stage_endpoint(info, *names):
+    """A stage's start or finish, under either of PCS's two spellings.
+
+    866 of the 6,233 stage files label these "Departure"/"Arrival" and the rest
+    "Start"/"Finish". Reading only the first pair wrote NULL for the other
+    866 — invisible until a re-ingest, because the older rows had been written
+    when the scrape used the spelling the code knows. The 2026-09-19 re-ingest
+    dropped the start and finish of 729 stages this way, Tour 1903 stage 1
+    among them: Montgeron to Lyon became None to None.
+    """
+    for name in names:
+        value = (info.get(name) or "").strip()
+        if value:
+            return value
+    return None
+
+
 def load_gc_standings(scrapes_dir: str, year: int) -> dict | None:
     """Per-stage GC from build_vuelta_gc_standings.py (--race giro|vuelta), if present.
 
@@ -416,7 +433,8 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 edition_id, n, f"Stage {n}", date_iso,
-                info.get("Start"), info.get("Finish"), distance_km,
+                stage_endpoint(info, "Start", "Departure"),
+                stage_endpoint(info, "Finish", "Arrival"), distance_km,
                 "itt" if route_type in ("TT", "TTT") else "road",
                 preserved_vm, preserved_ps, route_type, won_how,
                 # NULL, not a reconstructed f"stage-{n}", when the scrape file
@@ -448,9 +466,16 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # stage's marks.
         # The stage table is read from the rows already in hand; the
         # classification needs the verified page beside them.
+        # BOTH copies of the stage table, because they are not the same file
+        # and either may carry the mark: `rows` is this stage's own scrape, and
+        # the verified page holds its own `result_rows`. Reading only the first
+        # dropped 51 flags on the 2026-09-19 re-ingest, which is how the
+        # difference was found.
+        _page = gc_source.gc_page(race_name, year, n, slug)
         time_adjusted_here = (
             gc_source.marked_in_stage_rows(rows)
-            | gc_source.marked_riders(gc_source.gc_page(race_name, year, n, slug)))
+            | gc_source.marked_in_stage_rows((_page or {}).get("result_rows"))
+            | gc_source.marked_riders(_page))
 
         # Provenance. Route fields come from this stage file's PCS scrape; the
         # scrape file path plus the slug pins down exactly which page. Elevation
@@ -467,6 +492,19 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # provenance would be millions of copies of a single fact.
         record_provenance(cur, "stages", stage_id, "results",
                           SOURCE_PCS, source_ref=ref)
+        if stage_rank_is_the_only_gc:
+            # The classification on this stage is OURS, not PCS's: nobody was
+            # given a position and no standings file covers it, so every
+            # gc_rank here is the finishing order read across. Recorded
+            # separately and as `derived`, because the `results` row above says
+            # `pcs` and would otherwise claim the page reports a classification
+            # it does not. That claim was live on 254 stage-1 stages until
+            # 2026-09-19 and is what made the invented ladder invisible.
+            record_provenance(cur, "stages", stage_id, "gc_from_stage_order",
+                              SOURCE_DERIVED,
+                              source_ref=f"{ref} — PCS publishes no GC for this "
+                              "stage and no gc_standings covers it; gc_rank is "
+                              "the finishing order")
         if route_override:
             # The override's OWN source, not PCS — claiming pcs here would say
             # the page reports what it does not, and hide the correction.
