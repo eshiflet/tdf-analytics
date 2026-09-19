@@ -199,3 +199,41 @@ const drift = current["total:assets"] - baseline["total:assets"];
 console.log(`PASS  ${Object.keys(current).length} payloads within ${TOLERANCE}% ` +
             `(total ${kb(current["total:assets"])} gzipped, ` +
             `${drift >= 0 ? "+" : ""}${kb(drift)} vs baseline)`);
+
+// Which payloads moved, whenever any of them did.
+//
+// WHY THIS IS NOT JUST THE TOTAL. Sub-threshold drift is invisible one commit
+// at a time and permanent in aggregate: 8.2 KB of real points data landed in
+// the giro and vuelta year files across two commits in September 2026 without
+// a re-baseline, each change far under the 2% that fails, and the PASS line
+// reported only a growing "+5.8 KB vs baseline" that named nothing. The next
+// person to touch the payload inherited the question of whether that 5.8 KB
+// was theirs — and answering it meant diffing 42 files by hand.
+//
+// Keyed on buckets that MOVED rather than on the total being non-zero, because
+// the total is exactly what hides an offsetting pair: a race set growing 5 KB
+// while another shrinks 5 KB nets to a reassuring +0.0 KB.
+//
+// Silent when nothing moved, which is the state right after a re-baseline and
+// the state this is trying to make normal again.
+const moved = Object.entries(current)
+  .filter(([k]) => k !== "total:assets" && k in baseline)
+  .map(([k, size]) => [k, size - baseline[k]])
+  .filter(([, d]) => d !== 0)
+  .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+
+if (moved.length) {
+  console.log(`\n${moved.length} payload(s) differ from the baseline. None is a ` +
+              `regression, but drift that nobody re-baselines accumulates until an\n` +
+              `unrelated change trips the ${TOLERANCE}% guard and has to untangle it:`);
+  for (const [key, d] of moved) {
+    const pct = baseline[key] ? (100 * d) / baseline[key] : 0;
+    // Bytes below a kilobyte: a 21-byte move printed as "0.0 KB" reads as
+    // nothing moving, which is the opposite of what this section is for.
+    const mag = Math.abs(d) < 1024 ? `${Math.abs(d)} B` : kb(Math.abs(d));
+    const size = `${d >= 0 ? "+" : "-"}${mag}`.padStart(10);
+    const share = `${d >= 0 ? "+" : ""}${pct.toFixed(2)}%`.padStart(8);
+    console.log(`  ${size}  ${share}   ${key}`);
+  }
+  console.log("If that growth is yours and intended: node check-payload.mjs --update");
+}

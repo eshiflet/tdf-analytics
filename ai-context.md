@@ -4145,6 +4145,30 @@ is matched back to its race on `basename:rawBytes` — no hashing of 131 MB of
 source. A genuinely ambiguous file is split evenly across its candidates: the
 per-race bucket goes approximate, the total stays exact.
 
+**A passing run now names every payload that MOVED (2026-09-19).** The 2%
+tolerance is right and stays, but sub-threshold drift is invisible one commit at
+a time and permanent in aggregate. 8.2 KB of real points data landed in the giro
+and vuelta year files across commits `e91a0662` and `d0892557` without a
+re-baseline — far under 2%, so the run passed and reported only a growing
+`+5.8 KB vs baseline` that named nothing. The next person to touch the payload
+inherited the question of whether that 5.8 KB was theirs, and answering it meant
+diffing 42 files by hand.
+
+The breakdown is keyed on buckets that MOVED, not on the total being non-zero,
+because the total is exactly what hides an offsetting pair — one race set growing
+5 KB while another shrinks 5 KB nets to a reassuring `+0.0 KB`. It is silent when
+nothing moved, which is the state right after a re-baseline and the state this
+exists to make normal again. The FAIL path is untouched: it already itemises its
+regressions, and the breakdown prints after the exit.
+
+```
+6 payload(s) differ from the baseline. None is a regression, but drift that
+nobody re-baselines accumulates until an unrelated change trips the 2% guard:
+     +4.4 KB    +0.22%   years:giro
+     +3.6 KB    +0.21%   years:vuelta
+      -322 B    -0.29%   riders_index:gravel
+```
+
 **Growth is expected and is not a regression.** Adding a year makes the archive
 bigger, which is why this compares against a committed baseline with a tolerance
 rather than a hardcoded ceiling. Re-baseline in the commit that causes the
