@@ -26,6 +26,8 @@ tests cannot drift from the real schema the way an inlined copy did before.
 import audit_disqualifications
 import audit_gc_ladders
 import gc_source
+import shutil
+import fix_stage1_gc
 import contextlib
 import io
 import json
@@ -2089,3 +2091,92 @@ class TimeAdjustedExemptionTest(DBCheckTest):
         self.result(1, "rider/b", gc_rank=7, gc_gap_seconds=0)
         validate_db.check_gc_rank_gap_consistency(self.cur)
         self.assertTrue(validate_db.warnings)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# fix_stage1_gc — the same rule, for editions a re-ingest cannot reach
+# ══════════════════════════════════════════════════════════════════════════
+
+class FixStageOneGcTest(unittest.TestCase):
+    """Five editions refuse a re-ingest because each holds a stage that is in
+    the database with no scrape file, and the orphan guard is right to refuse:
+    Vuelta 1942 has 20 stages against 17 files, because our numbering expands
+    PCS's split days, so rebuilding it would collapse the edition and destroy
+    62 result rows. This applies the ingest's stage-1 rule to those editions
+    without rebuilding anything.
+
+    The tests that matter are about AGREEING WITH THE INGEST. A fix that writes
+    something different is a fix the next rebuild silently reverses.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        os.makedirs(os.path.join(self.tmp, "vuelta_scrapes", "1990"))
+        self._here = gc_source.HERE
+        gc_source.HERE = self.tmp
+        self.addCleanup(setattr, gc_source, "HERE", self._here)
+
+    def write(self, name, payload):
+        with open(os.path.join(self.tmp, "vuelta_scrapes", "1990", name),
+                  "w", encoding="utf-8") as f:
+            json.dump(payload, f)
+
+    def row(self, rider, gc_pos="", gc_lag=""):
+        return ["1", gc_pos, gc_lag, "", "", "", rider, "", "", "", "", "", "", "", ""]
+
+    def test_an_inline_position_is_read(self):
+        self.write("stage_1.json", {"rows": [self.row("rider/a", "3", "+0:10")]})
+        self.assertEqual(fix_stage1_gc.published_gc("Vuelta a España", 1990),
+                         {"rider/a": (3, 10)})
+
+    def test_a_rider_with_no_inline_position_is_absent(self):
+        """Absent, not present-with-None: the caller distinguishes "PCS ranked
+        him" from "PCS did not", and an entry would answer the first."""
+        self.write("stage_1.json", {"rows": [self.row("rider/a"),
+                                             self.row("rider/b", "1", "+0:00")]})
+        self.assertEqual(set(fix_stage1_gc.published_gc("Vuelta a España", 1990)),
+                         {"rider/b"})
+
+    def test_an_UNRANKED_standings_entry_is_kept(self):
+        """The bug this caught. ingest_race reads `if entry:` and takes both
+        fields, so a rider the classification page gives a gap but no position
+        keeps the gap with a NULL rank. Dropping those disagreed with a
+        re-ingest on 100 of the 1996 Vuelta's 180 stage-1 rows."""
+        self.write("gc_standings.json",
+                   {"stages": {"1": {"rider/a": [None, 8], "rider/b": [2, 13]}}})
+        self.assertEqual(fix_stage1_gc.standings_gc("Vuelta a España", 1990),
+                         {"rider/a": (None, 8), "rider/b": (2, 13)})
+
+    def test_the_inline_position_beats_the_standings_one(self):
+        """ingest_race reads the row's own gc_pos first and only consults
+        gc_standings `if gc_rank_v is None`, so PCS's inline value wins. The
+        two agree on 18,263 of 18,268 rows, which is exactly why a reversed
+        precedence would look harmless and quietly differ on the five that
+        matter — two transposed pairs among them."""
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(open(os.path.join(HERE, "schema.sql"), encoding="utf-8").read())
+        cur = conn.cursor()
+        cur.execute("INSERT INTO races (race_id,name,country,race_type) "
+                    "VALUES (1,'Vuelta a España','Spain','stage_race')")
+        cur.execute("INSERT INTO race_editions (edition_id,race_id,year,edition_name) "
+                    "VALUES (1,1,1990,'1990')")
+        cur.execute("INSERT INTO stages (stage_id,edition_id,stage_number) VALUES (1,1,1)")
+        cur.execute("INSERT INTO riders (rider_id,full_name) VALUES ('rider/a','A')")
+        cur.execute("INSERT INTO stage_results (stage_id,rider_id,gc_rank,gc_gap_seconds) "
+                    "VALUES (1,'rider/a',99,999)")
+        conn.commit()
+        self.write("stage_1.json", {"rows": [self.row("rider/a", "3", "+0:10")]})
+        self.write("gc_standings.json", {"stages": {"1": {"rider/a": [7, 70]}}})
+        _sid, changes = fix_stage1_gc.plan(conn, "Vuelta a España", 1990)
+        self.assertEqual([(c[3], c[4]) for c in changes],
+                         [((3, 10), "PCS publishes it")])
+
+    def test_a_missing_standings_file_is_empty_not_an_error(self):
+        self.assertEqual(fix_stage1_gc.standings_gc("Vuelta a España", 1990), {})
+
+    def test_a_missing_stage_file_is_None_so_the_edition_is_skipped(self):
+        """None and {} mean different things here: {} is "PCS ranked nobody",
+        which is a real answer, and None is "there is nothing to read", which
+        must not be treated as one."""
+        self.assertIsNone(fix_stage1_gc.published_gc("Vuelta a España", 1990))
