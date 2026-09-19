@@ -139,6 +139,40 @@ def marked_riders(page):
     return {r[2] for r in rows[1:] if parse_gap(r[4])[1]}
 
 
+# The stage result table carries the same asterisk in its own gap cell, and it
+# is the same fact about the same (stage, rider) row — the time was awarded
+# rather than raced — so it sets the same flag rather than a second one. It is
+# the cell that describes a rider credited with his group's time after a crash
+# while keeping the place he finished in.
+#
+# The signal is strong but not the GC's clean sweep: 77 of 78 marked rows are
+# out of order against 0.8% of unmarked ones. Measuring that needs PCS's
+# "+0:00" filler excluded first — a non-winner whose cell reads +0:00 has no
+# published time at all (see ai-context, "Times that no race produced"), and
+# counting those as zero gaps invents 40,349 backwards steps out of nothing.
+#
+# COVERAGE IS A FLOOR, NOT A CEILING, and which scraper wrote a file decides
+# it. Primoz Roglic at Vuelta 2022 stage 16 is the textbook case — 34th on the
+# road with a gap of 0 — and he is NOT flagged, because that year has no
+# gc_pages file and his row in stage_16.json carries a bare "+0:00". His mark
+# survives only in classification_scrapes HTML, which holds 1,022 more marked
+# rows we could claim. They are deliberately not read: a page there stacks the
+# stage, GC, points, KOM and youth tables in `resTab` divs keyed by opaque
+# numeric ids, and a mark in the points table says nothing about the GC time.
+# Mis-scoping it would SUPPRESS real contradictions, which is the opposite of
+# what this flag is for. Scope the tables first, or leave it.
+STAGE_GAP_FIELD = 14
+
+
+def marked_in_stage_rows(rows):
+    """Rider ids the stage result table marks, from a stage file's own rows."""
+    out = set()
+    for r in rows or []:
+        if len(r) > STAGE_GAP_FIELD and parse_gap(r[STAGE_GAP_FIELD])[1]:
+            out.add(r[6])
+    return out
+
+
 def gc_ladder(page):
     """{rider_id: (rank, seconds, marked)} from a verified page."""
     rows = (page or {}).get("gc_rows") or []

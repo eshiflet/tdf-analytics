@@ -75,7 +75,12 @@ def find_adjusted(conn, race=None):
             stats["unverified"] += 1
             continue
         stats["verified"] += 1
-        marked = gc_source.marked_riders(page)
+        # Both tables on the page carry the mark and both mean the same thing,
+        # so they are unioned rather than stored apart. The stage table is the
+        # one that catches a rider credited with his group's time after a
+        # crash — he is marked there and not in the classification.
+        marked = gc_source.marked_riders(page) | gc_source.marked_in_stage_rows(
+            page.get("result_rows"))
         if not marked:
             continue
         # Only riders we actually store, and only where we hold a GC row: the
@@ -104,7 +109,7 @@ def main():
 
     print(f"{stats['verified']} stage(s) had a page this could verify; "
           f"{stats['unverified']} could not be verified and were skipped.")
-    print(f"{len(found)} GC row(s) carry PCS's time marker.\n")
+    print(f"{len(found)} row(s) carry PCS's time marker, in either table.\n")
     shown = found if args.limit == 0 else found[:args.limit]
     for _sid, name, year, number, rider in shown:
         print(f"  {name} {year} st{number:<3} {rider}")

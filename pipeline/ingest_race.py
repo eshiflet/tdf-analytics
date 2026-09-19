@@ -439,8 +439,11 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # it cannot prove belongs to this stage, so an edition with misnamed
         # pages (the 1992 Giro) yields an empty set rather than another
         # stage's marks.
-        time_adjusted_here = gc_source.marked_riders(
-            gc_source.gc_page(race_name, year, n, slug))
+        # The stage table is read from the rows already in hand; the
+        # classification needs the verified page beside them.
+        time_adjusted_here = (
+            gc_source.marked_in_stage_rows(rows)
+            | gc_source.marked_riders(gc_source.gc_page(race_name, year, n, slug)))
 
         # Provenance. Route fields come from this stage file's PCS scrape; the
         # scrape file path plus the slug pins down exactly which page. Elevation
