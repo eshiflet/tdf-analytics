@@ -277,6 +277,23 @@ def build_index(years_data):
         return races.index(name)
 
     riders = {}
+    # WHAT EACH CONSTITUENT'S RANK IS A RANK OVER, keyed {raceIdx: {year: code}}.
+    #
+    # The rider page plots a career across years on one axis, which is precisely
+    # where an off-road rank changes meaning without saying so: Leadville's
+    # "Result #3" is third across the line through 2015 and third IN THE PRO
+    # CATEGORY from 2016. The stage view already says which; the rider page had
+    # no way to.
+    #
+    # Codes rather than the strings, and only the editions that have one — the
+    # classics have none, so their index gains nothing but the two empty keys,
+    # which are dropped below.
+    fd_table, fd = [], {}
+    def fdidx(code):
+        if code not in fd_table:
+            fd_table.append(code)
+        return fd_table.index(code)
+
     for year, data in sorted(years_data.items()):
         labels = {s["stage_number"]: s["stage_label"] for s in data["stages"]}
         for r in data["riders"]:
@@ -294,7 +311,17 @@ def build_index(years_data):
                 flat.append(ridx(labels[p["stage"]]))
                 flat.append(p["gcRank"] or DNF_SENTINEL)
             rec["ym"][str(year)] = flat
-    return {"teams": teams, "races": races, "riders": riders}
+        for st in data["stages"]:
+            if st.get("field_definition"):
+                fd.setdefault(str(ridx(st["stage_label"])), {})[str(year)] = \
+                    fdidx(st["field_definition"])
+    out = {"teams": teams, "races": races, "riders": riders}
+    # Omitted entirely for a set where no edition declares one, rather than
+    # shipping two empty containers to every reader of the classics index.
+    if fd:
+        out["fdTable"] = fd_table
+        out["fd"] = fd
+    return out
 
 
 def run(race_set, year=None):

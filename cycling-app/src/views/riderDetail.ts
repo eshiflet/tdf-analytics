@@ -9,11 +9,12 @@ import { d3 } from "../d3";
 import { state } from "../state";
 import { ridersChartEl, yearSelectEl, metricSelectEl, tooltipEl } from "../dom";
 import { replaceHash, updateHash } from "../hashRouting";
+import { fieldDefinitionLabel } from "../formatters";
 import { canonicalRiderId } from "../riderAliases";
 import { positionTooltip, hideTooltip } from "../tooltip";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
 import type { RiderEntry } from "../riderIndexData";
-import { riderIndexByRace, ensureRiderIndexFor, crossRaceFor } from "../riderIndexData";
+import { fieldDefinitionByRace, riderIndexByRace, ensureRiderIndexFor, crossRaceFor } from "../riderIndexData";
 import { buildLegend } from "./stageChart";
 import { setRace, loadDataset, switchView, showLoadError } from "../main";
 import { drawRidersPage } from "./riders";
@@ -564,10 +565,21 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
           const gcPart     = d.finalRank  < 9999 ? `<div>${rankWord} #${d.finalRank}</div>` : `<div>${rankWord} DNF/DNS</div>`;
           const sprintPart = d.sprintRank < 9999 ? `<div style="color:${sprintColor}">Sprint #${d.sprintRank}</div>` : "";
           const komPart    = d.komRank    < 9999 ? `<div style="color:${komColor}">KOM #${d.komRank}</div>` : "";
+          // What that "Result #n" is a rank OVER. Only the off-road set carries
+          // it, and only there can it differ from "place in the race that ran":
+          // an elite_division edition ranks one category of a mass start, so
+          // riders outside the category finished between these places. Without
+          // it a career chart puts 2015's third-across-the-line and 2016's
+          // third-pro on the same axis and says nothing.
+          const fieldLabel = isAggregate
+            ? fieldDefinitionLabel(
+                fieldDefinitionByRace[d.race].get(`${d.label}|${d.year}`))
+            : null;
           tooltipEl.innerHTML = `
             <div class="t-name">${d.year} ${d.label ?? RACES[d.race].name}</div>
             <div class="t-team">${d.team ?? "—"}</div>
             ${gcPart}${sprintPart}${komPart}
+            ${fieldLabel ? `<div class="t-team">${fieldLabel}</div>` : ""}
             <div style="color:var(--text-dim);font-size:11px">Click to view ${isAggregate ? "season" : "stage"} chart</div>
           `;
           positionTooltip(event);

@@ -378,3 +378,59 @@ class TestSeasonLevelBibIsDeterministic(ExportTestBase):
         year = self.build(2022, self.infos)
         rec = next(r for r in year["riders"] if r["id"] == "rider/b")
         self.assertEqual(rec["bibNumber"], 77)
+
+
+class TestFieldDefinitionReachesTheRiderIndex(unittest.TestCase):
+    """The rider page plots a career across years on ONE axis, which is exactly
+    where an off-road rank changes meaning without saying so.
+
+    Leadville's "Result #3" is third across the line through 2015 and third IN
+    THE PRO CATEGORY from 2016. The stage view learned to say which; the rider
+    page reads riders_index.json and had no way to, so the index carries a
+    {raceIdx: {year: code}} map — 94 entries and 245 bytes gzipped for gravel.
+    """
+
+    def index(self, race):
+        path = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "cycling-app", "src", "data", race, "riders_index.json"))
+        if not os.path.exists(path):
+            self.skipTest(f"{race} not exported")
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_gravel_carries_the_map(self):
+        idx = self.index("gravel")
+        self.assertIn("fd", idx)
+        self.assertIn("fdTable", idx)
+        self.assertTrue(set(idx["fdTable"]) <= {"open_field", "elite_course",
+                                                "elite_division", "pcs_field"},
+                        idx["fdTable"])
+
+    def test_every_code_resolves_and_every_race_index_exists(self):
+        """A dangling index would render as no label at all — the silent
+        failure, indistinguishable from an edition that has no field to
+        declare."""
+        idx = self.index("gravel")
+        races, table = idx["races"], idx["fdTable"]
+        for r_idx, by_year in idx["fd"].items():
+            self.assertLess(int(r_idx), len(races), f"raceIdx {r_idx} out of range")
+            for year, code in by_year.items():
+                self.assertLess(code, len(table), f"{races[int(r_idx)]} {year}")
+
+    def test_leadville_shows_the_2016_change_on_the_rider_page_too(self):
+        idx = self.index("gravel")
+        lv = str(idx["races"].index("Leadville Trail 100 MTB"))
+        got = {y: idx["fdTable"][c] for y, c in idx["fd"][lv].items()
+               if y in ("2015", "2016", "2026")}
+        self.assertEqual(got, {"2015": "open_field",
+                               "2016": "elite_division",
+                               "2026": "elite_course"})
+
+    def test_the_classics_index_carries_neither_key(self):
+        """Every classics edition has one field, so there is nothing to
+        disambiguate — and two empty containers shipped to every reader of a
+        2.3 MB index is payload for no one."""
+        idx = self.index("classics")
+        self.assertNotIn("fd", idx)
+        self.assertNotIn("fdTable", idx)

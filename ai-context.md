@@ -292,6 +292,20 @@ one the frontend can label.
 **This did not change a single rider row** — 94 stages gained a key, 0 riders
 moved. It is a fix to what the data SAYS, not to what it holds.
 
+**It reaches the rider page too.** That page plots a career across years on one
+axis, which is precisely where an off-road rank changes meaning without saying
+so, and it reads `riders_index.json` rather than the year files. The aggregate
+index therefore carries `fd: {raceIdx: {year: codeIdx}}` with an `fdTable` —
+**94 entries, 245 bytes gzipped** — and the career tooltip reads:
+
+```
+2024 Leadville Trail 100 MTB · Result #8
+Pro category — others finished between these places
+```
+
+Emitted only where some edition declares one, so the 2.3 MB classics index
+gains nothing rather than two empty containers.
+
 **It also killed a fixture drift.** `test_race_set_export.py` built its DB from a
 hand-written 7-table miniature, so adding one column to `schema.sql` made fifteen
 tests die on `no such column` — a failure that says nothing about the change that

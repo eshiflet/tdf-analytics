@@ -50,6 +50,14 @@ export const riderIndexByRace = emptyPerRace<Map<string, RiderEntry>>(() => new 
 export const allTeamsSortedByRace = emptyPerRace<string[]>(() => []);
 export const allNationalitiesSortedByRace = emptyPerRace<string[]>(() => []);
 
+/** `${constituent race name}|${year}` -> field_definition, per race set.
+ *
+ *  The rider page plots a career across years on one axis, which is exactly
+ *  where an off-road rank changes meaning without saying so — Leadville's
+ *  "Result #3" is third across the line through 2015 and third IN THE PRO
+ *  CATEGORY from 2016. Empty for every set whose index declares none. */
+export const fieldDefinitionByRace = emptyPerRace<Map<string, string>>(() => new Map());
+
 // Convenience accessor for the current race. The team and nationality lists
 // have no equivalent: every caller reads the *ByRace maps directly, because the
 // Riders grid merges them across the selected races rather than showing one.
@@ -94,6 +102,13 @@ type RawRiderIndex = {
   teams: string[];
   /** Constituent-race name table; absent for the three Grand Tours. */
   races?: string[];
+  /** Aggregate races only, and only where any edition declares one: the code
+   *  table for `fd`. */
+  fdTable?: string[];
+  /** {raceIdx: {year: fdTableIdx}} — what each constituent edition's RANKS ARE
+   *  A RANK OVER. Absent for the classics, where every edition has one field
+   *  and a rank is unambiguously a place in it. */
+  fd?: Record<string, Record<string, number>>;
   /** Bit order for each rider's `x` — the OTHER race-set slugs this file's
    *  riders can appear in. Each index names its own order rather than sharing
    *  a constant with the exporters: the two of them (export_riders_index.py,
@@ -281,6 +296,19 @@ function buildIndexFromRaw(race: RaceId, raw: RawRiderIndex): void {
   const crossTable: (RaceId | undefined)[] = (raw.xr ?? []).map(
     (slug) => (isRaceId(slug) ? slug : undefined),
   );
+  // Flattened to `${race name}|${year}` on load: every reader has those two
+  // strings in hand and none of them has the index tables.
+  const fdMap = fieldDefinitionByRace[race];
+  fdMap.clear();
+  for (const [rIdx, byYear] of Object.entries(raw.fd ?? {})) {
+    const raceName = raceTable[Number(rIdx)];
+    if (!raceName) continue;
+    for (const [year, code] of Object.entries(byYear)) {
+      const label = raw.fdTable?.[code];
+      if (label) fdMap.set(`${raceName}|${year}`, label);
+    }
+  }
+
   const index = riderIndexByRace[race];
   for (const [slug, rec] of Object.entries(raw.riders)) {
     const id = `rider/${slug}`;
