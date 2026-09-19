@@ -36,6 +36,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -2388,3 +2389,73 @@ class TestGcRankBeyondField(DBCheckTest):
         of the legitimate side."""
         self.stage(1, list(range(1, 60)) + [118])
         self.assertEqual(self.run_check(), [])
+
+
+class TestExportsMatchDb(unittest.TestCase):
+    """validate_exports.check_exports_match_db — a repair nobody re-exported.
+
+    Every other check in that file asks whether an exported file is internally
+    consistent, which a stale file happily is, and nothing there opened the
+    database at all. Three Vuelta editions had been serving a classification
+    the database no longer held — Vuelta 1968 showed Altig 2nd after stage 1
+    where the DB has him 75th — and no check could see it.
+    """
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.db = os.path.join(self.tmp, "c.db")
+        conn = sqlite3.connect(self.db)
+        with open(os.path.join(HERE, "schema.sql"), encoding="utf-8") as f:
+            conn.executescript(f.read())
+        conn.execute("INSERT INTO races (race_id,name,country,race_type) "
+                     "VALUES (1,'Vuelta a España','Spain','stage_race')")
+        conn.execute("INSERT INTO race_editions (edition_id,race_id,year,edition_name) "
+                     "VALUES (1,1,1968,'1968')")
+        conn.execute("INSERT INTO stages (stage_id,edition_id,stage_number) VALUES (1,1,1)")
+        conn.execute("INSERT INTO riders (rider_id,full_name) VALUES ('rider/altig','Altig')")
+        conn.execute("INSERT INTO stage_results (stage_id,rider_id,gc_rank,gc_gap_seconds) "
+                     "VALUES (1,'rider/altig',75,0)")
+        conn.commit()
+        conn.close()
+        os.makedirs(os.path.join(self.tmp, "vuelta"))
+        self.patches = [
+            mock.patch.object(validate_exports, "DB_PATH", self.db),
+            mock.patch.object(validate_exports, "DATA_ROOT", self.tmp),
+        ]
+        for p in self.patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def write_export(self, gc_rank):
+        path = os.path.join(self.tmp, "vuelta", "gc_by_stage_1968.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"stages": [{"stage_number": 1}], "riders": [
+                {"id": "rider/altig", "byStage": [
+                    {"stage": 1, "gcRank": gc_rank, "gcGapSeconds": 0}]}]}, f)
+
+    def test_an_export_that_agrees_is_silent(self):
+        self.write_export(75)
+        self.assertEqual(validate_exports.check_exports_match_db(), [])
+
+    def test_a_stale_export_is_reported_with_the_command_that_fixes_it(self):
+        self.write_export(2)          # the invented stage-1 rank
+        problems = validate_exports.check_exports_match_db()
+        self.assertEqual(len(problems), 1)
+        self.assertIn("vuelta/1968", problems[0])
+        self.assertIn("export_gc.py --race vuelta --year 1968", problems[0],
+                      "a stale export is a step somebody did not run, so say "
+                      "which one")
+
+    def test_a_missing_export_is_not_an_error(self):
+        """Not every edition in the database has a file; the structural checks
+        own that question."""
+        self.assertEqual(validate_exports.check_exports_match_db(), [])
+
+    def test_a_missing_database_is_not_an_error(self):
+        """validate_exports runs against a checkout without cycling.db."""
+        self.write_export(2)
+        with mock.patch.object(validate_exports, "DB_PATH",
+                               os.path.join(self.tmp, "nope.db")):
+            self.assertEqual(validate_exports.check_exports_match_db(), [])

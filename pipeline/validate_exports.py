@@ -33,9 +33,11 @@ Usage: python3 validate_exports.py [--year YEAR]
 """
 import json
 import os
+import sqlite3
 import sys
 
 import link_rider_race_sets
+from race_common import DB_PATH
 from reconcile_kom import name_match, slug_to_display
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -255,6 +257,79 @@ def check_riders_index(data_dir, subdir):
     return stale
 
 
+# The three stage races, whose gc_by_stage files export_gc.py builds straight
+# from these tables. The aggregate sets (classics, gravel) have their own
+# exporters and a different per-year shape, so they are not compared here.
+DB_STAGE_RACES = {"Tour de France": "tour", "Giro d'Italia": "giro",
+                  "Vuelta a España": "vuelta"}
+
+
+def check_exports_match_db():
+    """Exported years that no longer agree with the database.
+
+    Nothing else in this file opens `cycling.db`: every other check asks
+    whether an exported file is internally consistent, which a stale file
+    happily is. A DB repair followed by a forgotten re-export is therefore
+    invisible — and had been. Three Vuelta editions were found stale on
+    2026-09-19, all of them on stage 1: the September stage-1 GC work removed
+    an invented classification from the database and these three files kept
+    serving it. Vuelta 1968 showed Altig 2nd, Perurena 3rd and Zandegu 5th
+    after stage 1, where the database has them 75th, 17th and 15th.
+
+    Compares `gc_rank` and `gc_gap_seconds` only. They are what the repairs of
+    the last month have moved, they are what the chart plots, and they are
+    cheap — the whole sweep is 680,000 rows against 303 files in under two
+    seconds.
+
+    Reported as an ERROR with the command that fixes it, like the cross-race
+    membership and alias-map checks: a stale export is not a judgement call,
+    it is a step someone did not run.
+    """
+    if not os.path.exists(DB_PATH):
+        return []
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    try:
+        rows = conn.execute(
+            """SELECT ra.name, e.year, s.stage_number, sr.rider_id,
+                      sr.gc_rank, sr.gc_gap_seconds
+                 FROM stage_results sr
+                 JOIN stages s USING(stage_id)
+                 JOIN race_editions e USING(edition_id)
+                 JOIN races ra USING(race_id)
+                WHERE ra.name IN (?, ?, ?)""",
+            tuple(DB_STAGE_RACES)).fetchall()
+    finally:
+        conn.close()
+
+    want = {}
+    for name, year, stage, rider, rank, gap in rows:
+        want.setdefault((DB_STAGE_RACES[name], year), {})[(rider, stage)] = (rank, gap)
+
+    problems = []
+    for (subdir, year), expected in sorted(want.items()):
+        path = os.path.join(DATA_ROOT, subdir, f"gc_by_stage_{year}.json")
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as f:
+            ds = json.load(f)
+        got = {}
+        for rider in ds.get("riders", []):
+            for point in rider.get("byStage", []):
+                got[(rider["id"], point["stage"])] = (point.get("gcRank"),
+                                                      point.get("gcGapSeconds"))
+        # Rows present in one and not the other are left to the structural
+        # checks above; this one is about VALUES that have moved underneath a
+        # file nobody re-exported.
+        stale = sum(1 for key, value in expected.items()
+                    if key in got and got[key] != value)
+        if stale:
+            race_flag = "tour" if subdir == "tour" else subdir
+            problems.append(
+                f"{subdir}/{year}: {stale:,} row(s) disagree with the database — "
+                f"run: python3 export_gc.py --race {race_flag} --year {year}")
+    return problems
+
+
 def main():
     single_year = None
     if "--year" in sys.argv:
@@ -349,6 +424,10 @@ def main():
                 print("ERROR rider_aliases.json (merged-rider redirects) is stale. "
                       "Run: python3 link_rider_race_sets.py")
                 total_errors += 1
+
+    for problem in check_exports_match_db():
+        print(f"ERROR exported year is stale: {problem}")
+        total_errors += 1
 
     print(f"\n{checked} files checked: {total_errors} errors, {total_warnings} warnings")
     sys.exit(1 if total_errors else 0)

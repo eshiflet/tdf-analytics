@@ -135,6 +135,53 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## Three editions were serving data the database had already repaired (2026-09-19)
+
+`validate_exports.py` never opened `cycling.db`. Every check in it asks whether
+an exported file is internally consistent — which a stale file happily is — so
+**a DB repair followed by a forgotten re-export was invisible to everything.**
+
+A one-off sweep of all 303 exported stage-race years against the database found
+**three stale files**, none of them touched this session:
+
+| file | rows disagreeing |
+|---|---|
+| `vuelta/1968` | 88 |
+| `vuelta/1942` | 32 |
+| `vuelta/1941` | 29 |
+
+**Every difference is on stage 1**, which dates them exactly: the September
+stage-1 GC work removed an invented classification from the database, and these
+three files kept serving it. They are the residue of "the five editions a
+re-ingest cannot reach" — repaired in the DB directly, never re-exported.
+
+`vuelta/1968` was showing readers:
+
+| rider | the file said | the database says |
+|---|---|---|
+| Rudi Altig | 2nd | **75th** |
+| Domingo Perurena | 3rd | **17th** |
+| Dino Zandegu | 5th | **15th** |
+
+Re-exported; all three now agree with the database on every row, and only stage
+1 moved.
+
+**`check_exports_match_db()` makes it permanent.** It compares `gc_rank` and
+`gc_gap_seconds` for the three stage races — what the last month's repairs have
+actually moved, and what the chart plots — 680,000 rows against 303 files in
+under two seconds. Reported as an ERROR naming the fix, in the style of the
+cross-race membership and alias-map checks, because a stale export is not a
+judgement call but a step somebody did not run:
+
+```
+ERROR exported year is stale: vuelta/1968: 88 row(s) disagree with the
+database — run: python3 export_gc.py --race vuelta --year 1968
+```
+
+Four tests, including that a missing database and a missing export are both
+silent, and a mutant that never reports staleness fails the one check that
+matters.
+
 ## 18 backwards-ladder stages are 12 defects, and one of them is 7 (2026-09-19)
 
 `audit_gc_ladders.py` reported 18 ONE ROW stages as eighteen lines. They are
@@ -2671,7 +2718,9 @@ python3 link_gravel_riders.py                          # idempotent; re-run afte
 python3 ingest_gravel.py --dry-run                     # then without --dry-run
 python3 export_gravel.py                               # no --year: the index is cross-year
 python3 export_classics_history.py --set gravel
-python3 validate_db.py && python3 validate_exports.py
+python3 validate_db.py && python3 validate_exports.py   # also errors if a year's export no longer
+                              # matches the DB — the only check here that
+                              # opens cycling.db
 python3 crosscheck_ltgp.py                             # 2022+ only
 ```
 
