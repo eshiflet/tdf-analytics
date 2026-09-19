@@ -103,3 +103,91 @@ class OneDayDirsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ScrapeDirsTest(unittest.TestCase):
+    """The Tour was missing from SCRAPE_DIRS until 2026-09-19.
+
+    A comment said its scrapes "live in tdf_YEAR_full.json and aren't
+    per-stage". That stopped being true when convert_tdf_layout.py moved them,
+    and the comment outlived the layout: load_stage_file() returned (None, None)
+    for every Tour stage, so all 1,570 of them were recorded `unknown` for
+    results, distance_km, route_type, source_slug and elevation — on the
+    grounds that a file it could not find did not exist.
+    """
+
+    def test_every_stage_race_is_mapped(self):
+        for name in ("Tour de France", "Giro d'Italia", "Vuelta a España"):
+            self.assertIn(name, B.SCRAPE_DIRS)
+
+    def test_the_mapped_directories_hold_per_stage_files(self):
+        """The claim the stale comment got wrong, asserted against the disk."""
+        for name, d in B.SCRAPE_DIRS.items():
+            path = os.path.join(B.HERE, d)
+            self.assertTrue(os.path.isdir(path), f"{d} is missing")
+            found = any(f.startswith("stage_") and f.endswith(".json")
+                        for _root, _dirs, files in os.walk(path) for f in files)
+            self.assertTrue(found, f"{name}: {d} holds no stage_*.json files")
+
+    def test_no_tdf_full_year_files_remain(self):
+        """If these ever come back the mapping above needs rethinking, so fail
+        loudly rather than let both layouts half-exist."""
+        import glob
+        self.assertEqual(glob.glob(os.path.join(B.HERE, "tdf_*_full.json")), [])
+
+
+class ScrapeFileNumberTest(unittest.TestCase):
+    def test_reads_a_plain_figure(self):
+        self.assertEqual(B.scrape_file_number(
+            {"info": {"Vertical meters": "1971"}}, "Vertical meters"), 1971)
+
+    def test_reads_a_figure_with_units_and_separators(self):
+        self.assertEqual(B.scrape_file_number(
+            {"info": {"Distance": "224.5 km"}}, "Distance"), 224.5)
+        self.assertEqual(B.scrape_file_number(
+            {"info": {"Vertical meters": "1,971"}}, "Vertical meters"), 1971)
+
+    def test_missing_and_empty_are_None(self):
+        self.assertIsNone(B.scrape_file_number({"info": {}}, "Vertical meters"))
+        self.assertIsNone(B.scrape_file_number(
+            {"info": {"Vertical meters": ""}}, "Vertical meters"))
+        self.assertIsNone(B.scrape_file_number({}, "Vertical meters"))
+
+    def test_zero_is_a_figure_not_a_missing_value(self):
+        """Vuelta 2019 st21's file says 0, which is wrong but is not absent —
+        it has to reach the DISAGREES branch, not the no-figure one."""
+        self.assertEqual(B.scrape_file_number(
+            {"info": {"Vertical meters": "0"}}, "Vertical meters"), 0)
+
+
+class FileIsThisStageTest(unittest.TestCase):
+    """Stage files are named stage_<n>.json, and a stage number is not a stable
+    key — a split day makes PCS's slug diverge from ours. A figure is never
+    believed on the filename alone."""
+
+    ROW = {"distance_km": 224.5, "stage_date": "1970-06-27"}
+
+    def file(self, **info):
+        return {"info": info}
+
+    def test_distance_alone_is_enough(self):
+        self.assertTrue(B.file_is_this_stage(
+            self.file(Distance="224.5 km"), self.ROW))
+
+    def test_date_alone_is_enough(self):
+        """128 stages had their distance re-sourced from Wikipedia or
+        bikeraceinfo while the date still pins the file down."""
+        self.assertTrue(B.file_is_this_stage(
+            self.file(Distance="201 km", Date="1970-06-27"), self.ROW))
+
+    def test_neither_matching_is_rejected(self):
+        self.assertFalse(B.file_is_this_stage(
+            self.file(Distance="201 km", Date="1970-07-04"), self.ROW))
+
+    def test_an_empty_file_is_rejected(self):
+        self.assertFalse(B.file_is_this_stage(self.file(), self.ROW))
+
+    def test_a_row_with_neither_field_cannot_be_gated(self):
+        self.assertFalse(B.file_is_this_stage(
+            self.file(Distance="224.5 km", Date="1970-06-27"),
+            {"distance_km": None, "stage_date": None}))
+

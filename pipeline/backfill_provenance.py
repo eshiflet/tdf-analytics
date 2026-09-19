@@ -51,9 +51,19 @@ from race_common import (
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# race name -> scrapes dir (TDF's per-year files live in tdf_YEAR_full.json and
-# aren't per-stage, so it has no per-stage file to point at)
+# race name -> scrapes dir.
+#
+# The Tour was MISSING here until 2026-09-19, on a comment saying its scrapes
+# "live in tdf_YEAR_full.json and aren't per-stage, so it has no per-stage file
+# to point at". That stopped being true when convert_tdf_layout.py moved it:
+# there are now 2,423 `tour_scrapes/<year>/stage_<n>.json` files across 113
+# years and not one `tdf_*_full.json` left. The comment outlived the layout,
+# and with it every Tour stage fell to the `if not d: return None, None` at the
+# top of load_stage_file() — so all 1,570 of them were recorded `unknown` for
+# results, distance_km, route_type, source_slug AND elevation, on the grounds
+# that a file this could not find did not exist.
 SCRAPE_DIRS = {
+    "Tour de France": "tour_scrapes",
     "Giro d'Italia": "giro_scrapes",
     "Vuelta a España": "vuelta_scrapes",
 }
@@ -144,34 +154,91 @@ def scrape_file_distance(data):
     return float(m.group(1)) if m else None
 
 
+def scrape_file_number(data, key):
+    """The first number under `info[key]` in the scrape file, or None."""
+    raw = (data.get("info") or {}).get(key)
+    if raw in (None, ""):
+        return None
+    m = re.search(r"[\d.]+", str(raw).replace(",", ""))
+    return float(m.group()) if m else None
+
+
+def file_is_this_stage(data, row):
+    """Does this scrape file actually describe the stage we are looking at?
+
+    Stage files are named `stage_<stage_number>.json`, and a stage number is
+    not a stable key: a split day makes PCS's slug diverge from ours, which is
+    the bug that put this repo on notice in the first place. So a value is
+    never believed on the filename alone — the file's own Distance or Date has
+    to agree with the row before its figures are treated as that stage's.
+
+    Either is enough; requiring both would reject 128 stages whose distance was
+    later re-sourced from Wikipedia or bikeraceinfo while the date still pins
+    the file down. 2,751 of the 2,879 matches agree on both.
+    """
+    km = scrape_file_number(data, "Distance")
+    if km is not None and row["distance_km"] is not None \
+            and abs(km - row["distance_km"]) < 0.15:
+        return True
+    file_date = ((data.get("info") or {}).get("Date") or "")[:10]
+    return bool(file_date) and file_date == (row["stage_date"] or "")[:10]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--upgrade-unknown", action="store_true",
+                    help="also replace rows already recorded as 'unknown' when "
+                         "the artifact on disk now proves the source")
     args = ap.parse_args()
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     read, write, aux = conn.cursor(), conn.cursor(), conn.cursor()
 
+    # (entity_id, field) -> source. The SOURCE is needed, not just the key:
+    # note() has to tell a real recorded origin, which it must never touch,
+    # from an `unknown` placeholder, which --upgrade-unknown may replace.
     existing = {
-        (r["entity_id"], r["field"])
+        (r["entity_id"], r["field"]): r["source"]
         for r in read.execute(
-            "SELECT entity_id, field FROM data_provenance WHERE entity='stages'"
+            "SELECT entity_id, field, source FROM data_provenance WHERE entity='stages'"
         )
     }
 
     counts = {}
+    # Per FIELD as well as per source. One total cannot be checked against
+    # anything: "3,013 pcs" is true of a run that proved every distance and no
+    # elevation at all, and of the reverse. The breakdown is what makes a claim
+    # about vertical_meters verifiable against an independent count.
+    by_field = {}
+    upgraded = {}
     def note(entity_id, field, source, ref):
-        if (entity_id, field) in existing:
-            return                      # never overwrite a real recorded origin
+        prior = existing.get((entity_id, field))
+        if prior is not None:
+            # Never overwrite a real recorded origin. `unknown` is not one:
+            # this script's own docstring calls it a to-do list, and the 51
+            # Tour rows it wrote on 2026-08-08 say "unknown" only because
+            # SCRAPE_DIRS was missing the Tour and the file it needed was
+            # therefore invisible. Replacing "we do not know" with the proof is
+            # completing that list, not discarding evidence — but it is still a
+            # write over something, so it is opt-in and it only ever goes
+            # unknown -> proven, never the other way.
+            if not (args.upgrade_unknown and prior == SOURCE_UNKNOWN
+                    and source != SOURCE_UNKNOWN):
+                return
+            upgraded[field] = upgraded.get(field, 0) + 1
         counts[source] = counts.get(source, 0) + 1
+        by_field.setdefault(field, {}) \
+                .setdefault(source, 0)
+        by_field[field][source] += 1
         if not args.dry_run:
             record_provenance(write, "stages", entity_id, field, source,
                               source_ref=ref, script="backfill_provenance.py")
 
     rows = read.execute("""
         SELECT s.stage_id, s.stage_number, s.vertical_meters, s.profile_score,
-               s.distance_km, s.route_type, s.source_slug,
+               s.distance_km, s.route_type, s.source_slug, s.stage_date,
                re.year, r.name AS race
         FROM stages s
         JOIN race_editions re ON s.edition_id = re.edition_id
@@ -225,13 +292,39 @@ def main():
             else:
                 note(sid, "route_type", SOURCE_UNKNOWN, "origin unproven")
 
-        # ── elevation: genuinely unknowable retroactively ──
-        for field in ("vertical_meters", "profile_score"):
-            if s[field] is not None:
+        # ── elevation and profile score: provable from the file, or unknown ──
+        #
+        # These were called "genuinely unknowable retroactively" until
+        # 2026-09-19, and for profile_score that is still true of most of them.
+        # It is NOT true of vertical_meters: the stage scrape files carry
+        # "Vertical meters" in their own `info` block, and it matches the
+        # database exactly for 2,879 of the 2,964 unprovenanced values. That is
+        # the same standard distance_km above already uses — claim PCS only
+        # where the artifact on disk still says so — and it turns a 2,964-row
+        # to-do list into an 85-row one.
+        #
+        # A stage whose file DISAGREES stays unknown, and the disagreement is
+        # the point: something later overwrote the scraped figure and did not
+        # say what. Eight do, all of them Tour 2005/2006/2016 and Vuelta 2019.
+        for field, key in (("vertical_meters", "Vertical meters"),
+                           ("profile_score", "ProfileScore")):
+            if s[field] is None:
+                continue
+            value = scrape_file_number(data, key) if data else None
+            if value is not None and int(value) == s[field] \
+                    and file_is_this_stage(data, s):
+                note(sid, field, SOURCE_PCS, relpath)
+            elif value is not None and int(value) != s[field]:
                 note(sid, field, SOURCE_UNKNOWN,
-                     "predates provenance tracking; mix of PCS scrapes, "
-                     "Wikipedia backfills and manual entry — re-scrape by "
-                     "source_slug to establish")
+                     f"{relpath} says {int(value)} where the DB says "
+                     f"{s[field]} — a later writer overwrote the scraped "
+                     "figure without recording itself")
+            else:
+                note(sid, field, SOURCE_UNKNOWN,
+                     "no figure in the stage scrape file; PCS serves some "
+                     "stages (notably the final one) with an empty stage page "
+                     "and publishes the figure on the ROUTE page instead — "
+                     "see scrape_route_overview_elevation.py")
 
     if not args.dry_run:
         conn.commit()
@@ -241,8 +334,20 @@ def main():
           f"across {len(rows)} stages")
     for src, n in sorted(counts.items(), key=lambda kv: -kv[1]):
         print(f"  {src:12} {n:6}")
+    print("\n  by field:")
+    for field in TRACKED_FIELDS + ["results"]:
+        got = by_field.get(field)
+        if not got:
+            continue
+        detail = "  ".join(f"{src} {n:,}" for src, n in
+                           sorted(got.items(), key=lambda kv: -kv[1]))
+        print(f"    {field:16} {detail}")
+    if upgraded:
+        detail = "  ".join(f"{f} {n:,}" for f, n in sorted(upgraded.items()))
+        print(f"\n  upgraded from 'unknown' to a proven source: {detail}")
     if existing:
-        print(f"  ({len(existing)} already recorded, left untouched)")
+        kept = len(existing) - sum(upgraded.values())
+        print(f"  ({kept:,} already recorded, left untouched)")
     conn.close()
 
 

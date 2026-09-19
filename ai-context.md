@@ -262,21 +262,69 @@ Restoring the old file fails it with the offending lines named.
 
 Only stages 1-5 still match it.
 
-### Open for Eric: 86% of elevation values have no recorded source
+### Elevation provenance: 2,964 unproven -> 0 (2026-09-19)
 
-Found while chasing the above. **2,964 of the 3,434 stages that hold a
-`vertical_meters` value have no `data_provenance` row for it** — the whole
-1960s-70s Tour, 25-28 stages a year. `ingest_race.py` deliberately does not
-claim elevation ("it was carried over from whatever previously populated it,
-whose own provenance row already stands"), which is right, but for most stages
-no original writer ever recorded one.
+**Every elevation value in the archive now has a recorded source.** It was
+found, not assigned: the stage scrape files carry `"Vertical meters"` in their
+own `info` block, and it matches the database exactly for **2,879 of the 2,964**
+values that had no provenance row.
 
-`check_provenance()` does not see this: it looks for provenance rows pointing
-at stages that no longer exist, not for stored values with no provenance at
-all. **Nothing was backfilled** — assigning a source to 2,964 values would be
-guessing one, which is the thing provenance exists to prevent. Whether to add a
-standing warning for it is a call about the warning budget, so it is here
-rather than in `validate_db.py`.
+That is the standard `backfill_provenance.py` already applied to `distance_km`
+— claim PCS only where the artifact on disk still says so — extended to a field
+its docstring had written off as *"genuinely unknowable retroactively"*. It is
+not unknowable; nobody had looked in the file.
+
+| | |
+|---|---|
+| proven `pcs` from the stage file | **3,342** (97.3%) |
+| `unknown`, with the reason recorded | 86 (2.5%) |
+| `manual` / `cyclingflash` | 6 |
+| **with no provenance row at all** | **0** (was 2,964) |
+
+**The gate matters as much as the match.** A stage file is named
+`stage_<n>.json`, and a stage number is not a stable key — a split day makes
+PCS's slug diverge from ours, which is the bug that put this repo on notice in
+the first place. So a figure is never believed on the filename: the file's own
+Distance or Date has to agree with the row first. Either suffices, because 128
+stages had their distance re-sourced from Wikipedia or bikeraceinfo while the
+date still pins the file down; **2,751 of the 2,879 agree on both**.
+
+**The 86 that stay `unknown` each say why**, which is the point of recording
+them at all:
+- **77** — no figure on the stage page. 76 of those are the edition's FINAL
+  stage, because PCS serves an empty stage page for the Paris/Madrid finale and
+  publishes the number on the ROUTE page instead. `scrape_route_overview_elevation.py`
+  is the tool for them; it is networked, so nothing was fetched here.
+- **8** — the DB disagrees with its own scrape file, and the row now names both
+  numbers: Tour 2005 st14 (file 4,175 / db 4,188), Tour 2006 st4/5/6/10/13,
+  Tour 2016 st13, Vuelta 2019 st21 (file says **0**). Something overwrote the
+  scraped figure without recording itself.
+- **1** — no scrape file on disk.
+
+### The Tour had been invisible to this script all along
+
+`SCRAPE_DIRS` mapped the Giro and the Vuelta and **not the Tour**, on a comment
+saying its scrapes *"live in tdf_YEAR_full.json and aren't per-stage"*. That
+stopped being true when `convert_tdf_layout.py` moved them: there are **2,423
+`tour_scrapes/<year>/stage_<n>.json` files across 113 years** and **not one
+`tdf_*_full.json` left**. The comment outlived the layout, so
+`load_stage_file()` returned nothing for every Tour stage and all 1,570 were
+recorded `unknown` for results, distance, route type, slug AND elevation — on
+the grounds that a file it could not find did not exist. Three tests now assert
+the mapping, that each mapped directory really holds `stage_*.json`, and that
+no `tdf_*_full.json` comes back.
+
+**`--upgrade-unknown`**, opt-in, then replaced the 51 elevation rows (and 272
+others) that the blind spot had already stamped `unknown` back on 2026-08-08.
+`unknown` is this script's own to-do marker, not evidence, so completing it is
+not discarding anything — but it is still a write, so the flag only ever moves
+`unknown` -> proven. Verified across all 143,331 provenance rows: the only
+transitions were **231 `unknown -> pcs`** and **92 `unknown -> derived`**, with
+**0 rows moving away from a real source** and **0 stage values changed**.
+
+The per-field breakdown in the output exists for the same reason: one total
+cannot be checked against anything, and `vertical_meters pcs 2,879 / unknown 85`
+was confirmed against an independent sweep written separately.
 
 ## Four single-race helpers the multi-race migration left behind (2026-09-19)
 
