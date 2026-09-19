@@ -100,6 +100,34 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## A season-level bib stopped moving on its own (2026-09-19)
+
+`race_set_export.build_year()` took a rider's bib and team from whichever of
+their rows it saw FIRST, over a query with no `ORDER BY`. SQLite returned them
+in rowid order, so **re-ingesting any race in a season shuffled the rowids and
+changed both fields** — every `gc_by_stage_*.json` in the set churned with no
+data change behind it, and anyone diffing an export had to establish that by
+hand before trusting the rest of the diff.
+
+A stage race never hits this: one bib per rider per edition. An aggregate season
+is a dozen SEPARATE races and a rider has a different number in each — Mattia De
+Marchi rode 2022 as bib 110 at The Traka and 2399 at Unbound, and both are
+correct.
+
+The rows are now walked in **calendar order**, so "first seen" means "the
+rider's first race of the season". One-time correction of **14,142 bibs and 181
+teams**, and then it stops: verified by re-ingesting a race and re-exporting,
+which churns **0 files**.
+
+**Which bib an aggregate season ought to show at all is still open.** A
+season-level bib is lossy however it is picked, and showing none may be the
+better answer. But a stable wrong answer beats an unstable one, and this stops
+the churn either way.
+
+The test inserts its rows in REVERSE calendar order on purpose — that is what
+makes "first row returned" and "first race of the season" different answers.
+Without it the test passes whether or not the sort exists.
+
 ## What a rank is a rank OVER (2026-09-19)
 
 An off-road race is a mass start with categories inside it, and which slice the

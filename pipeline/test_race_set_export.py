@@ -76,13 +76,13 @@ class ExportTestBase(unittest.TestCase):
             (self._sid, edition_id, label, date, cancelled))
         return self._sid
 
-    def add_result(self, stage_id, rider, rank, points=0, team=None):
+    def add_result(self, stage_id, rider, rank, points=0, team=None, bib=None):
         self.cur.execute("INSERT OR IGNORE INTO riders (rider_id, full_name, first_name, last_name, nationality_code) VALUES (?,?,NULL,NULL,'be')",
                          (rider, rider))
         self.cur.execute(
             "INSERT INTO stage_results (stage_id, rider_id, team_id, stage_rank, "
-            "status, pcs_points) VALUES (?,?,?,?,'FINISHED',?)",
-            (stage_id, rider, team, rank, points))
+            "status, pcs_points, bib_number) VALUES (?,?,?,?,'FINISHED',?,?)",
+            (stage_id, rider, team, rank, points, bib))
 
     def build(self, year, infos):
         rs = RaceSet("classics", "one_day", {i.short: i for i in infos})
@@ -320,3 +320,61 @@ class TestFieldDefinitionIsExported(unittest.TestCase):
         self.assertEqual(got, {2015: "open_field",
                                2016: "elite_division",
                                2026: "elite_course"})
+
+
+class TestSeasonLevelBibIsDeterministic(ExportTestBase):
+    """A season-level bib must not depend on SQLite's row order.
+
+    A stage race has one bib per rider per edition, so this never arises there.
+    An aggregate season is a dozen SEPARATE races and a rider has a different
+    number in each: Mattia De Marchi rode 2022 as bib 110 at The Traka and 2399
+    at Unbound, and both are correct. The exporter takes whichever row it sees
+    FIRST, and its query has no ORDER BY — so re-ingesting any race in the
+    season shuffled the rowids and changed the answer, churning every
+    gc_by_stage_*.json in the set with no data change behind it.
+
+    The rows are inserted here in REVERSE calendar order on purpose: that is
+    what makes "first row returned" and "first race of the season" different
+    answers, and without it the test passes whether or not the sort exists.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.infos = [self.add_race(1, "Late Race", "LR"),
+                      self.add_race(2, "Early Race", "ER")]
+        self.add_edition(1, 1, 2022)
+        self.add_edition(2, 2, 2022)
+        # Inserted late-first, so rowid order is the OPPOSITE of calendar order.
+        self.late = self.add_stage(1, "Late Race", "2022-09-01")
+        self.early = self.add_stage(2, "Early Race", "2022-04-01")
+        self.add_result(self.late, "rider/a", 5, bib=2399, team="team/x")
+        self.add_result(self.early, "rider/a", 3, bib=110)
+
+    def test_the_bib_comes_from_the_seasons_FIRST_race(self):
+        year = self.build(2022, self.infos)
+        rec = next(r for r in year["riders"] if r["id"] == "rider/a")
+        self.assertEqual(rec["bibNumber"], 110,
+                         "the bib should be the one from the April race, not "
+                         "whichever row SQLite happened to return first")
+
+    def test_the_race_order_it_depends_on_is_by_DATE(self):
+        """Guards the assumption underneath: stage 1 of the season is the
+        earliest race, not the lowest stage_id."""
+        year = self.build(2022, self.infos)
+        self.assertEqual([s["stage_label"] for s in year["stages"]],
+                         ["Early Race", "Late Race"])
+
+    def test_the_team_is_taken_the_same_way(self):
+        """The team had the identical bug — 'keep the first non-null seen' over
+        an unordered result set — and moved on 181 riders when this was fixed.
+        Here only the LATE race records a team, so a correct implementation
+        still finds it while walking in calendar order."""
+        year = self.build(2022, self.infos)
+        rec = next(r for r in year["riders"] if r["id"] == "rider/a")
+        self.assertEqual(rec["team"], "Team X")
+
+    def test_a_rider_with_one_race_is_unaffected(self):
+        self.add_result(self.late, "rider/b", 9, bib=77)
+        year = self.build(2022, self.infos)
+        rec = next(r for r in year["riders"] if r["id"] == "rider/b")
+        self.assertEqual(rec["bibNumber"], 77)

@@ -141,7 +141,23 @@ def build_year(cur, race_set, year, short_of):
         out_stages.append(entry)
 
     by_rider = {}
-    for r in res["rows"]:
+    # CALENDAR ORDER, and it is not cosmetic. Two fields below are taken from
+    # whichever of a rider's rows is seen FIRST — the bib and the team — and the
+    # query that produced these rows has no ORDER BY, so SQLite returned them in
+    # whatever order the rowids happened to be in. Re-ingesting any race in the
+    # season shuffles those rowids, so both fields changed with no data change
+    # behind them and every gc_by_stage_*.json in the set churned.
+    #
+    # A stage race has one bib per rider per edition and none of this arises. An
+    # aggregate season is a dozen SEPARATE races: Mattia De Marchi rode 2022 as
+    # bib 110 at The Traka and 2399 at Unbound, and both are correct.
+    #
+    # Sorted, "first seen" means "the rider's first race of the season", which
+    # is stable and explicable. WHICH bib an aggregate season ought to show at
+    # all is still open — a season-level bib is lossy however it is picked — but
+    # a stable wrong answer beats an unstable one, and this stops the churn
+    # either way.
+    for r in sorted(res["rows"], key=lambda row: res["num"][row["stage_id"]]):
         n = res["num"][r["stage_id"]]
         rec = by_rider.setdefault(r["rider_id"], {
             "id": r["rider_id"], "name": r["full_name"],
