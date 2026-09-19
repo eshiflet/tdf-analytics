@@ -724,6 +724,67 @@ def check_gc_gap_monotonicity(c):
          f"can be named and bounded and the rest that need the whole "
          f"classification. Worst: {examples}")
 
+def check_gc_gap_zero_filler(c):
+    """A stored GC gap of 0 that sits below a positive one cannot be a real tie.
+
+    PCS writes "+0:00" in a cell it has no value for, and the ingest stores that
+    as a zero rather than a NULL. In the finish-time column this repo has known
+    about it for a while (see "Times that no race produced", 54 rows); the
+    general classification has the same hole and nothing looked.
+
+    THE TEST HAS TO BE COMPARATIVE, because most zeros are real: 7,735 riders
+    genuinely share the leader's time, and nulling them would destroy ordinary
+    data on a whole bunch finish. A zero is only impossible when some BETTER
+    rank in the same stage already carries a positive gap — a rider cannot be
+    level with the leader while the man ahead of him is a minute down. That is
+    1,095 rows in 30 stages, against those 7,735 legitimate ones.
+
+    Reported apart from the backwards-ladder warning even though 28 of its 30
+    stages appear there too, because this names a CAUSE where that names a
+    shape: these rows have one known origin and one honest repair. The other
+    two stages are invisible to the ladder check entirely.
+
+    A WARNING, and deliberately not repaired here. NULL is the honest value,
+    but the sibling defect in `finish_time_seconds` is recorded as Eric's
+    decision and this is the same call: a re-ingest would recreate every one of
+    them from the same "+0:00" cells unless ingest_race stops reading them as
+    zeros first.
+    """
+    rows = c.execute("""
+        SELECT s.stage_id, ra.name, re.year, s.stage_number, sr.gc_rank,
+               sr.gc_gap_seconds, sr.disqualified OR sr.time_adjusted
+          FROM stage_results sr
+          JOIN stages s ON s.stage_id = sr.stage_id
+          JOIN race_editions re ON re.edition_id = s.edition_id
+          JOIN races ra ON ra.race_id = re.race_id
+         WHERE sr.gc_rank IS NOT NULL AND sr.gc_gap_seconds IS NOT NULL
+         ORDER BY s.stage_id, sr.gc_rank""").fetchall()
+    SID, NAME, YEAR, STAGE, RANK, GAP, FLAG = range(7)
+    by_stage = defaultdict(list)
+    for r in rows:
+        by_stage[r[SID]].append(r)
+
+    per_edition = defaultdict(int)
+    stages = set()
+    for stage_rows in by_stage.values():
+        best = 0
+        for r in stage_rows:
+            if r[GAP] == 0 and r[RANK] > 1 and best > 0 and not r[FLAG]:
+                per_edition[(r[NAME], r[YEAR])] += 1
+                stages.add(r[SID])
+            best = max(best, r[GAP])
+    if not stages:
+        return
+    total = sum(per_edition.values())
+    worst = ", ".join(f"{n.split()[0]} {y} ({k})" for (n, y), k in
+                      sorted(per_edition.items(), key=lambda kv: -kv[1])[:4])
+    warn(f"{total} GC gap(s) across {len(stages)} stage(s) are stored as 0 while a "
+         f"better rank in the same stage is already behind — PCS's \"+0:00\" filler "
+         f"read as a real zero, not a tie with the leader. NULL is the honest value, "
+         f"but a re-ingest recreates them from the same cells, so this wants the "
+         f"ingest fixed first. Worst: {worst}")
+
+
 def check_field_definition(c):
     """Every off-road edition must say what field its ranks are over.
 
@@ -1099,6 +1160,7 @@ def main():
     check_field_definition(cur)
     check_gc_rank_gap_consistency(cur)
     check_gc_gap_monotonicity(cur)
+    check_gc_gap_zero_filler(cur)
     check_phantom_split_days(cur)
     check_intentional_gaps(cur)
     conn.close()

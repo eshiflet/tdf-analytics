@@ -1621,6 +1621,111 @@ class GcGapMonotonicityTest(DBCheckTest):
 # audit_gc_ladders — which ROW of a backwards ladder is the wrong one
 # ══════════════════════════════════════════════════════════════════════════
 
+class GcGapZeroFillerTest(DBCheckTest):
+    """PCS's "+0:00" filler, stored as a real zero instead of a NULL.
+
+    The test must be comparative, and that is the whole difficulty: 7,735 riders
+    in the archive genuinely share the leader's time, so a check that condemned
+    zeros would condemn ordinary bunch finishes. Only a zero sitting BELOW a
+    positive gap is impossible — a rider cannot be level with the leader while
+    the man ranked ahead of him is a minute down.
+    """
+
+    def assertWarningMatching(self, fragment):
+        joined = "\n".join(validate_db.warnings)
+        self.assertIn(fragment, joined, f"warnings were {validate_db.warnings}")
+
+    def setup_stage(self):
+        self.race(1, "Tour de France")
+        self.edition(1, 1, 1980)
+        self.stage(1, 1, 1)
+
+    def test_a_real_tie_on_the_leaders_time_is_not_reported(self):
+        """The case that makes a naive check useless: a bunch finish where the
+        whole front group is level with the leader."""
+        self.setup_stage()
+        for rank in range(1, 12):
+            self.result(1, f"rider/t{rank}", gc_rank=rank, gc_gap_seconds=0)
+        validate_db.check_gc_gap_zero_filler(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_a_zero_below_a_positive_gap_is_reported(self):
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
+        self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=60)
+        self.result(1, "rider/c", gc_rank=3, gc_gap_seconds=0)
+        validate_db.check_gc_gap_zero_filler(self.cur)
+        self.assertWarningMatching("filler")
+        self.assertWarningMatching("1 GC gap(s)")
+
+    def test_the_leader_is_never_the_fault(self):
+        """Rank 1 is zero by definition. Counting it would report every stage."""
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
+        self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=60)
+        validate_db.check_gc_gap_zero_filler(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_a_marked_or_disqualified_row_is_exempt(self):
+        """A rider awarded a time he did not race is legitimately out of step
+        with the ladder, so a zero on his row proves nothing."""
+        for column in ("time_adjusted", "disqualified"):
+            with self.subTest(column=column):
+                self.setUp()
+                self.setup_stage()
+                self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
+                self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=60)
+                self.result(1, "rider/c", gc_rank=3, gc_gap_seconds=0, **{column: 1})
+                validate_db.check_gc_gap_zero_filler(self.cur)
+                self.assertEqual(validate_db.warnings, [])
+
+    def test_the_annulment_pair_at_rank_1_is_exempt(self):
+        """Why `gc_rank > 1` is load-bearing and not redundant with the
+        comparative test. PCS lists a stripped rider and the promoted one BOTH
+        at rank 1, the promoted one keeping the gap he had to the man ahead, so
+        a positive gap can already be in hand when the second rank-1 row
+        arrives. Without the rank test that zero reads as filler. Five groups in
+        the archive have this shape and only four carry a disqualified flag, so
+        the flag alone does not cover it."""
+        self.setup_stage()
+        self.result(1, "rider/promoted", gc_rank=1, gc_gap_seconds=370)
+        self.result(1, "rider/stripped", gc_rank=1, gc_gap_seconds=0)
+        self.result(1, "rider/third", gc_rank=2, gc_gap_seconds=400)
+        validate_db.check_gc_gap_zero_filler(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_stages_are_judged_separately(self):
+        """A positive gap on one stage says nothing about a zero on another."""
+        self.setup_stage()
+        self.stage(2, 1, 2)
+        self.result(1, "rider/a", gc_rank=2, gc_gap_seconds=60)
+        self.result(2, "rider/b", gc_rank=1, gc_gap_seconds=0)
+        self.result(2, "rider/c", gc_rank=2, gc_gap_seconds=0)
+        validate_db.check_gc_gap_zero_filler(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_a_NULL_gap_is_not_a_zero(self):
+        """The honest value this defect should have had in the first place must
+        not be reported as the defect."""
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
+        self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=60)
+        self.result(1, "rider/c", gc_rank=3, gc_gap_seconds=None)
+        validate_db.check_gc_gap_zero_filler(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_it_is_a_warning_and_never_an_error(self):
+        """A re-ingest recreates every one from the same cells, so the ingest
+        has to change before the data can — Eric's call, like its sibling in
+        finish_time_seconds."""
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=1, gc_gap_seconds=0)
+        self.result(1, "rider/b", gc_rank=2, gc_gap_seconds=60)
+        self.result(1, "rider/c", gc_rank=3, gc_gap_seconds=0)
+        validate_db.check_gc_gap_zero_filler(self.cur)
+        self.assertNoErrors()
+
+
 class GcLadderTriageTest(unittest.TestCase):
     """validate_db says a ladder runs backwards; this says which row to check.
 
