@@ -2261,3 +2261,62 @@ class FixStageOneGcTest(unittest.TestCase):
         which is a real answer, and None is "there is nothing to read", which
         must not be treated as one."""
         self.assertIsNone(fix_stage1_gc.published_gc("Vuelta a España", 1990))
+
+class TestCorruptRiderNames(DBCheckTest):
+    """validate_db.check_corrupt_rider_names — mojibake, NOT PCS's placeholder.
+
+    The whole value of this check is the line it draws. A `?` standing alone
+    after a surname is an honest record that no first name was published;
+    a `?` between two letters is a character that did not survive the trip.
+    Reporting the first kind would bury the second under 16 rows that are
+    working as intended, which is how a real defect stays invisible.
+    """
+
+    def add(self, rider_id, full_name):
+        self.cur.execute("INSERT INTO riders (rider_id,full_name) VALUES (?,?)",
+                         (rider_id, full_name))
+
+    def run_check(self):
+        self.conn.commit()
+        validate_db.check_corrupt_rider_names(self.cur)
+        return validate_db.warnings
+
+    def test_mojibake_inside_a_word_is_reported(self):
+        self.add("rider/s-ren-nissen", "S?ren Nissen")
+        self.add("rider/vojt-ch-marvan", "Vojt?ch Marvan")
+        w = self.run_check()
+        self.assertEqual(len(w), 1)
+        self.assertIn("2 rider name(s)", w[0])
+        self.assertIn("s-ren-nissen", w[0])
+
+    def test_the_placeholder_for_an_unrecorded_first_name_is_not(self):
+        """The 16 real ones, in all four shapes PCS uses."""
+        for rid, name in [("rider/pujol", "Pujol ?"),
+                          ("rider/belli", "Belli ??"),
+                          ("rider/bel-lecrenier", "Lecrenier ???"),
+                          ("rider/fra-calmel", "Calmel ."),
+                          ("rider/.-van-muyten", "Van Muyten .")]:
+            self.add(rid, name)
+        self.assertEqual(self.run_check(), [])
+
+    def test_an_ordinary_archive_is_silent(self):
+        self.add("rider/eddy-merckx", "Merckx Eddy")
+        self.add("rider/andre-meuwissen", "Meuwissen André")
+        self.assertEqual(self.run_check(), [])
+
+    def test_it_proves_the_id_was_minted_from_the_corruption(self):
+        """A hyphen is not evidence — every two-word name has one. The claim is
+        that slugify(name) IS the id, which holds for `S?ren Nissen` because
+        `?` is not [a-z0-9] and becomes a separator, and fails for a corrupt
+        name whose id came from somewhere else."""
+        self.add("rider/s-ren-nissen", "S?ren Nissen")          # minted from it
+        self.add("rider/soren-nissen-2", "S?ren Nissen")        # id from elsewhere
+        w = self.run_check()
+        self.assertIn("2 rider name(s)", w[0])
+        self.assertIn("1 had an id minted", w[0])
+
+    def test_a_question_mark_touching_one_side_still_counts(self):
+        """"Marvan?" or "?ren" — a lost letter at a word's edge is the same
+        defect, and only a both-sides test would miss it."""
+        self.add("rider/a", "?ren Nissen")
+        self.assertIn("1 rider name(s)", self.run_check()[0])

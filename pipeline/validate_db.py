@@ -29,6 +29,7 @@ import argparse
 import bisect
 import json
 import os
+import re
 import sqlite3
 import sys
 from collections import defaultdict
@@ -211,6 +212,55 @@ def check_dangling_alias_canonicals(c):
          f"nothing. Either the canonical was deleted or it was never created. Add a "
          f"`dormant` key explaining why if that is expected. "
          + ", ".join(f"{a} -> {entries[a]['canonical']}" for a in missing[:3]))
+
+
+def check_corrupt_rider_names(c):
+    """A `?` INSIDE a word is mojibake — a letter that did not survive the trip.
+
+    Not to be confused with PCS's placeholder for a first name nobody recorded,
+    which is a `?`, `??`, `???` or `.` standing ALONE after a surname —
+    "Pujol ?", "Van Muyten ." — and is an honest record of an unknown. 16
+    riders carry one, the frontend stops rendering it (see displayName()), and
+    they are deliberately NOT reported here.
+
+    The two that are: `S?ren Nissen` and `Vojt?ch Marvan`. Both are upstream —
+    the raw Athlinks response already says `S?ren` — and both had their
+    rider_id MINTED from the corrupt string, so this also names the ids. Left
+    unrepaired on purpose: `S?ren` could be `Søren` or `Sören`, no source
+    states which, and the archive's second `soren-nissen` is very likely the
+    same man but `racerId` is 0 on every raw record, so a merge would be
+    inference. See ai-context.md, "Pujol ?" is not a man's name.
+
+    A count ABOVE the two means a new scrape brought in more; read the raw file
+    before touching the name, because the corruption is usually already there.
+    """
+    rows = c.execute(
+        """SELECT rider_id, full_name FROM riders
+            WHERE full_name GLOB '*[A-Za-z]?[A-Za-z]*'
+              AND full_name LIKE '%?%'
+            ORDER BY rider_id"""
+    ).fetchall()
+    # GLOB's `?` is a single-character wildcard, so the pattern above only
+    # narrows to "some character between two letters" — every name matches it.
+    # The literal test is done in Python, where `?` is just a character.
+    bad = [(rid, name) for rid, name in rows
+           if re.search(r"[^\W\d_]\?|\?[^\W\d_]", name)]
+    if not bad:
+        return
+    # PROVE the id came from the corrupt name rather than guessing from its
+    # shape: link_gravel_riders.slugify() is what minted it, and "S?ren Nissen"
+    # runs through it to exactly "s-ren-nissen" because `?` is not [a-z0-9] and
+    # becomes a separator. A merely hyphenated id proves nothing — every
+    # two-word name has one.
+    from link_gravel_riders import slugify
+    minted = [rid for rid, name in bad
+              if slugify(name) == rid.removeprefix("rider/")]
+    warn(f"{len(bad)} rider name(s) hold a '?' inside a word, which is mojibake "
+         f"rather than PCS's placeholder for an unrecorded first name. "
+         f"{len(minted)} had an id minted from the corrupt string. The raw "
+         f"scrape usually holds the same corruption — check it before renaming, "
+         f"and see ai-context.md for why these two are not repaired offline. "
+         + ", ".join(f"{rid} ({name!r})" for rid, name in bad[:4]))
 
 
 def check_orphan_riders(c):
@@ -1167,6 +1217,7 @@ def main():
         return 0
 
     check_referential(cur)
+    check_corrupt_rider_names(cur)
     check_provenance(cur)
     check_patched_values(cur)
     check_editions(cur, races)

@@ -185,7 +185,17 @@ response, already says `"S?ren Nissen"` — our parser did not break it.
   route, and it is Eric's call).
 - Renaming picks a letter no source states. [[feedback_no_fabricated_data]].
 
-Recorded rather than repaired; see the validator note below.
+`validate_db.check_corrupt_rider_names()` reports them, so they stay a standing
+worklist item rather than something someone noticed once. **It draws the line
+deliberately**: a `?` between two letters is reported, a `?`, `??`, `???` or `.`
+standing alone after a surname is not. Reporting both would bury two real
+defects under 16 rows that are working as intended. It also PROVES the minted
+id rather than inferring it from the shape — `slugify("S?ren Nissen")` is
+literally `s-ren-nissen` — because a hyphen is not evidence; every two-word
+name has one. Five tests, and both mutants (report every `?`; require a letter
+on both sides) fail the check that exists to catch them.
+
+`validate_db` is now **0 errors / 12 warnings**, up from 11 by this one.
 
 ## Every rider shipped his name twice (2026-09-19)
 
@@ -6176,7 +6186,7 @@ python3 validate_gc.py              # all years with BRI data (1960–2005)
 python3 validate_gc.py 1982 1986   # specific years
 python3 validate_gc.py --summary   # one line per year
 
-# Unit tests — 578 as of 2026-09-16
+# Unit tests — 769 as of 2026-09-19
 python3 -m unittest discover -p "test_*.py"
 
 # Exported-JSON checks (run after any export). 470 files, 0 errors and
@@ -6184,11 +6194,15 @@ python3 -m unittest discover -p "test_*.py"
 # the 2026 Vuelta) — compare the COUNT against that baseline rather than
 # expecting zero.
 python3 validate_exports.py
-python3 validate_db.py               # 0 errors, 9 warnings expected (2026-09-14)
+python3 validate_db.py               # 0 errors, 12 warnings expected (2026-09-19)
                                      # Warnings are a standing worklist, not noise —
                                      # read them. Two were added 2026-09-11 and name
                                      # 4,310 rows that are still wrong; see
-                                     # "Times that no race produced" below.
+                                     # "Times that no race produced" below. The
+                                     # count is the baseline to compare against,
+                                     # so a check that ADDS a warning updates it
+                                     # in its own commit — it read 9 for five days
+                                     # after two checks had already taken it to 11.
 
 # Cross-race rider membership — the `x` bitmask the rider detail page uses to
 # decide which indexes it can skip. The exporters re-stamp it themselves; this
