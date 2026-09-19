@@ -1,16 +1,16 @@
 {
   "entry:main.css": 4143,
-  "entry:main.js": 59363,
+  "entry:main.js": 59359,
   "other": 1809,
   "riders_index:classics": 523015,
   "riders_index:giro": 158589,
   "riders_index:gravel": 110518,
   "riders_index:tour": 179199,
   "riders_index:vuelta": 145321,
-  "total:assets": 10812529,
+  "total:assets": 10815078,
   "years:classics": 2366332,
-  "years:giro": 2089248,
+  "years:giro": 2089304,
   "years:gravel": 296272,
-  "years:tour": 3106723,
+  "years:tour": 3109220,
   "years:vuelta": 1771997
 }

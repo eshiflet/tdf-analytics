@@ -135,6 +135,74 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## 718 GC gaps filled from pages already on disk (2026-09-19)
+
+`backfill_gc_gaps.py` was written but never run. It is offline, reads only
+`<race>_scrapes/<year>/gc_pages/`, and **fills NULLs only** — it refuses to
+overwrite a stored value, which is what makes it safe: every write lands where
+there was nothing, so nothing hand-researched can be destroyed.
+
+**718 rows across 44 stages**, almost all pre-1931: Tour 1923 (300), 1903 (71),
+1919 (49), 1914 (42), 1924 (35), and eleven more Tour years, plus Giro 1924
+(12) and 1914 (3).
+
+**Checked three ways before applying.** The dry-run table first; then an
+INDEPENDENT parse of the 1923 pages that did not go through `gc_source` at all,
+which agreed on all 300 fills **and found that the 620 rows already holding a
+value all match the page, with zero disagreements**; then a full-column diff of
+every one of the 790,373 `stage_results` rows against a pre-apply snapshot.
+That diff is the real evidence: **718 cells changed, all of them
+`gc_gap_seconds`, all NULL→value, 0 overwrites**, no row added or removed, no
+other table touched, +44 provenance rows.
+
+### The export changed 330 totals too, and that is the point
+
+`export_gc.py` resolves `totalTimeSeconds` in tiers: winner time + the rider's
+gap at the last stage, falling back to a SUM of per-stage finish times "often
+incomplete for pre-1960 non-top-10 riders". 330 riders had no gap at the final
+stage and were therefore showing the incomplete sum. They now resolve on the
+accurate tier. Arithmetic, on the Giro 1924 winner's 517,417s:
+
+| rider | was (partial sum) | now (winner + gap) |
+|---|---|---|
+| Scrivanti | 358,244 | 517,417 + 62,367 = **579,784** |
+| Montanari | 229,442 | 517,417 + 66,644 = **584,061** |
+| Garino | 269,450 | 517,417 + 75,082 = **592,499** |
+
+Montanari's old figure was **4 days short**. This is the same defect shape as
+the 74 seasons that showed a partial elevation sum as a total — a partial
+presented as a whole — and it was found only by diffing the exported JSON by
+parsed CONTENT ([[feedback_scoped_run_may_rewrite_whole_file]]). A line diff
+would have shown 330 changed numbers and no reason to look twice.
+
+### One new warning, and it is a true one
+
+`check_gc_rank_gap_consistency` went **32 -> 33**. The new row is Tour 1919
+st15 rank 8, where Duboc and Van Daele are BOTH stored at rank 8 — and before
+the fill both held a NULL gap, so the check had nothing to compare and said
+nothing. **The fill did not create the defect, it made it visible.** The stored
+PCS page is itself the source of it:
+
+```
+7   Lucotti      16:01:12
+8   Duboc        16:01:12     <- same time as rank 7
+8   Van Daele    18:23:02     <- same rank as Duboc
+```
+
+Backwards ladders stayed at **54** — the fills introduced none.
+
+**Not applied, and deliberately:** 4 rows whose stored value DISAGREES with the
+page, which are two transposed PAIRS (Tour 1926 st17 Parmentier/Dejonghe, Tour
+1957 st24 Nencini/Defilippis — each pair holds the other's number). Choosing
+between us and PCS there is a different job with a different risk.
+
+**A trap worth naming:** `check-payload.mjs` reported `other 1.8 KB -> 182.8 KB
+(+10,249%)` and failed. That was a stale `build/` accumulating hashed assets
+across the session's repeated builds, not a regression — `rm -rf build` and it
+passes at +2.4 KB. Clear the build directory before believing a payload number,
+the same way [[feedback_verify_what_you_claim_to_have_verified]] says to clear
+`__pycache__`.
+
 ## The chart's end labels were a smear, and had always been clipped (2026-09-19)
 
 The bump chart writes each rider's surname at the end of his line, at his
