@@ -1364,3 +1364,40 @@ class TestAiContextHeadlineCounts(unittest.TestCase):
                        f"reads; re-anchor the test or restore the sentence")
                 self.assertEqual(int(m.group(1).replace(",", "")), n,
                                  f"{label} is {n} in the database")
+
+    def test_the_disqualification_sweep_counts_are_current(self):
+        """The sweep sentence restates three edition counts and its own totals.
+
+        Every one of them had drifted by 2026-09-19: it said 80 Vuelta editions
+        against 81 and 67 riders against 69, and nothing noticed because the
+        sentence is prose. The edition counts appear here a SECOND time, which
+        is exactly how two statements of one fact come apart — so they are
+        checked where they are written, not only in the headline.
+        """
+        import re
+        conn = self.db()
+        m = re.search(
+            r"across all ([\d,]+) Tour, ([\d,]+) Giro and ([\d,]+) Vuelta editions: "
+            r"\*\*([\d,]+) results, ([\d,]+) riders\*\*", self.doc)
+        self.assertIsNotNone(
+            m, "ai-context.md no longer states the disqualification sweep's "
+               "coverage in the shape this reads")
+        tour, giro, vuelta, results, riders = (
+            int(g.replace(",", "")) for g in m.groups())
+
+        for race, stated in (("Tour de France", tour), ("Giro d'Italia", giro),
+                             ("Vuelta a España", vuelta)):
+            n = conn.execute(
+                """SELECT COUNT(*) FROM race_editions e JOIN races r USING(race_id)
+                    WHERE r.name = ?""", (race,)).fetchone()[0]
+            with self.subTest(race=race):
+                self.assertEqual(stated, n, f"{race} has {n} editions")
+        # The totals are deliberately across ALL races, not just the three the
+        # sentence names: Clasica de San Sebastian holds the 1,487th row, and
+        # counting only the Grand Tours would report 1,486.
+        self.assertEqual(results, conn.execute(
+            "SELECT COUNT(*) FROM stage_results WHERE disqualified=1").fetchone()[0],
+            "the flagged-result total")
+        self.assertEqual(riders, conn.execute(
+            "SELECT COUNT(DISTINCT rider_id) FROM stage_results WHERE disqualified=1"
+        ).fetchone()[0], "the distinct flagged-rider total")
