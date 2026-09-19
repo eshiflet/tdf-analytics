@@ -29,9 +29,13 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+from unittest import mock
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+DATA_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "..", "cycling-app", "src", "data")
 
 import export_all_races_summary as EARS
 import export_gc
@@ -846,3 +850,88 @@ class TestCrossRaceMembership(unittest.TestCase):
         for module in (ERI, race_set_export):
             self.assertIn("stamp_cross_race(quiet=True)", inspect.getsource(module),
                           f"{module.__name__} no longer re-stamps cross-race membership")
+
+
+class TestMergedRiderRedirectMap(unittest.TestCase):
+    """The map that keeps a link to a merged-away rider working.
+
+    Merging deletes a rider id, and every link ever made to it then lands on
+    "No rider matches this link." — a bookmark, a shared URL, a search result.
+    142 ids have been absorbed. The bug report that started the 2026-09-18 merge
+    pass was itself a link to `rider/torbj-r`, and that pass deleted it, so the
+    reporter's own URL broke as a result of reporting the problem.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import link_rider_race_sets
+        cls.mod = link_rider_race_sets
+
+    def test_it_only_names_canonicals_that_actually_exist(self):
+        """A redirect to a rider no index holds sends one dead page to another,
+        which is worse than the honest message. `jorge-padrones` and
+        `damia-palafoix` are exactly that: their canonicals are Traka finishers
+        below FIELD_CAP and appear in no export."""
+        indexes = {"gravel": {"riders": {"real-rider": {}}}}
+        aliases = {"rider/absorbed": "rider/real-rider",
+                   "rider/orphaned": "rider/nobody-has-this"}
+        with mock.patch.object(self.mod, "load_rider_aliases", lambda: aliases):
+            got = self.mod.build_alias_map(indexes)
+        self.assertEqual(got, {"absorbed": "real-rider"})
+
+    def test_slugs_are_stored_without_the_rider_prefix(self):
+        """riders_index.json keys are bare slugs and the URL hash carries a bare
+        slug; storing "rider/x" would match neither."""
+        indexes = {"tour": {"riders": {"canon": {}}}}
+        with mock.patch.object(self.mod, "load_rider_aliases",
+                               lambda: {"rider/old": "rider/canon"}):
+            got = self.mod.build_alias_map(indexes)
+        self.assertEqual(list(got.items()), [("old", "canon")])
+
+    def test_a_canonical_in_ANY_index_counts(self):
+        """Aliases are global: a road rider's canonical lives in the tour index
+        while the absorbed id may have been minted by the gravel linker."""
+        indexes = {"tour": {"riders": {"a": {}}}, "gravel": {"riders": {"b": {}}}}
+        with mock.patch.object(self.mod, "load_rider_aliases",
+                               lambda: {"rider/x": "rider/b"}):
+            self.assertEqual(self.mod.build_alias_map(indexes), {"x": "b"})
+
+    def test_no_entry_points_at_another_entry(self):
+        """The frontend follows ONE hop. A chain would make the destination
+        depend on iteration order — the same invariant rider_aliases.json holds
+        on the pipeline side, asserted here against the EXPORTED map because
+        that is what the browser reads."""
+        path = os.path.join(DATA_ROOT, "rider_aliases.json")
+        if not os.path.exists(path):
+            self.skipTest("no exported alias map")
+        with open(path, encoding="utf-8") as f:
+            exported = json.load(f)
+        for absorbed, canonical in exported.items():
+            self.assertNotIn(canonical, exported,
+                             f"{absorbed} -> {canonical}, but {canonical} is "
+                             "itself redirected")
+
+    def test_the_live_map_resolves_the_slug_from_the_bug_report(self):
+        path = os.path.join(DATA_ROOT, "rider_aliases.json")
+        if not os.path.exists(path):
+            self.skipTest("no exported alias map")
+        with open(path, encoding="utf-8") as f:
+            exported = json.load(f)
+        self.assertEqual(exported.get("torbj-r"), "torbjorn-andre-roed")
+
+    def test_every_target_is_a_rider_some_index_really_holds(self):
+        """The invariant build_alias_map() promises, checked against what is on
+        disk rather than against a fixture."""
+        path = os.path.join(DATA_ROOT, "rider_aliases.json")
+        if not os.path.exists(path):
+            self.skipTest("no exported alias map")
+        indexes = self.mod.load_indexes(DATA_ROOT)
+        if len(indexes) < 2:
+            self.skipTest("no built indexes")
+        known = set()
+        for idx in indexes.values():
+            known.update(idx.get("riders") or {})
+        with open(path, encoding="utf-8") as f:
+            exported = json.load(f)
+        missing = sorted(t for t in exported.values() if t not in known)
+        self.assertEqual(missing, [], "redirect target(s) in no index")

@@ -55,8 +55,11 @@ import json
 import os
 import sys
 
+from race_common import load_rider_aliases
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_ROOT = os.path.join(HERE, "..", "cycling-app", "src", "data")
+ALIAS_MAP_NAME = "rider_aliases.json"
 
 
 def load_indexes(data_root=None):
@@ -120,6 +123,60 @@ def apply_membership(idx, xr, masks):
     return changed
 
 
+def build_alias_map(indexes):
+    """{absorbed slug: canonical slug}, for redirecting a link to a merged rider.
+
+    WHY THE FRONTEND NEEDS THIS. Merging two rider ids deletes one of them, and
+    every link anyone ever made to it — a bookmark, a shared URL, a search
+    result — then lands on "No rider matches this link." There are 141 absorbed
+    ids; the bug report that started the 2026-09-18 merge pass was itself sent
+    as a link to `rider/torbj-r`, which that pass deleted. The alias file lives
+    in the pipeline and the browser has never been able to see it.
+
+    ONLY entries whose canonical is actually in an index are exported. An alias
+    naming a rider no index holds would redirect one dead page to another, which
+    is worse than the message: at least the message is honest. Two entries are
+    exactly that today — `jorge-padrones` and `damia-palafoix`, whose canonicals
+    are Traka finishers below FIELD_CAP and exist in no export.
+
+    One hop is enough because an alias may never point at another alias; that is
+    an invariant with its own test (test_no_alias_points_at_another_alias), not
+    an assumption made here.
+    """
+    known = set()
+    for idx in indexes.values():
+        known.update(idx.get("riders") or {})
+    out = {}
+    for absorbed, canonical in load_rider_aliases().items():
+        target = canonical.removeprefix("rider/")
+        if target in known:
+            out[absorbed.removeprefix("rider/")] = target
+    return dict(sorted(out.items()))
+
+
+def write_alias_map(root, indexes, check_only=False):
+    """Write the redirect map beside the per-race directories. Returns
+    (path, changed) — or (path, False) when the bytes already match.
+
+    Written here rather than by an exporter because it is the only output that
+    is GLOBAL: every export_*.py takes one race and the alias map spans all of
+    them, the same reason the cross-race stamp lives in this script.
+    """
+    path = os.path.join(root, ALIAS_MAP_NAME)
+    body = json.dumps(build_alias_map(indexes), ensure_ascii=False,
+                      indent=1, sort_keys=True) + "\n"
+    try:
+        with open(path, encoding="utf-8") as f:
+            if f.read() == body:
+                return path, False
+    except OSError:
+        pass
+    if not check_only:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(body)
+    return path, True
+
+
 def stamp(data_root=None, check_only=False, quiet=False):
     """Returns (written, drifted) — paths rewritten, and paths that would be.
 
@@ -154,6 +211,21 @@ def stamp(data_root=None, check_only=False, quiet=False):
         written.append(path)
         print(f"  {slug:9s} stamped {len(masks):,}/{len(idx['riders']):,} cross-race "
               f"-> {os.path.getsize(path) / 1024:.0f} KB")
+
+    # Built from the indexes as they are ON DISK, so it names only riders the
+    # browser can actually reach. Tracked in `written`/`drifted` like any index,
+    # which is what makes validate_exports' staleness check cover it too.
+    alias_path, alias_changed = write_alias_map(root, indexes, check_only=check_only)
+    n_alias = len(build_alias_map(indexes))
+    if alias_changed:
+        drifted.append(alias_path)
+        if check_only:
+            print(f"  {ALIAS_MAP_NAME} STALE ({n_alias:,} redirects)")
+        else:
+            written.append(alias_path)
+            print(f"  {ALIAS_MAP_NAME} wrote {n_alias:,} merged-rider redirect(s)")
+    elif not quiet:
+        print(f"  {ALIAS_MAP_NAME} unchanged ({n_alias:,} redirects)")
     return written, drifted
 
 

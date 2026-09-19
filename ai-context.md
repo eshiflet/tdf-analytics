@@ -100,6 +100,44 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## A link to a merged rider now redirects (2026-09-19)
+
+Merging deletes a rider id, and every link ever made to it goes dead — a
+bookmark, a shared URL, a search result all land on **"No rider matches this
+link."** **142 ids have been absorbed.** The bug report that started the
+2026-09-18 merge pass was itself a link to `rider/torbj-r`, and that pass
+deleted it: the reporter's own URL stopped working *because* they reported it.
+
+`link_rider_race_sets.py` now also writes **`cycling-app/src/data/rider_aliases.json`**
+— `{absorbed slug: canonical slug}`, and **not the same file** as
+`pipeline/rider_aliases.json`, which holds the evidence for every merge. The
+pipeline file is the record; this one is the 1.8 KB lookup the browser reads.
+It is written by the linker rather than an exporter because it is the only
+GLOBAL output: every `export_*.py` takes one race and the alias map spans all
+five, the same reason the cross-race stamp lives there.
+
+- **Only canonicals that exist in an index are exported.** A redirect to a
+  rider no index holds would send one dead page to another, which is worse than
+  the honest message. Two entries are exactly that and stay out:
+  `jorge-padrones` and `damia-palafoix`, whose canonicals are Traka finishers
+  below `FIELD_CAP`. 144 aliases in, 142 redirects out.
+- **Fetched ONLY on a miss.** `riderAliases.ts` loads the file after the rider
+  lookup has already failed, so every link that still resolves costs nothing.
+  Measured on the PRODUCTION build: a valid rider triggers no request for it, a
+  dead slug triggers exactly one. Dev is not representative and neither is the
+  Performance API — Vite's `?url` import fires its own module request in dev
+  that the build inlines away, and `performance.getEntriesByType('resource')`
+  records neither request, which made a first attempt at this measurement report
+  a confident false negative.
+- **The redirect REPLACES the history entry** (`replaceHash()`), so Back does
+  not land on the dead slug and bounce forward again.
+- **One hop only.** An alias may never point at another alias — an invariant
+  with a test on the pipeline side and a second asserted against the EXPORTED
+  map, because that is what the browser actually reads.
+- **`validate_exports.py` errors when the map is stale.** A merge made without
+  re-running the linker would otherwise leave the redirect silently missing, and
+  a missing redirect is indistinguishable from a rider who never existed.
+
 ## Recent structural changes (July 2026) — read before assuming older patterns
 
 A cleanup + multi-race restructuring pass landed 2026-07-17. If you've seen older descriptions of this codebase, these supersede them:
@@ -2643,7 +2681,9 @@ tdf-analytics/
     │
     │   # Rider identity — read at INGEST, because a decision applied only to the DB is
     │   # undone by the next rebuild. See "Rider identity: four files outside the database"
-    ├── rider_aliases.json            # `aliases`: absorbed id -> canonical id, with the evidence for each.
+    ├── rider_aliases.json            # NOT the same file as cycling-app/src/data/rider_aliases.json, which is
+    │                                 #   the browser's redirect lookup exported FROM this one.
+    │                                 #   `aliases`: absorbed id -> canonical id, with the evidence for each.
     │                                 #   `separated`: pairs a human ruled DIFFERENT people, so the audit
     │                                 #   stops re-proposing them. 127 and 11 as of 2026-09-14
     ├── rider_splits.json             # The mirror: ONE id that is two people, keyed on

@@ -338,6 +338,18 @@ def main():
                     total_errors += 1
                     break
 
+            # The merged-rider redirect map, written by the same script. Stale
+            # means a link to a rider absorbed since the last run still dies on
+            # "No rider matches this link." — the exact failure the map exists
+            # to end, and one nothing else would report, because a missing
+            # redirect looks identical to a rider who never existed.
+            _, alias_stale = link_rider_race_sets.write_alias_map(
+                DATA_ROOT, indexes, check_only=True)
+            if alias_stale:
+                print("ERROR rider_aliases.json (merged-rider redirects) is stale. "
+                      "Run: python3 link_rider_race_sets.py")
+                total_errors += 1
+
     print(f"\n{checked} files checked: {total_errors} errors, {total_warnings} warnings")
     sys.exit(1 if total_errors else 0)
 

@@ -36,3 +36,19 @@ export function updateHash() {
   const h = computeHash();
   if (window.location.hash !== h) window.location.hash = h;
 }
+
+/** Like updateHash, but REPLACES the current history entry instead of pushing.
+ *
+ *  For a redirect, where the URL the user arrived on should not be somewhere
+ *  Back can return to: a link to a merged-away rider resolves to the canonical
+ *  one, and pushing would leave the dead slug in history for Back to land on —
+ *  where it would only redirect forward again, trapping Back entirely.
+ *
+ *  Runs even while applyingHash is set, because that is exactly when it is
+ *  needed: the redirect happens as a deep link is being applied. */
+export function replaceHash() {
+  const h = computeHash();
+  if (window.location.hash !== h) {
+    history.replaceState(null, "", `${location.pathname}${location.search}${h}`);
+  }
+}

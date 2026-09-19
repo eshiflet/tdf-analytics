@@ -8,7 +8,8 @@ import { RACE_IDS, RACES, RACE_SHORT_LABEL } from "../raceRegistry";
 import { d3 } from "../d3";
 import { state } from "../state";
 import { ridersChartEl, yearSelectEl, metricSelectEl, tooltipEl } from "../dom";
-import { updateHash } from "../hashRouting";
+import { replaceHash, updateHash } from "../hashRouting";
+import { canonicalRiderId } from "../riderAliases";
 import { positionTooltip, hideTooltip } from "../tooltip";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
 import type { RiderEntry } from "../riderIndexData";
@@ -672,7 +673,23 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
 
   // Only now can "no such rider" be distinguished from "not loaded yet".
   if (state.currentView !== "riders" || state.currentRiderId !== riderId) return;
-  if (byRace.size === 0) renderUnknownRider();
+  if (byRace.size !== 0) return;
+
+  // Before giving up: this slug may have been MERGED into another rider rather
+  // than never having existed. 142 ids have been absorbed that way, and every
+  // link to one is otherwise dead — including the bug report that prompted the
+  // merge pass, which was a link to `rider/torbj-r`.
+  const canonical = await canonicalRiderId(riderId);
+  // The fetch above is an await like any other: the user may have navigated on.
+  if (state.currentView !== "riders" || state.currentRiderId !== riderId) return;
+  if (canonical) {
+    await drawRiderDetail(canonical);
+    // AFTER the redraw, so computeHash() reads the new id off state. Replaces
+    // rather than pushes — see replaceHash().
+    if (state.currentRiderId === canonical) replaceHash();
+    return;
+  }
+  renderUnknownRider();
 }
 
 /** Every built index has been searched and none has heard of this slug. An
