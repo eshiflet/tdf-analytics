@@ -176,6 +176,40 @@ def check_referential(c):
         if n:
             err(f"{n} {label}")
     check_orphan_riders(c)
+    check_dangling_alias_canonicals(c)
+
+
+def check_dangling_alias_canonicals(c):
+    """An alias whose canonical has no `riders` row — a pointer to nothing.
+
+    rider_aliases.json is consulted at INGEST, so it outlives the rows it talks
+    about: a canonical can be deleted (the 826-orphan purge did exactly that) or
+    never created at all, and the entry still sits there naming it. Nothing
+    noticed until two were found by hand on 2026-09-18 while merging a different
+    rider. It is harmless while neither id can be minted, and a live defect the
+    moment one can — the absorbed rider would resolve to an id that does not
+    exist.
+
+    An entry may carry a `dormant` key explaining why its canonical is legitimately
+    absent; those are expected and stay quiet. Everything else warns. The two
+    dormant entries today are Traka 360 finishers at PCS ranks 128 and 143, below
+    the FIELD_CAP=100 that scrape_traka.py writes, so no code path can mint them.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rider_aliases.json")
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        entries = (json.load(f).get("aliases") or {})
+    live = {r[0] for r in c.execute("SELECT rider_id FROM riders")}
+    missing = sorted(alias for alias, e in entries.items()
+                     if e["canonical"] not in live and "dormant" not in e)
+    if not missing:
+        return
+    warn(f"{len(missing)} alias(es) in rider_aliases.json name a canonical with no "
+         f"`riders` row, so an ingest that mints the absorbed id would resolve it to "
+         f"nothing. Either the canonical was deleted or it was never created. Add a "
+         f"`dormant` key explaining why if that is expected. "
+         + ", ".join(f"{a} -> {entries[a]['canonical']}" for a in missing[:3]))
 
 
 def check_orphan_riders(c):
