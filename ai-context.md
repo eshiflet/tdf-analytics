@@ -87,13 +87,13 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - **The 5 editions a re-ingest cannot reach are fixed without one.** `fix_stage1_gc.py` applies the ingest's stage-1 rule to a single stage, so the archive is consistent: **149 rows**, 0 duplicated stage-1 GC ranks in all five. **The orphan guard was right to refuse them and `--allow-drop` would have been vandalism**: Vuelta 1941/1942/1968 number their stages by expanding PCS's split days while the scrape files are named for PCS's numbering, so Vuelta 1942 has **20 stages against 17 files** and `stage_15.json` (14 July) is our stage 18. Rebuilding it would have produced 17 stages and destroyed 62 result rows. Tour 1978 st13 is the Valence d'Agen strike stage (99 rows, held as `stage-12a`); Tour 1982 st5 is cancelled and holds nothing.
   **Vuelta 1968 GAINED 88 real GC positions** from `gc_standings` where it had invented ones; Tour 1978 and 1982 needed no change at all. **Verified by round trip**: restoring the 1996 Vuelta's stage 1 to its pre-fix state and running this reproduces the re-ingest's output on **180 of 180 rows**. That test is what caught the one real difference — the ingest keeps `gc_standings`' GAP even when its rank is `None`, and filtering those out disagreed on 100 rows.
 
-- **54 stages hold a GC ladder that runs backwards** (342 before PCS's time marker, 111 before the stage-1 fallback fix), reported by `validate_db.check_gc_gap_monotonicity()` and triaged by **`audit_gc_ladders.py`** (offline, read-only). The GC *is* the ranking of aggregate time, so a later rank stored closer to the leader is arithmetically impossible — Tour 1919 st3 has rank 23 at 30,667s and rank 24 at 1s. Found 2026-09-19 when the 241 tie-groups turned out to live in only 49 stages while 293 more were corrupt without anything colliding.
+- **53 stages hold a GC ladder that runs backwards** (342 before PCS's time marker, 111 before the stage-1 fallback fix), reported by `validate_db.check_gc_gap_monotonicity()` and triaged by **`audit_gc_ladders.py`** (offline, read-only). The GC *is* the ranking of aggregate time, so a later rank stored closer to the leader is arithmetically impossible — Tour 1919 st3 has rank 23 at 30,667s and rank 24 at 1s. Found 2026-09-19 when the 241 tie-groups turned out to live in only 49 stages while 293 more were corrupt without anything colliding.
   **The offline repair was tried and rejected, and the reason is the useful part.** *Rank is not recoverable from gap*: riders on equal aggregate time take DIFFERENT ranks, split by a tiebreak (sum of placings) we do not store — deriving rank from gap alone moves **71,806 rows, 18% of the archive**. Gap is not recoverable from rank for the same reason reversed. So the ladder proves a row is wrong without saying which value is right, and an offline "fix" would be fabrication.
-  What the ladder CAN do is name the row and bound it, which is the triage: **19 ONE ROW** (removing exactly one of the step's two rows makes the ladder monotone, so that row is the suspect and its true gap is bounded by its neighbours — `rider/lucien-didier`, Tour 1978 st8, stores 4s where the ladder needs 289-304s), **14 PAIR** (either row would explain it; the evidence does not choose), **21 LADDER** (several steps, or neither removal is enough — re-fetch the classification whole). **24 stages hold TWO interleaved classifications**, one with `gc_rank` copied from `stage_rank`: Tour 1987 st1 stores ranks 13-18 twice, once at a flat 23s and once at the real prologue gaps. That is a ladder to REMOVE, not a value to correct.
+  What the ladder CAN do is name the row and bound it, which is the triage: **18 ONE ROW** (removing exactly one of the step's two rows makes the ladder monotone, so that row is the suspect and its true gap is bounded by its neighbours — `rider/lucien-didier`, Tour 1978 st8, stores 4s where the ladder needs 289-304s), **14 PAIR** (either row would explain it; the evidence does not choose), **21 LADDER** (several steps, or neither removal is enough — re-fetch the classification whole). **24 stages hold TWO interleaved classifications**, one with `gc_rank` copied from `stage_rank`: Tour 1987 st1 stores ranks 13-18 twice, once at a flat 23s and once at the real prologue gaps. That is a ladder to REMOVE, not a value to correct.
   Concentrated in 1970-1995 (246 of 342) and on **stage 1** (54). A hypothesis worth not repeating: 441 of the 617 backwards steps look like `mm:ss` parsed as seconds, which would have been one parser bug — but asking whether x60 also stays UNDER the next gap leaves 23, so it was an artifact of the one-sided test.
   **RESOLVED 2026-09-19: most of these are PCS's own and our values are right.** PCS prints an asterisk on a rider whose recorded time was **AWARDED rather than raced** — credited with a group's time after a crash inside the final kilometres, most often — while he keeps the place he actually finished in. Primož Roglič is **34th on the road at Vuelta 2022 st16 with a gap of 0**. His time then no longer places him where he stands, which is exactly this shape. Whole groups get it at once: 28 riders share one stage time on Tour 1996 st7.
   **IT IS NOT A RELEGATION**, which is what I called it for an hour and shipped in a column name. The reading came from a Penalties & Fines tab on the Giro 2024 st11 page naming Tim Merlier — but **Merlier carries no marker**, while four sprinters around him do. PCS does not publish what each mark is for, so the column records only that the mark is there, never a reason. The evidence it does give, stated in the one direction it actually holds: **all 332 backwards steps across every stored GC page sit on marked rows, and NONE of the 227,820 unmarked rows is out of order.** 385 of the 717 marked rows are in order, so the mark is **necessary for a backwards step, not sufficient** — which is exactly what an exemption needs. The first measurement said "100% against 0.00%" and was wrong: it carried a running MAXIMUM down the ladder, so one corrupt cell (Tour 1996 st21 rank 43 reads `743:02:43`) condemned all 86 rows below it. **Compare each row with the one directly above it, never with a maximum.**
-  **FIXED 2026-09-19.** `stage_results.time_adjusted` records it; `gc_source.py` reads the page (with the alignment gate); `backfill_time_adjusted.py` flagged **2,249 rows across 387 stages** from files already on disk; `ingest_race.py` sets the same flag from the same helper, so a rebuild recreates it; and both GC checks exempt a marked row. **342 -> 111 -> 71 -> 54**, with **19 ONE ROW, 14 PAIR, 21 LADDER** left. The app shows PCS's own asterisk beside the rider in the GC legend — deliberately NOT the strikethrough a disqualification gets, because nothing was taken away from him — carried to the frontend as `adj: [stage numbers]` on 768 riders in 79 editions. Verified: re-ingesting Giro 1984 into a copy reproduced all 21 flags with **0 rows changed, 0 lost, 0 new**, and the same re-ingest with the ingest change reverted dropped all 21. **NO RANK AND NO GAP WAS WRITTEN**, and the 72 re-exported data files differ from their predecessors by the added key and nothing else.
+  **FIXED 2026-09-19.** `stage_results.time_adjusted` records it; `gc_source.py` reads the page (with the alignment gate); `backfill_time_adjusted.py` flagged **2,249 rows across 387 stages** from files already on disk; `ingest_race.py` sets the same flag from the same helper, so a rebuild recreates it; and both GC checks exempt a marked row. **342 -> 111 -> 71 -> 54 -> 53**, with **18 ONE ROW, 14 PAIR, 21 LADDER** left (the 54th was Nibali's placeholder rank; see "A GC position of 1000"). The app shows PCS's own asterisk beside the rider in the GC legend — deliberately NOT the strikethrough a disqualification gets, because nothing was taken away from him — carried to the frontend as `adj: [stage numbers]` on 768 riders in 79 editions. Verified: re-ingesting Giro 1984 into a copy reproduced all 21 flags with **0 rows changed, 0 lost, 0 new**, and the same re-ingest with the ingest change reverted dropped all 21. **NO RANK AND NO GAP WAS WRITTEN**, and the 72 re-exported data files differ from their predecessors by the added key and nothing else.
   **All THREE artifact families are read** — the stage file's own rows, the verified `gc_pages` tables, and the stored `classification_scrapes` HTML. The HTML was refused for weeks because a mark could not be attributed to a table; `scrape_classifications.tab_blocks()` solves that, keying each table by the page's own nav, and it added **810 marks** (532 Giro, 278 Vuelta). **Only the STAGE and GC tabs are read**: marks fall in STAGE (226), YOUTH (112), GC (84) and TEAMS (8) and **never in POINTS or KOM**, whose columns are points — the clearest evidence available that the asterisk annotates a TIME. TEAMS is excluded because its time is a team's, YOUTH because it is the GC time filtered to young riders.
   **The HTML needs its own alignment gate and 167 of its 1,023 files fail it** — Giro 1935-1937 among them, the split-day expansion again. Third artifact family, third time the same trap: gate on the STAGE tab's own winner and row count against the stage file.
   Coverage is still a FLOOR: Roglič at Vuelta 2022 st16 stays unflagged — that year has no `gc_pages` file, his stage row carries a bare `+0:00`, and no HTML page is stored for it.
@@ -134,6 +134,49 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Social cards are ~1.8 MB committed** across 6 PNGs; `pngquant` would roughly halve them.~~ — **ALREADY DONE and this line was stale (corrected 2026-09-19).** `render-og-images.sh` has quantised every card since 2026-09-11; the six total **714 KB** (730,884 bytes), not 1.8 MB. The 1.8 MB figure is the pre-quantisation size the script's own comment quotes, read here as if it were current.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
+
+## A GC position of 1000, in a field of 198 (2026-09-19)
+
+Vuelta 2015 st2 is the stage Nibali was thrown off the race for holding a team
+car. PCS publishes `"1000"` in the GC-position column of his DSQ row, and the
+ingest stored it as a rank. **The only `gc_rank >= 500` in 790,373 rows**, and
+**the only literal `"1000"` in a rank column across 10,800 scrape files** — a
+placeholder, not a convention worth modelling. 339 of the other 344 DSQ rows
+store NULL.
+
+It was also one of the 54 backwards ladders, since rank 1000 sat 98s behind a
+leader that rank 194 was 1,763s behind. **54 -> 53.** One cell changed,
+`gc_rank 1000 -> NULL`, verified by full-column diff against a snapshot; status
+stays DSQ and the 98s gap stays.
+
+### Two wrong rules, before the right one
+
+This is the part worth keeping. The obvious test — **a position cannot exceed
+the field it is a position in** — sounds like arithmetic and is wrong:
+
+| rule | rows it flags | why it is wrong |
+|---|---|---|
+| `gc_rank > COUNT(*)` | **663** | `COUNT(*)` is what the stage's PAGE published, not the classification behind it. Vuelta 1988 st21 stores ten finishers and ranks one 113th — correctly. |
+| `gc_rank > 2 * COUNT(*)` | **9** | Still catches Vuelta 1980 st1 (ranks 107-110 of 53 stored rows) and 1989 st23 (139-142 of 69). |
+| **top rank > 2x the next, on a classification of 50+** | **1** | The shape of the RANK SET, which does not depend on how much of the page we kept. |
+
+The archive's next-worst top-rank jump is **75** (Giro 1969 st2, 95 after 20) on
+a 21-rider remnant, against Nibali's **806**. Both a ratio test and a bare-gap
+test would have caught that good row; the size floor is what excludes it.
+
+**The ingest fix had to be a POST-PASS for the same reason.** No row-local test
+is sound, because the row loop does not know the classification yet. It now
+reads the stage's rank set back after inserting it, applies the same rule, and
+prints what it dropped.
+
+**Proved against a real re-ingest, not asserted.** Vuelta 2015 was re-ingested
+into a copy of the pre-fix database — the copy that still held 1000 — and the
+run printed `Stage 2: dropped GC position 1000 (next is 194 of 195)` and left
+NULL behind. A re-scrape will not undo this repair
+([[project_name_swap_repair]] is the cautionary case).
+
+**Six tests, three mutants, all caught** — and mutant 1 IS the first wrong rule
+above, failing exactly the tests that stand for the 663 false positives.
 
 ## 718 GC gaps filled from pages already on disk (2026-09-19)
 

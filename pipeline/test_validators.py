@@ -2320,3 +2320,71 @@ class TestCorruptRiderNames(DBCheckTest):
         defect, and only a both-sides test would miss it."""
         self.add("rider/a", "?ren Nissen")
         self.assertIn("1 rider name(s)", self.run_check()[0])
+
+
+class TestGcRankBeyondField(DBCheckTest):
+    """validate_db.check_gc_rank_beyond_field — a position that is not one.
+
+    Every assertion here exists because a SIMPLER rule was tried first and was
+    wrong. `gc_rank > COUNT(*)` flagged 663 legitimate rows; `> 2 * COUNT(*)`
+    still flagged eight. The row count is what a stage's page published, not
+    the size of the classification behind it, and an old stage that stores ten
+    finishers out of a 130-rider race ranks them correctly at 113th.
+    """
+
+    def stage(self, stage_id, ranks):
+        self.cur.execute("INSERT OR IGNORE INTO races (race_id,name,country,race_type) "
+                         "VALUES (1,'Vuelta a España','Spain','stage_race')")
+        self.cur.execute("INSERT OR IGNORE INTO race_editions (edition_id,race_id,year,edition_name) "
+                         "VALUES (1,1,2015,'2015')")
+        self.cur.execute("INSERT INTO stages (stage_id,edition_id,stage_number) VALUES (?,1,?)",
+                         (stage_id, stage_id))
+        for i, rk in enumerate(ranks):
+            rid = f"rider/r{stage_id}-{i}"
+            self.cur.execute("INSERT OR IGNORE INTO riders (rider_id,full_name) VALUES (?,?)",
+                             (rid, f"R{i}"))
+            self.cur.execute("INSERT INTO stage_results (stage_id,rider_id,gc_rank) VALUES (?,?,?)",
+                             (stage_id, rid, rk))
+
+    def run_check(self):
+        self.conn.commit()
+        validate_db.check_gc_rank_beyond_field(self.cur)
+        return validate_db.warnings
+
+    def test_the_placeholder_is_reported(self):
+        """Nibali's row: 1000 on top of a dense 1..194 classification."""
+        self.stage(1, list(range(1, 195)) + [1000])
+        w = self.run_check()
+        self.assertEqual(len(w), 1)
+        self.assertIn("rank 1000", w[0])
+
+    def test_a_full_classification_is_silent(self):
+        self.stage(1, list(range(1, 195)))
+        self.assertEqual(self.run_check(), [])
+
+    def test_a_top_ten_remnant_ranked_far_down_is_silent(self):
+        """Vuelta 1988 st21 — ten stored finishers, one of them 113th of a much
+        bigger field. The rank is right; the ROW COUNT is the partial thing.
+        This is the case that `gc_rank > COUNT(*)` got wrong 663 times."""
+        self.stage(1, [4, 17, 33, 51, 76, 78, 88, 92, 98, 113])
+        self.assertEqual(self.run_check(), [])
+
+    def test_a_large_but_connected_top_rank_is_silent(self):
+        """Vuelta 1980 st1: 53 rows, top rank 110. More than twice the row
+        count, so `> 2 * COUNT(*)` flagged it — but it sits right beside its
+        neighbours, so the rank set says it is a real position."""
+        self.stage(1, list(range(1, 50)) + [107, 108, 109, 110])
+        self.assertEqual(self.run_check(), [])
+
+    def test_the_size_floor_holds(self):
+        """Giro 1969 st2 — top rank 95 next 20, the archive's next-worst jump.
+        A 21-rider remnant, so the classification is not substantial enough for
+        the doubling test to mean anything."""
+        self.stage(1, list(range(1, 21)) + [95])
+        self.assertEqual(self.run_check(), [])
+
+    def test_exactly_double_is_not_reported(self):
+        """The rule is strictly MORE than twice, so the boundary is inclusive
+        of the legitimate side."""
+        self.stage(1, list(range(1, 60)) + [118])
+        self.assertEqual(self.run_check(), [])

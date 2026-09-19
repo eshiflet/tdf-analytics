@@ -80,6 +80,13 @@ RIDER_ALIASES = load_rider_aliases()
 # with nothing in between. See "Times that no race produced".
 ITT_TIE_LIMIT = 20
 
+# Smallest stored classification in which a top GC rank far above the rest is
+# read as a placeholder rather than as a real position. Below this, a stage is
+# usually a top-ten remnant of a much larger classification, where a rank many
+# times the stored row count is perfectly correct — Vuelta 1988 st21 stores ten
+# finishers and ranks one of them 113th. See the post-pass in ingest_stage().
+GC_RANK_MIN_FIELD = 50
+
 
 def _stage_num(path: str) -> int:
     return int(re.search(r"stage_(\d+)\.json$", path).group(1))
@@ -780,6 +787,42 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                     )
                 except Exception:
                     pass  # rider not in riders table; skip
+
+        # A "GC position" that is not a position in this classification.
+        #
+        # PCS published "1000" for Nibali on Vuelta 2015 st2 — the stage he was
+        # thrown off the race — and the ingest stored it as a rank, putting one
+        # rider in 1000th place in a 198-rider field and making that stage read
+        # as a backwards GC ladder. It is the only gc_rank >= 500 in 790,373
+        # rows and the only literal "1000" in a rank column across 10,800
+        # scrape files, so it is a placeholder, not a convention to model.
+        #
+        # This runs as a post-pass because NO row-local test is sound. The
+        # obvious one — rank > len(rows) — flags 663 legitimate rows, because
+        # `rows` is what this stage's page happened to publish and the
+        # classification behind it is often larger: Vuelta 1988 st21 stores ten
+        # finishers and ranks one of them 113th, correctly. Even `> 2 *
+        # len(rows)` still catches eight good rows (Vuelta 1980 st1, 1989 st23).
+        # What is sound is the shape of the RANK SET once the stage is in:
+        # require a substantial classification, then reject a top rank that
+        # more than doubles the next one below it. Across the whole archive
+        # that pair matches exactly one row — this one — against a next-worst
+        # jump of 75. validate_db.check_gc_rank_beyond_field() asserts the same
+        # thing afterwards, so a recurrence is reported rather than silent.
+        ranked = [r[0] for r in cur.execute(
+            "SELECT gc_rank FROM stage_results WHERE stage_id = ? "
+            "AND gc_rank IS NOT NULL ORDER BY gc_rank", (stage_id,))]
+        if len(ranked) >= GC_RANK_MIN_FIELD and ranked[-1] > 2 * ranked[-2]:
+            cur.execute(
+                "UPDATE stage_results SET gc_rank = NULL "
+                "WHERE stage_id = ? AND gc_rank = ?", (stage_id, ranked[-1]))
+            record_provenance(
+                cur, "stages", stage_id, "results", SOURCE_PCS,
+                source_ref=f"{ref} — dropped GC position {ranked[-1]}, which is "
+                           f"more than twice the next ({ranked[-2]}) in a "
+                           f"{len(ranked)}-rider classification")
+            print(f"  Stage {n}: dropped GC position {ranked[-1]} "
+                  f"(next is {ranked[-2]} of {len(ranked)})")
 
         print(f"  Stage {n}: {len(rows)} rows inserted")
 

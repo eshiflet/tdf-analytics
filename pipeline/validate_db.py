@@ -214,6 +214,55 @@ def check_dangling_alias_canonicals(c):
          + ", ".join(f"{a} -> {entries[a]['canonical']}" for a in missing[:3]))
 
 
+def check_gc_rank_beyond_field(c):
+    """A "GC position" that is not a position in its own classification.
+
+    PCS published "1000" for Nibali on Vuelta 2015 st2 — the stage he was
+    thrown off the race — and the ingest stored it as a rank, putting one rider
+    1000th in a 198-rider field and making that stage read as a backwards GC
+    ladder. `ingest_race.py` drops it in a post-pass now; this says so if one
+    ever arrives by another route.
+
+    **The obvious test is wrong and was tried first.** `gc_rank > COUNT(*)`
+    flags 663 rows, because the row count is what a stage's PAGE published and
+    the classification behind it is often bigger: Vuelta 1988 st21 stores ten
+    finishers and ranks one of them 113th, correctly. `> 2 * COUNT(*)` still
+    catches eight good rows. What holds is the shape of the rank set — a
+    substantial classification, then a top rank that more than doubles the one
+    below it. Archive-wide that matches exactly one row, against a next-worst
+    jump of 75 (Giro 1969 st2, on a 21-rider remnant that the size floor
+    excludes anyway).
+    """
+    rows = c.execute(
+        """SELECT ra.name, e.year, s.stage_number, sr.rider_id, sr.gc_rank,
+                  x.top, x.next_down, x.n
+             FROM (SELECT stage_id,
+                          MAX(gc_rank) top,
+                          COUNT(*) n,
+                          (SELECT MAX(gc_rank) FROM stage_results i
+                            WHERE i.stage_id = o.stage_id
+                              AND i.gc_rank < MAX(o.gc_rank)) next_down
+                     FROM stage_results o
+                    WHERE gc_rank IS NOT NULL
+                    GROUP BY stage_id) x
+             JOIN stage_results sr
+               ON sr.stage_id = x.stage_id AND sr.gc_rank = x.top
+             JOIN stages s ON s.stage_id = x.stage_id
+             JOIN race_editions e USING(edition_id)
+             JOIN races ra USING(race_id)
+            WHERE x.n >= 50 AND x.next_down IS NOT NULL
+              AND x.top > 2 * x.next_down
+            ORDER BY x.top DESC"""
+    ).fetchall()
+    if not rows:
+        return
+    warn(f"{len(rows)} stage(s) hold a top GC position more than twice the next "
+         f"one below it in a classification of 50 or more, which is a "
+         f"placeholder rather than a position. "
+         + ", ".join(f"{r[0][:6]} {r[1]} st{r[2]} {r[3]} rank {r[4]} "
+                     f"(next {r[6]} of {r[7]})" for r in rows[:3]))
+
+
 def check_corrupt_rider_names(c):
     """A `?` INSIDE a word is mojibake — a letter that did not survive the trip.
 
@@ -1218,6 +1267,7 @@ def main():
 
     check_referential(cur)
     check_corrupt_rider_names(cur)
+    check_gc_rank_beyond_field(cur)
     check_provenance(cur)
     check_patched_values(cur)
     check_editions(cur, races)
