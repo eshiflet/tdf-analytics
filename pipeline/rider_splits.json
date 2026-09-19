@@ -9,6 +9,22 @@
      "name": "Tom Miller", "nationality_code": "us", "birth_year_approx": 1969}
    ]
   },
+  "rider/mark-wallace": {
+    "evidence": "This id holds five Leadvilles (2000, 2004, 2005, 2008, 2013) and one Unbound (2018). The Leadville set does not merely agree, it is EXACT: ages 38, 42, 43, 46 and 51 give birth year 1962 five times over thirteen calendar years, with no rounding drift at all, and every row is located Golden, CO. It is also bound internally by Leadville's own seeding, which hands a returning rider last year's finishing position as this year's number — 37th in 2004 and BIB 37 in 2005. The Unbound 2018 row implies 1972, is located Wilmette, ILLINOIS, and carries a different Athlinks racer id (367460791 against 301499916 on all five Leadvilles). Ten years is two to three times this archive's measured age-noise floor, and unlike ordinary noise it does not sit inside one racer id — the two ids partition the rows exactly along the same line the birth years do, which is what raises this above the bar that rejected rider/paul-ellis and rider/mike-johnson. 'Wallace' belongs to five riders archive-wide and 'Mark Wallace' is an unremarkable name; two of them, one in Colorado and one in Illinois, is the ordinary reading. The Unbound row is the one that moves, because it is the singleton and the Leadville set is the internally consistent one.",
+    "decided": "2026-09-18",
+    "rules": [
+      {
+        "race": "unbound",
+        "years": [
+          2018
+        ],
+        "rider_id": "rider/mark-wallace-ii",
+        "name": "Mark Wallace",
+        "nationality_code": "us",
+        "birth_year_approx": 1972
+      }
+    ]
+  },
   "rider/mark-smith": {
    "evidence": "This id holds Leadville 1994, 2008, 2010 and 2011. Age 42 in 1994 and age 49 in 2008 is seven years of ageing across fourteen calendar years; a rider born 1952 would have been 56 in 2008. The later rows agree with each other — 49 in 2008 and 50 in 2011 give 1959 and 1961 — so the 1994 ride belongs to an older Mark Smith, born about 1952. rider/mark-p-smith, Leadville 1998 at age 39, implies 1959 and therefore belongs with the LATER group, which is why it stays on the original id.",
    "decided": "2026-09-12",
