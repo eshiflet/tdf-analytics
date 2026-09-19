@@ -135,6 +135,58 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## "Pujol ?" is not a man's name (2026-09-19)
+
+PCS writes a first name nobody recorded as a placeholder and we store the
+string it prints: **"Pujol ?", "Lecrenier ???", "Van Muyten ."**. Every view
+rendered it verbatim, so a reader saw the source's punctuation as part of a
+man's name.
+
+`displayName()` — the one funnel every view's rider name goes through, in the
+chart legend, the results table, the riders grid and the rider page — now
+returns the bare surname whenever that is all we know:
+
+```ts
+if (r.firstName && r.lastName) return `${r.firstName} ${r.lastName}`;
+return r.lastName || r.name;      // was: return r.name;
+```
+
+**Exactly 16 riders change and nobody else**, checked against all 18,038 before
+writing the line. 59 riders have a surname and no first name; for 43 of them
+`full_name` IS the surname and the render is unchanged, and the other 16 are
+the whole placeholder set — eleven `?`/`??`/`???` and three `.`, plus Belli and
+Rolin. The DB keeps PCS's string, and the Riders search still matches on it, so
+nothing became unfindable.
+
+**Two of the three checks needed a second pass.** A legend row's text ends in a
+flag emoji, so the field-wide assertion was written end-anchored and **passed
+against the very placeholder it existed to catch** — found by mutation, not by
+reading it. It now looks for a `?` anywhere in the row. All three fail with
+`displayName()` reverted.
+
+### The `?` that is NOT a placeholder — 2 riders, NOT applied
+
+Two names carry a `?` inside a word: **`S?ren Nissen`** (Leadville 2015) and
+**`Vojt?ch Marvan`** (Unbound 2024). That is mojibake, not a placeholder, and
+**the rider ids were minted from the corrupt string** — `rider/s-ren-nissen`,
+`rider/vojt-ch-marvan`. A third id, `rider/.-van-muyten`, is minted from a
+placeholder dot the same way.
+
+**It is upstream.** `gravel_scrapes/_raw/470827_701199.json`, the raw Athlinks
+response, already says `"S?ren Nissen"` — our parser did not break it.
+
+**Nothing here is safely fixable offline, so nothing was:**
+- `S?ren` could be `Søren` or `Sören`, and the archive holds a SECOND rider,
+  `rider/soren-nissen` (Unbound 2018), whose Athlinks record spells it `Soren`.
+  They are very likely one man — Nissen is Luxembourgish and the 2015 row's
+  `us` is a registration locality — but `racerId` is **0** on all three raw
+  records, so Athlinks offers no identity link and a merge would be my
+  inference, not the data's ([[project_rider_identity_files]] is the right
+  route, and it is Eric's call).
+- Renaming picks a letter no source states. [[feedback_no_fabricated_data]].
+
+Recorded rather than repaired; see the validator note below.
+
 ## Every rider shipped his name twice (2026-09-19)
 
 The rider indexes carried three names per rider: `n` as PCS prints it

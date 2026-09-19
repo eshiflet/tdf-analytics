@@ -1,9 +1,19 @@
 // Shared rider-presentation helpers used across the stage chart, riders grid,
 // and rider detail page.
 
-/** "Firstname Lastname" when scrape data is present; falls back to PCS "LastName Firstname". */
+/** "Firstname Lastname" when scrape data is present; falls back to PCS "LastName Firstname".
+ *
+ *  A known surname with NO first name renders as the bare surname, never as
+ *  `name`. For 43 riders the two are the same string anyway, but 16 others
+ *  carry PCS's placeholder for a first name nobody recorded — "Pujol ?",
+ *  "Lecrenier ???", "Van Muyten ." — and printing that at a reader shows them
+ *  the source's punctuation as if it were part of a man's name. The full
+ *  `name` is still what the DB stores and what the Riders search matches on,
+ *  so nothing becomes unfindable; only the rendering drops the placeholder.
+ *  Verified against the archive: exactly those 16 change and no one else. */
 export function displayName(r: { name: string; firstName?: string; lastName?: string }): string {
-  return r.firstName && r.lastName ? `${r.firstName} ${r.lastName}` : r.name;
+  if (r.firstName && r.lastName) return `${r.firstName} ${r.lastName}`;
+  return r.lastName || r.name;
 }
 
 // A peloton's worth of names carries every European diacritic there is, and

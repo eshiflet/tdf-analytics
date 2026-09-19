@@ -947,5 +947,37 @@ function check(name, cond, detail) {
     surnameOnly >= 1, `"Legaux" matched ${surnameOnly}`);
 }
 
+// PCS writes an unrecorded first name as a placeholder and we store it
+// verbatim: "Pujol ?", "Lecrenier ???", "Van Muyten .". Until 2026-09-19 every
+// view printed it, so a reader saw the source's punctuation as part of a man's
+// name. displayName() now renders the bare surname whenever that is all we
+// know. 16 riders across the archive; these are two of them, in two different
+// views, because displayName() feeds the chart legend and the results table
+// from one place and a regression in either would be invisible from the other.
+{
+  const doc = await boot("#1903/stage/gc");
+  const names = [...doc.querySelectorAll("#legend .legend-item")]
+    .map((el) => el.textContent.trim());
+  const pujol = names.filter((n) => /Pujol/.test(n));
+  check("a first name PCS never recorded is not rendered as a placeholder",
+    pujol.length > 0 && pujol.every((n) => !/[?.]/.test(n)), pujol.join(" | ") || "no Pujol row");
+  // The whole legend, not just the one rider: a "?" or a free-standing "." is
+  // never part of a name, whoever it belongs to. NOT anchored to the end —
+  // each legend row ends in a flag emoji, so an end-anchored test here passed
+  // against the placeholder it was written to catch (verified by mutation).
+  const placeholders = names.filter((n) => /\?|\s\.(?!\w)/.test(n));
+  check("...and no other name in the field carries one either",
+    placeholders.length === 0, placeholders.slice(0, 5).join(" | ") || "none");
+}
+
+{
+  const doc = await boot("#classics/1892/stage/gc/table");
+  const cells = [...doc.querySelectorAll("td")].map((el) => el.textContent.trim());
+  const lecrenier = cells.filter((c) => /Lecrenier/.test(c));
+  check("the results table drops the placeholder too",
+    lecrenier.length > 0 && lecrenier.every((c) => !/\?/.test(c)),
+    lecrenier.join(" | ") || "no Lecrenier cell");
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);
