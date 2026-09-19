@@ -954,3 +954,87 @@ class TestSeparationsAreRemembered(IngestHarness):
         for pair in load_rider_separations():
             self.assertNotIn(pair, pairs,
                              f"{sorted(pair)} is recorded as both an alias and a separation")
+
+
+def gc_row(bib, name, slug, rnk, gc_pos="", gc_lag="", gap=""):
+    """A result row that can carry PCS's own GC position and lag (fields 1-2)."""
+    return [rnk, gc_pos, gc_lag, bib, "28", name, slug, "it",
+            "Team A", "team/a-1990", "", "", "", "", gap]
+
+
+class TestStageOneGcFallback(IngestHarness):
+    """The stage-1 GC fallback must never run beside a real source.
+
+    After stage 1 PCS publishes a GC position for very few riders — three of
+    180 on Vuelta 1996 stage 1, the top three reordered by bonifications.
+    Giving everybody else their STAGE placing invented a second ladder and
+    dropped it on top of the real one: 748 stage-1 GC ranks in the archive ended
+    up held by two riders, and the invented rank is the wrong half, because the
+    gap of 0 beside it is usually true.
+
+    So the approximation survives only where nothing can contradict it.
+    """
+
+    def gc(self):
+        return {r["rider_id"]: (r["gc_rank"], r["gc_gap_seconds"])
+                for r in self.conn.execute(
+                    "SELECT rider_id, gc_rank, gc_gap_seconds FROM stage_results")}
+
+    def write_standings(self, entries):
+        with open(os.path.join(self.scrapes, "1990", "gc_standings.json"),
+                  "w", encoding="utf-8") as f:
+            json.dump({"year": 1990, "stages": {"1": entries}}, f)
+
+    def test_a_published_position_stops_the_others_being_invented(self):
+        """The mixing case, and the whole point. PCS ranks one rider; the rest
+        must come out NULL rather than carrying their finishing place, which
+        would collide with his."""
+        self.write_stage(1, rows=[
+            gc_row("1", "Winner", "rider/w", "1", gc_pos="1", gc_lag="+0:00"),
+            gc_row("2", "Second", "rider/b", "2"),
+            gc_row("3", "Third", "rider/c", "3"),
+        ])
+        self.ingest()
+        self.assertEqual(self.gc()["rider/w"], (1, 0))
+        self.assertEqual(self.gc()["rider/b"], (None, None))
+        self.assertEqual(self.gc()["rider/c"], (None, None))
+
+    def test_with_no_source_at_all_the_approximation_survives(self):
+        """31 stage-1 files have neither a published position nor standings.
+        Nothing can collide there, and after one stage the finishing order is
+        the classification, so removing this would discard a true value."""
+        self.write_stage(1, rows=[
+            gc_row("1", "Winner", "rider/w", "1", gap="+0:00"),
+            gc_row("2", "Second", "rider/b", "2", gap="+0:10"),
+        ])
+        self.ingest()
+        self.assertEqual(self.gc()["rider/w"], (1, 0))
+        self.assertEqual(self.gc()["rider/b"], (2, 10))
+
+    def test_gc_standings_also_switches_the_fallback_off(self):
+        """A real classification for the stage counts as a source even when no
+        row carries an inline position — otherwise the invented ladder would
+        land on top of that one instead."""
+        self.write_standings({"rider/b": [2, 10]})
+        self.write_stage(1, rows=[
+            gc_row("1", "Winner", "rider/w", "1", gap="+0:00"),
+            gc_row("2", "Second", "rider/b", "2", gap="+0:10"),
+        ])
+        self.ingest()
+        self.assertEqual(self.gc()["rider/b"], (2, 10))
+        self.assertEqual(self.gc()["rider/w"], (None, None))
+
+    def test_no_stage_after_the_first_ever_approximates(self):
+        """A rider's gap changes every stage, so a later stage's finishing
+        order says nothing about the classification."""
+        self.write_stage(1, rows=[gc_row("1", "Winner", "rider/w", "1")])
+        self.write_stage(2, rows=[
+            gc_row("1", "Winner", "rider/w", "1", gap="+0:00"),
+            gc_row("2", "Second", "rider/b", "2", gap="+0:30"),
+        ])
+        self.ingest()
+        rows = {(r["rider_id"], r["stage_number"]): r["gc_rank"]
+                for r in self.conn.execute(
+                    "SELECT sr.rider_id, s.stage_number, sr.gc_rank FROM stage_results sr "
+                    "JOIN stages s ON s.stage_id = sr.stage_id")}
+        self.assertIsNone(rows[("rider/b", 2)])

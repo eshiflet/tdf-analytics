@@ -432,6 +432,13 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         )
         stage_id = cur.lastrowid
 
+        # Whether this stage's GC has to be approximated from the finishing
+        # order — see the fallback below, which is the only user.
+        stage_rank_is_the_only_gc = (
+            n == 1
+            and not any(len(r) > 1 and r[1] for r in rows)
+            and not (gc_standings or {}).get(n))
+
         # PCS marks a rider whose recorded time was AWARDED rather than raced.
         # Read it here so a rebuild recreates the flag rather than losing it —
         # backfill_time_adjusted.py put it on existing rows, and without this a
@@ -522,7 +529,23 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
             # didn't happen to cover — confirmed to have dropped 26-48% of
             # finishers' GC rank on several recent Giro editions (found
             # 2026-08-01 investigating a "79 finishers instead of 151" report).
-            if not gc_pos and n == 1:
+            # LAST RESORT ONLY, and never beside a real source. After stage 1
+            # PCS publishes a GC position for very few riders -- three of 180
+            # on Vuelta 1996 stage 1, the top three reordered by bonifications
+            # -- so giving everyone else their STAGE placing invented a second
+            # ladder and dropped it on top of the real one. 748 stage-1 GC
+            # ranks in the archive ended up held by two riders that way, and
+            # the invented rank is the wrong half: the gap of 0 beside it is
+            # usually true, because a bunch rider really did finish on the
+            # winner's time.
+            #
+            # So the fallback now runs only where the stage has NO other
+            # source: no rider with a published gc_pos, and no gc_standings
+            # entry. 217 of the 303 stage-1 files are the mixing case and
+            # every one of them has gc_standings, which agrees with PCS's own
+            # inline positions on 18,263 of 18,268 rows. 31 files have neither
+            # and keep the approximation, where nothing can collide with it.
+            if not gc_pos and stage_rank_is_the_only_gc:
                 stage_rank_fallback = parse_int(rnk)
                 if stage_rank_fallback is not None:
                     gc_pos = str(stage_rank_fallback)
