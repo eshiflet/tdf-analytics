@@ -569,6 +569,69 @@ def check_split_slug_provenance(c):
              f"{', '.join(suspect[:8])}" + (" ..." if len(suspect) > 8 else ""))
 
 
+def check_gc_rank_gap_consistency(c):
+    """Riders sharing a GC position must share the GC gap that produced it.
+
+    A general-classification rank IS a position on aggregate time, so two riders
+    at the same rank are on the same time and the same gap. Rows that share a
+    rank while disagreeing about the gap are internally contradictory: one of
+    the two numbers is wrong and nothing downstream can tell which.
+
+    A shared rank on its own is ordinary — Tour 1948 stage 1 has ten riders
+    sharing 3rd, all on one time, which is what a bunch finish looks like. It is
+    the DISAGREEING gap that is the fault, so this groups on (stage, gc_rank)
+    and only reports where the gaps differ.
+
+    Two populations, reported apart because only one is a defect:
+
+    * **At rank 1**, this is the doping-annulment signature. PCS lists the
+      stripped rider and the promoted one at the same position, the promoted
+      rider keeping the gap he had to the man ahead — Scarponi at Giro 2011
+      stage 21 carries 370s while Contador's stripped row carries 0. Expected,
+      and check_results() already reports the stage-rank version of it.
+    * **Below rank 1** it is not explained that way: 241 groups today and only
+      14 hold a disqualified rider. The median disagreement is 23 seconds, so
+      most are small — but the largest is Tour 1904 stage 6, where rank 2 holds
+      388s and 18,945s, five hours apart.
+
+    A WARNING: the values are PCS's own, the annulment cases are correct as
+    stored, and deciding which of two gaps is right needs the source page rather
+    than a rule.
+    """
+    rows = c.execute("""
+        SELECT ra.name, re.year, s.stage_number, sr.gc_rank,
+               COUNT(*) AS n, SUM(sr.disqualified) AS dq,
+               MAX(sr.gc_gap_seconds) - MIN(sr.gc_gap_seconds) AS spread
+          FROM stage_results sr
+          JOIN stages s ON s.stage_id = sr.stage_id
+          JOIN race_editions re ON re.edition_id = s.edition_id
+          JOIN races ra ON ra.race_id = re.race_id
+         WHERE sr.gc_rank IS NOT NULL AND sr.gc_gap_seconds IS NOT NULL
+         GROUP BY s.stage_id, sr.gc_rank
+        HAVING COUNT(*) > 1 AND COUNT(DISTINCT sr.gc_gap_seconds) > 1
+         ORDER BY spread DESC""").fetchall()
+    if not rows:
+        return
+    # main()'s connection has no row_factory, so every read here is BY INDEX:
+    # (name, year, stage_number, gc_rank, n, dq, spread).
+    NAME, YEAR, STAGE, RANK, _N, DQ, SPREAD = range(7)
+    leader = [r for r in rows if r[RANK] == 1]
+    rest = [r for r in rows if r[RANK] != 1]
+    if leader:
+        note(f"{len(leader)} GC position(s) at rank 1 hold two riders on different "
+             f"gaps — the doping-annulment shape, where PCS lists the stripped and "
+             f"the promoted rider together. {sum(1 for r in leader if r[DQ])} of "
+             "them contain a row already flagged disqualified.")
+    if rest:
+        worst = ", ".join(
+            f"{r[NAME].split()[0]} {r[YEAR]} st{r[STAGE]} rank "
+            f"{r[RANK]} ({r[SPREAD]}s apart)" for r in rest[:3])
+        warn(f"{len(rest)} GC position(s) below rank 1 are held by riders whose "
+             f"gaps disagree, so the rank and the gap cannot both be right. Only "
+             f"{sum(1 for r in rest if r[DQ])} involve a disqualified rider, so "
+             f"most are not annulment fallout. Worst: {worst}")
+
+
 def check_field_definition(c):
     """Every off-road edition must say what field its ranks are over.
 
@@ -942,6 +1005,7 @@ def main():
     check_results(cur)
     check_gravel_rank_integrity(cur)
     check_field_definition(cur)
+    check_gc_rank_gap_consistency(cur)
     check_phantom_split_days(cur)
     check_intentional_gaps(cur)
     conn.close()

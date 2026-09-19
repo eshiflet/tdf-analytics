@@ -1361,3 +1361,97 @@ class FieldDefinitionTest(DBCheckTest):
                 WHERE ra.race_type='gravel' AND s.cancelled=0
                   AND (s.field_definition IS NULL OR s.field_definition='')""").fetchone()[0]
         self.assertEqual(missing, 0)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# validate_db.check_gc_rank_gap_consistency — one position, two gaps
+# ══════════════════════════════════════════════════════════════════════════
+
+class GcRankGapConsistencyTest(DBCheckTest):
+    """A GC rank IS a position on aggregate time, so riders sharing one share
+    the gap that produced it. Rows that share a rank while disagreeing about the
+    gap are self-contradictory: one number is wrong and nothing downstream can
+    tell which.
+
+    A shared rank alone is ordinary — Tour 1948 stage 1 has ten riders sharing
+    3rd on one time, which is what a bunch finish looks like. Only the
+    disagreeing gap is a fault, which is why this groups first and compares
+    second. Checking for duplicate ranks instead would report 1,025 groups,
+    almost all of them correct.
+    """
+
+    def assertWarningMatching(self, fragment):
+        joined = "\n".join(validate_db.warnings)
+        self.assertIn(fragment, joined, f"warnings were {validate_db.warnings}")
+
+    def setup_stage(self):
+        self.race(1, "Tour de France")
+        self.edition(1, 1, 1983)
+        self.stage(1, 1, 1)
+
+    def test_a_genuine_tie_is_not_reported(self):
+        """Ten riders on one time sharing third place is a bunch finish."""
+        self.setup_stage()
+        for i in range(10):
+            self.result(1, f"rider/t{i}", gc_rank=3, gc_gap_seconds=90)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+        self.assertEqual(validate_db.notes, [])
+
+    def test_one_position_with_two_gaps_warns(self):
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=7, gc_gap_seconds=36)
+        self.result(1, "rider/b", gc_rank=7, gc_gap_seconds=0)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertWarningMatching("below rank 1")
+        self.assertWarningMatching("36s apart")
+
+    def test_rank_1_is_a_NOTE_not_a_warning(self):
+        """At rank 1 this is the annulment shape: PCS lists the stripped rider
+        and the promoted one together, the promoted one keeping the gap he had
+        to the man ahead. Correct as stored, so it must not read as a fault."""
+        self.setup_stage()
+        self.result(1, "rider/stripped", gc_rank=1, gc_gap_seconds=0, disqualified=1)
+        self.result(1, "rider/promoted", gc_rank=1, gc_gap_seconds=370)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+        self.assertIn("annulment", "\n".join(validate_db.notes))
+
+    def test_a_null_gap_is_not_a_disagreement(self):
+        """An unknown gap is not a second opinion about the same rank.
+
+        SQL's COUNT(DISTINCT) already skips NULLs, so this passes with or
+        without the explicit IS NOT NULL in the query — it pins the BEHAVIOUR
+        (an unknown gap raises nothing) rather than the clause that states it."""
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=5, gc_gap_seconds=90)
+        self.result(1, "rider/b", gc_rank=5, gc_gap_seconds=None)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_the_same_rank_in_two_STAGES_is_not_a_disagreement(self):
+        """Gaps are only comparable within one stage. Rank 5 on stage 1 and rank
+        5 on stage 2 are different positions in different classifications, and
+        grouping without the stage would report every race in the archive."""
+        self.setup_stage()
+        self.stage(2, 1, 2)
+        self.result(1, "rider/a", gc_rank=5, gc_gap_seconds=90)
+        self.result(2, "rider/b", gc_rank=5, gc_gap_seconds=400)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_different_ranks_are_never_compared(self):
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=5, gc_gap_seconds=90)
+        self.result(1, "rider/b", gc_rank=6, gc_gap_seconds=20)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_it_is_a_warning_and_never_an_error(self):
+        """The values are PCS's own and deciding which of two gaps is right
+        needs the source page, not a rule."""
+        self.setup_stage()
+        self.result(1, "rider/a", gc_rank=7, gc_gap_seconds=36)
+        self.result(1, "rider/b", gc_rank=7, gc_gap_seconds=0)
+        validate_db.check_gc_rank_gap_consistency(self.cur)
+        self.assertNoErrors()
