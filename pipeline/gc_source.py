@@ -173,8 +173,64 @@ def marked_in_stage_rows(rows):
     return out
 
 
+def gc_gaps(page):
+    """{rider_id: gap_seconds} from a verified page, or None if it lists TIMES.
+
+    THE COLUMN IS NOT ALWAYS GAPS. Normally the leading row carries the
+    leader's absolute time and every row below it a gap to him:
+
+        ['36:35:42', '0:22', '0:41', ...]     Tour 1978, stage-7
+
+    But where PCS has no time for the leader it prints its "-0:00" filler in
+    his cell and ABSOLUTE times in everyone else's:
+
+        ['-0:00', '49:18:15', '49:19:08', ...]  Tour 2006, stage-11
+
+    Reading that as gaps offers 164 rows of ~49 HOURS to write into a gap
+    column, and they look ordinary next to the genuine multi-hour gaps of the
+    1910s. Two guards, because either alone lets it through: the leader's cell
+    must be a real elapsed time rather than the filler, and no gap may reach
+    it — a rider cannot be further behind the leader than the leader has been
+    racing. A page that fails either is refused whole rather than filtered,
+    since a column that is not what it claims cannot be trusted row by row.
+    """
+    return gc_gaps_with_reason(page)[0]
+
+
+def gc_gaps_with_reason(page):
+    """(gaps, reason) — reason names why, when gaps is None.
+
+    The reasons are kept apart because they are not the same news. "too few
+    rows" is an empty page and says nothing about the archive; "absolute times"
+    is a page whose column means something other than it appears to, and a
+    caller reporting both as one number would claim 1,355 pages were the
+    dangerous kind when 54 are.
+    """
+    rows = (page or {}).get("gc_rows") or []
+    if len(rows) < 2:
+        return None, "too few rows"
+    leader, _marked = parse_gap(rows[0][4])
+    if not leader:
+        # PCS's "-0:00" filler in the leader's cell: it has no time for him,
+        # and prints absolute times below rather than gaps.
+        return None, "absolute times"
+    out = {rows[0][2]: 0}
+    for r in rows[1:]:
+        seconds, _m = parse_gap(r[4])
+        if seconds is None:
+            continue
+        if seconds >= leader:
+            return None, "absolute times"
+        out[r[2]] = seconds
+    return out, None
+
+
 def gc_ladder(page):
-    """{rider_id: (rank, seconds, marked)} from a verified page."""
+    """{rider_id: (rank, seconds, marked)} from a verified page.
+
+    Used for the MARKER, which is readable whatever the time column means.
+    Anything that needs the seconds as gaps must go through gc_gaps().
+    """
     rows = (page or {}).get("gc_rows") or []
     out = {}
     for i, r in enumerate(rows):

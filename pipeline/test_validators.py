@@ -1848,8 +1848,83 @@ class GcSourcePageTest(unittest.TestCase):
         self.assertEqual(gc_source.marked_riders(None), set())
         self.assertEqual(gc_source.marked_riders({}), set())
 
+    # ── the time column is not always gaps ──────────────────────────────────
 
-class RelegationExemptionTest(DBCheckTest):
+    def ladder_page(self, cells):
+        return {"gc_rows": [[str(i + 1), "", f"rider/r{i}", "", c]
+                            for i, c in enumerate(cells)]}
+
+    def test_a_normal_page_reads_as_gaps(self):
+        """The leading row is the leader's absolute time, the rest are gaps."""
+        gaps, reason = gc_source.gc_gaps_with_reason(
+            self.ladder_page(["36:35:42", "0:22", "0:41", "1:21"]))
+        self.assertIsNone(reason)
+        self.assertEqual(gaps, {"rider/r0": 0, "rider/r1": 22,
+                                "rider/r2": 41, "rider/r3": 81})
+
+    def test_a_filler_leader_cell_means_absolute_times(self):
+        """Tour 2006 stage 11: PCS has no time for the leader, prints its
+        "-0:00" filler in his cell, and lists ABSOLUTE times below. Read as
+        gaps that offers 164 rows of about 49 hours to write into a gap
+        column, and beside the genuine multi-hour gaps of the 1910s they do
+        not look wrong."""
+        gaps, reason = gc_source.gc_gaps_with_reason(
+            self.ladder_page(["-0:00", "49:18:15", "49:19:08"]))
+        self.assertIsNone(gaps)
+        self.assertEqual(reason, "absolute times")
+
+    def test_a_gap_reaching_the_leader_total_means_absolute_times(self):
+        """The second guard, and it catches what the first cannot: a page whose
+        leader cell IS a real time but whose rows below are still absolute. No
+        rider can be further behind the leader than the leader has been
+        racing."""
+        gaps, reason = gc_source.gc_gaps_with_reason(
+            self.ladder_page(["10:00:00", "10:00:01"]))
+        self.assertIsNone(gaps)
+        self.assertEqual(reason, "absolute times")
+
+    def test_a_value_EQUAL_to_the_leader_total_is_refused_too(self):
+        """The boundary is inclusive, and deliberately so. In an absolute-times
+        column a rider tied with the leader shows exactly the leader's time, so
+        an exclusive test would let that page through. Nothing real is lost:
+        the largest genuine gap-to-leader-total ratio on any accepted page is
+        0.749 (Tour 1903 stage 2, a 24-hour gap against a 32-hour race), so the
+        line at 1.0 sits well clear of the archive's most extreme honest data.
+        """
+        gaps, reason = gc_source.gc_gaps_with_reason(
+            self.ladder_page(["10:00:00", "10:00:00"]))
+        self.assertIsNone(gaps)
+        self.assertEqual(reason, "absolute times")
+
+    def test_the_whole_page_is_refused_not_filtered(self):
+        """One impossible value condemns the column. Keeping the rows that
+        happen to look plausible would mix two meanings in one result, which is
+        worse than returning nothing."""
+        gaps, _ = gc_source.gc_gaps_with_reason(
+            self.ladder_page(["10:00:00", "0:30", "10:00:01", "0:45"]))
+        self.assertIsNone(gaps)
+
+    def test_too_few_rows_is_reported_apart_from_absolute_times(self):
+        """Not the same news: 1,355 pages hold fewer than two GC rows and say
+        nothing about the archive, while 54 have a column that is not what it
+        appears. Reporting them as one number would claim the dangerous kind is
+        twenty-five times as common as it is."""
+        self.assertEqual(gc_source.gc_gaps_with_reason(self.ladder_page([]))[1],
+                         "too few rows")
+        self.assertEqual(
+            gc_source.gc_gaps_with_reason(self.ladder_page(["36:35:42"]))[1],
+            "too few rows")
+
+    def test_an_unreadable_row_is_skipped_not_fatal(self):
+        """A blank cell is a rider with no published gap, not evidence about
+        the column."""
+        gaps, reason = gc_source.gc_gaps_with_reason(
+            self.ladder_page(["36:35:42", "", "0:41"]))
+        self.assertIsNone(reason)
+        self.assertEqual(gaps, {"rider/r0": 0, "rider/r2": 41})
+
+
+class TimeAdjustedExemptionTest(DBCheckTest):
     """Both GC checks must ignore a rider PCS marks as time_adjusted.
 
     The jury moved his PLACE and left his TIME, so his gap really is smaller
