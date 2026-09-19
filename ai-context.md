@@ -115,11 +115,29 @@ advertised range against the years actually exported. It parses the module
 rather than importing it (the module is JavaScript), and **a parse that finds
 nothing FAILS** — a silent no-op would reproduce exactly the gap it closes.
 
-**The og:image alt text was NOT changed and is not stale.** It describes the
-card, and `og-vuelta.png` really does show the 2025 general classification. The
-CARD is a separate staleness: `scripts/render-og-images.sh` is a manual step and
-nobody re-ran it when 2026 arrived, which is the failure mode its own
-documentation predicts.
+**The card was stale too, and is now re-rendered.** `og-vuelta.png` showed the
+2025 general classification because `scripts/render-og-images.sh` is a manual
+step that nobody re-ran when 2026 arrived — the failure its own documentation
+predicts. Re-rendered from the real 2026 chart; the alt text moved to 2026 in
+the same commit, because it describes the picture and the picture changed.
+
+**The script takes a card name now:** `./scripts/render-og-images.sh og-vuelta`.
+A card goes stale on its own schedule, and re-rendering the other five to fix
+one rewrites five committed binaries whose content did not change — Chrome's
+antialiasing and pngquant's palette search are not bit-reproducible, so they
+would land in the diff as noise indistinguishable from a real design change.
+
+**Gravel deliberately still renders 2025.** Its 2026 season holds 4 races
+against 2025's 7, and a card is a picture of the archive at its best, not its
+most recent. That is a choice, not an oversight.
+
+**Two tests hold this together.** `TestSocialCardAltMatchesTheCard` compares the
+season each card is screenshotted from against the season its alt text claims —
+two hand-maintained files, neither importing the other, that were correct only
+by coincidence. Alt text that misdescribes its image is worse than none: it is
+the only description a screen-reader user gets and they cannot notice it is
+wrong. Only the three Grand Tour alts name a year; the classics and gravel alts
+describe their card generically, which is a better alt AND cannot rot.
 
 ## A season-level bib stopped moving on its own (2026-09-19)
 

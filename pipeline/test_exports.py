@@ -1148,3 +1148,74 @@ class TestLandingPageYearRanges(unittest.TestCase):
                     (first, last), (min(years), max(years)),
                     f"the {slug} landing page advertises {first}–{last} but "
                     f"the data covers {min(years)}–{max(years)}")
+
+
+class TestSocialCardAltMatchesTheCard(unittest.TestCase):
+    """The og:image alt must describe the season the card actually renders.
+
+    Two hand-maintained files have to agree and neither imports the other:
+    render-og-images.sh names the deep link each card is screenshotted from
+    (`og-vuelta|#vuelta/2026/stage/gc|...`), and race-page-meta.mjs holds the alt
+    text a screen reader is given for it. When the 2026 Vuelta landed, the card
+    still showed 2025 — and the alt was RIGHT to say 2025, because it described
+    the picture. Re-rendering the card made the alt wrong in the same instant.
+
+    Alt text that misdescribes its image is worse than none: it is the only
+    description a screen-reader user gets, and they have no way to notice.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        root = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "cycling-app"))
+        cls.script = os.path.join(root, "scripts", "render-og-images.sh")
+        cls.meta = os.path.join(root, "race-page-meta.mjs")
+
+    def rendered_year(self):
+        """{image filename: year the card is rendered from}."""
+        import re
+        with open(self.script, encoding="utf-8") as f:
+            src = f.read()
+        out = {}
+        for name, hash_ in re.findall(r'"(og-[\w-]+)\|#([^|]+)\|', src):
+            m = re.search(r"(\d{4})", hash_)
+            if m:
+                out[f"{name}.png"] = int(m.group(1))
+        return out
+
+    def alt_year(self):
+        """{image filename: year the alt text claims}."""
+        import re
+        with open(self.meta, encoding="utf-8") as f:
+            src = f.read()
+        out = {}
+        for body in re.findall(r"^  \w+: \{(.*?)^  \},", src, re.S | re.M):
+            img = re.search(r'image:\s*"([^"]+)"', body)
+            alt = re.search(r'alt:\s*"[^"]*?(\d{4})', body)
+            if img and alt:
+                out[img.group(1)] = int(alt.group(1))
+        return out
+
+    def test_the_parses_find_something(self):
+        """Both sides, or every assertion below passes on empty dicts.
+
+        Three alts name a season, not five: the classics and gravel cards are
+        described generically ("a one-day classics season"), which is a better
+        alt for a card whose depicted year is incidental AND cannot go stale.
+        Only the three Grand Tours name the year, because for them it is the
+        subject of the picture."""
+        self.assertGreaterEqual(len(self.rendered_year()), 5, self.rendered_year())
+        dated = self.alt_year()
+        self.assertEqual(set(dated), {"og-tour.png", "og-giro.png", "og-vuelta.png"},
+                         f"parsed {dated}")
+
+    def test_every_alt_names_the_season_its_card_renders(self):
+        rendered = self.rendered_year()
+        for image, year in sorted(self.alt_year().items()):
+            with self.subTest(image=image):
+                self.assertIn(image, rendered, "alt names a card the renderer "
+                                               "does not produce")
+                self.assertEqual(
+                    year, rendered[image],
+                    f"{image}: the alt text says {year} but the card is "
+                    f"screenshotted from {rendered[image]}")

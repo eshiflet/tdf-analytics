@@ -26,15 +26,30 @@ CARDS=(
   "og-image|#allraces|Cycling Analytics|Tour · Giro · Vuelta · Classics · Gravel · 1892–2026|Every rider, every stage, every year"
   "og-tour|#2026/stage/gc|Tour de France|Stage-by-stage GC, sprint and KOM · 1903–2026|2026 general classification"
   "og-giro|#giro/2026/stage/gc|Giro d'Italia|Stage-by-stage GC, sprint and KOM · 1909–2026|2026 general classification"
-  "og-vuelta|#vuelta/2025/stage/gc|Vuelta a España|Stage-by-stage GC, sprint and KOM · 1935–2025|2025 general classification"
+  "og-vuelta|#vuelta/2026/stage/gc|Vuelta a España|Stage-by-stage GC, sprint and KOM · 1935–2026|2026 general classification"
   "og-classics|#classics/2026/stage/gc|One-Day Classics|Monuments and classics · 11 races · 1892–2026|2026 season"
   "og-gravel|#gravel/2025/stage/gc|Gravel|Unbound · Leadville · Chequamegon · Sea Otter · 1994–2026|2025 season"
 )
 
 urlenc() { python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"; }
 
+# Optional filter: re-render ONE card instead of all six.
+#
+#   ./scripts/render-og-images.sh og-vuelta
+#
+# A card goes stale on its own schedule — the Vuelta's did when the 2026 edition
+# landed and nothing else changed — and re-rendering the other five to fix one
+# rewrites five committed binaries whose content did not change. Chrome's
+# antialiasing and pngquant's palette search are not bit-reproducible, so those
+# five would show up in the diff as noise with no way to tell them from a real
+# design change.
+ONLY="${1:-}"
+matched=0
+
 for card in "${CARDS[@]}"; do
   IFS='|' read -r name hash title sub note <<< "$card"
+  if [ -n "$ONLY" ] && [ "$name" != "$ONLY" ]; then continue; fi
+  matched=$((matched + 1))
   url="$BASE/og-image.html?hash=$(urlenc "$hash")&title=$(urlenc "$title")&sub=$(urlenc "$sub")&note=$(urlenc "$note")"
   # --virtual-time-budget lets the SPA fetch its data and finish the D3
   # transition before the shutter; without it the card captures a blank chart.
@@ -60,4 +75,8 @@ for card in "${CARDS[@]}"; do
   printf '%-16s %4s KB -> %4s KB\n' "$name.png" "$before" "$after"
 done
 
-echo "Wrote ${#CARDS[@]} cards to public/. Commit them — they are served as static assets."
+if [ -n "$ONLY" ] && [ "$matched" -eq 0 ]; then
+  echo "No card named '$ONLY'. Known: $(printf '%s ' "${CARDS[@]%%|*}")" >&2
+  exit 1
+fi
+echo "Wrote $matched card(s) to public/. Commit them — they are served as static assets."
