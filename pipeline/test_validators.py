@@ -1737,3 +1737,50 @@ class GcLadderTriageTest(unittest.TestCase):
     def test_one_row_on_a_rank_is_never_two_ladders(self):
         self.assertEqual(audit_gc_ladders.mirror_ranks({7: [(0, 7)]}), [])
         self.assertEqual(audit_gc_ladders.mirror_ranks({7: [(25, 73)]}), [])
+
+    # ── what PCS's own page says about the ladder ───────────────────────────
+
+    def test_a_plain_gap_cell_reads_as_seconds(self):
+        self.assertEqual(audit_gc_ladders.source_seconds("10:42"), (642, False))
+        self.assertEqual(audit_gc_ladders.source_seconds("1:06:45"), (4005, False))
+        self.assertEqual(audit_gc_ladders.source_seconds("+1:30"), (90, False))
+
+    def test_the_doubled_cell_is_collapsed(self):
+        """The scraper concatenates PCS's visible text with its hidden sort
+        span, so a marked cell arrives as "*0:04" + "0:04". Reading that
+        literally would give a nonsense gap and hide the marker."""
+        self.assertEqual(audit_gc_ladders.source_seconds("*0:040:04"), (4, True))
+        self.assertEqual(audit_gc_ladders.source_seconds("9:029:02"), (542, False))
+
+    def test_a_repeated_digit_is_not_a_doubled_cell(self):
+        """The trap in collapsing repeats: "11" is one eleven-second gap, not
+        "1" written twice. Requiring a colon in the repeated unit is what keeps
+        an 11-second gap from silently becoming a 1-second one."""
+        self.assertEqual(audit_gc_ladders.source_seconds("11"), (11, False))
+        self.assertEqual(audit_gc_ladders.source_seconds("22"), (22, False))
+
+    def test_an_unreadable_cell_still_reports_its_marker(self):
+        """The marker is the load-bearing half. A cell we cannot turn into
+        seconds still tells us PCS flagged the row, and dropping that with the
+        number would put the stage back in the unexplained pile."""
+        self.assertEqual(audit_gc_ladders.source_seconds(""), (None, False))
+        self.assertEqual(audit_gc_ladders.source_seconds(None), (None, False))
+        self.assertEqual(audit_gc_ladders.source_seconds("*n/a"), (None, True))
+
+    def test_a_marked_row_anywhere_explains_the_stage(self):
+        """PCS moved a rider's PLACE and left his TIME, so the ladder it prints
+        really does step backwards and our stored values are right. The marked
+        row need not be the one we implicated — a stage can hold several
+        relegations, and the shape is PCS's either way."""
+        self.assertEqual(audit_gc_ladders.source_verdict(
+            {"rider/a": (1, 0, False), "rider/b": (2, 90, True)}), "EXPLAINED")
+
+    def test_an_unmarked_ladder_stays_unexplained(self):
+        self.assertEqual(audit_gc_ladders.source_verdict(
+            {"rider/a": (1, 0, False), "rider/b": (2, 90, False)}), "UNEXPLAINED")
+
+    def test_a_missing_page_is_not_an_unexplained_stage(self):
+        """Absent evidence is not evidence. Folding "no page on disk" into
+        UNEXPLAINED would put 54 stages on a worklist that nothing has looked
+        at, next to 58 that something has."""
+        self.assertEqual(audit_gc_ladders.source_verdict(None), "NO SOURCE")
