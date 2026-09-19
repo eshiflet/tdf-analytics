@@ -100,6 +100,27 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## The Vuelta landing page advertised the wrong decade-end (2026-09-19)
+
+`race-page-meta.mjs` holds the hand-maintained SEO copy for the five static
+landing pages — the `<title>`, the description, the og:image alt — and nothing
+connected it to the archive it describes. **The 2026 Vuelta landed on 2026-09-14
+and the page went on advertising "(1935–2025)"**: the one string a search engine
+indexes, and a reader's first impression of how current the site is, a year
+behind the data sitting beside it. The other four races were correct, which is
+why it went unnoticed.
+
+Fixed, and `test_exports.TestLandingPageYearRanges` now compares every
+advertised range against the years actually exported. It parses the module
+rather than importing it (the module is JavaScript), and **a parse that finds
+nothing FAILS** — a silent no-op would reproduce exactly the gap it closes.
+
+**The og:image alt text was NOT changed and is not stale.** It describes the
+card, and `og-vuelta.png` really does show the 2025 general classification. The
+CARD is a separate staleness: `scripts/render-og-images.sh` is a manual step and
+nobody re-ran it when 2026 arrived, which is the failure mode its own
+documentation predicts.
+
 ## A season-level bib stopped moving on its own (2026-09-19)
 
 `race_set_export.build_year()` took a rider's bib and team from whichever of

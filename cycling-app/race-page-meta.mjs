@@ -28,7 +28,7 @@ export const RACES = {
     alt: "Line chart of the 2026 Giro d'Italia general classification, one coloured line per rider tracking position across all 21 stages.",
   },
   vuelta: {
-    title: "Vuelta a España Cycling Analytics — GC, Sprint & KOM Stats (1935–2025)",
+    title: "Vuelta a España Cycling Analytics — GC, Sprint & KOM Stats (1935–2026)",
     description: "Stage-by-stage GC, sprint, and KOM standings for every Vuelta a España since 1935 — every rider, every stage, every year.",
     image: "og-vuelta.png",
     alt: "Line chart of the 2025 Vuelta a España general classification, one coloured line per rider tracking position across every stage.",

@@ -1085,3 +1085,66 @@ class TestPayloadBreakdown(unittest.TestCase):
         _code, out = self.run_check(b)
         self.assertNotIn("differ from the baseline", out)
         self.assertNotIn("None is a regression", out)
+
+
+class TestLandingPageYearRanges(unittest.TestCase):
+    """The year range each landing page ADVERTISES must match the data.
+
+    race-page-meta.mjs is hand-maintained SEO copy — the <title>, the
+    description and the og:image alt text for the five static landing pages —
+    and nothing connected it to the archive it describes. The 2026 Vuelta landed
+    on 2026-09-14 and the Vuelta page went on advertising "(1935–2025)" for five
+    days: the one string a search engine indexes, and a reader's first
+    impression of how current the site is, silently a year behind the data
+    sitting next to it.
+
+    Parsed rather than imported because the module is JavaScript. A parse that
+    finds nothing FAILS instead of passing vacuously — a silent no-op here would
+    reproduce exactly the gap it exists to close.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.meta = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "cycling-app", "race-page-meta.mjs"))
+        cls.data_root = os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "cycling-app", "src", "data"))
+
+    def advertised(self):
+        """{race slug: (first, last)} from each entry's title."""
+        import re
+        with open(self.meta, encoding="utf-8") as f:
+            src = f.read()
+        out = {}
+        # "  tour: {" ... 'title: "... (1903–2026)"'. The dash is an EN DASH
+        # in the copy, not a hyphen.
+        for slug, body in re.findall(r"^  (\w+): \{(.*?)^  \},", src,
+                                     re.S | re.M):
+            m = re.search(r'title:\s*"[^"]*\((\d{4})[–-](\d{4})\)"', body)
+            if m:
+                out[slug] = (int(m.group(1)), int(m.group(2)))
+        return out
+
+    def test_the_parse_finds_every_race(self):
+        """Guards the test itself. If the module's shape changes and the regex
+        stops matching, every assertion below would pass on an empty dict."""
+        got = self.advertised()
+        self.assertEqual(set(got), {"tour", "giro", "vuelta", "classics", "gravel"},
+                         f"parsed {got} from race-page-meta.mjs")
+
+    def test_each_page_advertises_the_range_its_data_covers(self):
+        import glob
+        import re
+        for slug, (first, last) in sorted(self.advertised().items()):
+            with self.subTest(race=slug):
+                years = [int(re.search(r"(\d{4})", os.path.basename(f)).group(1))
+                         for f in glob.glob(os.path.join(
+                             self.data_root, slug, "gc_by_stage_*.json"))]
+                if not years:
+                    self.skipTest(f"{slug} not exported")
+                self.assertEqual(
+                    (first, last), (min(years), max(years)),
+                    f"the {slug} landing page advertises {first}–{last} but "
+                    f"the data covers {min(years)}–{max(years)}")
