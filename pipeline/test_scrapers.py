@@ -1136,6 +1136,35 @@ class HelpNeverScrapesTest(unittest.TestCase):
     # remember to update is a list that silently stops being true.
     NETWORKED = networked_clis()
 
+    def test_verify_unknown_never_fills_a_value(self):
+        """--verify-unknown records provenance and nothing else.
+
+        It did not, briefly, on 2026-09-19: the fill loop still ran beneath it
+        and the verify report's early `return` skipped the FILLED section, so a
+        real write (Vuelta 2020 st18, NULL -> 1492 m) happened and was never
+        printed. A mode that writes silently is worse than one that writes too
+        much.
+
+        Asserted against the SOURCE because the alternative is a live fetch.
+        Every loop that can reach an UPDATE, and the mismatch scan that reads
+        stages this mode is not about, must be gated on the flag.
+        """
+        import ast
+        import inspect
+        import scrape_route_overview_elevation as mod
+        src = inspect.getsource(mod.main)
+        tree = ast.parse(src.lstrip())
+        gated = 0
+        for node in ast.walk(tree):
+            if isinstance(node, ast.For) and "verify_unknown" in ast.unparse(node.iter):
+                gated += 1
+        self.assertGreaterEqual(
+            gated, 2,
+            "the fill loop and the mismatch scan must both be gated on "
+            "args.verify_unknown; found %d gated loop(s) in main()" % gated)
+        # And the writing statement itself must sit inside one of them.
+        self.assertIn("UPDATE stages SET vertical_meters", src)
+
     def test_no_pipeline_module_writes_to_the_db_at_import(self):
         """Importing a module must not touch cycling.db.
 

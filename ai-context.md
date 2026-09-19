@@ -293,13 +293,65 @@ date still pins the file down; **2,751 of the 2,879 agree on both**.
 them at all:
 - **77** — no figure on the stage page. 76 of those are the edition's FINAL
   stage, because PCS serves an empty stage page for the Paris/Madrid finale and
-  publishes the number on the ROUTE page instead. `scrape_route_overview_elevation.py`
-  is the tool for them; it is networked, so nothing was fetched here.
+  publishes the number on the ROUTE page instead.
 - **8** — the DB disagrees with its own scrape file, and the row now names both
   numbers: Tour 2005 st14 (file 4,175 / db 4,188), Tour 2006 st4/5/6/10/13,
-  Tour 2016 st13, Vuelta 2019 st21 (file says **0**). Something overwrote the
-  scraped figure without recording itself.
+  Tour 2016 st13, Vuelta 2019 st21 (file says **0**).
 - **1** — no scrape file on disk.
+
+### Then the route page settled 78 of those 86 (2026-09-19, networked)
+
+`scrape_route_overview_elevation.py --verify-unknown` fetched **81 editions**,
+one request each, and compared the ROUTE page against the values already
+stored. **78 matched exactly** and are now `pcs` with the route URL as their
+ref. Elevation provenance is **99.59% pcs, 8 unknown, 0 missing**.
+
+**The mode had to be added.** The script only ever looked at stages whose value
+is NULL or `derived`, so it skipped all 86 of these on sight. `--verify-unknown`
+targets the opposite — a value that EXISTS whose origin was never established —
+and records provenance without writing a value.
+
+**The 7 that still disagree are the interesting ones.** The route page gives
+the same figure as the stage page, so the stored value matches **neither PCS
+surface**:
+
+| | stored | both PCS pages |
+|---|---|---|
+| Tour 2005 st14 | 4,188 | 4,175 |
+| Tour 2006 st4 | 1,736 | 1,662 |
+| Tour 2006 st10 | 3,595 | 3,509 |
+| Tour 2016 st13 | 752 | 685 |
+
+Something overwrote six 2006 stages and two others with figures PCS does not
+publish, and left no record. Unchanged and still `unknown`; that is a research
+question, not a repair. Vuelta 2019 st21 — whose stage file says `0` — was
+confirmed by the route page and is now `pcs`. The eighth remaining unknown is
+Tour 1982 st5, which has no artifact at all.
+
+**A write I did not intend, reported because it happened.** The first
+`--verify-unknown --apply` run also filled **Vuelta 2020 st18 (NULL -> 1,492 m,
+the Madrid finale)**, because the ordinary fill loop still ran beneath the new
+mode — and the verify report's early `return` skipped the FILLED section, so it
+was never printed. The value is correct and properly sourced, so it stays. The
+mode is now single-purpose and a test asserts both the fill loop and the
+mismatch scan are gated on the flag; ungating either fails it. **A mode that
+writes silently is worse than one that writes too much.**
+
+### The summary exports were stale, and the new staleness check cannot see them
+
+Re-exporting for that one stage revealed that **`all_races_summary.json` had
+been stale since this morning** for the Tour (15 values) and the Giro (1): the
+718 GC gap fills moved 330 riders' `totalTimeSeconds`, and
+`slowestFinisherTimeSeconds` is derived from those. The year files were
+re-exported at the time; the summaries were not.
+
+`check_exports_match_db()` compares `gc_by_stage` files only, so this class is
+outside it. A summary is a DERIVED-from-derived file and checking it against the
+DB would mean restating the exporter's own rules — including the sparse-elevation
+cut-off, which is exactly the kind of subtlety a second implementation gets
+wrong. **The rule is procedural for now: after any DB change, re-run
+`export_race_summary.py` for each race and `export_all_races_summary.py`, not
+just `export_gc.py`.**
 
 ### The Tour had been invisible to this script all along
 

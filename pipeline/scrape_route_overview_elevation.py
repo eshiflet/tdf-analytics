@@ -131,6 +131,10 @@ def main():
                     help="1990, 1990-2012, or 1990,1993,1995")
     ap.add_argument("--apply", action="store_true",
                     help="write to the DB (default: report only)")
+    ap.add_argument("--verify-unknown", action="store_true",
+                    help="do not fill anything; instead CONFIRM the values "
+                         "already stored whose provenance is 'unknown', and "
+                         "record 'pcs' + the route URL where the page agrees")
     ap.add_argument("--replace-derived", action="store_true",
                     help="also overwrite values this repo computed itself "
                          "(provenance 'derived'); scraped beats reconstructed")
@@ -147,8 +151,18 @@ def main():
     race_id = race_row["race_id"]
 
     filled, replaced, mismatched, unavailable, no_slug, kept = [], [], [], [], [], []
+    confirmed, unproven_differ, unproven_absent = [], [], []
 
-    for year in parse_years(args.years):
+    # Say how long this will take BEFORE starting it. A work SET printed as a
+    # status line reads as progress; at 2.5s of politeness per edition an
+    # eighty-year span is minutes, and the reader deserves to know that before
+    # the first request rather than after the fortieth.
+    years = parse_years(args.years)
+    print(f"{RACE_PATH[args.race][0]}: up to {len(years)} edition(s) to fetch, "
+          f"one request each at {DELAY:.1f}s — about "
+          f"{len(years) * DELAY / 60:.1f} minute(s) if none is skipped.")
+
+    for year in years:
         edition = cur.execute(
             "SELECT edition_id FROM race_editions WHERE race_id=? AND year=?",
             (race_id, year)).fetchone()
@@ -175,7 +189,23 @@ def main():
                 (SOURCE_DERIVED, *[s["stage_id"] for s in stages]))}
         stale = [s for s in stages if s["stage_id"] in derived_ids]
 
-        if not missing and not stale:
+        # --verify-unknown targets the opposite of `missing`: stages that DO
+        # hold a figure whose origin was never established. The route page is
+        # the only place PCS publishes some of them — it serves an empty stage
+        # page for most Paris/Madrid finales — so this is the artifact that can
+        # prove them. It never writes a value; see the branch below.
+        unproven = []
+        if args.verify_unknown and stages:
+            unknown_ids = {r["entity_id"] for r in cur.execute(
+                """SELECT entity_id FROM data_provenance
+                   WHERE entity='stages' AND field='vertical_meters'
+                     AND source='unknown' AND entity_id IN (%s)"""
+                % ",".join("?" * len(stages)),
+                [s["stage_id"] for s in stages])}
+            unproven = [s for s in stages if s["stage_id"] in unknown_ids
+                        and s["vertical_meters"] is not None]
+
+        if not missing and not stale and not unproven:
             continue
 
         url = route_url(args.race, year)
@@ -187,7 +217,36 @@ def main():
             continue
         time.sleep(DELAY)
 
-        for s in missing + stale:
+        # Provenance only. This branch has no UPDATE in it, deliberately: the
+        # whole point is that a value nobody can explain is not thereby wrong,
+        # and confirming where it came from must not be able to change it.
+        for s in unproven:
+            if not s["source_slug"]:
+                no_slug.append((year, s["stage_number"]))
+                continue
+            theirs = table.get(s["source_slug"])
+            route = f'{s["start_location"]}→{s["finish_location"]}'
+            if theirs is None:
+                unproven_absent.append((year, s["stage_number"], route,
+                                        s["vertical_meters"]))
+            elif theirs == s["vertical_meters"]:
+                confirmed.append((year, s["stage_number"], route,
+                                  s["vertical_meters"]))
+                if args.apply:
+                    record_provenance(
+                        cur, "stages", s["stage_id"], "vertical_meters",
+                        SOURCE_PCS, source_ref=url,
+                        script="scrape_route_overview_elevation.py")
+            else:
+                unproven_differ.append((year, s["stage_number"], route,
+                                        s["vertical_meters"], theirs))
+
+        # --verify-unknown does exactly one thing. Without this the fill loop
+        # below still ran, and the verify report's early `return` then skipped
+        # the FILLED section entirely — so on 2026-09-19 a real write (Vuelta
+        # 2020 st18, NULL -> 1492 m) happened and was never printed. A mode
+        # that writes silently is worse than one that writes too much.
+        for s in ([] if args.verify_unknown else missing + stale):
             if not s["source_slug"]:
                 no_slug.append((year, s["stage_number"]))
                 continue
@@ -216,7 +275,9 @@ def main():
 
         # Not the job, but free: the route page also re-states every stage that
         # already has a figure, so disagreements surface at no extra request.
-        for s in stages:
+        # Skipped while verifying, where unproven_differ already reports them
+        # against the stages this run is actually about.
+        for s in ([] if args.verify_unknown else stages):
             if (s["vertical_meters"] is None or not s["source_slug"]
                     or s["stage_id"] in derived_ids):
                 continue
@@ -227,6 +288,32 @@ def main():
     if args.apply:
         conn.commit()
     conn.close()
+
+    if args.verify_unknown:
+        verb = "CONFIRMED" if args.apply else "WOULD CONFIRM"
+        print(f"\n{verb}: {len(confirmed)} stage(s) whose stored figure the "
+              f"route page repeats exactly")
+        for year, n, route, ours in confirmed:
+            print(f"  {year} stage {n:<3} {ours:>6} m   {route}")
+        if unproven_differ:
+            print(f"\nSTILL UNPROVEN — the route page gives a DIFFERENT figure: "
+                  f"{len(unproven_differ)} stage(s). Nothing written; the stored "
+                  f"value stands and its origin is still unknown.")
+            for year, n, route, ours, theirs in unproven_differ:
+                print(f"  {year} stage {n:<3} stored {ours:>6} vs route page "
+                      f"{theirs:<6}   {route}")
+        if unproven_absent:
+            print(f"\nSTILL UNPROVEN — the route page has no figure either: "
+                  f"{len(unproven_absent)} stage(s)")
+            for year, n, route, ours in unproven_absent:
+                print(f"  {year} stage {n:<3} {ours:>6} m   {route}")
+        if no_slug:
+            print(f"\nNO source_slug (cannot match safely): {no_slug}")
+        if not args.apply and confirmed:
+            print("\nDry run. Nothing written. Re-run with --apply to record "
+                  "the provenance. This mode never writes a stage VALUE — it "
+                  "records where the one already stored came from.")
+        return
 
     print(f"\n{'FILLED' if args.apply else 'WOULD FILL'}: {len(filled)} stage(s)")
     for year, n, route, vertical in filled:
