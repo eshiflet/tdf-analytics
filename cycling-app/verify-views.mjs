@@ -979,5 +979,63 @@ function check(name, cond, detail) {
     lecrenier.join(" | ") || "no Lecrenier cell");
 }
 
+// The chart's end labels sit at their rider's finishing rank, and on the
+// DEFAULT view twenty riders share ranks 1-20 on an axis spanning 1 to 180 —
+// about 2-4px apart in a 10px font. They overlapped into an unreadable smear
+// until layoutEndLabels() spread them (2026-09-19). jsdom implements neither
+// getBBox nor getComputedTextLength, so these read the ATTRIBUTES the layout
+// writes rather than measuring pixels: a `y` that is too close to its
+// neighbour is the defect, whether or not this DOM can paint it.
+{
+  const doc = await boot("#2026/stage/gc");
+  const shown = [...doc.querySelectorAll(".labels .rider-end-label")]
+    .filter((el) => el.style.opacity === "1")
+    .map((el) => Number(el.getAttribute("y")))
+    .sort((a, b) => a - b);
+  check("the default view labels the whole Top 20", shown.length === 20,
+    `${shown.length} labels shown`);
+  const gaps = shown.slice(1).map((y, i) => y - shown[i]);
+  const tightest = gaps.length ? Math.min(...gaps) : Infinity;
+  // 11px is LABEL_PITCH in stageChart.ts; allow a hair for float arithmetic.
+  check("no two end labels sit on top of each other",
+    tightest >= 10.99, `closest pair ${tightest.toFixed(1)}px apart`);
+
+  // The right margin used to be a constant 36, leaving 30px after the label's
+  // 6px offset while the widest surname in this field renders at ~70px — so
+  // every label past about five characters was cut off by the SVG's edge, and
+  // the smear hid it. The margin is now measured from the longest label.
+  const svg = doc.querySelector("#chart svg");
+  const svgWidth = Number(svg.getAttribute("width"));
+  const labelX = Math.max(...[...doc.querySelectorAll(".labels .rider-end-label")]
+    .map((el) => Number(el.getAttribute("x"))));
+  const longest = Math.max(...[...doc.querySelectorAll(".labels .rider-end-label")]
+    .map((el) => el.textContent.length));
+  // Same per-character estimate the code falls back to without a text metric.
+  const needs = longest * 5.6;
+  const room = svgWidth - labelX - Number(svg.querySelector("g").getAttribute("transform")
+    .match(/translate\(([\d.]+)/)[1]);
+  check("there is room at the right edge for the longest name",
+    room >= needs, `${room.toFixed(0)}px of room for ~${needs.toFixed(0)}px of text ` +
+    `("${longest}" chars)`);
+}
+
+// Selecting and re-selecting must not walk the labels down the chart: the
+// layout re-spreads from each label's recorded natural y (data-y0), not from
+// wherever the last pass left it.
+{
+  const doc = await boot("#2026/stage/gc");
+  const read = () => [...doc.querySelectorAll(".labels .rider-end-label")]
+    .filter((el) => el.style.opacity === "1")
+    .map((el) => `${el.getAttribute("data-id")}:${Number(el.getAttribute("y")).toFixed(1)}`)
+    .sort().join("|");
+  const before = read();
+  const press = (label) => [...doc.querySelectorAll("button")]
+    .find((b) => b.textContent.trim() === label)?.click();
+  for (let i = 0; i < 3; i++) { press("Top 10"); press("All"); press("Top 20"); }
+  check("re-selecting does not drift the labels down the chart",
+    before === read() && before.length > 0,
+    before === read() ? `${before.split("|").length} labels stable` : "positions moved");
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);

@@ -135,6 +135,61 @@ Nothing here is broken-and-unknown; each is a deliberate stop with a reason.
 - ~~**Flatten `byStage`**~~ — **measured and REJECTED 2026-08-22.** Saves 68.9% of the corpus and 3 ms on the worst file, costs ~20 call sites and a permanent readability tax, and ADDS ~41 MB to `.git` because the old blobs stay in history. Do not re-propose without reading that section.
 - ~~**Entering the Riders section costs 438 ms**~~ — largely addressed 2026-08-22; see "The Riders section's 438 ms".
 
+## The chart's end labels were a smear, and had always been clipped (2026-09-19)
+
+The bump chart writes each rider's surname at the end of his line, at his
+finishing rank. On the **default view** — latest Tour, Top 20 — twenty riders
+share ranks 1-20 on an axis spanning 1 to 180, which put the labels **2.9px
+apart in a 10px font**. There was no de-collision of any kind. The first thing
+anyone saw on opening the app was an unreadable vertical smear at the right
+edge of the chart.
+
+`layoutEndLabels()` spreads them: push each label down until it clears the one
+above, then push back up from the bottom if that overran. Order is preserved,
+so reading order still matches finishing order.
+
+**Fixing it exposed a second defect that the smear had been hiding.**
+`margin.right` was the constant `36`, leaving **30px** after the label's 6px
+offset — while the widest surname in that field renders at **70px** and the
+median at 39. Every label past about five characters had always been cut off by
+the SVG's edge; nobody could see it because they overlapped anyway. The margin
+is now measured: `endLabelMargin()` picks the longest label **by character
+count** (plain string work, no layout), measures only THAT one with
+`getComputedTextLength`, pads it, and clamps the result to a sixth of the chart
+so one freak name cannot eat the plot. One text measurement per draw, not 200.
+
+**When they cannot all fit, the ones that fit are drawn from the best rank
+down.** The classics need this: a season standing ties dozens of riders on
+equal points, so "Top 20" there selects **136 riders**, wanting 1,496px of a
+732px chart. A first version hid ALL labels past the threshold, and that put
+the entire classics race set over a cliff edge — 73 selected at "Top 10", 66
+of which fit, and all 73 disappeared. Caught by driving the real app, not by a
+test.
+
+| view | selected | labelled | overlaps | clipped |
+|---|---|---|---|---|
+| Tour 2026, Top 20 (default) | 20 | 20 | 0 | 0 |
+| Tour 2026, All | 184 | 66 | 0 | 0 |
+| Classics 2024, Top 10 | 73 | 66 | 0 | 0 |
+| Giro 1998 KOM, Top 20 | 20 | 20 | 0 | 0 |
+
+**Idempotent by construction.** Each label records the y it WANTS in
+`data-y0`, and every pass re-spreads from those rather than from wherever the
+last pass left it. Verified by cycling Top 10 / All / Top 20 five times in the
+live app and diffing every label's position: identical.
+
+**Not wired into the hover path.** `setHighlight()` restyles exactly two
+elements to stay O(1) across ~200 riders, and re-spreading the field on every
+mouseover would hand that back. A hovered rider's label can sit under a spread
+one while the pointer rests there.
+
+**Three tests, three mutants, each caught by exactly one of them** — and they
+read the `y` ATTRIBUTES rather than measuring pixels, because jsdom implements
+neither `getBBox` nor `getComputedTextLength`. Removing the spread reports
+"closest pair 2.9px apart"; restoring the constant margin reports "30px of room
+for ~73px of text"; spreading from the current y instead of `data-y0` reports
+"positions moved". The failure messages are the defect, quantified.
+
 ## "Pujol ?" is not a man's name (2026-09-19)
 
 PCS writes a first name nobody recorded as a placeholder and we store the

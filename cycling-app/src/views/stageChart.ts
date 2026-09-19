@@ -187,7 +187,16 @@ export function drawChart() {
   // Ticks use each race's abbreviation ("LBL"), which fits horizontally at
   // 11-across — so the classics need no extra margin over a Grand Tour. The
   // full name is still one hover away on the top axis.
-  const margin = { top: 32, right: 36, bottom: 36, left: state.currentMetric === "gc" ? 72 : 44 };
+  //
+  // The right margin is what the END LABELS need, not a constant. It was 36,
+  // which left them 30px after their 6px offset — while the widest surname in
+  // the 2026 Tour renders at 70px and the median at 39px. Every label longer
+  // than about five characters was being cut off by the SVG's edge, invisibly,
+  // because until the de-collision pass they overlapped into a smear anyway.
+  const margin = {
+    top: 32, right: endLabelMargin(width), bottom: 36,
+    left: state.currentMetric === "gc" ? 72 : 44,
+  };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
@@ -492,6 +501,13 @@ export function drawChart() {
       const last = lastDefinedById.get(r.id);
       return last ? state.yScale(last.rank as number) + 3 : -100;
     })
+    // The y a label WANTS, kept so layoutEndLabels() can re-spread from the
+    // original positions every time instead of nudging already-nudged ones
+    // further on each selection change.
+    .attr("data-y0", (r) => {
+      const last = lastDefinedById.get(r.id);
+      return last ? state.yScale(last.rank as number) + 3 : -100;
+    })
     .style("font-size", "10px")
     .text((r) => {
       if (state.currentMetric !== "gc") {
@@ -552,6 +568,55 @@ export function drawChart() {
   updateLineClasses();
 }
 
+/** How much room to leave at the right edge for the end labels.
+ *
+ *  Measures ONE string rather than all ~200: the longest label by character
+ *  count is picked first with plain string work (no layout), and only that one
+ *  is put through getComputedTextLength(). Character count is not a perfect
+ *  proxy for pixel width — "WWW" is wider than "iii" — so the result carries a
+ *  small pad, and the whole thing is clamped so that one freak name cannot eat
+ *  the plot on a narrow window.
+ *
+ *  The floor is the old constant, so a chart with no labels at all is laid out
+ *  exactly as it was. */
+function endLabelMargin(width: number): number {
+  const LABEL_OFFSET = 6;     // matches the label's x, above
+  const MIN = 36;             // the previous fixed margin
+  if (!state.dataset) return MIN;
+  let longest = "";
+  for (const r of state.dataset.riders) {
+    const label = riderLabel(r);
+    if (label.length > longest.length) longest = label;
+  }
+  if (!longest) return MIN;
+
+  const probe = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  probe.setAttribute("width", "0");
+  probe.setAttribute("height", "0");
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  text.setAttribute("class", "rider-end-label");
+  text.style.fontSize = "10px";
+  text.textContent = longest;
+  probe.appendChild(text);
+  document.body.appendChild(probe);
+  // jsdom implements neither getComputedTextLength nor getBBox; fall back to a
+  // width per character there so verify-views.mjs exercises the real path
+  // rather than throwing.
+  let measured = 0;
+  try {
+    measured = text.getComputedTextLength?.() || 0;
+  } catch { measured = 0; }
+  if (!measured) measured = longest.length * 5.6;
+  probe.remove();
+
+  const needed = LABEL_OFFSET + Math.ceil(measured) + 4;
+  // Never more than a sixth of the chart: past that the names cost more plot
+  // than they are worth, and the legend already carries every one of them.
+  return Math.max(MIN, Math.min(needed, Math.floor(width / 6)));
+}
+
 /** Short label for chart lines: last name when available, else last word of full_name. */
 function riderLabel(r: RiderSeries): string {
   if (r.lastName) return r.lastName;
@@ -598,6 +663,69 @@ export function updateLineClasses() {
   d3.selectAll<SVGTextElement, unknown>(".labels .rider-end-label").each(function () {
     styleRiderMarker(this as SVGTextElement);
   });
+  layoutEndLabels();
+}
+
+/** Pitch between two end labels that do not touch: 10px text plus a hair. */
+const LABEL_PITCH = 11;
+
+/** Spread the visible end labels apart so they can be read.
+ *
+ *  Each label sits at its rider's finishing rank, and on the DEFAULT view —
+ *  the latest Tour, Top 20 — twenty riders share ranks 1-20 on an axis that
+ *  spans 1 to 180. That put the labels about 2-4px apart in a 10px font, so
+ *  the names overlapped into an unreadable smear at the right edge of the
+ *  chart. There was no de-collision at all; this is it.
+ *
+ *  Two passes, the usual shape: push each label down until it clears the one
+ *  above, then, if that ran past the bottom, push back up from the end. Order
+ *  is preserved, so a label never crosses its neighbour and the reading order
+ *  still matches the finishing order.
+ *
+ *  When they cannot all fit — the classics' "Top 20" selects 136 riders,
+ *  because a season standing ties dozens of them on equal points, and 136
+ *  labels need 1,496px of a 732px chart — the ones that fit are drawn from the
+ *  BEST RANK DOWN and the remainder are hidden. Labelling the leaders is what
+ *  a reader wants from this chart, and each unlabelled rider still has his end
+ *  dot, his legend row and his hover. An earlier version hid ALL of them past
+ *  the threshold, which left the entire classics race-set unlabelled at every
+ *  preset over a cliff edge — 70 labels in room for 66 lost all 70.
+ *
+ *  Runs from updateLineClasses(), which every selection change already calls.
+ *  NOT from the hover path: setHighlight() restyles exactly two elements to
+ *  stay O(1) across ~200 riders, and re-spreading the field on every mouseover
+ *  would hand that back. A hovered rider's label can therefore sit under a
+ *  spread one for as long as the pointer rests there. */
+function layoutEndLabels() {
+  const labels: { el: SVGTextElement; y0: number; y: number }[] = [];
+  chartEl.querySelectorAll<SVGTextElement>(".labels .rider-end-label").forEach((el) => {
+    const id = el.getAttribute("data-id")!;
+    if (!state.selected.has(id)) return;
+    const y0 = Number(el.getAttribute("data-y0"));
+    if (!Number.isFinite(y0) || y0 < 0) return;     // rider never placed
+    labels.push({ el, y0, y: y0 });
+  });
+  if (labels.length === 0) return;
+
+  const bottom = state.yScale.range()[1];
+  labels.sort((a, b) => a.y0 - b.y0);
+
+  // y0 ascends with rank in every metric this chart draws, so "the first that
+  // fit" is "the best-ranked that fit" without needing the rank itself.
+  const room = Math.max(1, Math.floor(bottom / LABEL_PITCH));
+  for (const l of labels.splice(room)) l.el.style.opacity = "0";
+
+  for (let i = 1; i < labels.length; i++) {
+    labels[i].y = Math.max(labels[i].y0, labels[i - 1].y + LABEL_PITCH);
+  }
+  const overshoot = labels[labels.length - 1].y - bottom;
+  if (overshoot > 0) {
+    labels[labels.length - 1].y = bottom;
+    for (let i = labels.length - 2; i >= 0; i--) {
+      labels[i].y = Math.min(labels[i].y, labels[i + 1].y - LABEL_PITCH);
+    }
+  }
+  for (const l of labels) l.el.setAttribute("y", String(l.y));
 }
 
 // Restyle just one rider's three chart elements (line, end dot, end label).
