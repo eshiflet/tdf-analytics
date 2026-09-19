@@ -18,7 +18,18 @@ Output: cycling-app/src/data/<set>/race_history.json
 
   km   distance
   kmh  winner's average speed, distance / winning time
-  n    classified finishers (a proxy for field size and attrition)
+  n    HOW MANY RIDERS THIS ARCHIVE STORES for the edition — not how many
+       finished. For the classics the two are the same, because the stored
+       field is the one PCS publishes. For the off-road set they are not: an
+       `open_field` edition keeps only the top FIELD_CAP of a field that ran to
+       1,289 men at Leadville 2015, and an `elite_division` one keeps a whole
+       category and nothing else, 43 riders in 2016. The frontend therefore
+       labels this "Riders in archive" for gravel and "Finishers" elsewhere,
+       and carries a caveat — see classicsHistory.metricCaveat(). Left as a
+       count of stored rows on purpose: the true field size is in the scrape
+       files' `field_size_source`, but that field ALSO changes meaning with the
+       rule (for a division it is the division's size), so exporting it here
+       would replace one ambiguous number with another.
 
 Speed is DERIVED here rather than taken from PCS's "Avg. speed winner" field,
 which is absent for most historical editions; distance and winning time are

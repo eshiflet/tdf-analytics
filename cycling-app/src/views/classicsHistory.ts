@@ -46,11 +46,34 @@ for (const [path, url] of Object.entries(historyUrlModules)) {
 const LINE = "#3987e5";
 
 type MetricId = "kmh" | "km" | "n";
-const METRICS: { id: MetricId; label: string }[] = [
+
+/** The metric buttons, whose third LABEL depends on the race set.
+ *
+ *  `n` counts the riders this archive stores for an edition. For the classics
+ *  that is PCS's published field, so "Finishers" is what it is. For the
+ *  off-road set it is not: an `open_field` edition keeps only the top 100 of a
+ *  field that ran to 1,289 men at Leadville 2015, and an `elite_division` one
+ *  keeps a whole category and nothing else — 43 riders in 2016.
+ *
+ *  Labelled "Finishers", those two sit next to each other as a line falling off
+ *  a cliff in 2016, and every reader takes it for a race that collapsed. What
+ *  changed was which slice the timer published and which slice we keep. See
+ *  stages.field_definition. */
+const METRICS_BY_RACE = (race: string): { id: MetricId; label: string }[] => [
   { id: "kmh", label: "Winning speed" },
   { id: "km", label: "Distance" },
-  { id: "n", label: "Finishers" },
+  { id: "n", label: race === "gravel" ? "Riders in archive" : "Finishers" },
 ];
+
+/** Shown under the metric row when the number on screen is a property of this
+ *  archive rather than of the race. Null when it is not. */
+function metricCaveat(race: string, metric: MetricId): string | null {
+  if (race !== "gravel" || metric !== "n") return null;
+  return "Not the size of the field. An off-road edition is stored either as "
+       + "the top 100 finishers or as one category's whole entry list, so this "
+       + "line steps where that changed — Leadville 2015 kept 100 of 1,289 men, "
+       + "2016 keeps all 43 of the pro category.";
+}
 
 const KM_TO_MI = 0.621371;
 
@@ -110,7 +133,7 @@ export async function drawClassicsHistory(): Promise<void> {
   // Metric switch, one row above the charts.
   const bar = document.createElement("div");
   bar.className = "race-toggle-group";
-  for (const m of METRICS) {
+  for (const m of METRICS_BY_RACE(raceKey)) {
     const b = document.createElement("button");
     b.className = m.id === metric ? "classif-toggle-btn active" : "classif-toggle-btn inactive";
     b.textContent = m.label;
@@ -124,6 +147,14 @@ export async function drawClassicsHistory(): Promise<void> {
     bar.appendChild(b);
   }
   allRacesChartEl.appendChild(bar);
+
+  const caveat = metricCaveat(raceKey, metric);
+  if (caveat) {
+    const note = document.createElement("p");
+    note.className = "history-caveat";
+    note.textContent = caveat;
+    allRacesChartEl.appendChild(note);
+  }
 
   // Shared scales across every panel — the whole point is comparing races to
   // each other, which a per-panel axis would quietly prevent.

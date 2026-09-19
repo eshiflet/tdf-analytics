@@ -840,5 +840,45 @@ function check(name, cond, detail) {
     "if this fails the bug is gone for another reason and the guard is stale");
 }
 
+// The race-history "n" metric is a property of THIS ARCHIVE for the off-road
+// set, not of the race. An `open_field` edition keeps the top 100 of a field
+// that ran to 1,289 men at Leadville 2015; an `elite_division` one keeps a
+// whole category and nothing else, 43 riders in 2016. Labelled "Finishers",
+// those two sit side by side as a line falling off a cliff in 2016 and read as
+// a race that collapsed.
+{
+  const doc = await boot("#gravel/allraces");
+  const labels = [...doc.querySelectorAll(".race-toggle-group button")]
+    .map((b) => b.textContent.trim());
+  check("off-road race history does not call its count Finishers",
+    labels.includes("Riders in archive") && !labels.includes("Finishers"),
+    labels.join(" | "));
+
+  const btn = [...doc.querySelectorAll("button")]
+    .find((b) => b.textContent.trim() === "Riders in archive");
+  btn?.click();
+  const caveat = doc.querySelector(".history-caveat")?.textContent ?? "";
+  check("off-road count carries the caveat that explains its steps",
+    caveat.includes("Not the size of the field") && caveat.includes("1,289"),
+    caveat ? `${caveat.slice(0, 48)}…` : "no caveat rendered");
+}
+
+// The classics store PCS's published field, so there the count really is the
+// finishers and the caveat would be false. One label cannot serve both.
+{
+  const doc = await boot("#classics/allraces");
+  const labels = [...doc.querySelectorAll(".race-toggle-group button")]
+    .map((b) => b.textContent.trim());
+  check("the classics still call their count Finishers",
+    labels.includes("Finishers"), labels.join(" | "));
+
+  const btn = [...doc.querySelectorAll("button")]
+    .find((b) => b.textContent.trim() === "Finishers");
+  btn?.click();
+  check("the classics get no off-road caveat",
+    doc.querySelector(".history-caveat") === null,
+    doc.querySelector(".history-caveat")?.textContent ?? "none");
+}
+
 console.log(failures.length === 0 ? "PASS" : `FAIL (${failures.length}): ${failures.join(", ")}`);
 process.exit(failures.length === 0 ? 0 : 1);

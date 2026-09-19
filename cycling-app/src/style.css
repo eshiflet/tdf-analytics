@@ -1265,6 +1265,19 @@ svg text {
    Eleven panels, one per race. Faceted rather than overlaid because
    categorical color tops out at eight hues; each panel is a single series, so
    its title carries identity and no legend or categorical palette is needed. */
+/* Shown under the metric row when the number on screen is a property of this
+   ARCHIVE and not of the race — see metricCaveat(). Sized and coloured as a
+   footnote on purpose: it has to be readable by anyone who stops to ask what
+   the line means, without competing with the charts for a reader who does
+   not. */
+.history-caveat {
+  max-width: 68ch;
+  margin: 2px 0 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .history-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

@@ -188,6 +188,35 @@ The test inserts its rows in REVERSE calendar order on purpose — that is what
 makes "first row returned" and "first race of the season" different answers.
 Without it the test passes whether or not the sort exists.
 
+## A chart that read as a race collapsing (2026-09-19)
+
+The race-history view's third metric was labelled **"Finishers"** for every race
+set. For the classics that is what it is — the stored field is the one PCS
+publishes. For the off-road set it is not, and the chart said something false:
+
+| Leadville | stored | the field that actually ran |
+|---|---|---|
+| 2015 (`open_field`) | 100 — the `FIELD_CAP` | **1,289 men** |
+| 2016 (`elite_division`) | 43 | all 43 of the pro category |
+
+Plotted side by side under one label, that is a line **falling off a cliff in
+2016**, and every reader takes it for a race that collapsed. What changed was
+which slice the timer published and which slice we keep — the same thing
+`stages.field_definition` exists to record.
+
+The metric is now labelled **"Riders in archive"** for the off-road set only,
+with a caveat under the buttons naming both numbers. The classics keep
+"Finishers" and get no caveat, because there it would be false.
+
+**The true field size is NOT exported instead, deliberately.** The scrape files
+carry `field_size_source`, but that field also changes meaning with the rule —
+for a division it is the division's size, 43 — so plotting it would swap one
+ambiguous number for another with a bigger cliff. Naming what the number is
+beats dressing it up as something it is not.
+
+Four scenarios in `verify-views.mjs`, mutation-checked: relabelling gravel
+"Finishers", dropping the caveat, and showing it on the classics each fail one.
+
 ## What a rank is a rank OVER (2026-09-19)
 
 An off-road race is a mass start with categories inside it, and which slice the
