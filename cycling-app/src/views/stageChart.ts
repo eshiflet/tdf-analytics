@@ -714,6 +714,31 @@ export function buildLegend() {
     row.appendChild(rank);
     row.appendChild(swatch);
     row.appendChild(name);
+
+    // An awarded time is NOT an annulment and must not look like one. Nothing
+    // was taken away from this rider — he was credited with a time he did not
+    // race and keeps the place he finished in — so striking him through, the
+    // way a disqualification is drawn, would say the opposite of what happened.
+    //
+    // The glyph is PCS's own asterisk on purpose. PCS does not publish what
+    // each mark is for, so reproducing its annotation claims exactly as much
+    // as we know and no more; inventing a symbol would imply a reading of it.
+    if (rider.adj?.length) {
+      const mark = document.createElement("span");
+      mark.className = "legend-adj-mark";
+      mark.textContent = "*";
+      const where = rider.adj.length === 1
+        ? `stage ${rider.adj[0]}`
+        : `stages ${rider.adj.join(", ")}`;
+      // The glyph alone says nothing to a screen reader, which is why the DQ
+      // marker beside it carries a title too.
+      mark.title = `PCS marks his time on ${where} as awarded rather than `
+        + "raced — credited with a group's time, usually after a crash inside "
+        + "the final kilometres, while keeping the place he finished in";
+      mark.setAttribute("aria-label", mark.title);
+      row.appendChild(mark);
+    }
+
     const flag = nationalityFlagEl(rider.nationality);
     if (flag) row.appendChild(flag);
 

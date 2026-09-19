@@ -131,27 +131,35 @@ CREATE TABLE IF NOT EXISTS stage_results (
     -- deliberately -- the ride happened, the placing was taken away -- and the
     -- frontend renders these struck through, the way PCS does.
     disqualified        INTEGER NOT NULL DEFAULT 0,
-    -- PCS marks this rider's PLACE as changed by the race jury while his TIME
-    -- stood -- a relegation. It prints an asterisk on the classification cell:
-    -- "Tim Merlier relegated from 2nd to 89th" on Giro 2024 stage 11, whose
-    -- page carries a Penalties & Fines tab saying so.
+    -- PCS marks this rider's recorded time as AWARDED rather than raced, and
+    -- his position therefore does not follow from it. A rider caught behind a
+    -- crash inside the final kilometres is credited with his group's time
+    -- while keeping the place he actually finished in: Primoz Roglic is 34th
+    -- on the road at Vuelta 2022 stage 16 with a gap of 0. Whole groups get it
+    -- at once -- 28 riders share one stage time on Tour 1996 stage 7.
     --
-    -- WHY IT HAS TO BE STORED. The rider's time is then SMALLER than that of
-    -- the riders now ranked above him, so rank and gap cannot both be derived
-    -- from the other and the classification appears to run backwards. Both
-    -- values are correct; the marker is what says they are on different bases.
-    -- We stored the pair and dropped the marker, which is the whole reason 230
-    -- stages read as self-contradictory. Separation is total: across every
-    -- stored GC page, 717 marked rows are out of order and 227,820 unmarked
-    -- rows are not.
+    -- IT IS NOT A RELEGATION, which is what this column was first called and
+    -- was wrong. On Giro 2024 stage 11 the rider PCS itself names as relegated
+    -- (Tim Merlier) carries NO marker, while four sprinters around him do.
+    -- PCS does not publish what each mark is for, so this records only that
+    -- the mark is there -- never a reason.
+    --
+    -- WHY IT HAS TO BE STORED. The rider's time is then smaller than that of
+    -- riders ranked above him, so rank and gap cannot both be derived from the
+    -- other and the classification appears to run backwards. Both values are
+    -- correct; the marker is what says they are on different bases. We stored
+    -- the pair and dropped the marker, which is the whole reason 229 stages
+    -- read as self-contradictory. Separation is total: across every stored GC
+    -- page, 717 marked rows are out of order and 227,820 unmarked rows are not.
     --
     -- Distinct from `disqualified` (the result annulled after the fact, rank
     -- struck through) and from status='DSQ' (thrown out on the day, no rank).
-    -- A relegated rider keeps a real place he was demoted TO.
+    -- Nothing here was taken away from the rider.
     --
     -- Scope: today this records the marker on the GC cell only. The stage
-    -- result cell carries one too, on 139 rows, which is not yet read.
-    relegated           INTEGER NOT NULL DEFAULT 0,
+    -- result cell carries one too, on 139 rows, which is not yet read -- which
+    -- is why Roglic above is NOT flagged in this column.
+    time_adjusted           INTEGER NOT NULL DEFAULT 0,
     age_at_race          INTEGER,
     UNIQUE(stage_id, rider_id)
 );

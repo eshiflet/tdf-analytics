@@ -1747,7 +1747,7 @@ class GcLadderTriageTest(unittest.TestCase):
         """PCS moved a rider's PLACE and left his TIME, so the ladder it prints
         really does step backwards and our stored values are right. The marked
         row need not be the one we implicated — a stage can hold several
-        relegations, and the shape is PCS's either way."""
+        marks, and the shape is PCS's either way."""
         self.assertEqual(audit_gc_ladders.source_verdict(
             {"rider/a": (1, 0, False), "rider/b": (2, 90, True)}), "EXPLAINED")
 
@@ -1836,7 +1836,7 @@ class GcSourcePageTest(unittest.TestCase):
     def test_the_leading_row_is_never_marked(self):
         """The first GC row carries the leader's ABSOLUTE time, not a gap.
         Parsing it as one would read "37:58:58" as a gap and, worse, a leading
-        asterisk as a relegation of the race leader."""
+        asterisk as a mark on the race leader."""
         page = {"gc_rows": [["1", "", "rider/leader", "", "*37:58:58"],
                             ["2", "", "rider/second", "", "*2:07"]]}
         self.assertEqual(gc_source.marked_riders(page), {"rider/second"})
@@ -1850,7 +1850,7 @@ class GcSourcePageTest(unittest.TestCase):
 
 
 class RelegationExemptionTest(DBCheckTest):
-    """Both GC checks must ignore a rider PCS marks as relegated.
+    """Both GC checks must ignore a rider PCS marks as time_adjusted.
 
     The jury moved his PLACE and left his TIME, so his gap really is smaller
     than that of the riders now ranked above him. PCS's own ladder steps
@@ -1868,13 +1868,13 @@ class RelegationExemptionTest(DBCheckTest):
         TABLE; a DB rebuilt from this file would be unwritable by the ingest
         without it."""
         cols = [r[1] for r in self.cur.execute("PRAGMA table_info(stage_results)")]
-        self.assertIn("relegated", cols)
+        self.assertIn("time_adjusted", cols)
 
-    def test_a_relegated_row_does_not_break_the_ladder(self):
+    def test_a_time_adjusted_row_does_not_break_the_ladder(self):
         self.setup_stage()
         for rank, gap in ((1, 0), (2, 30), (3, 60)):
             self.result(1, f"rider/r{rank}", gc_rank=rank, gc_gap_seconds=gap)
-        self.result(1, "rider/relegated", gc_rank=4, gc_gap_seconds=5, relegated=1)
+        self.result(1, "rider/time_adjusted", gc_rank=4, gc_gap_seconds=5, time_adjusted=1)
         self.result(1, "rider/after", gc_rank=5, gc_gap_seconds=70)
         validate_db.check_gc_gap_monotonicity(self.cur)
         self.assertEqual(validate_db.warnings, [])
@@ -1885,15 +1885,15 @@ class RelegationExemptionTest(DBCheckTest):
         self.setup_stage()
         for rank, gap in ((1, 0), (2, 30), (3, 60)):
             self.result(1, f"rider/r{rank}", gc_rank=rank, gc_gap_seconds=gap)
-        self.result(1, "rider/plain", gc_rank=4, gc_gap_seconds=5, relegated=0)
+        self.result(1, "rider/plain", gc_rank=4, gc_gap_seconds=5, time_adjusted=0)
         self.result(1, "rider/after", gc_rank=5, gc_gap_seconds=70)
         validate_db.check_gc_gap_monotonicity(self.cur)
         self.assertTrue(validate_db.warnings, "an unmarked backwards step must warn")
 
-    def test_a_relegated_row_is_not_a_tie_contradiction(self):
+    def test_a_time_adjusted_row_is_not_a_tie_contradiction(self):
         self.setup_stage()
         self.result(1, "rider/a", gc_rank=7, gc_gap_seconds=36)
-        self.result(1, "rider/b", gc_rank=7, gc_gap_seconds=0, relegated=1)
+        self.result(1, "rider/b", gc_rank=7, gc_gap_seconds=0, time_adjusted=1)
         validate_db.check_gc_rank_gap_consistency(self.cur)
         self.assertEqual(validate_db.warnings, [])
 

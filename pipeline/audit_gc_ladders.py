@@ -80,10 +80,10 @@ def backwards_steps(ladder):
 
     Exempt for the same reason as there: out of rank 1 PCS lists the stripped
     and the promoted rider together and the promoted one keeps the gap he held
-    to the man ahead, and a row marked `disqualified` OR `relegated` carries a
-    classification the row beside it is not on. The third element of each tuple
-    is that combined flag, not `disqualified` alone — a relegated rider's place
-    was moved by the jury and his time was not, so PCS's own ladder steps
+    to the man ahead, and a row marked `disqualified` OR `time_adjusted` carries
+    a classification the row beside it is not on. The third element of each
+    tuple is that combined flag, not `disqualified` alone — a time-adjusted
+    rider was AWARDED a time he did not race, so PCS's own ladder steps
     backwards there and ours is right to follow it.
     """
     return [i for i, (a, b) in enumerate(zip(ladder, ladder[1:]))
@@ -155,11 +155,11 @@ def mirror_ranks(rows_by_rank):
 def source_verdict(ladder):
     """Whether the stored page explains this stage's backwards ladder.
 
-    "EXPLAINED" means PCS itself marks a row here, so the contradiction is the
-    jury's and the values are correct as stored — nothing to repair but the
-    lost marker. It deliberately does NOT check that the marked row is the one
-    we implicated: a stage can hold several relegations, and a marker anywhere
-    is enough to say the shape is PCS's.
+    "EXPLAINED" means PCS itself marks a row here — a time it awarded rather
+    than timed — so the contradiction is the source's and the values are
+    correct as stored. It deliberately does NOT check that the marked row is
+    the one we implicated: a stage can hold several marks, and one anywhere is
+    enough to say the shape is PCS's.
 
     "NO SOURCE" covers a missing page AND a page that failed verification,
     because both mean the same thing to a reader: nothing here has been
@@ -174,7 +174,7 @@ def source_verdict(ladder):
 def load(conn, race=None, year=None):
     sql = """
         SELECT s.stage_id, ra.name, re.year, s.stage_number, sr.gc_rank,
-               sr.gc_gap_seconds, sr.disqualified OR sr.relegated,
+               sr.gc_gap_seconds, sr.disqualified OR sr.time_adjusted,
                sr.rider_id, sr.stage_rank, s.source_slug
           FROM stage_results sr
           JOIN stages s ON s.stage_id = sr.stage_id
@@ -247,7 +247,7 @@ def main():
         for d in shown:
             head = f"{d['race']} {d['year']} st{d['stage']}"
             if d["source"] == "EXPLAINED":
-                print(f"  {head:<28} PCS marks a relegated rider here — the values "
+                print(f"  {head:<28} PCS marks a time_adjusted rider here — the values "
                       "are correct as stored")
                 continue
             if d["verdict"] == "ONE ROW":
@@ -275,13 +275,13 @@ def main():
     print(f"\n{total} stage(s) with a backwards GC ladder: "
           + ", ".join(f"{len(found[v])} {v}" for v in order) + ".")
     print(f"Against the STORED source pages: {src['EXPLAINED']} explained by a "
-          f"relegation PCS marks itself, {src['UNEXPLAINED']} unexplained, "
+          f"time PCS marks as awarded, {src['UNEXPLAINED']} unexplained, "
           f"{src['NO SOURCE']} with no page on disk.")
     if src["EXPLAINED"]:
-        print("An EXPLAINED stage needs no repair to its values — PCS moved a "
-              "rider's PLACE and left his TIME, and we store both faithfully. What "
-              "is lost is the marker that says so, which is why the ladder reads as "
-              "a contradiction downstream.")
+        print("An EXPLAINED stage needs no repair to its values — PCS awarded a "
+              "rider a time he did not race, and we store the time and the place "
+              "faithfully. What is lost is the marker that says so, which is why "
+              "the ladder reads as a contradiction downstream.")
     if interleaved:
         print(f"{interleaved} of them hold TWO interleaved classifications, one with "
               "gc_rank copied from stage_rank. Those are a ladder to remove, not a "

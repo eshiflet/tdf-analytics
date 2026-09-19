@@ -50,6 +50,15 @@ export interface RiderSeries {
    *  the number. Present only when true. The rider, the rank and the time are
    *  all kept deliberately; this only says the placing was taken away. */
   dq?: number;
+  /** Stage numbers where PCS marks this rider's recorded time as AWARDED
+   *  rather than raced — credited with a group's time after a crash inside the
+   *  final kilometres, most often — while he keeps the place he finished in.
+   *  His time therefore does not place him where he stands.
+   *
+   *  NOT the same claim as `dq`, and never drawn struck through: nothing was
+   *  taken away from him. Carried as stages rather than a flag because it
+   *  happens on one day, while `dq` belongs to the whole edition. */
+  adj?: number[];
 }
 
 export interface GcDataset {

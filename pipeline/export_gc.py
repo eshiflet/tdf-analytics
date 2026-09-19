@@ -285,6 +285,22 @@ def export_year(year, out_path, race_id, db_path=None, supplements=None):
     )
     disqualified_riders = {r["rider_id"] for r in cur.fetchall()}
 
+    # Times PCS marks as AWARDED rather than raced — a different fact from an
+    # annulment, so a different marker and never a strikethrough: nothing was
+    # taken away from these riders. Carried as the stage numbers rather than a
+    # boolean so the tooltip can say WHERE it happened; this belongs to one
+    # stage, while `dq` is a property of the whole edition.
+    cur.execute(
+        """SELECT sr.rider_id, st.stage_number FROM stage_results sr
+             JOIN stages st ON st.stage_id = sr.stage_id
+            WHERE st.edition_id = ? AND sr.time_adjusted = 1
+            ORDER BY st.stage_number""",
+        (edition_id,),
+    )
+    adjusted_stages: dict[str, list[int]] = {}
+    for row in cur.fetchall():
+        adjusted_stages.setdefault(row["rider_id"], []).append(row["stage_number"])
+
     cur.execute(
         """
         SELECT sr.rider_id, r.full_name AS name, r.first_name, r.last_name,
@@ -501,6 +517,8 @@ def export_year(year, out_path, race_id, db_path=None, supplements=None):
             # Present only when true, so the flag costs nothing on the 99.95%
             # of riders it does not apply to (374 results of 745,280).
             entry["dq"] = 1
+        if rider_id in adjusted_stages:
+            entry["adj"] = adjusted_stages[rider_id]
         riders_out.append(entry)
 
     riders_out.sort(key=lambda r: r["finalRank"])

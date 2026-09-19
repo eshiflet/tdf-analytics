@@ -6,7 +6,7 @@ that stage's page.
 WHY THIS IS A MODULE AND NOT THREE COPIES
 
 Three callers need the same thing — audit_gc_ladders.py to explain a backwards
-ladder, backfill_relegations.py to record the marker, ingest_race.py to keep
+ladder, backfill_time_adjusted.py to record the marker, ingest_race.py to keep
 recording it — and the reading has two traps that each of them would otherwise
 have to rediscover.
 
@@ -33,16 +33,24 @@ rejected a thousand good pages on the first attempt.
 
 WHAT THE ASTERISK IS
 
-PCS prints one on a rider whose PLACE the jury changed while his TIME stood —
-"Tim Merlier relegated from 2nd to 89th" on Giro 2024 stage 11, whose page
-carries a Penalties & Fines tab saying so. His stored time is then smaller than
-that of the riders now ranked above him, so the classification appears to run
-backwards. Across every stored GC page, 717 asterisked rows are out of order
-and 227,820 unasterisked rows are not: 100% against 0.00%.
+PCS prints one on a rider whose recorded time was AWARDED rather than raced. A
+rider caught behind a crash inside the final kilometres is credited with his
+group's time while keeping the place he actually finished in -- Primoz Roglic
+is 34th on the road at Vuelta 2022 stage 16 with a gap of 0 -- so his time no
+longer places him where he stands. Whole groups get it at once: 28 riders share
+one stage time on Tour 1996 stage 7.
 
-We store the rank and the time faithfully and drop the marker, which is what
-makes the pair look self-contradictory downstream. This module is how the
-marker gets back.
+IT IS NOT A RELEGATION. That was the first reading, taken from a Penalties &
+Fines tab on the same page, and it is wrong: on Giro 2024 stage 11 the rider
+PCS itself names as relegated (Tim Merlier) carries NO marker, while four
+sprinters around him do. PCS does not publish what each mark means, so nothing
+here claims a reason -- only that the mark is present.
+
+What the mark reliably identifies is the SHAPE: across every stored GC page,
+717 marked rows are out of order and 227,820 unmarked rows are not, 100%
+against 0.00%. We store the rank and the time faithfully and drop the marker,
+which is what makes the pair look self-contradictory downstream. This module is
+how the marker gets back.
 """
 
 import json

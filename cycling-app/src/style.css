@@ -1332,6 +1332,22 @@ svg text {
   font-size: 0.95em;
   cursor: help;
 }
+/* A time PCS awarded rather than timed. Deliberately NOT .is-dq's
+   strikethrough: nothing was taken away from this rider, so striking him
+   through would read as "this never counted", the opposite of what happened.
+   The glyph is PCS's own asterisk, raised and dimmed — reproducing the
+   source's annotation claims as much as we actually know, since PCS does not
+   publish what each mark is for. The title names the stage, because this
+   happens on one day while a disqualification belongs to the whole race. */
+.legend-adj-mark {
+  margin-left: 0.3em;
+  font-size: 0.95em;
+  line-height: 1;
+  vertical-align: super;
+  color: var(--text-dim);
+  cursor: help;
+}
+
 /* Matches .riders-clear-btn: it is a text control, not a jersey icon. It used
    to borrow .jersey-filter-btn, which pins the height at 10px for an icon and
    left the label spilling out of its own button. */

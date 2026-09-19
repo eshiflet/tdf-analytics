@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Record PCS's relegation marker on the GC rows that carry it.
+Record PCS's time marker on the GC rows that carry it.
 
 OFFLINE. Reads the stage pages already stored under <race>_scrapes/<year>/
 gc_pages/ and never fetches anything.
 
-WHAT IT FIXES. PCS marks a rider whose PLACE the jury changed while his TIME
-stood. We store the rank and the gap faithfully and throw the marker away, so
+WHAT IT FIXES. PCS marks a rider whose recorded time was AWARDED rather than
+raced -- credited with a group's time after a crash inside the final
+kilometres, most often -- so the time no longer places him where he stands. We store the rank and the gap faithfully and throw the marker away, so
 230 stages read downstream as self-contradictory — a later rank apparently
 closer to the leader than an earlier one — when both stored values are right.
 This puts the marker back. NO RANK AND NO GAP IS EVER WRITTEN.
@@ -24,9 +25,9 @@ there produced a confident, wrong bug report. A stage whose page cannot be
 verified is skipped and counted, never guessed at.
 
 Usage:
-  python3 backfill_relegations.py                # dry run, prints the table
-  python3 backfill_relegations.py --race tour
-  python3 backfill_relegations.py --apply
+  python3 backfill_time_adjusted.py                # dry run, prints the table
+  python3 backfill_time_adjusted.py --race tour
+  python3 backfill_time_adjusted.py --apply
 """
 
 import argparse
@@ -43,20 +44,20 @@ RACE_ALIASES = {"tour": "Tour de France", "tdf": "Tour de France",
 
 
 def ensure_column(cur):
-    """Add stage_results.relegated if this database predates it.
+    """Add stage_results.time_adjusted if this database predates it.
 
     Additive and idempotent: an ALTER with a DEFAULT leaves every existing row
     untouched at 0, so running this on a current database does nothing.
     """
     cols = {r[1] for r in cur.execute("PRAGMA table_info(stage_results)")}
-    if "relegated" not in cols:
+    if "time_adjusted" not in cols:
         cur.execute("ALTER TABLE stage_results ADD COLUMN "
-                    "relegated INTEGER NOT NULL DEFAULT 0")
+                    "time_adjusted INTEGER NOT NULL DEFAULT 0")
         return True
     return False
 
 
-def find_relegations(conn, race=None):
+def find_adjusted(conn, race=None):
     """[(stage_id, race, year, stage_number, rider_id)] PCS marks, from disk."""
     sql = """SELECT s.stage_id, ra.name, re.year, s.stage_number, s.source_slug
                FROM stages s
@@ -99,11 +100,11 @@ def main():
     race = RACE_ALIASES.get((args.race or "").lower(), args.race)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    found, stats = find_relegations(conn, race)
+    found, stats = find_adjusted(conn, race)
 
     print(f"{stats['verified']} stage(s) had a page this could verify; "
           f"{stats['unverified']} could not be verified and were skipped.")
-    print(f"{len(found)} GC row(s) carry PCS's relegation marker.\n")
+    print(f"{len(found)} GC row(s) carry PCS's time marker.\n")
     shown = found if args.limit == 0 else found[:args.limit]
     for _sid, name, year, number, rider in shown:
         print(f"  {name} {year} st{number:<3} {rider}")
@@ -120,15 +121,15 @@ def main():
 
     added = ensure_column(cur)
     if added:
-        print("\nAdded stage_results.relegated (existing rows default to 0).")
+        print("\nAdded stage_results.time_adjusted (existing rows default to 0).")
     for stage_id, _n, _y, _s, rider in found:
-        cur.execute("UPDATE stage_results SET relegated = 1 "
+        cur.execute("UPDATE stage_results SET time_adjusted = 1 "
                     "WHERE stage_id = ? AND rider_id = ?", (stage_id, rider))
     # Provenance per stage, matching how the rest of stage_results is recorded:
     # one row covers the stage, because one page is the source for all of them.
     for stage_id in sorted({f[0] for f in found}):
-        record_provenance(cur, "stages", stage_id, "relegated", "pcs",
-                          source_ref="gc_pages", script="backfill_relegations.py")
+        record_provenance(cur, "stages", stage_id, "time_adjusted", "pcs",
+                          source_ref="gc_pages", script="backfill_time_adjusted.py")
     conn.commit()
     print(f"\nApplied: {len(found)} row(s) flagged across "
           f"{len({f[0] for f in found})} stage(s). No rank or gap was touched.")
