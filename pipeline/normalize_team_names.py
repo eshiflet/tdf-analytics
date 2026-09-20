@@ -151,15 +151,23 @@ RENAMES = {
     "Berettini - Monza": "Berrettini - Monza",
 }
 
-# Sponsor names that are acronyms and are always written in capitals, wherever
-# they appear in a name and however many co-sponsors follow. A token rule
-# rather than a list of names, so `Daf Trucks` and `Daf Trucks - Lejeune - PZ`
-# are one decision and a name PCS adds next season is already covered.
+# How a sponsor's name is cased, wherever it appears and however many
+# co-sponsors follow. A token rule rather than a list of names, so `Daf Trucks`
+# and `Daf Trucks - Lejeune - PZ` are one decision and whatever PCS adds next
+# season is already covered.
+#
+# It runs in both directions, because upstream gets it wrong both ways: DAF is
+# an acronym and is always capitalised, while DELKO is a brand name that merely
+# looks like one and is written Delko. Nothing here can be derived — whether a
+# name is an acronym is knowledge about the company, not about the string.
 #
 # Matching is whole-token (`\bdaf\b`), so it cannot reach inside a longer word,
-# and the set is an explicit allowlist — nothing is capitalised that is not
-# named here. Eric's call, 2026-09-19: DAF is always capitalised.
-ACRONYMS = {"DAF"}
+# and the map is an explicit allowlist: a token not named here is never
+# recased. Eric's calls, 2026-09-19.
+TOKEN_CASE = {
+    "daf": "DAF",       # the Dutch truck maker, an acronym
+    "delko": "Delko",   # French car parts, NOT an acronym
+}
 
 # Case-only merges where the count points at a spelling that is wrong about
 # the name itself. Keyed by folded name -> the spelling to keep.
@@ -178,10 +186,10 @@ def fold(name):
     return re.sub(r"[^0-9A-Za-z]+", " ", d).casefold().strip()
 
 
-def apply_acronyms(name):
-    """Capitalise any ACRONYMS token, leaving the rest of the name alone."""
-    for acro in sorted(ACRONYMS):
-        name = re.sub(rf"\b{re.escape(acro)}\b", acro, name, flags=re.IGNORECASE)
+def apply_token_case(name):
+    """Recase any TOKEN_CASE token, leaving the rest of the name alone."""
+    for token, cased in sorted(TOKEN_CASE.items()):
+        name = re.sub(rf"\b{re.escape(token)}\b", cased, name, flags=re.IGNORECASE)
     return name
 
 
@@ -234,14 +242,14 @@ def plan(cur):
 
     handled = set(MISSPELLINGS) | set(RENAMES)
 
-    # Acronym casing. Runs on whatever the maps above did not claim, and takes
+    # Sponsor-name casing. Runs on whatever the maps above did not claim, and takes
     # those rows out of the fold pass — a corrected name needs no second
     # opinion from the rider counts.
     by_fixed = defaultdict(list)
     for team_id, name in rows:
         if name in handled:
             continue
-        fixed = apply_acronyms(name)
+        fixed = apply_token_case(name)
         if fixed != name:
             by_fixed[fixed].append((team_id, name))
             handled.add(name)

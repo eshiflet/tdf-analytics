@@ -1148,6 +1148,7 @@ polymorphic, so there is no FK and `ingest_race.py` deletes an edition's rows it
 | `scrape_traka.py` | The Traka → the standard gravel scrape-file shape, men only |
 | `backfill_rider_team_provenance.py` | provenance for pre-tracking `riders`/`teams` rows; companion to `backfill_provenance.py` (which covers `stages`) |
 | `normalize_team_names.py` | merges one team's several spellings into one display name; groups by folded name, never by slug stem |
+| `delete_orphan_teams.py` | removes team rows nothing references; refuses if a vanishing name is still in an exported dropdown |
 | `patch_cyclingflash_elevation.py` | 2001/2006 s20 from cyclingflash.com; guards on distance before writing |
 | `null_itt_filler_times.py` | NULLs the 4,040 fabricated ITT finish times; re-run after any re-ingest of those editions |
 | `audit_rider_racer_ids.py` | gravel riders stored under >1 id, found via Athlinks' own persistent `racer_id`; never merges, `--json` feeds `merge_rider_duplicates.py` |
@@ -1731,19 +1732,25 @@ refusal down. Note it originally used `Molteani`/`Molteni`, which stopped being
 an unlisted pair the moment the rule was applied — **an example chosen from
 live data is a test that can go stale**.
 
-### Acronyms are a token rule, not a list of names
+### Sponsor casing is a token rule, and it runs both ways
 
-`ACRONYMS` capitalises a sponsor that is always written in capitals, wherever
-it appears and however many co-sponsors follow — `Daf Trucks` and
-`Daf Trucks - Lejeune - PZ` are one decision, not two, and next season's
-`Daf Trucks - <something new>` is already covered. Matching is whole-token
-(`\bdaf\b`), so it cannot reach inside `Daffodil`, and the set is an explicit
-allowlist: nothing is capitalised that is not named in it. Eric's call,
-2026-09-19: **DAF is always capitalised.** The 1981 and 1982 rows already had
-it right and the rule left them alone.
+`TOKEN_CASE` fixes how a sponsor is cased wherever it appears and however many
+co-sponsors follow — `Daf Trucks` and `Daf Trucks - Lejeune - PZ` are one
+decision, not two, and next season's `Daf Trucks - <something new>` is already
+covered. Matching is whole-token (`\bdaf\b`), so it cannot reach inside
+`Daffodil`, and the map is an explicit allowlist: a token not named in it is
+never recased.
 
-This is the same family as `STYLE_OVERRIDES` (`KAS`, `MSS`) but the better
-shape for it — an override names one string, a token rule names the sponsor.
+**It has to run downward as well as upward, because upstream gets it wrong in
+both directions.** `DAF` is the Dutch truck maker, an acronym, always capitals.
+`DELKO` is French car parts — a brand name that merely *looks* like initials,
+and is written `Delko`. Neither is derivable: whether a name is an acronym is
+knowledge about the company, not about the string. Eric's calls, 2026-09-19.
+Both left their already-correct siblings alone (`DAF Trucks - Cote d'Or -
+Gazelle` 1981/1982, `Delko Marseille Provence KTM` 2016-2019).
+
+Same family as `STYLE_OVERRIDES` (`KAS`, `MSS`) but the better shape for it —
+an override names one string, a token rule names the sponsor.
 
 ### Why 740 teams have no riders at all
 
@@ -1774,22 +1781,50 @@ riders' attributions, so a team with no riders is invisible. This is DB
 hygiene, not a user-facing defect, which is why the 15 rider-less typo groups
 were left open rather than guessed at.
 
-**`check_orphan_teams()` now reports them** (2026-09-19), the companion to
+**`check_orphan_teams()` reports them** (2026-09-19), the companion to
 `check_orphan_riders()`. It splits the two kinds, because **"no riders" does
-not mean "useless"**: 733 rows are referenced by nothing and are the deletable
-kind, while **7 hold a team-classification placing** — a team's own result,
-which needs no rider row behind it to be real. Warning, never an error, and
-unlike the rider check **the expected count is not zero**: nothing has ever
-deleted these, so the number is a baseline to watch. A jump means a fresh
-ingest stranded more.
+not mean "useless"**: 733 rows were referenced by nothing, while **7 hold a
+team-classification placing** — a team's own result, which needs no rider row
+behind it to be real. Warning, never an error.
 
 *It found a malformed row on its first run.* `team_id = " Lease a Bike"`,
 `name = "Team Visma "`, `season_year` NULL — `Team Visma | Lease a Bike` split
 on its own pipe by something that ran before provenance tracking, so the
-culprit is unknowable. It is the only `team_id` in the database that does not
-start with `team/`. Harmless (nothing references it) and the real
-`team/team-visma-lease-a-bike-2024/2025/2026` rows are intact with 498-557
-riders each, but it is the clearest deletion candidate in the whole set.
+culprit is unknowable. It was the only `team_id` in the database not starting
+with `team/`, and the real `team/team-visma-lease-a-bike-2024/2025/2026` rows
+were intact throughout with 498-557 riders each.
+
+### The 733 are deleted (2026-09-19)
+
+`delete_orphan_teams.py`, following the 826-orphan-rider precedent.
+**`teams` 4,862 -> 4,129**, 1,465 provenance rows went with them, and the 7
+classification-only teams were left alone — they are all that
+`check_orphan_teams` still reports.
+
+**Nothing in the exports changed**, which was the prediction and is the proof:
+the re-export after deleting touched only the unrelated `DELKO` -> `Delko`
+rename. 415 distinct names sat on those rows, but 145 of them also sat on rows
+that hold riders, so those names survive; the 270 that disappeared entirely
+were in **no exported `teams` array**, because the dropdown is built from
+riders' attributions.
+
+`check_safe()` re-derives that every run rather than trusting it — it reads the
+live DB and the live `riders_index.json` files, refuses if any vanishing name
+is still listed in a dropdown, **and refuses if it finds no exports at all**,
+since absence of evidence is not proof the deletion is invisible. Verified
+after: 0 orphan provenance rows, 0 `stage_results` and 0
+`classification_standings` pointing at a deleted team, and
+`normalize_team_names.py` still runs clean — its `MISSPELLINGS` targets all
+kept a rider-bearing row, which is why the "target must exist" guard still
+passes.
+
+**This is a cleanup, not a fix, and it will partly undo itself.** A re-ingest
+re-creates any team whose id is still attested in a scrape file on disk. 544 of
+the 733 were marked `unknown` precisely because no such file survives, so those
+are gone for good; the rest can come back, including the 9 gravel teams
+(`Adria Mobil`, `UVCA Troyes`) that `ingest_gravel.py` mints from PCS gravel
+pages without ever attributing a rider to them. The permanent fix is for the
+ingest to stop minting a row it will never attach a rider to.
 
 ### The initials class is separate and still open
 

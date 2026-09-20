@@ -77,25 +77,36 @@ class PickCanonicalTest(unittest.TestCase):
         self.assertEqual(self.pick(("Kas", 4, 1034), ("KAS", 10, 0)), "KAS")
 
 
-class AcronymTest(unittest.TestCase):
+class TokenCaseTest(unittest.TestCase):
     def test_capitalises_wherever_it_appears(self):
-        self.assertEqual(ntn.apply_acronyms("Daf Trucks"), "DAF Trucks")
-        self.assertEqual(ntn.apply_acronyms("Daf Trucks - Lejeune - PZ"),
+        self.assertEqual(ntn.apply_token_case("Daf Trucks"), "DAF Trucks")
+        self.assertEqual(ntn.apply_token_case("Daf Trucks - Lejeune - PZ"),
                          "DAF Trucks - Lejeune - PZ")
-        self.assertEqual(ntn.apply_acronyms("Daf-Trucks"), "DAF-Trucks")
+        self.assertEqual(ntn.apply_token_case("Daf-Trucks"), "DAF-Trucks")
 
     def test_leaves_a_correct_name_untouched(self):
         for n in ("DAF Trucks - Cote d'Or - Gazelle",
                   "DAF Trucks - Tévé Blad - Rossin"):
-            self.assertEqual(ntn.apply_acronyms(n), n)
+            self.assertEqual(ntn.apply_token_case(n), n)
 
     def test_cannot_reach_inside_a_longer_word(self):
         """Whole-token only, or a real word becomes an acronym."""
         for n in ("Daffodil", "Dafne - Wolber", "Bidaf", "Daffy Duck - Gios"):
-            self.assertEqual(ntn.apply_acronyms(n), n)
+            self.assertEqual(ntn.apply_token_case(n), n)
+
+    def test_lowercases_a_brand_that_only_looks_like_an_acronym(self):
+        """Upstream gets it wrong in both directions — DELKO is a brand name,
+        not initials, so the rule has to run downward too."""
+        self.assertEqual(ntn.apply_token_case("DELKO"), "Delko")
+        self.assertEqual(ntn.apply_token_case("DELKO Marseille Provence KTM"),
+                         "Delko Marseille Provence KTM")
+
+    def test_leaves_an_already_correct_brand_untouched(self):
+        for n in ("Delko Marseille Provence KTM", "Delko Marseille Provence"):
+            self.assertEqual(ntn.apply_token_case(n), n)
 
     def test_only_listed_tokens_are_touched(self):
-        self.assertEqual(ntn.apply_acronyms("Kas - Kaskol"), "Kas - Kaskol")
+        self.assertEqual(ntn.apply_token_case("Kas - Kaskol"), "Kas - Kaskol")
 
 
 class PlanTest(unittest.TestCase):
