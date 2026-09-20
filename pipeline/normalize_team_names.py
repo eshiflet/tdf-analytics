@@ -164,9 +164,20 @@ RENAMES = {
 # Matching is whole-token (`\bdaf\b`), so it cannot reach inside a longer word,
 # and the map is an explicit allowlist: a token not named here is never
 # recased. Eric's calls, 2026-09-19.
+# It also carries the initials that take periods. **This is deliberately not a
+# general rule**, and must not become one: team names hold dozens of bare
+# uppercase runs that are written WITHOUT periods — KTM, FDJ, TVM, BP, CSF,
+# PDM, CCC, MBK, LPR. "Add periods to initials" applied across the board would
+# mangle every one of them. Only tokens whose dotted form is already the
+# established spelling in this database are listed. Eric's call, 2026-09-19:
+# use periods in the initials, for these.
 TOKEN_CASE = {
     "daf": "DAF",       # the Dutch truck maker, an acronym
     "delko": "Delko",   # French car parts, NOT an acronym
+    "jb": "J.B.",       # J.B. Louvet — 9 dotted rows against the bare form
+    "rmo": "R.M.O.",    # 595 riders dotted, 207 bare
+    "gbc": "G.B.C.",    # already fully dotted; listed so it stays that way
+    "acbb": "A.C.B.B.",
 }
 
 # Case-only merges where the count points at a spelling that is wrong about
@@ -242,41 +253,35 @@ def plan(cur):
 
     handled = set(MISSPELLINGS) | set(RENAMES)
 
-    # Sponsor-name casing. Runs on whatever the maps above did not claim, and takes
-    # those rows out of the fold pass — a corrected name needs no second
-    # opinion from the rider counts.
-    by_fixed = defaultdict(list)
-    for team_id, name in rows:
-        if name in handled:
-            continue
-        fixed = apply_token_case(name)
-        if fixed != name:
-            by_fixed[fixed].append((team_id, name))
-            handled.add(name)
-    for fixed, targets in sorted(by_fixed.items()):
-        merges.append((fixed, sorted(targets)))
-
+    # Sponsor-name casing is a TRANSFORM, not a merge of its own: it runs first
+    # and the fold pass then sees the corrected name. That order matters —
+    # `JB Louvet-Wolber` becomes `J.B. Louvet-Wolber`, which folds together
+    # with `J.B. Louvet - Wolber` and is settled by the rider counts like any
+    # other spelling pair. Recasing after the fold would leave the two apart.
     groups = defaultdict(lambda: defaultdict(list))
     for team_id, name in rows:
         if name in handled:
-            continue          # handled above, and must not steer a fold group
-        groups[fold(name)][name].append(team_id)
+            continue          # claimed above, and must not steer a fold group
+        groups[fold(apply_token_case(name))][apply_token_case(name)].append(
+            (team_id, name))
 
     for key, by_name in sorted(groups.items()):
-        if len(by_name) < 2:
-            continue
         # PCS's own uncertainty marker: not a spelling variant.
         if any("?" in n for n in by_name):
             continue
         variants = [{"name": n,
                      "teams": len(ids),
-                     "riders": sum(usage.get(t, 0) for t in ids)}
+                     "riders": sum(usage.get(t, 0) for t, _ in ids)}
                     for n, ids in by_name.items()]
-        canonical = pick_canonical(key, variants)
-        rows = [(t, n) for n, ids in by_name.items() if n != canonical
-                for t in ids]
-        if rows:
-            merges.append((canonical, sorted(rows)))
+        canonical = (pick_canonical(key, variants) if len(by_name) > 1
+                     else next(iter(by_name)))
+        # `orig != canonical` rather than `n != canonical`, so a row that only
+        # needed recasing is caught even when its group has a single variant:
+        # a lone `RMO` in a season with no `R.M.O.` beside it still has to move.
+        targets = sorted((t, orig) for ids in by_name.values()
+                         for t, orig in ids if orig != canonical)
+        if targets:
+            merges.append((canonical, targets))
     return merges
 
 

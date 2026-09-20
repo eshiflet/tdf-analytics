@@ -59,6 +59,7 @@ from race_common import (
     record_provenance,
     row_gap_violations,
 )
+from race_set_ingest import prune_stranded_teams
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -283,6 +284,9 @@ def main():
 
     record_provenance(cur, "stages", stage_id, "results", SOURCE_PCS,
                       source_ref=origin)
+    # Results are written; anything of this season still unreferenced was
+    # stranded by the rewrite above.
+    prune_stranded_teams(cur, args.year)
     conn.commit()
     print(f"  replaced {st['res']} result(s) with {inserted}")
     conn.close()

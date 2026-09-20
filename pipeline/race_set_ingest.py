@@ -222,3 +222,47 @@ def replace_edition(cur, race_id, year, edition_name=None):
     cur.execute("INSERT INTO race_editions (race_id, year, edition_name) VALUES (?,?,?)",
                 (race_id, year, edition_name))
     return cur.lastrowid
+
+
+def prune_stranded_teams(cur, year):
+    """Delete season-`year` teams that no result and no standing references.
+
+    **Call this at the END of an ingest, after the new results are written.**
+    Run in the middle — between `replace_edition()` and the rewrite — every
+    team in the edition looks stranded, because its results have just been
+    deleted.
+
+    This is the permanent half of the orphan-team problem; `delete_orphan_teams.py`
+    was the one-off cleanup of the 733 that had already piled up. `teams` is
+    append-only — every writer uses `INSERT OR IGNORE`/`upsert_team()` and
+    nothing else deletes a team row — while `replace_edition()` wipes an
+    edition's `stage_results` wholesale. No writer ever mints a team without
+    attaching a rider to it; the row is stranded *later*, when a re-scrape
+    spells the sponsor differently or PCS switches between a short name and the
+    full sponsor string, and the riders move to a new `team_id`.
+
+    **Scoped to one season on purpose.** A team id carries its season in the
+    slug, and an ingest of year Y can only strand teams of year Y, so this
+    cannot reach a row the caller had nothing to do with. Teams whose
+    `season_year` is NULL are never pruned — the scope cannot prove they belong
+    to this run — which is a miss rather than a wrong delete, and the standalone
+    script still catches them.
+
+    A team classification placing keeps a row alive on its own: that standing is
+    the team's own result and needs no rider row behind it.
+    """
+    if year is None:
+        return 0
+    doomed = [t for (t,) in cur.execute(
+        """SELECT team_id FROM teams t
+            WHERE t.season_year = ?
+              AND NOT EXISTS (SELECT 1 FROM stage_results sr
+                               WHERE sr.team_id = t.team_id)
+              AND NOT EXISTS (SELECT 1 FROM classification_standings cs
+                               WHERE cs.team_id = t.team_id)""", (year,))]
+    if not doomed:
+        return 0
+    cur.executemany("DELETE FROM data_provenance WHERE entity='teams' "
+                    "AND entity_id = ?", [(t,) for t in doomed])
+    cur.executemany("DELETE FROM teams WHERE team_id = ?", [(t,) for t in doomed])
+    return len(doomed)

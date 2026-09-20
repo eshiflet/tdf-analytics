@@ -46,6 +46,7 @@ from link_gravel_riders import fold
 from race_set_ingest import (
     capture_patches,
     replace_edition,
+    prune_stranded_teams,
     report_patches,
     restore_patches,
     upsert_country,
@@ -468,6 +469,9 @@ def ingest_one(cur, path, rider_ids, dry_run=False):
                                   source_ref=ref)
 
     report_patches(f"{slug} {year}", *restore_patches(cur, edition_id, patched))
+    # Results are written; anything of this season still unreferenced was
+    # stranded by the rewrite above.
+    prune_stranded_teams(cur, year)
     if out_of_order:
         print(f"    {slug} {year}: {len(out_of_order)} finisher(s) timed faster than "
               f"riders ranked ahead of them — time set NULL, placing kept "

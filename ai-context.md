@@ -1818,25 +1818,64 @@ after: 0 orphan provenance rows, 0 `stage_results` and 0
 kept a rider-bearing row, which is why the "target must exist" guard still
 passes.
 
-**This is a cleanup, not a fix, and it will partly undo itself.** A re-ingest
-re-creates any team whose id is still attested in a scrape file on disk. 544 of
-the 733 were marked `unknown` precisely because no such file survives, so those
-are gone for good; the rest can come back, including the 9 gravel teams
-(`Adria Mobil`, `UVCA Troyes`) that `ingest_gravel.py` mints from PCS gravel
-pages without ever attributing a rider to them. The permanent fix is for the
-ingest to stop minting a row it will never attach a rider to.
+### The permanent fix: `prune_stranded_teams()` (2026-09-19)
 
-### The initials class is separate and still open
+The deletion above was the one-off; this is what stops them accumulating again.
 
-14 pairs differ only in how initials are punctuated: `R.M.O.` (595) vs `RMO`
-(207), `G.B.C. - Libertas` (347) vs `GBC-Libertas` (0), and nine variations of
-`J.B. Louvet`. Folding cannot merge them because `J.B.` folds to `j b` and `JB`
-to `jb`. This is a **rule-shaped** class, not a per-name one — joining runs of
-single letters would catch all 14 — but the rider counts point different ways
-inside the `J.B. Louvet` family (`J.B. Louvet - Soly` has 1 against
-`JB Louvet-Soly`'s 6, while `J.B. Louvet - Wolber` has 30 against 8), so
-deciding by count would leave the family spelled inconsistently. It wants one
-house rule, not fifty counts.
+**The obvious fix was the wrong one.** "Stop the ingest minting a team it will
+never attach a rider to" does not describe what happens: every writer —
+`ingest_race`, `ingest_classics`, `ingest_gravel`, `reingest_tdf_stage`,
+`reingest_edition_results` — creates the team and inserts the rider's result in
+the same loop iteration. **No writer ever mints an unattached team.** The row is
+stranded *later*, when `replace_edition()` wipes an edition's results and the
+re-scrape attributes the riders to a differently-spelled `team_id`. Reading the
+call sites first is what stopped this becoming a fix to code that was not
+broken.
+
+So the prune belongs at the **end** of an ingest, after the new results are
+written. `race_set_ingest.prune_stranded_teams(cur, year)` is wired into all
+five writers at that point. Run it in the middle — between `replace_edition()`
+and the rewrite — and it eats the whole edition, because every team's results
+have just been deleted; `test_called_mid_rewrite_it_would_eat_the_edition`
+documents exactly that.
+
+**Scoped to one season.** A team id carries its season in the slug, so an
+ingest of year Y can only strand teams of year Y and the prune cannot reach a
+row the caller had nothing to do with. Teams with a NULL `season_year` are
+never pruned — the scope cannot prove they belong to this run, which is a miss
+rather than a wrong delete. A team-classification placing keeps a row alive on
+its own, same as in the standalone script.
+
+Verified end to end against a **copy** of the DB, never the real one: planted a
+stranded 1927 team, re-ingested Milan-San Remo 1927, and the orphan count went
+1 -> 0 with the planted row gone, all 27 real 1927 teams intact, and the total
+back to 4,129. The run also restored 15 carried patches, including the
+`team/berrettini-hutchinson-1927` merge — so the earlier repairs survive a
+re-ingest too.
+
+### Initials take periods — for four tokens, not as a general rule
+
+Done 2026-09-19, Eric's call. `J.B. Louvet`, `R.M.O.`, `G.B.C.`, `A.C.B.B.`:
+25 team rows, 159 rider rows. Folding could not reach them because `J.B.` folds
+to `j b` and `JB` to `jb`.
+
+**"Add periods to initials" must never become a general rule**, and this is the
+trap worth remembering: team names carry dozens of bare uppercase runs that are
+written *without* periods — `KTM`, `FDJ`, `TVM`, `BP`, `CSF`, `PDM`, `CCC`,
+`MBK`, `LPR`. A blanket rule mangles every one of them. `TOKEN_CASE` therefore
+lists only tokens whose dotted form is already the established spelling here.
+
+**Casing had to become a transform, not a merge.** It now runs *before* the
+fold pass, so `JB Louvet-Wolber` becomes `J.B. Louvet-Wolber` and then folds
+together with `J.B. Louvet - Wolber`, settled by the rider counts like any
+other pair. Recasing afterwards would have left the two apart. That change also
+means a group with a single variant can still produce work — a lone `RMO` in a
+season with no `R.M.O.` beside it — so `plan()` compares against each row's
+ORIGINAL name rather than skipping short groups.
+
+The separator still follows the most-used rule, so the family ends up mixed
+(`J.B. Louvet - Wolber` spaced, `J.B. Louvet-Soly` not). That is the
+"most-used per team" policy working as chosen, not a bug.
 
 ### Two things the re-export surfaced that were not the rename
 

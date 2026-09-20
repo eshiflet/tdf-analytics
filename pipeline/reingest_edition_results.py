@@ -61,6 +61,7 @@ from race_common import (
     record_provenance,
     year_sources,
 )
+from race_set_ingest import prune_stranded_teams
 
 DB_RACE_NAME = {"tour": "Tour de France", **{k: v.name for k, v in RACES.items()}}
 
@@ -216,6 +217,9 @@ def reingest(cur, race, year, key, apply_it, allow_gc_drop=False):
                                      "carried-forward GC",
                           script="reingest_edition_results.py")
         written += 1
+    # Results are written; anything of this season still unreferenced was
+    # stranded by the rewrite above.
+    prune_stranded_teams(cur, year)
     return tot_rows, written
 
 

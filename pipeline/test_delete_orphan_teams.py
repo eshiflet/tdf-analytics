@@ -19,6 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import delete_orphan_teams as dot
+import race_set_ingest as rsi
 
 
 class OrphanTeamDeleteTest(unittest.TestCase):
@@ -99,6 +100,96 @@ class OrphanTeamDeleteTest(unittest.TestCase):
         self.team("team/stranded", "Stranded")
         dot.exported_team_names = lambda: set()
         self.assertTrue(dot.check_safe(self.cur, self.orphans()))
+
+
+class PruneStrandedTeamsTest(unittest.TestCase):
+    """race_set_ingest.prune_stranded_teams — the permanent half.
+
+    delete_orphan_teams.py cleared the 733 that had piled up; this is what
+    stops them piling up again, called at the end of every ingest.
+    """
+
+    def setUp(self):
+        self.conn = sqlite3.connect(":memory:")
+        with open(os.path.join(HERE, "schema.sql"), encoding="utf-8") as f:
+            self.conn.executescript(f.read())
+        self.cur = self.conn.cursor()
+        self.cur.execute("INSERT INTO races (race_id,name,race_type) "
+                         "VALUES (1,'Tour de France','stage_race')")
+        self.cur.execute("INSERT INTO race_editions (edition_id,race_id,year) "
+                         "VALUES (1,1,2013)")
+        self.cur.execute("INSERT INTO stages (stage_id,edition_id,stage_number) "
+                         "VALUES (1,1,1)")
+
+    def tearDown(self):
+        self.conn.close()
+
+    def team(self, team_id, season=2013):
+        self.cur.execute("INSERT INTO teams (team_id,name,season_year) "
+                         "VALUES (?,?,?)", (team_id, team_id, season))
+
+    def rider_on(self, rider_id, team_id):
+        self.cur.execute("INSERT OR IGNORE INTO riders (rider_id,full_name) "
+                         "VALUES (?,?)", (rider_id, rider_id))
+        self.cur.execute("INSERT INTO stage_results (stage_id,rider_id,team_id) "
+                         "VALUES (1,?,?)", (rider_id, team_id))
+
+    def names(self):
+        return {t for (t,) in self.cur.execute("SELECT team_id FROM teams")}
+
+    def test_removes_a_team_the_rewrite_stranded(self):
+        self.team("team/old-spelling")
+        self.team("team/new-spelling")
+        self.rider_on("rider/a", "team/new-spelling")
+        self.assertEqual(rsi.prune_stranded_teams(self.cur, 2013), 1)
+        self.assertEqual(self.names(), {"team/new-spelling"})
+
+    def test_leaves_another_season_alone(self):
+        """Scoped to one year, so an ingest cannot reach a row it had nothing
+        to do with."""
+        self.team("team/stranded-1999", season=1999)
+        self.assertEqual(rsi.prune_stranded_teams(self.cur, 2013), 0)
+        self.assertIn("team/stranded-1999", self.names())
+
+    def test_leaves_a_null_season_alone(self):
+        """The scope cannot prove a NULL-season row belongs to this run. A
+        miss, not a wrong delete."""
+        self.team("team/no-season", season=None)
+        rsi.prune_stranded_teams(self.cur, 2013)
+        self.assertIn("team/no-season", self.names())
+
+    def test_a_team_classification_placing_survives(self):
+        self.team("team/won-the-team-prize")
+        self.cur.execute("INSERT OR IGNORE INTO riders (rider_id,full_name) "
+                         "VALUES ('rider/x','x')")
+        self.cur.execute(
+            "INSERT INTO classification_standings "
+            "(edition_id,classification,rank,rider_id,team_id) "
+            "VALUES (1,'teams',1,'rider/x','team/won-the-team-prize')")
+        self.assertEqual(rsi.prune_stranded_teams(self.cur, 2013), 0)
+
+    def test_takes_the_provenance_with_it(self):
+        self.team("team/stranded")
+        self.cur.execute(
+            "INSERT INTO data_provenance (entity,entity_id,field,source,script,"
+            "recorded_at) VALUES ('teams','team/stranded','name','pcs','x','t')")
+        rsi.prune_stranded_teams(self.cur, 2013)
+        left = self.cur.execute(
+            "SELECT COUNT(*) FROM data_provenance WHERE entity='teams'").fetchone()[0]
+        self.assertEqual(left, 0)
+
+    def test_called_mid_rewrite_it_would_eat_the_edition(self):
+        """Documents WHY it must run last. Between replace_edition() and the
+        rewrite every team looks stranded, because the results are gone."""
+        self.team("team/real")
+        self.rider_on("rider/a", "team/real")
+        self.cur.execute("DELETE FROM stage_results")      # mid-rewrite
+        self.assertEqual(rsi.prune_stranded_teams(self.cur, 2013), 1)
+
+    def test_a_year_of_none_is_a_no_op(self):
+        self.team("team/stranded")
+        self.assertEqual(rsi.prune_stranded_teams(self.cur, None), 0)
+        self.assertIn("team/stranded", self.names())
 
 
 if __name__ == "__main__":

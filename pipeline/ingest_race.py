@@ -54,7 +54,8 @@ from race_common import (
     COUNTRY_NAMES,
     FLAT_FALLBACK_YEAR,
 )
-from race_set_ingest import capture_patches, report_patches, restore_patches
+from race_set_ingest import (capture_patches, report_patches, restore_patches,
+                             prune_stranded_teams)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DRY_RUN = "--dry-run" in sys.argv
@@ -892,6 +893,10 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
 
     report_patches(f"{race_name} {year}",
                    *restore_patches(cur, edition_id, patched))
+
+    # Results are written; anything of this season still unreferenced was
+    # stranded by the rewrite above.
+    prune_stranded_teams(cur, year)
 
     conn.commit()
     return total_results
