@@ -73,7 +73,7 @@ class PickCanonicalTest(unittest.TestCase):
         it and is still wrong. See STYLE_OVERRIDES.
 
         `Kas`/`KAS` used to be asserted here too and is deliberately gone: it
-        moved to TOKEN_CASE as `Kas` when the decision was reversed in favour
+        moved to TOKEN_SPELLING as `Kas` when the decision was reversed in favour
         of matching its own siblings. The override table is for a whole name,
         the token rule for a sponsor wherever it appears — and `KAS - Canal 10
         - Mavic` is exactly the case an override could not have caught.
@@ -85,24 +85,24 @@ class PickCanonicalTest(unittest.TestCase):
 
 class TokenCaseTest(unittest.TestCase):
     def test_capitalises_wherever_it_appears(self):
-        self.assertEqual(ntn.apply_token_case("Daf Trucks"), "DAF Trucks")
-        self.assertEqual(ntn.apply_token_case("Daf Trucks - Lejeune - PZ"),
+        self.assertEqual(ntn.apply_token_spelling("Daf Trucks"), "DAF Trucks")
+        self.assertEqual(ntn.apply_token_spelling("Daf Trucks - Lejeune - PZ"),
                          "DAF Trucks - Lejeune - PZ")
-        self.assertEqual(ntn.apply_token_case("Daf-Trucks"), "DAF-Trucks")
+        self.assertEqual(ntn.apply_token_spelling("Daf-Trucks"), "DAF-Trucks")
 
     def test_leaves_a_correct_name_untouched(self):
         for n in ("DAF Trucks - Cote d'Or - Gazelle",
                   "DAF Trucks - Tévé Blad - Rossin"):
-            self.assertEqual(ntn.apply_token_case(n), n)
+            self.assertEqual(ntn.apply_token_spelling(n), n)
 
     def test_cannot_reach_inside_a_longer_word(self):
         """Whole-token only, or a real word becomes an acronym."""
         for n in ("Daffodil", "Dafne - Wolber", "Bidaf", "Daffy Duck - Gios"):
-            self.assertEqual(ntn.apply_token_case(n), n)
+            self.assertEqual(ntn.apply_token_spelling(n), n)
 
     def test_does_not_add_periods_to_initials(self):
         """Periods never come from a token rule. An earlier version put `jb`
-        and `rmo` in TOKEN_CASE and dotted five names no source writes that
+        and `rmo` in TOKEN_SPELLING and dotted five names no source writes that
         way — a token rule recases EVERY occurrence, so it cannot tell the
         merge cases from the rest. They arrive by merging with a spelling the
         source already dots, or through RENAMES by hand.
@@ -112,30 +112,56 @@ class TokenCaseTest(unittest.TestCase):
         """
         for n in ("RMO - Mavic - Liberia", "KTM", "FDJ",
                   "TVM - Farm Frites", "CSF - Bardiani"):
-            self.assertEqual(ntn.apply_token_case(n), n)
+            self.assertEqual(ntn.apply_token_spelling(n), n)
 
     def test_lowercases_a_brand_that_only_looks_like_an_acronym(self):
         """Upstream gets it wrong in both directions — DELKO is a brand name,
         not initials, so the rule has to run downward too."""
-        self.assertEqual(ntn.apply_token_case("DELKO"), "Delko")
-        self.assertEqual(ntn.apply_token_case("DELKO Marseille Provence KTM"),
+        self.assertEqual(ntn.apply_token_spelling("DELKO"), "Delko")
+        self.assertEqual(ntn.apply_token_spelling("DELKO Marseille Provence KTM"),
                          "Delko Marseille Provence KTM")
 
     def test_leaves_an_already_correct_brand_untouched(self):
         for n in ("Delko Marseille Provence KTM", "Delko Marseille Provence"):
-            self.assertEqual(ntn.apply_token_case(n), n)
+            self.assertEqual(ntn.apply_token_spelling(n), n)
 
     def test_lowercases_a_sponsor_written_as_capitals(self):
         """`Kas` reversed an earlier `KAS` decision: its own siblings settle
         it, five names to two."""
-        self.assertEqual(ntn.apply_token_case("KAS"), "Kas")
-        self.assertEqual(ntn.apply_token_case("KAS - Canal 10 - Mavic"),
+        self.assertEqual(ntn.apply_token_spelling("KAS"), "Kas")
+        self.assertEqual(ntn.apply_token_spelling("KAS - Canal 10 - Mavic"),
                          "Kas - Canal 10 - Mavic")
+
+    def test_restores_an_accent_dropped_in_one_name(self):
+        """Same rule as pick_canonical's first tiebreak, applied to a sponsor
+        rather than a whole name: the database already spells each of these
+        correctly somewhere else, so the accent is made consistent, not
+        invented."""
+        for bare, accented in [
+            ("Cervelo Test Team", "Cervélo Test Team"),
+            ("Jazztel - Costa de Almeria", "Jazztel - Costa de Almería"),
+            ("Colchon Relax - Fuenlabrada", "Colchón Relax - Fuenlabrada"),
+            ("Caisse d'Epargne", "Caisse d'Épargne"),
+            ("Saint-Raphaël - R. Geminiani - Dunlop",
+             "Saint-Raphaël - R. Géminiani - Dunlop"),
+            ("Postobon", "Postobón"),
+        ]:
+            self.assertEqual(ntn.apply_token_spelling(bare), accented)
+
+    def test_an_accent_rule_is_idempotent(self):
+        """The pattern cannot match a token that already carries the accent,
+        which is what keeps a second run from doubling anything — and what
+        leaves S.E.F.B.'s `d'Épargne` alone, the one name that must keep PCS's
+        own spelling."""
+        for n in ("Cervélo Test Team", "Costa de Almería", "Colchón CR",
+                  "S.E.F.B. Banque d'Épargne / S.E.F.B. Spaarbank",
+                  "Manzana Postobón", "Gitane-Leroux-Dunlop-R. Géminiani"):
+            self.assertEqual(ntn.apply_token_spelling(n), n)
 
     def test_a_token_rule_cannot_reach_a_longer_sponsor(self):
         """`Kaskol` is not `Kas`, and 13 editions ride for it."""
-        self.assertEqual(ntn.apply_token_case("Kas - Kaskol"), "Kas - Kaskol")
-        self.assertEqual(ntn.apply_token_case("Kaskol"), "Kaskol")
+        self.assertEqual(ntn.apply_token_spelling("Kas - Kaskol"), "Kas - Kaskol")
+        self.assertEqual(ntn.apply_token_spelling("Kaskol"), "Kaskol")
 
 
 class PlanTest(unittest.TestCase):

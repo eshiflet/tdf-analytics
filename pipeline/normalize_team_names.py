@@ -190,6 +190,12 @@ RENAMES = {
     "RMO - Liberia - Mavic": "R.M.O. - Liberia - Mavic",
     "RMO - Mavic - Liberia": "R.M.O. - Mavic - Liberia",
     "RMO - Meral - Mavic": "R.M.O. - Meral - Mavic",
+    # `Caffe'` is an ASCII apostrophe standing in for a grave accent. It cannot
+    # go in TOKEN_SPELLING: the token carries trailing punctuation, and a
+    # word-boundary rule would rewrite `Caffe'` to `Caffè'` and leave the
+    # apostrophe behind. One name, so a rename is the honest mechanism.
+    "Saeco Macchine da Caffe' - Cannondale":
+        "Saeco Macchine da Caffè - Cannondale",
 }
 
 # How a sponsor's name is cased, wherever it appears and however many
@@ -205,7 +211,7 @@ RENAMES = {
 # Matching is whole-token (`\bdaf\b`), so it cannot reach inside a longer word,
 # and the map is an explicit allowlist: a token not named here is never
 # recased. Eric's calls, 2026-09-19.
-TOKEN_CASE = {
+TOKEN_SPELLING = {
     "daf": "DAF",       # the Dutch truck maker, an acronym
     "delko": "Delko",   # French car parts, NOT an acronym
     # REVERSED 2026-09-19. This was "KAS" under STYLE_OVERRIDES, chosen early
@@ -216,6 +222,20 @@ TOKEN_CASE = {
     # catches both of those — `KAS` and `KAS - Canal 10 - Mavic` — and whatever
     # arrives next. Whole-token, so `Kaskol` is never touched.
     "kas": "Kas",
+    # ── accents dropped in one name but not another ──────────────────────────
+    # Same rule as pick_canonical's first tiebreak: dropping an accent loses
+    # information, adding one does not. Each of these is a sponsor the database
+    # already spells correctly somewhere else, so the accented form is not being
+    # invented — it is being made consistent. The regex cannot match a token
+    # that already carries the accent, so every one of them is idempotent.
+    "almeria": "Almería",     # the Spanish city; `Costa de Almería` elsewhere
+    "cervelo": "Cervélo",     # the marque; `Team Garmin - Cervélo` elsewhere
+    "colchon": "Colchón",     # `Colchón CR` in four other names
+    "epargne": "Épargne",     # `Caisse d'Épargne`; leaves S.E.F.B.'s alone,
+                              # which already carries it (and is the documented
+                              # mojibake case that must keep PCS's spelling)
+    "geminiani": "Géminiani",  # Raphaël Géminiani; three names had it bare
+    "postobon": "Postobón",   # `Manzana Postobón` in two other names
 }
 
 # Case-only merges where the count points at a spelling that is wrong about
@@ -234,9 +254,9 @@ def fold(name):
     return re.sub(r"[^0-9A-Za-z]+", " ", d).casefold().strip()
 
 
-def apply_token_case(name):
-    """Recase any TOKEN_CASE token, leaving the rest of the name alone."""
-    for token, cased in sorted(TOKEN_CASE.items()):
+def apply_token_spelling(name):
+    """Recase any TOKEN_SPELLING token, leaving the rest of the name alone."""
+    for token, cased in sorted(TOKEN_SPELLING.items()):
         name = re.sub(rf"\b{re.escape(token)}\b", cased, name, flags=re.IGNORECASE)
     return name
 
@@ -331,7 +351,7 @@ def plan(cur):
     for team_id, name in rows:
         if name in handled:
             continue          # claimed above, and must not steer a fold group
-        groups[initials_key(apply_token_case(name))][apply_token_case(name)].append(
+        groups[initials_key(apply_token_spelling(name))][apply_token_spelling(name)].append(
             (team_id, name))
 
     for key, by_name in sorted(groups.items()):
