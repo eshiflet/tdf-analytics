@@ -1853,29 +1853,67 @@ back to 4,129. The run also restored 15 carried patches, including the
 `team/berrettini-hutchinson-1927` merge — so the earlier repairs survive a
 re-ingest too.
 
-### Initials take periods — for four tokens, not as a general rule
+### Initials take periods only where the source already does
 
-Done 2026-09-19, Eric's call. `J.B. Louvet`, `R.M.O.`, `G.B.C.`, `A.C.B.B.`:
-25 team rows, 159 rider rows. Folding could not reach them because `J.B.` folds
-to `j b` and `JB` to `jb`.
+Eric's rule, 2026-09-19: **periods are correct only when the source writes
+them, or when a bare spelling merges with a dotted spelling of the same team.**
+Never added by rule.
 
-**"Add periods to initials" must never become a general rule**, and this is the
-trap worth remembering: team names carry dozens of bare uppercase runs that are
-written *without* periods — `KTM`, `FDJ`, `TVM`, `BP`, `CSF`, `PDM`, `CCC`,
-`MBK`, `LPR`. A blanket rule mangles every one of them. `TOKEN_CASE` therefore
-lists only tokens whose dotted form is already the established spelling here.
+The first attempt got this wrong and had to be backed out. It put `jb`, `rmo`,
+`gbc`, `acbb` in `TOKEN_CASE`, which recases a token *wherever it appears* — so
+it dotted five names no source has ever dotted: `JB Louvet-Dunlop`,
+`JB Louvet-Puchois`, and the three multi-sponsor `RMO - …` teams, none of which
+has a dotted sibling anywhere in the database. Those were restored from the
+backup and the mechanism replaced.
 
-**Casing had to become a transform, not a merge.** It now runs *before* the
-fold pass, so `JB Louvet-Wolber` becomes `J.B. Louvet-Wolber` and then folds
-together with `J.B. Louvet - Wolber`, settled by the rider counts like any
-other pair. Recasing afterwards would have left the two apart. That change also
-means a group with a single variant can still produce work — a lone `RMO` in a
-season with no `R.M.O.` beside it — so `plan()` compares against each row's
-ORIGINAL name rather than skipping short groups.
+What works instead: **`initials_key()`** — `fold()` with runs of single letters
+joined, so `j b louvet` and `jb louvet` land in one group — plus
+`dotted_initials()` as the FIRST tiebreak in `pick_canonical()`, ahead of the
+rider count. A bare name meets its dotted sibling and the dotted one wins; a
+bare name with no dotted sibling groups alone and is never touched. Periods can
+therefore only ever arrive by merge, which is exactly the rule.
 
-The separator still follows the most-used rule, so the family ends up mixed
-(`J.B. Louvet - Wolber` spaced, `J.B. Louvet-Soly` not). That is the
-"most-used per team" policy working as chosen, not a bug.
+That the dots outrank the count matters: `JB Louvet-Soly` carries 6 riders to
+`J.B. Louvet - Soly`'s 1, and the dotted spelling still wins.
+
+17 rows merged (8 `J.B. Louvet` names plus `RMO` -> `R.M.O.`); the 5 with no
+dotted sibling kept their bare initials. `TOKEN_CASE` is back to what it is
+actually for — `DAF` and `Delko`, which are about capitals, not periods.
+
+**"Add periods to initials" must never become a general rule.** Team names
+carry dozens of bare uppercase runs written without them — `KTM`, `FDJ`,
+`TVM`, `BP`, `CSF`, `PDM`, `CCC`, `MBK`, `LPR`.
+
+### The last 21 groups, settled by source pages (2026-09-19)
+
+15 of them disappeared with the orphan deletion — they were the rider-less
+pairs. The remaining 6 were resolved by reading the saved bikeraceinfo pages
+rather than counting rows, and **there are now 0 single-edit and 0 initials
+pairs left in the database.**
+
+| held group | evidence | result |
+|---|---|---|
+| `Aquiliano` / `Aquilano` | 7 vs 1, and MSR 1943 spells **both** — Salvatore Crippa rides for each | -> `Aquilano` |
+| `JB Louvet-Puchois` / `-Pouchois` | 12 vs 4, and **Hector Martin appears under both** | -> `J.B. Louvet - Pouchois` |
+| `Helyett-Splendor-Hutchonson` | the tyre brand: **1,104 `Hutchinson` to 1** | -> `…-Hutchinson` |
+| `Legnano-Torpado` / `-Torpedo` | 5 `Torpedo` to 1 `Torpado` on the 1928/29 pages | -> `Legnano-Torpedo` |
+| `Peina-Hutchinson` / `Prina - …` | one bikeraceinfo instance against PCS's own spelling | -> `Prina - Hutchinson` |
+| `individual` / `Individuals` | the not-on-a-team marker, bikeraceinfo's and PCS's | -> `Individuals` |
+
+**The Torpado/Torpedo "contradiction" was not one.** Both are real and they are
+different companies — Torpado the Italian frame builder (`Torpado - Ursus`,
+`Magniflex - Torpado`), Torpedo the Fichtel & Sachs coaster hub
+(`Torpedo - Fichtel & Sachs` 1959, `Opel - Torpedo` 1931). So
+`Torpedo-Girardengo -> Torpado - Girardengo` and
+`Legnano-Torpado -> Legnano-Torpedo` are both right; the question is per-team,
+which is precisely what a per-name map answers and a global rule could not.
+
+**`Isolés` is deliberately NOT merged into `Individuals`.** It is the Tour's
+own historical label for the category, not a misspelling of the English word.
+
+`Peina-Hutchinson` is the weakest of the six and worth re-opening if better
+evidence turns up: it is the only one with no same-page or same-rider proof,
+resting on PCS's spelling plus `Prina` being a real marque and `Peina` not.
 
 ### Two things the re-export surfaced that were not the rename
 

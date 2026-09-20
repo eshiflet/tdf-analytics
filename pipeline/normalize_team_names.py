@@ -137,6 +137,34 @@ MISSPELLINGS = {
     "Tricolfilina-Coppi": "Tricofilina - Coppi",
     "Vitadello": "Vittadello",
     "Willem II-Gaxelle": "Willem II - Gazelle",
+    # The six the rider count could NOT settle, resolved 2026-09-19 by reading
+    # the source pages instead. Each line says what the evidence actually was.
+    #
+    # Same page, same team, both spellings — the Berrettini shape:
+    "Aquiliano": "Aquilano",                  # 7 vs 1; MSR 1943 has both, and
+                                              # Salvatore Crippa rides for each
+    "JB Louvet-Puchois": "J.B. Louvet - Pouchois",   # 12 vs 4, and Hector
+                                              # Martin appears under both
+    "Helyett-Splendor-Hutchonson": "Helyett-Splendor-Hutchinson",
+                                              # the tyre brand: 1,104 vs 1
+    # Legnano: 5 `Torpedo` against 1 `Torpado` on the 1928/1929 pages. NOT a
+    # contradiction of `Torpedo-Girardengo` -> `Torpado - Girardengo` above:
+    # **both sponsors are real** and they are different companies — Torpado the
+    # Italian frame builder (Torpado - Ursus, Magniflex - Torpado), Torpedo the
+    # Fichtel & Sachs coaster hub (Torpedo - Fichtel & Sachs 1959, Opel -
+    # Torpedo 1931). Two Italian frame builders would not co-sponsor one team,
+    # which is the other reason Legnano's partner is the hub.
+    "Legnano-Torpado": "Legnano-Torpedo",
+    # The weakest of the six, and the only one without same-page or same-rider
+    # proof: `Peina-Hutchinson` appears exactly once in the whole bikeraceinfo
+    # corpus, against PCS's own `Prina - Hutchinson` for the same 1930 season
+    # and the same co-sponsor. Prina was a real Italian marque; Peina is not.
+    "Peina-Hutchinson": "Prina - Hutchinson",
+    # Not a typo but the same thing twice: the not-on-a-team marker, `Individuals`
+    # from PCS and `individual` from bikeraceinfo. `Isolés` is deliberately NOT
+    # merged in — it is the Tour's own historical label for the category, and
+    # collapsing it would throw away a real distinction rather than a spelling.
+    "individual": "Individuals",
 }
 
 # A typo with NO correctly-spelled sibling to merge into. This renames rather
@@ -164,20 +192,9 @@ RENAMES = {
 # Matching is whole-token (`\bdaf\b`), so it cannot reach inside a longer word,
 # and the map is an explicit allowlist: a token not named here is never
 # recased. Eric's calls, 2026-09-19.
-# It also carries the initials that take periods. **This is deliberately not a
-# general rule**, and must not become one: team names hold dozens of bare
-# uppercase runs that are written WITHOUT periods — KTM, FDJ, TVM, BP, CSF,
-# PDM, CCC, MBK, LPR. "Add periods to initials" applied across the board would
-# mangle every one of them. Only tokens whose dotted form is already the
-# established spelling in this database are listed. Eric's call, 2026-09-19:
-# use periods in the initials, for these.
 TOKEN_CASE = {
     "daf": "DAF",       # the Dutch truck maker, an acronym
     "delko": "Delko",   # French car parts, NOT an acronym
-    "jb": "J.B.",       # J.B. Louvet — 9 dotted rows against the bare form
-    "rmo": "R.M.O.",    # 595 riders dotted, 207 bare
-    "gbc": "G.B.C.",    # already fully dotted; listed so it stays that way
-    "acbb": "A.C.B.B.",
 }
 
 # Case-only merges where the count points at a spelling that is wrong about
@@ -204,6 +221,37 @@ def apply_token_case(name):
     return name
 
 
+def initials_key(name):
+    """`fold()`, with runs of single letters joined: `j b` -> `jb`.
+
+    This is what puts `JB Louvet` and `J.B. Louvet` in one group so the merge
+    can see them as the same team. It is ONLY a grouping key — **periods are
+    never added to a name that has none.** They arrive one way: the group also
+    contains a spelling the source already writes with periods, and
+    `dotted_initials()` makes that spelling win. A bare name with no dotted
+    sibling groups alone and is left exactly as it is, which is why
+    `JB Louvet-Dunlop` and `RMO - Mavic - Liberia` keep their bare initials —
+    nothing in the database spells those two with periods.
+    """
+    out, buf = [], []
+    for word in fold(name).split():
+        if len(word) == 1:
+            buf.append(word)
+        else:
+            if buf:
+                out.append("".join(buf))
+                buf = []
+            out.append(word)
+    if buf:
+        out.append("".join(buf))
+    return " ".join(out)
+
+
+def dotted_initials(name):
+    """How many initials in `name` carry a period — `J.B. Louvet` scores 2."""
+    return len(re.findall(r"\b[A-Za-z]\.", name))
+
+
 def diacritics(name):
     return sum(1 for c in unicodedata.normalize("NFD", name)
                if unicodedata.combining(c))
@@ -216,7 +264,8 @@ def pick_canonical(key, variants):
         return override
     return sorted(
         variants,
-        key=lambda v: (-diacritics(v["name"]), -v["riders"], -v["teams"],
+        key=lambda v: (-dotted_initials(v["name"]), -diacritics(v["name"]),
+                       -v["riders"], -v["teams"],
                        0 if " - " in v["name"] else 1, v["name"]),
     )[0]["name"]
 
@@ -262,7 +311,7 @@ def plan(cur):
     for team_id, name in rows:
         if name in handled:
             continue          # claimed above, and must not steer a fold group
-        groups[fold(apply_token_case(name))][apply_token_case(name)].append(
+        groups[initials_key(apply_token_case(name))][apply_token_case(name)].append(
             (team_id, name))
 
     for key, by_name in sorted(groups.items()):

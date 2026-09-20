@@ -94,6 +94,14 @@ class TokenCaseTest(unittest.TestCase):
         for n in ("Daffodil", "Dafne - Wolber", "Bidaf", "Daffy Duck - Gios"):
             self.assertEqual(ntn.apply_token_case(n), n)
 
+    def test_does_not_add_periods_to_initials(self):
+        """Periods come from a merge with a spelling the source already dots,
+        never from a token rule — that rule invented `R.M.O. - Mavic - Liberia`
+        and `J.B. Louvet-Dunlop`, neither of which any source writes."""
+        for n in ("RMO - Mavic - Liberia", "JB Louvet-Dunlop", "KTM", "FDJ",
+                  "TVM - Farm Frites", "CSF - Bardiani"):
+            self.assertEqual(ntn.apply_token_case(n), n)
+
     def test_lowercases_a_brand_that_only_looks_like_an_acronym(self):
         """Upstream gets it wrong in both directions — DELKO is a brand name,
         not initials, so the rule has to run downward too."""
@@ -163,6 +171,23 @@ class PlanTest(unittest.TestCase):
                                  (canonical, team_id))
         self.assertEqual(ntn.plan(self.cur), [])
 
+    def test_dotted_initials_win_the_merge(self):
+        """Merging a bare spelling with a dotted one yields the dotted one —
+        even though the bare row carries 6 riders to the dotted row's 1, which
+        the rider-count rule would otherwise settle the other way."""
+        self.team("team/j.b.-louvet-soly-1922", "J.B. Louvet - Soly")
+        self.team("team/jb-louvet-soly-1922", "JB Louvet-Soly")
+        merges = ntn.plan(self.cur)
+        self.assertEqual(len(merges), 1)
+        self.assertEqual(merges[0][0], "J.B. Louvet - Soly")
+
+    def test_bare_initials_with_no_dotted_sibling_are_left_alone(self):
+        """Nothing in the database spells these with periods, so adding them
+        would invent a spelling no source published."""
+        self.team("team/jb-louvet-dunlop-1911", "JB Louvet-Dunlop")
+        self.team("team/rmo-mavic-liberia-1989", "RMO - Mavic - Liberia")
+        self.assertEqual(ntn.plan(self.cur), [])
+
     def test_merges_a_listed_upstream_typo(self):
         """One letter apart, so folding cannot reach it — see MISSPELLINGS."""
         self.team("team/berretini-hutchinson-1927", "Berretini-Hutchinson")
@@ -197,12 +222,17 @@ class PlanTest(unittest.TestCase):
             ntn.plan(self.cur)
 
     def test_an_unlisted_typo_is_not_guessed(self):
-        """`Aquilano`/`Aquiliano` is one edit apart and looks like a typo, but
-        they are different years and the rider counts (2 and 1) settle
-        nothing. Only names listed in MISSPELLINGS merge; proximity alone
-        never does."""
-        self.team("team/aquilano-1942", "Aquilano")
-        self.team("team/aquiliano-1943", "Aquiliano")
+        """One edit apart and obviously a typo, but only names listed in
+        MISSPELLINGS merge — proximity alone never does.
+
+        The pair is INVENTED on purpose. This test used `Molteani`/`Molteni`
+        first and `Aquilano`/`Aquiliano` second, and both stopped being
+        unlisted the moment their group was resolved, failing a test that was
+        still describing the right behaviour. An example drawn from live data
+        is a test with an expiry date.
+        """
+        self.team("team/zzz-fictional-1974", "Zzz Fictional")
+        self.team("team/zzz-ficticnal-1974", "Zzz Ficticnal")
         self.assertEqual(ntn.plan(self.cur), [])
 
     def test_never_touches_a_team_id(self):
