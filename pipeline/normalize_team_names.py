@@ -177,6 +177,12 @@ MISSPELLINGS = {
 # correctly. Eric's call, 2026-09-19.
 RENAMES = {
     "Berettini - Monza": "Berrettini - Monza",
+    # The last bare `JB Louvet`. Nothing in the database spells this pairing
+    # with periods, so the merge path cannot reach it and the initials rule
+    # deliberately left it alone — periods only ever arrive by merging with a
+    # spelling the source already dots. Eric's call, 2026-09-19, and his
+    # separator: `J.B. Louvet-Dunlop`, not `J.B. Louvet - Dunlop`.
+    "JB Louvet-Dunlop": "J.B. Louvet-Dunlop",
 }
 
 # How a sponsor's name is cased, wherever it appears and however many

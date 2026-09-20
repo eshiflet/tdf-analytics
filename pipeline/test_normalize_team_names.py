@@ -95,10 +95,16 @@ class TokenCaseTest(unittest.TestCase):
             self.assertEqual(ntn.apply_token_case(n), n)
 
     def test_does_not_add_periods_to_initials(self):
-        """Periods come from a merge with a spelling the source already dots,
-        never from a token rule — that rule invented `R.M.O. - Mavic - Liberia`
-        and `J.B. Louvet-Dunlop`, neither of which any source writes."""
-        for n in ("RMO - Mavic - Liberia", "JB Louvet-Dunlop", "KTM", "FDJ",
+        """Periods never come from a token rule. An earlier version put `jb`
+        and `rmo` in TOKEN_CASE and dotted five names no source writes that
+        way — a token rule recases EVERY occurrence, so it cannot tell the
+        merge cases from the rest. They arrive by merging with a spelling the
+        source already dots, or through RENAMES by hand.
+
+        KTM, FDJ, TVM and CSF are the reason it must stay that way: team names
+        are full of bare uppercase runs written without periods.
+        """
+        for n in ("RMO - Mavic - Liberia", "KTM", "FDJ",
                   "TVM - Farm Frites", "CSF - Bardiani"):
             self.assertEqual(ntn.apply_token_case(n), n)
 
@@ -182,10 +188,18 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(merges[0][0], "J.B. Louvet - Soly")
 
     def test_bare_initials_with_no_dotted_sibling_are_left_alone(self):
-        """Nothing in the database spells these with periods, so adding them
-        would invent a spelling no source published."""
-        self.team("team/jb-louvet-dunlop-1911", "JB Louvet-Dunlop")
-        self.team("team/rmo-mavic-liberia-1989", "RMO - Mavic - Liberia")
+        """Nothing spells these with periods, so adding them would invent a
+        spelling no source published. Periods arrive only by merging with a
+        dotted sibling, or through RENAMES, which a person signs off.
+
+        INVENTED names, deliberately. This test first used `JB Louvet-Dunlop`
+        and `RMO - Mavic - Liberia`, and the first of those was later renamed
+        by hand — which broke a test that was still describing the right rule.
+        That is now the third time an example taken from live data has expired
+        here; see also test_an_unlisted_typo_is_not_guessed.
+        """
+        self.team("team/zz-quimby-fictional-1974", "ZZ Quimby-Fictional")
+        self.team("team/qqq-nowhere-1975", "QQQ - Nowhere - Invented")
         self.assertEqual(ntn.plan(self.cur), [])
 
     def test_merges_a_listed_upstream_typo(self):

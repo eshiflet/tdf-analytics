@@ -1896,7 +1896,10 @@ That the dots outrank the count matters: `JB Louvet-Soly` carries 6 riders to
 `J.B. Louvet - Soly`'s 1, and the dotted spelling still wins.
 
 17 rows merged (8 `J.B. Louvet` names plus `RMO` -> `R.M.O.`); the 5 with no
-dotted sibling kept their bare initials. `TOKEN_CASE` is back to what it is
+dotted sibling kept their bare initials. **`JB Louvet-Dunlop` (1911) was then
+renamed by hand** through `RENAMES`, Eric's call and his separator — the merge
+path could not reach it, which is the rule working rather than failing. The
+three multi-sponsor `RMO - …` teams are still bare for the same reason. `TOKEN_CASE` is back to what it is
 actually for — `DAF` and `Delko`, which are about capitals, not periods.
 
 **"Add periods to initials" must never become a general rule.** Team names
