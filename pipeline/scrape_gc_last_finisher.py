@@ -24,6 +24,14 @@ re-discovered:**
 * *PCS prints the value twice in one cell*: `111:10:48 111:10:48` for the
   winner, `4:11:234:11:23` for a gap. `first_time()` un-doubles it.
 
+**Giro 1946 is why the gate exists.** Its page gives a winner time of
+65:32:20, which over PCS's own 3,189 km route is 48.7 km/h. PCS's own GC page
+also states "Avg. speed winner: 33.369 km/h", and 3,189 km at that speed is
+95:34:04 — so PCS's published time is 30 hours short of what the rest of PCS
+says. The riders are right (Bartali, Coppi at 0:47, Malabrocca last); the time
+field alone is broken. Nothing is written for it, because a time derived from
+an average speed is not a sourced value.
+
 **The parse is gated on a value we already trust.** Every page's winner time
 must match `{race}_gc_winner_times.json` to the second, or that year is
 refused and reported rather than written. A page that parsed the wrong table,
