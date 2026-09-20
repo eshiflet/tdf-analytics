@@ -1,14 +1,17 @@
 {
-  "1978": {
-    "slowestFinisherTimeSeconds": 321329
-  },
-  "1982": {
-    "slowestFinisherTimeSeconds": 353532
-  },
-  "1984": {
-    "slowestFinisherTimeSeconds": 334849
-  },
-  "1994": {
-    "slowestFinisherTimeSeconds": 342261
-  }
+ "1978": {
+  "slowestFinisherTimeSeconds": 321329
+ },
+ "1982": {
+  "slowestFinisherTimeSeconds": 353532
+ },
+ "1984": {
+  "slowestFinisherTimeSeconds": 334849
+ },
+ "1994": {
+  "slowestFinisherTimeSeconds": 342261
+ },
+ "1995": {
+  "slowestFinisherTimeSeconds": 359737
+ }
 }

@@ -1289,13 +1289,55 @@ def check_results(c):
         # The house fix is to RESEARCH the real figure, not to suppress it: four
         # Vuelta years already carry one in vuelta_races_summary_overrides.json.
         # So the list matters more than the count.
-        who = ", ".join(f"{n.split()[0]} {y}" for n, y in nogc[:6])
-        warn(f"{len(nogc)} edition(s) have no gc_rank=1 on their final stage, so the "
-             "stored classification provably is not the whole field — and their "
-             "slowestFinisherTimeSeconds, which the All Races view charts as "
-             "'Slowest Finisher', is the slowest of the few riders held rather than "
-             f"the lanterne rouge. Research the figure or override it: {who}"
-             + (f" ... and {len(nogc) - 6} more" if len(nogc) > 6 else ""))
+        # An edition whose figure has been RESEARCHED is no longer charting a
+        # wrong number, even though its stored classification is still partial.
+        # Counting those with the rest is how a real worklist turns into noise
+        # nobody reads, so they are separated and only the unresearched ones
+        # are named.
+        import json as _json
+        covered = set()
+        # The research record counts too, not just the overrides. Giro 1964 and
+        # 1967 were read off PCS's own GC page and the figure already stored
+        # turned out to be right, so no override was written — a no-op override
+        # would be stripped by audit_summary_overrides.py anyway. Judging those
+        # two "unresearched" would send someone to redo work that is done.
+        for race_key, fname in (("Giro", "giro_gc_last_finisher.json"),
+                                ("Vuelta", "vuelta_gc_last_finisher.json"),
+                                ("Giro", "giro_races_summary_overrides.json"),
+                                ("Vuelta", "vuelta_races_summary_overrides.json"),
+                                ("Tour", "tour_all_races_summary_overrides.json")):
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), fname)
+            if not os.path.exists(path):
+                continue
+            with open(path, encoding="utf-8") as f:
+                data = _json.load(f)
+            for year, entry in data.items():
+                if year.startswith("_"):
+                    continue
+                # an overrides file holds {year: {field: value}}; the research
+                # file holds {year: seconds}
+                if isinstance(entry, dict):
+                    if "slowestFinisherTimeSeconds" in entry:
+                        covered.add((race_key, int(year)))
+                elif isinstance(entry, int):
+                    covered.add((race_key, int(year)))
+        open_ = [(n, y) for n, y in nogc if (n.split()[0], y) not in covered]
+        done = len(nogc) - len(open_)
+        if open_:
+            who = ", ".join(f"{n.split()[0]} {y}" for n, y in open_[:6])
+            warn(f"{len(open_)} of {len(nogc)} edition(s) with no gc_rank=1 on their "
+                 "final stage have no researched slowestFinisherTimeSeconds, so "
+                 "whatever the All Races view charts as 'Slowest Finisher' comes from "
+                 "the handful of riders stored rather than the lanterne rouge — or, "
+                 "where the edition has no winner time either, nothing is charted at "
+                 f"all. Research or override: {who}"
+                 + (f" ... and {len(open_) - 6} more" if len(open_) > 6 else "")
+                 + (f". ({done} already carry a researched override.)" if done else ""))
+        else:
+            note(f"all {len(nogc)} edition(s) with a partial final classification "
+                 "carry a researched slowestFinisherTimeSeconds override, so none of "
+                 "them charts a figure taken from the handful of riders stored. The "
+                 "classifications themselves are still partial.")
 
 
 def main():

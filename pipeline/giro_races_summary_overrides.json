@@ -1,41 +1,74 @@
 {
-  "1947": {
-    "slowestFinisherTimeSeconds": 428595
-  },
-  "1948": {
-    "slowestFinisherTimeSeconds": 462703
-  },
-  "1953": {
-    "slowestFinisherTimeSeconds": 437637
-  },
-  "1956": {
-    "slowestFinisherTimeSeconds": 376041
-  },
-  "1957": {
-    "slowestFinisherTimeSeconds": 383348
-  },
-  "1958": {
-    "slowestFinisherTimeSeconds": 341737
-  },
-  "1979": {
-    "slowestFinisherTimeSeconds": 330843
-  },
-  "1985": {
-    "slowestFinisherTimeSeconds": 382000
-  },
-  "1986": {
-    "slowestFinisherTimeSeconds": 380659
-  },
-  "1987": {
-    "slowestFinisherTimeSeconds": 393323
-  },
-  "1988": {
-    "slowestFinisherTimeSeconds": 361117
-  },
-  "1989": {
-    "slowestFinisherTimeSeconds": 349242
-  },
-  "1990": {
-    "slowestFinisherTimeSeconds": 345440
-  }
+ "1928": {
+  "slowestFinisherTimeSeconds": 493115
+ },
+ "1930": {
+  "slowestFinisherTimeSeconds": 484287
+ },
+ "1931": {
+  "slowestFinisherTimeSeconds": 433580
+ },
+ "1947": {
+  "slowestFinisherTimeSeconds": 428595
+ },
+ "1948": {
+  "slowestFinisherTimeSeconds": 462703
+ },
+ "1950": {
+  "slowestFinisherTimeSeconds": 440917
+ },
+ "1952": {
+  "slowestFinisherTimeSeconds": 424371
+ },
+ "1953": {
+  "slowestFinisherTimeSeconds": 437637
+ },
+ "1956": {
+  "slowestFinisherTimeSeconds": 376041
+ },
+ "1957": {
+  "slowestFinisherTimeSeconds": 383348
+ },
+ "1958": {
+  "slowestFinisherTimeSeconds": 341737
+ },
+ "1961": {
+  "slowestFinisherTimeSeconds": 413268
+ },
+ "1963": {
+  "slowestFinisherTimeSeconds": 434893
+ },
+ "1965": {
+  "slowestFinisherTimeSeconds": 451480
+ },
+ "1966": {
+  "slowestFinisherTimeSeconds": 415331
+ },
+ "1968": {
+  "slowestFinisherTimeSeconds": 404785
+ },
+ "1978": {
+  "slowestFinisherTimeSeconds": 378084
+ },
+ "1979": {
+  "slowestFinisherTimeSeconds": 330843
+ },
+ "1985": {
+  "slowestFinisherTimeSeconds": 382000
+ },
+ "1986": {
+  "slowestFinisherTimeSeconds": 380659
+ },
+ "1987": {
+  "slowestFinisherTimeSeconds": 393323
+ },
+ "1988": {
+  "slowestFinisherTimeSeconds": 361117
+ },
+ "1989": {
+  "slowestFinisherTimeSeconds": 349242
+ },
+ "1990": {
+  "slowestFinisherTimeSeconds": 345440
+ }
 }
