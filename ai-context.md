@@ -1673,6 +1673,10 @@ most of what it tests.
 3. **The spaced `A - B` form** on an exact tie — the majority house style,
    1,836 team rows to 832.
 
+**`Kas` reversed an earlier `KAS`.** The first decision took the sponsor's real-world styling; the later one takes consistency with its own siblings, and the database is lopsided — five names use `Kas` (`Kas - Kaskol`, `Kas - Campagnolo`, `Kas - Boxing Club`, `Kas - Miko`, `Kas - Royal Asport`) against two using `KAS`. It also moved from `STYLE_OVERRIDES` to `TOKEN_CASE`, which is the right shape: an override names one whole string and would have missed `KAS - Canal 10 - Mavic`, while a token rule catches every occurrence and anything PCS adds later. Whole-token, so `Kaskol` is never touched.
+
+**The three multi-sponsor `RMO - …` teams are dotted by hand** (2026-09-19), through `RENAMES`. `RMO` alone merged into `R.M.O.` because the source dots it; these pairings it does not, so the merge path could not reach them — the rule working, not failing.
+
 `STYLE_OVERRIDES` sits in front of all three, for the case-only merges where
 the count argues for a spelling that is simply wrong about the name: PCS's
 title-caser writes `Mss` for an acronym and `Van De Ven` for a Dutch particle.

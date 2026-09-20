@@ -183,6 +183,13 @@ RENAMES = {
     # spelling the source already dots. Eric's call, 2026-09-19, and his
     # separator: `J.B. Louvet-Dunlop`, not `J.B. Louvet - Dunlop`.
     "JB Louvet-Dunlop": "J.B. Louvet-Dunlop",
+    # The three multi-sponsor RMO teams. `RMO` alone merged into `R.M.O.`
+    # because the source dots it; these pairings it does not, so the merge path
+    # cannot reach them and the initials rule left them bare. Eric's call,
+    # 2026-09-19, to dot them anyway.
+    "RMO - Liberia - Mavic": "R.M.O. - Liberia - Mavic",
+    "RMO - Mavic - Liberia": "R.M.O. - Mavic - Liberia",
+    "RMO - Meral - Mavic": "R.M.O. - Meral - Mavic",
 }
 
 # How a sponsor's name is cased, wherever it appears and however many
@@ -201,12 +208,19 @@ RENAMES = {
 TOKEN_CASE = {
     "daf": "DAF",       # the Dutch truck maker, an acronym
     "delko": "Delko",   # French car parts, NOT an acronym
+    # REVERSED 2026-09-19. This was "KAS" under STYLE_OVERRIDES, chosen early
+    # in the session for the sponsor's real-world styling. Eric's later call is
+    # consistency with its own siblings, and the database is lopsided: five
+    # names use `Kas` (Kas - Kaskol, Kas - Campagnolo, Kas - Boxing Club,
+    # Kas - Miko, Kas - Royal Asport) against two using `KAS`. A token rule
+    # catches both of those — `KAS` and `KAS - Canal 10 - Mavic` — and whatever
+    # arrives next. Whole-token, so `Kaskol` is never touched.
+    "kas": "Kas",
 }
 
 # Case-only merges where the count points at a spelling that is wrong about
 # the name itself. Keyed by folded name -> the spelling to keep.
 STYLE_OVERRIDES = {
-    "kas": "KAS",                              # the sponsor is styled KAS
     "milaneza mss": "Milaneza - MSS",           # MSS is an acronym
     "safir van de ven": "Safir - Van de Ven",   # Dutch particle stays lower
     "t belfort": "'t Belfort",                  # Dutch article, not an apostrophe

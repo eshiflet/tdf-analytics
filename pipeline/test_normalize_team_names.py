@@ -70,11 +70,17 @@ class PickCanonicalTest(unittest.TestCase):
 
     def test_style_override_beats_the_count(self):
         """PCS's title-caser writes an acronym as `Mss`; the count agrees with
-        it and is still wrong. See STYLE_OVERRIDES."""
+        it and is still wrong. See STYLE_OVERRIDES.
+
+        `Kas`/`KAS` used to be asserted here too and is deliberately gone: it
+        moved to TOKEN_CASE as `Kas` when the decision was reversed in favour
+        of matching its own siblings. The override table is for a whole name,
+        the token rule for a sponsor wherever it appears — and `KAS - Canal 10
+        - Mavic` is exactly the case an override could not have caught.
+        """
         self.assertEqual(
             self.pick(("Milaneza - Mss", 2, 362), ("Milaneza - MSS", 1, 179)),
             "Milaneza - MSS")
-        self.assertEqual(self.pick(("Kas", 4, 1034), ("KAS", 10, 0)), "KAS")
 
 
 class TokenCaseTest(unittest.TestCase):
@@ -119,8 +125,17 @@ class TokenCaseTest(unittest.TestCase):
         for n in ("Delko Marseille Provence KTM", "Delko Marseille Provence"):
             self.assertEqual(ntn.apply_token_case(n), n)
 
-    def test_only_listed_tokens_are_touched(self):
+    def test_lowercases_a_sponsor_written_as_capitals(self):
+        """`Kas` reversed an earlier `KAS` decision: its own siblings settle
+        it, five names to two."""
+        self.assertEqual(ntn.apply_token_case("KAS"), "Kas")
+        self.assertEqual(ntn.apply_token_case("KAS - Canal 10 - Mavic"),
+                         "Kas - Canal 10 - Mavic")
+
+    def test_a_token_rule_cannot_reach_a_longer_sponsor(self):
+        """`Kaskol` is not `Kas`, and 13 editions ride for it."""
         self.assertEqual(ntn.apply_token_case("Kas - Kaskol"), "Kas - Kaskol")
+        self.assertEqual(ntn.apply_token_case("Kaskol"), "Kaskol")
 
 
 class PlanTest(unittest.TestCase):
