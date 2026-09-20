@@ -54,6 +54,7 @@ from race_common import (
     COUNTRY_NAMES,
     FLAT_FALLBACK_YEAR,
 )
+from race_common import NO_INDIVIDUAL_GC
 from race_set_ingest import (capture_patches, report_patches, restore_patches,
                              prune_stranded_teams)
 
@@ -460,8 +461,11 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
 
         # Whether this stage's GC has to be approximated from the finishing
         # order — see the fallback below, which is the only user.
+        # The edition exclusion comes FIRST: on 1912 the fallback would not be
+        # approximating a GC, it would be inventing one the race never held.
         stage_rank_is_the_only_gc = (
             n == 1
+            and (race_name, year) not in NO_INDIVIDUAL_GC
             and not any(len(r) > 1 and r[1] for r in rows)
             and not (gc_standings or {}).get(n))
 

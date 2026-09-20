@@ -606,6 +606,23 @@ SOURCE_MANUAL = "manual"        # hand-entered or hand-corrected
 SOURCE_DERIVED = "derived"      # computed from other DB values, not fetched
 SOURCE_UNKNOWN = "unknown"      # predates provenance tracking; origin unproven
 
+# Editions that had NO INDIVIDUAL general classification, so a rider-level GC
+# rank for them is not missing data — it cannot exist.
+#
+# The 1912 Giro is the only one. Wikipedia: "In 1912, Giro was contested solely
+# by teams, with no individual classification." The organisers moved the
+# general classification onto teams, allowed only four-rider teams, and the
+# published result is a team: Atala-Dunlop in 100h 02' 57", ahead of Peugeot
+# and Gerbi.
+#
+# This exists because `ingest_race`'s stage-1 fallback — give a rider their
+# STAGE placing when nothing else supplies a GC — is exactly wrong here. On
+# every other edition it approximates something real; on 1912 it invents a
+# classification the race never had, and it did: ten riders carried gc_rank
+# 1-10 with gaps of 0 on stage 1 and nothing after it.
+NO_INDIVIDUAL_GC = frozenset({("Giro d'Italia", 1912)})
+
+
 VALID_SOURCES = frozenset({
     SOURCE_PCS, SOURCE_WIKIPEDIA, SOURCE_BIKERACEINFO, SOURCE_CYCLINGFLASH,
     SOURCE_ATHLINKS, SOURCE_SPORTMANIACS, SOURCE_TRETZESPORTS,

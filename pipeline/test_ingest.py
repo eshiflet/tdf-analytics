@@ -999,6 +999,25 @@ class TestStageOneGcFallback(IngestHarness):
         self.assertEqual(self.gc()["rider/b"], (None, None))
         self.assertEqual(self.gc()["rider/c"], (None, None))
 
+    def test_an_edition_with_no_individual_gc_gets_no_approximation(self):
+        """The 1912 Giro was contested solely by teams. Approximating a GC
+        from the finishing order there does not estimate something real — it
+        invents a classification the race never held, which is how ten riders
+        came to carry gc_rank 1-10 with zero gaps on its stage 1."""
+        self.write_stage(1, rows=[
+            gc_row("1", "Winner", "rider/w", "1", gap="+0:00"),
+            gc_row("2", "Second", "rider/b", "2", gap="+0:10"),
+        ])
+        buf, sys.stdout = sys.stdout, io.StringIO()
+        try:
+            ingest_race.ingest_year(self.conn, self.race_id, "Giro d'Italia",
+                                    self.scrapes, 1912,
+                                    ingest_race.find_stage_files_for_year(
+                                        self.scrapes, 1990, False))
+        finally:
+            sys.stdout = buf
+        self.assertEqual(set(self.gc().values()), {(None, None)})
+
     def test_with_no_source_at_all_the_approximation_survives(self):
         """31 stage-1 files have neither a published position nor standings.
         Nothing can collide there, and after one stage the finishing order is

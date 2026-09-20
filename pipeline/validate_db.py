@@ -34,7 +34,7 @@ import sqlite3
 import sys
 from collections import defaultdict
 
-from race_common import DB_PATH, VALID_SOURCES, load_stage_notes
+from race_common import NO_INDIVIDUAL_GC, DB_PATH, VALID_SOURCES, load_stage_notes
 
 # Provenance sources that ONLY a patch script ever writes. An ingest writes
 # 'pcs', 'athlinks' and 'derived'; anything below arrived afterwards, by hand or
@@ -1277,6 +1277,10 @@ def check_results(c):
             AND s.stage_number=(SELECT MAX(stage_number) FROM stages WHERE edition_id=re.edition_id))
         ORDER BY r.name, re.year
         """).fetchall()
+    # An edition that HELD no individual classification is not a gap in the
+    # data and not a research task — nothing can ever fill it. The 1912 Giro
+    # was contested solely by teams.
+    nogc = [(n, y) for n, y in nogc if (n, y) not in NO_INDIVIDUAL_GC]
     if nogc:
         # NAMED, because this one has a worklist. The missing rank 1 is a PROOF
         # rather than a symptom: the overall leader is necessarily in a complete
