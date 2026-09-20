@@ -1731,6 +1731,54 @@ refusal down. Note it originally used `Molteani`/`Molteni`, which stopped being
 an unlisted pair the moment the rule was applied — **an example chosen from
 live data is a test that can go stale**.
 
+### Acronyms are a token rule, not a list of names
+
+`ACRONYMS` capitalises a sponsor that is always written in capitals, wherever
+it appears and however many co-sponsors follow — `Daf Trucks` and
+`Daf Trucks - Lejeune - PZ` are one decision, not two, and next season's
+`Daf Trucks - <something new>` is already covered. Matching is whole-token
+(`\bdaf\b`), so it cannot reach inside `Daffodil`, and the set is an explicit
+allowlist: nothing is capitalised that is not named in it. Eric's call,
+2026-09-19: **DAF is always capitalised.** The 1981 and 1982 rows already had
+it right and the rule left them alone.
+
+This is the same family as `STYLE_OVERRIDES` (`KAS`, `MSS`) but the better
+shape for it — an override names one string, a token rule names the sponsor.
+
+### Why 740 teams have no riders at all
+
+Worth writing down, because "a team nobody rode for" reads like corruption and
+is not. **`teams` is append-only.** Every writer uses `INSERT OR IGNORE` or
+`upsert_team()`, and **no code path anywhere deletes a team row** — while
+`replace_edition()` wipes an edition's `stage_results` wholesale on every
+re-ingest. So a team row outlives whatever created it: when a re-scrape spells
+the sponsor differently, or PCS switches between a short name and the full
+sponsor string, the riders move to the new `team_id` and the old row is
+stranded for good.
+
+Kelme is the clearest example. Every season carries both a short row and a
+full one — `team/kelme-1989` (`Kelme`) beside `team/kelme-iberia-varta-1989`
+(`Kelme - Iberia - Varta`). Through 1988 both hold riders; from 1989 the short
+one holds none. `team/kelme-1989` appears in **no scrape file on disk**, which
+is exactly why `backfill_provenance.py` marked 545 of these `unknown` rather
+than guessing `pcs`.
+
+Measured: **740 of 4,862 teams have no `stage_results` row**, 16 of them are
+referenced in `classification_standings`, and the remaining ~724 are referenced
+by nothing at all. Only 62 have a same-name twin that does hold riders, so
+"re-ingest moved the riders" explains a minority; the rest are older litter.
+
+**They never reach the app.** 271 team names exist only on rider-less rows, and
+**0 of them appear in any exported `teams` array** — the dropdown is built from
+riders' attributions, so a team with no riders is invisible. This is DB
+hygiene, not a user-facing defect, which is why the 15 rider-less typo groups
+were left open rather than guessed at.
+
+**There is no validator for this.** `validate_db.check_orphan_riders()` exists
+— added after 826 orphan *rider* rows were found in September 2026, the same
+failure mode — but nothing checks orphan *teams*, which is precisely how 740 of
+them accumulated unnoticed.
+
 ### The initials class is separate and still open
 
 14 pairs differ only in how initials are punctuated: `R.M.O.` (595) vs `RMO`

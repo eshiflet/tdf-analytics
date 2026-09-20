@@ -151,6 +151,16 @@ RENAMES = {
     "Berettini - Monza": "Berrettini - Monza",
 }
 
+# Sponsor names that are acronyms and are always written in capitals, wherever
+# they appear in a name and however many co-sponsors follow. A token rule
+# rather than a list of names, so `Daf Trucks` and `Daf Trucks - Lejeune - PZ`
+# are one decision and a name PCS adds next season is already covered.
+#
+# Matching is whole-token (`\bdaf\b`), so it cannot reach inside a longer word,
+# and the set is an explicit allowlist — nothing is capitalised that is not
+# named here. Eric's call, 2026-09-19: DAF is always capitalised.
+ACRONYMS = {"DAF"}
+
 # Case-only merges where the count points at a spelling that is wrong about
 # the name itself. Keyed by folded name -> the spelling to keep.
 STYLE_OVERRIDES = {
@@ -166,6 +176,13 @@ def fold(name):
     d = unicodedata.normalize("NFKD", name)
     d = "".join(c for c in d if not unicodedata.combining(c))
     return re.sub(r"[^0-9A-Za-z]+", " ", d).casefold().strip()
+
+
+def apply_acronyms(name):
+    """Capitalise any ACRONYMS token, leaving the rest of the name alone."""
+    for acro in sorted(ACRONYMS):
+        name = re.sub(rf"\b{re.escape(acro)}\b", acro, name, flags=re.IGNORECASE)
+    return name
 
 
 def diacritics(name):
@@ -216,6 +233,21 @@ def plan(cur):
         merges.append((right, sorted((t, n) for t, n in rows if n == wrong)))
 
     handled = set(MISSPELLINGS) | set(RENAMES)
+
+    # Acronym casing. Runs on whatever the maps above did not claim, and takes
+    # those rows out of the fold pass — a corrected name needs no second
+    # opinion from the rider counts.
+    by_fixed = defaultdict(list)
+    for team_id, name in rows:
+        if name in handled:
+            continue
+        fixed = apply_acronyms(name)
+        if fixed != name:
+            by_fixed[fixed].append((team_id, name))
+            handled.add(name)
+    for fixed, targets in sorted(by_fixed.items()):
+        merges.append((fixed, sorted(targets)))
+
     groups = defaultdict(lambda: defaultdict(list))
     for team_id, name in rows:
         if name in handled:
