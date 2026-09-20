@@ -1183,6 +1183,74 @@ class OrphanRiderTest(DBCheckTest):
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# validate_db.check_orphan_teams — the same rot one table over
+# ══════════════════════════════════════════════════════════════════════════
+
+class OrphanTeamTest(DBCheckTest):
+    """740 team rows accumulated the same way and for longer, unwatched.
+
+    `teams` is append-only: every writer uses INSERT OR IGNORE, nothing
+    deletes a team row, and replace_edition() clears stage_results wholesale.
+    So a re-scrape that spells the sponsor differently moves the riders to a
+    new team_id and strands the old row for good.
+
+    The distinction these tests protect is that "no riders" does NOT mean
+    "useless" — a team classification placing is the team's own result and
+    needs no rider row behind it.
+    """
+
+    def assertWarningMatching(self, fragment):
+        joined = "\n".join(validate_db.warnings)
+        self.assertIn(fragment, joined,
+                      f"no warning containing {fragment!r}; warnings were {validate_db.warnings}")
+
+    def standing(self, edition_id, team_id, rider_id="rider/x"):
+        self.rider(rider_id)
+        self.cur.execute(
+            "INSERT INTO classification_standings "
+            "(edition_id,classification,rank,rider_id,team_id) VALUES (?,?,?,?,?)",
+            (edition_id, "teams", 1, rider_id, team_id))
+
+    def test_a_team_nothing_references_warns(self):
+        self.race(1, "Tour de France")
+        self.edition(1, 1, 2020)
+        self.stage(1, 1, 1)
+        self.team("team/has-riders")
+        self.result(1, "rider/a", team_id="team/has-riders")
+        self.team("team/stranded")
+        validate_db.check_orphan_teams(self.cur)
+        self.assertWarningMatching("1 team row(s) have no stage_results")
+        self.assertWarningMatching("team/stranded")
+
+    def test_a_team_with_only_a_classification_placing_is_not_litter(self):
+        """Its result is the team's own — no rider row is required for it to
+        be real, so it must not be counted with the deletable rows."""
+        self.race(1, "Tour de France")
+        self.edition(1, 1, 2020)
+        self.team("team/won-the-team-prize")
+        self.standing(1, "team/won-the-team-prize")
+        validate_db.check_orphan_teams(self.cur)
+        self.assertNotIn("team/won-the-team-prize",
+                         "\n".join(validate_db.warnings))
+
+    def test_a_team_with_riders_is_silent(self):
+        self.race(1, "Tour de France")
+        self.edition(1, 1, 2020)
+        self.stage(1, 1, 1)
+        self.team("team/fine")
+        self.result(1, "rider/a", team_id="team/fine")
+        validate_db.check_orphan_teams(self.cur)
+        self.assertEqual(validate_db.warnings, [])
+
+    def test_it_never_errors(self):
+        """A stranded team is a row whose reason for existing went away, not
+        corruption. Failing the build on it would block every re-source."""
+        self.team("team/stranded")
+        validate_db.check_orphan_teams(self.cur)
+        self.assertNoErrors()
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # validate_db.check_gravel_rank_integrity — a classification against its clock
 # ══════════════════════════════════════════════════════════════════════════
 

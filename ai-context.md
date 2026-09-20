@@ -1774,10 +1774,22 @@ riders' attributions, so a team with no riders is invisible. This is DB
 hygiene, not a user-facing defect, which is why the 15 rider-less typo groups
 were left open rather than guessed at.
 
-**There is no validator for this.** `validate_db.check_orphan_riders()` exists
-— added after 826 orphan *rider* rows were found in September 2026, the same
-failure mode — but nothing checks orphan *teams*, which is precisely how 740 of
-them accumulated unnoticed.
+**`check_orphan_teams()` now reports them** (2026-09-19), the companion to
+`check_orphan_riders()`. It splits the two kinds, because **"no riders" does
+not mean "useless"**: 733 rows are referenced by nothing and are the deletable
+kind, while **7 hold a team-classification placing** — a team's own result,
+which needs no rider row behind it to be real. Warning, never an error, and
+unlike the rider check **the expected count is not zero**: nothing has ever
+deleted these, so the number is a baseline to watch. A jump means a fresh
+ingest stranded more.
+
+*It found a malformed row on its first run.* `team_id = " Lease a Bike"`,
+`name = "Team Visma "`, `season_year` NULL — `Team Visma | Lease a Bike` split
+on its own pipe by something that ran before provenance tracking, so the
+culprit is unknowable. It is the only `team_id` in the database that does not
+start with `team/`. Harmless (nothing references it) and the real
+`team/team-visma-lease-a-bike-2024/2025/2026` rows are intact with 498-557
+riders each, but it is the clearest deletion candidate in the whole set.
 
 ### The initials class is separate and still open
 

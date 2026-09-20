@@ -178,6 +178,7 @@ def check_referential(c):
         if n:
             err(f"{n} {label}")
     check_orphan_riders(c)
+    check_orphan_teams(c)
     check_dangling_alias_canonicals(c)
 
 
@@ -354,6 +355,69 @@ def check_orphan_riders(c):
     warn(f"{n:,} rider row(s) have no stage_results and are referenced by nothing"
          f"{trail}. e.g. {', '.join(sample)}. An unreferenced rider is never "
          "exported, so nothing downstream will ever complain about these.")
+
+
+def check_orphan_teams(c):
+    """Team rows nothing references — the `riders` problem one table over.
+
+    Same mechanism as the 826 orphan riders, and it went unnoticed far longer
+    because no check looked: **`teams` is append-only.** Every writer uses
+    `INSERT OR IGNORE` or `upsert_team()`, no code path anywhere deletes a team
+    row, and `replace_edition()` wipes an edition's `stage_results` wholesale
+    on each re-ingest. A team row therefore outlives whatever created it — when
+    a re-scrape spells the sponsor differently, or PCS switches between a short
+    name and the full sponsor string, the riders move to the new `team_id` and
+    the old row is stranded permanently. `team/kelme-1989` (`Kelme`) sits
+    beside `team/kelme-iberia-varta-1989`; both held riders through 1988, and
+    from 1989 the short one holds none.
+
+    **Two kinds, and only one of them is litter**, which is the whole reason
+    this reports them separately:
+
+    * no `stage_results` AND no `classification_standings` — referenced by
+      nothing, the deletable kind (733 at 2026-09-19);
+    * no `stage_results` but a team-classification placing — **not useless and
+      not deletable**, because that standing is the team's own result and does
+      not need a rider row to be real (7 teams, 16 rows).
+
+    A WARNING, not an error, and unlike `check_orphan_riders` the expected
+    count is NOT zero: nothing has ever deleted these, so the number is a
+    baseline to watch rather than a failure. A jump means a fresh ingest
+    stranded more; read `data_provenance`'s `script` and `recorded_at` for the
+    new ids to find which run. None of them reach the app either way — the team
+    dropdown is built from riders' attributions, so a team with no riders is
+    never exported.
+    """
+    UNREFERENCED = """
+        SELECT team_id FROM teams t
+         WHERE NOT EXISTS (SELECT 1 FROM stage_results sr WHERE sr.team_id=t.team_id)
+           AND NOT EXISTS (SELECT 1 FROM classification_standings cs
+                            WHERE cs.team_id=t.team_id)"""
+    n = c.execute(f"SELECT COUNT(*) FROM ({UNREFERENCED})").fetchone()[0]
+    if n:
+        sample = [r[0] for r in c.execute(
+            f"SELECT team_id FROM ({UNREFERENCED}) ORDER BY team_id LIMIT 3")]
+        who = c.execute(f"""SELECT script, MIN(recorded_at), MAX(recorded_at)
+                              FROM data_provenance
+                             WHERE entity='teams' AND entity_id IN ({UNREFERENCED})
+                             GROUP BY script ORDER BY COUNT(*) DESC LIMIT 1""").fetchone()
+        trail = (f" — mostly written by {who[0]} between {str(who[1])[:10]} and "
+                 f"{str(who[2])[:10]}") if who else ""
+        warn(f"{n:,} team row(s) have no stage_results and are referenced by "
+             f"nothing{trail}. e.g. {', '.join(sample)}. `teams` is append-only "
+             "and nothing deletes these, so a steady number is the baseline; a "
+             "jump means an ingest stranded more. An unreferenced team is never "
+             "exported, so nothing downstream will complain about them.")
+
+    kept = c.execute("""
+        SELECT COUNT(*) FROM teams t
+         WHERE NOT EXISTS (SELECT 1 FROM stage_results sr WHERE sr.team_id=t.team_id)
+           AND EXISTS (SELECT 1 FROM classification_standings cs
+                        WHERE cs.team_id=t.team_id)""").fetchone()[0]
+    if kept:
+        note(f"{kept} team(s) have no rider results but DO hold a team "
+             "classification placing — a team's own result needs no rider row "
+             "behind it. Not litter, and not safe to delete with the rest.")
 
 
 def check_provenance(c):
