@@ -54,7 +54,7 @@ from race_common import (
     COUNTRY_NAMES,
     FLAT_FALLBACK_YEAR,
 )
-from race_common import NO_INDIVIDUAL_GC
+from race_common import NO_INDIVIDUAL_GC, POINTS_CLASSIFICATION
 from race_set_ingest import (capture_patches, report_patches, restore_patches,
                              prune_stranded_teams)
 
@@ -463,6 +463,17 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
         # order — see the fallback below, which is the only user.
         # The edition exclusion comes FIRST: on 1912 the fallback would not be
         # approximating a GC, it would be inventing one the race never held.
+        # A stage of a points-classification edition where EVERY ranked rider
+        # is 0 behind the leader is not reporting times at all — it is PCS
+        # rendering an empty time column as `+0:00`. The all-zero test is what
+        # separates it from an ordinary stage, where exactly one rider (the
+        # leader) legitimately sits at 0.
+        _ranked = [r for r in rows if len(r) > 2 and r[1]]
+        gaps_are_placeholders = (
+            (race_name, year) in POINTS_CLASSIFICATION
+            and len(_ranked) > 1
+            and all(parse_time_to_seconds(r[2]) == 0 for r in _ranked))
+
         stage_rank_is_the_only_gc = (
             n == 1
             and (race_name, year) not in NO_INDIVIDUAL_GC
@@ -609,6 +620,13 @@ def ingest_year(conn, race_id: int, race_name: str, scrapes_dir: str, year: int,
                 entry = gc_standings.get(n, {}).get(rider_slug)
                 if entry:
                     gc_rank_v, gc_gap_v = entry[0], entry[1]
+            # gc_standings is built from the same pages, so it carries the same
+            # placeholder zeros; suppress after both sources have been read.
+            # ONLY a zero: Tour 1909's final classification is all `+0:00` in
+            # the stage file, yet gc_standings gives Lucien Leman a real
+            # +4:45:15. A blanket suppression here would have deleted it.
+            if gaps_are_placeholders and gc_gap_v == 0:
+                gc_gap_v = None
 
             if nat and nat not in countries_seen:
                 countries_seen.add(nat)

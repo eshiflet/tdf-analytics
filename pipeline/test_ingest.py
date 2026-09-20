@@ -962,6 +962,80 @@ def gc_row(bib, name, slug, rnk, gc_pos="", gc_lag="", gap=""):
             "Team A", "team/a-1990", "", "", "", "", gap]
 
 
+class TestPointsEraPlaceholderGaps(IngestHarness):
+    """PCS closes 1905-1912 with the POINTS table, whose time column is empty,
+    and renders every row of it as `+0:00`.
+
+    Stored as 0 that reads "level with the leader": all 41 riders in the 1910
+    final GC appeared tied with Lapize, having finished hours apart. The ranks
+    are real — Lapize, Garrigou and Defraeye are the genuine winners — so only
+    the gap beside them is suppressed, and only where EVERY ranked rider is 0,
+    which is what separates a placeholder column from an ordinary stage where
+    one rider legitimately leads by nothing.
+    """
+
+    def gaps(self):
+        vals = [r[0] for r in self.conn.execute(
+            "SELECT gc_gap_seconds FROM stage_results WHERE gc_rank IS NOT NULL")]
+        return sorted((v if v is not None else "NULL" for v in vals),
+                      key=lambda v: (v == "NULL", v if v != "NULL" else 0))
+
+    def ingest_as(self, race, year):
+        buf, sys.stdout = sys.stdout, io.StringIO()
+        try:
+            return ingest_race.ingest_year(
+                self.conn, self.race_id, race, self.scrapes, year,
+                ingest_race.find_stage_files_for_year(self.scrapes, 1990, False))
+        finally:
+            sys.stdout = buf
+
+    def all_zero_stage(self):
+        self.write_stage(1, rows=[
+            gc_row("1", "A", "rider/a", "1", gc_pos="1", gc_lag="+0:00"),
+            gc_row("2", "B", "rider/b", "2", gc_pos="2", gc_lag="+0:00"),
+            gc_row("3", "C", "rider/c", "3", gc_pos="3", gc_lag="+0:00"),
+        ])
+
+    def test_an_all_zero_points_era_stage_stores_no_gaps(self):
+        self.all_zero_stage()
+        self.ingest_as("Tour de France", 1910)
+        self.assertEqual(self.gaps(), ["NULL", "NULL", "NULL"])
+
+    def test_the_same_page_outside_the_points_era_is_untouched(self):
+        """A modern stage really can have everyone on the winner's time."""
+        self.all_zero_stage()
+        self.ingest_as("Tour de France", 1990)
+        self.assertEqual(self.gaps(), [0, 0, 0])
+
+    def test_an_ordinary_points_era_stage_keeps_its_gaps(self):
+        """One rider at 0 is the leader, not a placeholder column."""
+        self.write_stage(1, rows=[
+            gc_row("1", "A", "rider/a", "1", gc_pos="1", gc_lag="+0:00"),
+            gc_row("2", "B", "rider/b", "2", gc_pos="2", gc_lag="+3:00"),
+        ])
+        self.ingest_as("Tour de France", 1910)
+        self.assertEqual(self.gaps(), [0, 180])
+
+    def test_a_real_gap_from_standings_survives_the_suppression(self):
+        """Tour 1909's final classification is all `+0:00` in the stage file,
+        yet gc_standings gives Lucien Leman a real +4:45:15. Suppressing every
+        gap on the stage rather than only the zeros would have deleted it."""
+        self.all_zero_stage()
+        # load_gc_standings looks under the year being INGESTED, which is 1910
+        # here even though the harness names its stage files 1990.
+        os.makedirs(os.path.join(self.scrapes, "1910"), exist_ok=True)
+        with open(os.path.join(self.scrapes, "1910", "gc_standings.json"),
+                  "w", encoding="utf-8") as f:
+            json.dump({"year": 1910, "stages": {"1": {"rider/d": [56, 17115]}}}, f)
+        self.write_stage(1, rows=[
+            gc_row("1", "A", "rider/a", "1", gc_pos="1", gc_lag="+0:00"),
+            gc_row("2", "B", "rider/b", "2", gc_pos="2", gc_lag="+0:00"),
+            gc_row("3", "D", "rider/d", "3"),
+        ])
+        self.ingest_as("Tour de France", 1910)
+        self.assertEqual(self.gaps(), [17115, "NULL", "NULL"])
+
+
 class TestStageOneGcFallback(IngestHarness):
     """The stage-1 GC fallback must never run beside a real source.
 

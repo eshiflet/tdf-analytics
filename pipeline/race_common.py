@@ -623,6 +623,20 @@ SOURCE_UNKNOWN = "unknown"      # predates provenance tracking; origin unproven
 NO_INDIVIDUAL_GC = frozenset({("Giro d'Italia", 1912)})
 
 
+# Editions whose general classification was decided on POINTS, not time.
+#
+# The classification is real and individual — Lapize 1910, Garrigou 1911 and
+# Defraeye 1912 are its genuine winners — so unlike NO_INDIVIDUAL_GC the RANKS
+# belong in the database. What does not is the time gap beside them on the
+# FINAL stage: PCS closes these editions with the points table, whose time
+# column is empty, and renders every row of it as `+0:00`. Stored as 0 that
+# reads "level with the leader", and 41 riders who finished hours apart appear
+# tied. Mid-race gaps are untouched and are real cumulative gaps — measured
+# across all eight years, 4,412 of them with ZERO rank/gap inversions.
+POINTS_CLASSIFICATION = frozenset(
+    ("Tour de France", y) for y in range(1905, 1913))
+
+
 VALID_SOURCES = frozenset({
     SOURCE_PCS, SOURCE_WIKIPEDIA, SOURCE_BIKERACEINFO, SOURCE_CYCLINGFLASH,
     SOURCE_ATHLINKS, SOURCE_SPORTMANIACS, SOURCE_TRETZESPORTS,
