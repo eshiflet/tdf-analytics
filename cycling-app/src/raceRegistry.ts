@@ -167,7 +167,8 @@ export const RACE_ABBR: Record<RaceId, string> = { tour: "Tour de France", giro:
 export const RACE_SHORT_LABEL: Record<RaceId, string> = { tour: "Tour", giro: "Giro", vuelta: "Vuelta", classics: "Classics", gravel: "Gravel" };
 
 export function isRaceId(s: string | undefined): s is RaceId {
-  return s !== undefined && s in RACES;
+  // hasOwnProperty, not `in`: a URL hash of "toString" or "constructor" is inherited.
+  return s !== undefined && Object.prototype.hasOwnProperty.call(RACES, s);
 }
 
 export function emptyPerRace<T>(make: () => T): Record<RaceId, T> {

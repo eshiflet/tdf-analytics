@@ -653,3 +653,7 @@ flowchart TD
 
 If any step 1-6 fails, the workflow stops there — nothing is ever uploaded or deployed from
 a build that failed validation, type-checking, or the smoke tests.
+
+## Frontend unit tests
+
+`cd cycling-app && npm test` runs vitest over `src/__tests__/` (race registry invariants, rider-index build/decode/scheduling, `crossRaceFor`). Vitest runs through Vite, so `import.meta.glob` resolves and the real data files are discovered. Tests build indexes from INVENTED riders, never live data, and reset modules per test because the loader caches at module scope. CI runs them before the build. First catch: `isRaceId("toString")` was true.
