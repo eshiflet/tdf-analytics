@@ -86,11 +86,6 @@ for (const [path, url] of Object.entries(riderIndexUrlModules)) {
 type RawYearTuple =
   | [number, number]
   | [number, number, number, number];
-/** Aggregate races only: one [raceIdx, rank] pair per constituent race the
- *  rider contested that season. raceIdx indexes the top-level `races` string
- *  table, the same trick `teams` uses. The team is NOT repeated here — it is
- *  already in that year's `y` tuple and is identical across the season. */
-type RawConstituent = [number, number];
 /** Aggregate races only: [teamIdx, raceIdx, rank, raceIdx, rank, ...] for one
  *  season. One map instead of the two (`y` + `m`) this replaced, which stored
  *  every year key twice and carried a finalRank that is min() of these ranks —

@@ -20,7 +20,7 @@ import {
 import { getDataset } from "./dataLoading";
 import { PALETTE } from "./formatters";
 import { computeHash, updateHash } from "./hashRouting";
-import { debounce } from "./utils";
+import { debounce, escapeHtml, createLatestGuard } from "./utils";
 import { displayName, foldForSearch, searchHaystack } from "./riderDisplay";
 import { drawChart } from "./views/stageChart";
 import { computePointsRankings, applyDefaultSelection } from "./views/stageRankings";
@@ -45,7 +45,7 @@ function drawCrossYear() {
 }
 
 export function showLoadError(err: unknown) {
-  chartEl.innerHTML = `<p style="color:#ff6b6b">Failed to load data: ${err}</p>`;
+  chartEl.innerHTML = `<p style="color:#ff6b6b">Failed to load data: ${escapeHtml(err)}</p>`;
   console.error(err);
 }
 
@@ -243,8 +243,15 @@ export function updateUnitToggle() {
   overviewUnitToggleBtn.textContent = state.overviewUnit === "metric" ? "km → mi" : "mi → km";
 }
 
+// A quick year or race change can leave two fetches racing; only the newest may
+// touch state, or the slower, older response lands last and wins.
+const datasetLoad = createLatestGuard();
+
 export async function loadDataset(year: string) {
-  state.dataset = await getDataset(year);
+  const token = datasetLoad.begin();
+  const dataset = await getDataset(year);
+  if (!datasetLoad.isCurrent(token)) return;
+  state.dataset = dataset;
   state.colorScale = d3
     .scaleOrdinal<string, string>()
     .domain(state.dataset.riders.map((r) => r.id))

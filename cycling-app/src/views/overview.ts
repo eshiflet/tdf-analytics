@@ -2,10 +2,11 @@
 // difficulty score for the selected year, colored by route type.
 import type { StageInfo } from "../types";
 import { d3 } from "../d3";
-import { state, raceConfig } from "../state";
+import { state } from "../state";
 import { overviewChartEl, overviewSummaryEl, tooltipEl } from "../dom";
 import { positionTooltip, hideTooltip } from "../tooltip";
 import { ROUTE_COLOR, ROUTE_LABEL, difficultyScore, stageTitle } from "../formatters";
+import { escapeHtml } from "../utils";
 
 const KM_TO_MI = 0.621371;
 const M_TO_FT = 3.28084;
@@ -168,9 +169,9 @@ export function drawOverview() {
               : `${s.vertical_meters.toLocaleString()} m`
             : "—";
           tooltipEl.innerHTML = `
-            <div class="t-name">${stageTitle(s.stage_number)}${s.cancelled ? " — cancelled" : ""}</div>
-            <div class="t-team">${s.start_location ?? "—"} → ${s.finish_location ?? "—"}</div>
-            <div>${ROUTE_LABEL[s.route_type ?? "F"] ?? s.route_type}</div>
+            <div class="t-name">${escapeHtml(stageTitle(s.stage_number))}${s.cancelled ? " — cancelled" : ""}</div>
+            <div class="t-team">${escapeHtml(s.start_location ?? "—")} → ${escapeHtml(s.finish_location ?? "—")}</div>
+            <div>${escapeHtml(ROUTE_LABEL[s.route_type ?? "F"] ?? s.route_type)}</div>
             <div>Distance: ${distStr}</div>
             <div>Elevation: ${elevStr}</div>
             <div>Difficulty: ${diff.toFixed(1)}</div>

@@ -14,6 +14,7 @@ import { getDisplayPoints, buildGapBridges } from "./stageRankings";
 import type { DisplayPoint } from "./stageRankings";
 import { updateLineClasses, setHighlight } from "./stageHighlight";
 import { refreshLegendState } from "./stageLegend";
+import { escapeHtml } from "../utils";
 
 export function drawChart() {
   // The initial dataset fetch may still be in flight (clicking a view button
@@ -154,7 +155,7 @@ export function drawChart() {
   };
 
   // x axis — bottom
-  const xAxisBottom = g
+  g
     .append("g")
     .attr("class", "axis x-axis")
     .attr("transform", `translate(0,${innerHeight})`)
@@ -292,9 +293,9 @@ export function drawChart() {
         ? `${gapStages.join(", ")}: did not ride`
         : `Stage${gapStages.length > 1 ? "s" : ""} ${gapStages.join(", ")}: no time recorded — still in the race`;
       tooltipEl.innerHTML = `
-        <div class="t-name">${displayName(rider)}</div>
-        <div class="t-team">${rider.team ?? ""}</div>
-        <div>${gapNote}</div>
+        <div class="t-name">${escapeHtml(displayName(rider))}</div>
+        <div class="t-team">${escapeHtml(rider.team ?? "")}</div>
+        <div>${escapeHtml(gapNote)}</div>
       `;
       positionTooltip(event);
     })
@@ -359,7 +360,7 @@ export function drawChart() {
       }
       return riderLabel(r);
     })
-    .style("cursor", (r) => state.currentMetric === "gc" ? "default" : "pointer")
+    .style("cursor", () => state.currentMetric === "gc" ? "default" : "pointer")
     .on("mouseover", (event: MouseEvent, r: RiderSeries) => {
       if (state.currentMetric === "gc") {
         const lastStage = r.byStage[r.byStage.length - 1];
@@ -380,8 +381,8 @@ export function drawChart() {
           ? winnerTime
           : fmtGap(gap, gcRank);
         tooltipEl.innerHTML = `
-          <div class="t-name">${displayName(r)}</div>
-          <div class="t-team">${r.team ?? ""}</div>
+          <div class="t-name">${escapeHtml(displayName(r))}</div>
+          <div class="t-team">${escapeHtml(r.team ?? "")}</div>
           <div>GC #${gcRank ?? "—"} &middot; ${timeStr}</div>
         `;
         positionTooltip(event);
@@ -395,7 +396,7 @@ export function drawChart() {
       const group = ridersAtFinal.get(rank);
       if (!group) return;
       const label = isKom ? "KOM" : "Points";
-      const names = group.riders.map((rd) => displayName(rd)).join("<br>");
+      const names = group.riders.map((rd) => escapeHtml(displayName(rd))).join("<br>");
       tooltipEl.innerHTML = `
         <div class="t-name">Final ${label} Rank #${rank}</div>
         <div class="t-team">${group.points} pts</div>
@@ -483,16 +484,16 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
       })();
     if (!point) return;
     tooltipEl.innerHTML = `
-      <div class="t-name">${displayName(rider)}</div>
-      <div class="t-team">${rider.team ?? ""}</div>
-      <div>${stageTitle(point.stage)} &middot; ${raceConfig().hasCumulativeGc ? "GC" : "Result"} #${point.gcRank ?? "—"}</div>
+      <div class="t-name">${escapeHtml(displayName(rider))}</div>
+      <div class="t-team">${escapeHtml(rider.team ?? "")}</div>
+      <div>${escapeHtml(stageTitle(point.stage))} &middot; ${raceConfig().hasCumulativeGc ? "GC" : "Result"} #${point.gcRank ?? "—"}</div>
       <div>Gap: ${fmtGap(point.gcGapSeconds, point.gcRank)}${
         rider.adj?.includes(point.stage) ? " *" : ""}</div>
       ${rider.adj?.includes(point.stage)
         ? `<div class="t-adj">* time awarded, not raced — credited with a group's `
           + `time while keeping the place he finished in</div>`
         : ""}
-      ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
+      ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${escapeHtml(point.status)}</div>` : ""}
     `;
   } else {
     const point =
@@ -502,20 +503,20 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
     if (state.currentMetric === "kom") {
       const komRank = state.komRankAtStage.get(point.stage)?.get(rider.id) ?? null;
       tooltipEl.innerHTML = `
-        <div class="t-name">${displayName(rider)}</div>
-        <div class="t-team">${rider.team ?? ""}</div>
-        <div>${stageTitle(point.stage)} &middot; KOM rank #${komRank ?? "—"}</div>
+        <div class="t-name">${escapeHtml(displayName(rider))}</div>
+        <div class="t-team">${escapeHtml(rider.team ?? "")}</div>
+        <div>${escapeHtml(stageTitle(point.stage))} &middot; KOM rank #${komRank ?? "—"}</div>
         <div>Cumulative KOM pts: ${point.cumulativeKomPoints}</div>
-        ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
+        ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${escapeHtml(point.status)}</div>` : ""}
       `;
     } else {
       const ptsRank = state.pointsRankAtStage.get(point.stage)?.get(rider.id) ?? null;
       tooltipEl.innerHTML = `
-        <div class="t-name">${displayName(rider)}</div>
-        <div class="t-team">${rider.team ?? ""}</div>
-        <div>${stageTitle(point.stage)} &middot; Points rank #${ptsRank ?? "—"}</div>
+        <div class="t-name">${escapeHtml(displayName(rider))}</div>
+        <div class="t-team">${escapeHtml(rider.team ?? "")}</div>
+        <div>${escapeHtml(stageTitle(point.stage))} &middot; Points rank #${ptsRank ?? "—"}</div>
         <div>Cumulative pts: ${point.cumulativePoints}</div>
-        ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${point.status}</div>` : ""}
+        ${point.status !== "FINISHED" ? `<div style="color:#ff6b6b">${escapeHtml(point.status)}</div>` : ""}
       `;
     }
   }

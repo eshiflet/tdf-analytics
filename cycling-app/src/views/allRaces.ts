@@ -7,6 +7,7 @@ import type { RaceSummary } from "../raceRegistry";
 import { ALL_RACES_BY_RACE } from "../raceRegistry";
 import { allRacesChartEl, tooltipEl } from "../dom";
 import { positionTooltip, hideTooltip } from "../tooltip";
+import { escapeHtml } from "../utils";
 
 export function drawAllRacesOverview() {
   allRacesChartEl.innerHTML = "";
@@ -192,7 +193,7 @@ export function drawAllRacesOverview() {
         .on("mousemove", (event: MouseEvent, r: RaceSummary) => {
           const val = s.value(r)!;
           tooltipEl.innerHTML = `
-            <div class="t-name">${r.year} ${raceName}</div>
+            <div class="t-name">${r.year} ${escapeHtml(raceName)}</div>
             <div>${s.label}: ${s.fmt(val)}</div>
           `;
           positionTooltip(event);

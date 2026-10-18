@@ -20,6 +20,7 @@ import { state } from "../state";
 // riders.ts's is (see its header comment): updateUnitToggle is only ever called
 // from inside an event handler, never while the module is being evaluated.
 import { updateUnitToggle } from "../main";
+import { escapeHtml } from "../utils";
 
 type YearPoint = { y: number; km?: number; kmh?: number; n?: number };
 type RaceSeries = { name: string; short: string; first: number; last: number; years: YearPoint[] };
@@ -241,7 +242,7 @@ export async function drawClassicsHistory(): Promise<void> {
         if (!best) return;
         hover.attr("x1", x(best.y)).attr("x2", x(best.y)).attr("opacity", 1);
         tooltipEl.innerHTML =
-          `<div class="t-name">${race.name}</div>` +
+          `<div class="t-name">${escapeHtml(race.name)}</div>` +
           `<div class="t-team">${best.y}</div>` +
           `<div>${spec.fmt(valueAt(best)!)}</div>`;
         positionTooltip(event);

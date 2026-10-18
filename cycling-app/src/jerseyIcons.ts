@@ -6,8 +6,6 @@
 // all four, colored/patterned per classification.
 import type { RaceId } from "./raceRegistry";
 import { RACES, RACE_ABBR } from "./raceRegistry";
-import { tooltipEl } from "./dom";
-import { positionTooltip } from "./tooltip";
 import type { RiderEntry } from "./riderIndexData";
 import { riderIndexByRace } from "./riderIndexData";
 

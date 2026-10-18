@@ -18,6 +18,7 @@ import { fieldDefinitionByRace, riderIndexByRace, ensureRiderIndexFor, crossRace
 import { buildLegend } from "./stageLegend";
 import { setRace, loadDataset, switchView, showLoadError } from "../main";
 import { drawRidersPage } from "./riders";
+import { escapeHtml } from "../utils";
 
 type ClassifId = "gc" | "sprint" | "kom";
 
@@ -576,8 +577,8 @@ export async function drawRiderDetail(riderId: string): Promise<void> {
                 fieldDefinitionByRace[d.race].get(`${d.label}|${d.year}`))
             : null;
           tooltipEl.innerHTML = `
-            <div class="t-name">${d.year} ${d.label ?? RACES[d.race].name}</div>
-            <div class="t-team">${d.team ?? "—"}</div>
+            <div class="t-name">${d.year} ${escapeHtml(d.label ?? RACES[d.race].name)}</div>
+            <div class="t-team">${escapeHtml(d.team ?? "—")}</div>
             ${gcPart}${sprintPart}${komPart}
             ${fieldLabel ? `<div class="t-team">${fieldLabel}</div>` : ""}
             <div style="color:var(--text-dim);font-size:11px">Click to view ${isAggregate ? "season" : "stage"} chart</div>

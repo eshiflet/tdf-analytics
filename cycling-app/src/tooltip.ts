@@ -5,6 +5,7 @@
 import { fieldDefinitionLabel } from "./formatters";
 import type { StageInfo } from "./types";
 import { tooltipEl, chartAreaEl } from "./dom";
+import { escapeHtml } from "./utils";
 
 /** ISO 'YYYY-MM-DD' -> 'MM/DD/YYYY'.
  *
@@ -27,12 +28,12 @@ export function showStageTooltip(event: MouseEvent, stage: StageInfo) {
   // included.
   const isRace = stage.stage_short_label != null;
   const heading = isRace
-    ? `<div class="t-name">${stage.stage_label}${stage.cancelled ? " — cancelled" : ""}</div>`
+    ? `<div class="t-name">${escapeHtml(stage.stage_label)}${stage.cancelled ? " — cancelled" : ""}</div>`
       + (stage.stage_date ? `<div class="t-team">${fmtDateUS(stage.stage_date)}</div>` : "")
     : "";
   const detail = isRace
     ? `${distance}, ${vertical}`
-    : `${distance}, ${vertical}, ${stage.route_type ?? "—"}`;
+    : `${distance}, ${vertical}, ${escapeHtml(stage.route_type ?? "—")}`;
 
   // Only the off-road set carries this, and it is the line that makes the
   // number above it mean something: a rank inside a pro category is not a
@@ -41,8 +42,8 @@ export function showStageTooltip(event: MouseEvent, stage: StageInfo) {
 
   tooltipEl.innerHTML = `
     ${heading}
-    <div>${stage.start_location ?? "—"}</div>
-    <div>${stage.finish_location ?? "—"}</div>
+    <div>${escapeHtml(stage.start_location ?? "—")}</div>
+    <div>${escapeHtml(stage.finish_location ?? "—")}</div>
     <div>${detail}</div>
     ${field ? `<div class="t-team">${field}</div>` : ""}
   `;
