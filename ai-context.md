@@ -2,7 +2,7 @@
 
 Interactive cycling analytics app covering **21 races in five sets**: the **Tour de France** (all 113 editions, 1903–2026), the **Giro d'Italia** (109 editions with data), the **Vuelta a España** (81 editions, back to 1935), **11 one-day classics** (1892–2026) and **7 off-road races** (gravel and MTB, 1994–2026). The 2026 Tour de France is **complete** — all 21 stages are in the DB, Pogačar won in **73:56:26** and the slowest finisher was Cees Bol at **+6:22:08** (finalized 2026-08-15; see "Finalizing a completed year" below for what changed). Live at **[ericshiflet.com/tdf-analytics/](https://ericshiflet.com/tdf-analytics/)**.
 
-**Riders, as of 2026-09-19**: **18,037**, and `riders` holds exactly that many — 17 gravel riders were merged and one split on 2026-09-19 (see "Athlinks' racerId"), taking it from 18,054 — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. (18,050 before the 2026 Vuelta landed that evening; it introduced 4 riders new to the whole archive.) On the 18,050 snapshot, 11,095 appeared in exactly one race set and 36 in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,775 of its 3,885 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
+**Riders, as of 2026-10-17**: **18,044**, and `riders` holds exactly that many (18,037 on 2026-09-19; the 2026 Il Lombardia added 7 riders new to the whole archive) — 17 gravel riders were merged and one split on 2026-09-19 (see "Athlinks' racerId"), taking it from 18,054 — the 826 rows that carried no results were deleted on 2026-09-14 and `validate_db` now reports any that reappear. (18,050 before the 2026 Vuelta landed that evening; it introduced 4 riders new to the whole archive.) On the 18,050 snapshot, 11,095 appeared in exactly one race set and 36 in all five. The classics contribute the most exclusive riders (5,225, 28.9%) and gravel the highest *rate* — 3,775 of its 3,885 riders, 97%, race nowhere else. Only 110 riders in the whole archive have both a gravel and a road result, which is what `link_gravel_riders.py` exists to protect.
 
 ---
 
@@ -2274,12 +2274,26 @@ Coverage is bounded by each race's founding year, established from PCS returning
 Cancellations found: 2020 lost Paris–Roubaix, Amstel Gold and San Sebastián to
 COVID; **Omloop Het Volk was also cancelled in 1986 and 2004**.
 
-**2026 is an IN-PROGRESS season** — 10 of 11 races are in, and **Il Lombardia
-(scheduled 2026-10-10) has not been run**. It is deliberately *absent* from the
-season rather than stored as cancelled, so 2026 shows 10 race columns. Re-run the
-capture snippet and `ingest_classics.py --year 2026` after it happens; ingest is
-atomic per race-year, so re-running is safe and adds the race without duplicating
-anything.
+**2026 is COMPLETE (2026-10-17)** — all 11 races are in. **Il Lombardia** (the "race
+of the falling leaves") ran 2026-10-10, Bergamo -> Como, 239 km / 4,662 m, and was
+won by Paul Seixas in 5:49:28 (Enric Mas +0:48, Giulio Ciccone +1:05); 174 riders
+stored, 7 of them new to the archive. Until then it was deliberately *absent* from the
+season (see the table below) rather than stored as cancelled. Ingest is atomic per
+race-year, so a re-run adds nothing twice.
+
+How it was added: PCS answered a plain `urllib` fetch of
+`race/il-lombardia/2026/result` (no DevTools needed). The page was converted by hand
+into one `##RACE` block in the usual capture format and **replaced the stale
+`##NORESULTS` Lombardia block at the end of `_captures/classics_2026.txt`** — leave
+that stale block in and a re-parse would now record the race as *cancelled*, since its
+date is in the past. Three quirks of the raw HTML versus the snippet's `innerText`:
+a Time cell of `,,` means "same time as the rider above" (resolve it to that rider's
+gap); surnames arrive UPPERCASE (`MCNULTY`), so where a slug is already in the DB use
+the DB's `full_name` (`McNulty`, `del Toro`, `van den Broek`) rather than
+title-casing; and a rider with a single anchor on the page gives no second ordering
+to recover the casing from. Then `parse_classics_bundle.py`, `ingest_classics.py
+--race il-lombardia --year 2026`, `export_classics.py`, and
+`validate_db.py --update-patch-manifest` (team_id +174, finish_time +114).
 
 ### A no-results page means THREE different things
 

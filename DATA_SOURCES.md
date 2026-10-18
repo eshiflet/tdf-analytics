@@ -287,7 +287,7 @@ patched values, whereas `unknown` is just a to-do list.
   143,332 rows on 2026-09-19: the only transitions were 231 `unknown -> pcs`
   and 92 `unknown -> derived`, **0 away from a real source**.
 
-**Elevation is now 99.59% proven** — 3,421 `pcs`, 8 `unknown`, 0 with no row,
+**Elevation is now 99.59% proven** — 3,422 `pcs`, 8 `unknown`, 0 with no row,
 against 2,964 unproven that morning. The 8 that remain are listed under "Open
 items" in `ai-context.md`; seven of them hold a figure that matches **neither**
 PCS surface, and the eighth is a cancelled stage.

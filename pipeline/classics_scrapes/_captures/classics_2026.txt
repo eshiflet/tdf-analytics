@@ -1824,6 +1824,182 @@ DNF|63|28|Elosegui Iñigo|rider/inigo-elosegui|es|20|||
 DNF|64|23|Wenzel Mats|rider/mats-wenzel|lu|20|||
 ##RACE il-lombardia 2026
 ##STATUS 200
-##INFO Date=10 October 2026~Distance=0 km~Vertical meters=Departure:~ProfileScore=Vertical meters:~Departure=Arrival:~Arrival=Race ranking:~Won how=-~Avg. speed winner=-
+##INFO Date=10 October 2026~Distance=239 km~Vertical meters=4662~ProfileScore=316~Departure=Bergamo~Arrival=Como~Won how=18.2 km solo~Avg. speed winner=41.034 km/h
 ##H1 2026 » 120th Il Lombardia (1.UWT)
-##NORESULTS
+##HEADERS Rnk,BIB,H2H,Specialty,Age,Rider,Team,UCI,Pnt,Time
+##TEAMS team/decathlon-cma-cgm-team-2026=Decathlon CMA CGM Team~team/movistar-team-2026=Movistar Team~team/lidl-trek-2026=Lidl - Trek~team/red-bull-bora-hansgrohe-2026=Red Bull - BORA - hansgrohe~team/uae-team-emirates-xrg-2026=UAE Team Emirates - XRG~team/pinarello-q365-pro-cycling-team-2026=Pinarello Q36.5 Pro Cycling Team~team/bahrain-victorious-2026=Bahrain - Victorious~team/xds-astana-team-2026=XDS Astana Team~team/soudal-quick-step-2026=Soudal Quick-Step~team/tudor-pro-cycling-team-2026=Tudor Pro Cycling Team~team/alpecin-premier-tech-2026=Alpecin - Premier Tech~team/ef-education-easypost-2026=EF Education - EasyPost~team/lotto-intermarche-2026=Lotto Intermarché~team/netcompany-ineos-2026=Netcompany INEOS~team/groupama-fdj-united-2026=Groupama - FDJ United~team/team-visma-lease-a-bike-2026=Team Visma | Lease a Bike~team/mbh-bank-csb-telecom-fort-2026=MBH Bank CSB Telecom Fort~team/cofidis-2026=Cofidis~team/team-jayco-alula-2026=Team Jayco AlUla~team/nsn-cycling-team-2026=NSN Cycling Team~team/bardiani-csf-7-saber-2026=Bardiani CSF 7 Saber~team/team-polti-visitmalta-2026=Team Polti VisitMalta~team/uno-x-mobility-2026=Uno-X Mobility~team/team-picnic-postnl-2026=Team Picnic PostNL~team/unibet-rose-rockets-2026=Unibet Rose Rockets
+##ROWS
+1|51|20|Seixas Paul|rider/paul-seixas|fr|0|800|275|5:49:28
+2|111|31|Mas Enric|rider/enric-mas|es|1|640|200|0:48
+3|81|31|Ciccone Giulio|rider/giulio-ciccone|it|2|520|150|1:05
+4|151|26|Evenepoel Remco|rider/remco-evenepoel|be|3|440|120|1:20
+5|1|28|McNulty Brandon|rider/brandon-mcnulty|us|4|360|100|1:20
+6|141|27|Pidcock Tom|rider/tom-pidcock|gb|5|280|90|1:20
+7|22|36|Bilbao Pello|rider/pello-bilbao|es|6|240|80|1:20
+8|241|28|Scaroni Christian|rider/christian-scaroni|it|7|200|70|1:20
+9|167|27|Zana Filippo|rider/filippo-zana|it|8|160|60|1:20
+10|213|23|Rondel Mathys|rider/mathys-rondel|fr|9|135|50|1:20
+11|11|24|Debruyne Ramses|rider/ramses-debruyne|be|10|110|46|1:20
+12|61|26|Healy Ben|rider/ben-healy|ie|11|95|42|1:20
+13|96|20|Widar Jarno|rider/jarno-widar|be|12|85|38|2:06
+14|126|23|Onley Oscar|rider/oscar-onley|gb|13|65|34|2:06
+15|72|29|Berthet Clément|rider/clement-berthet|fr|14|55|30|2:06
+16|201|24|Piganzoli Davide|rider/davide-piganzoli|it|15|50|28|2:06
+17|161|36|Landa Mikel|rider/mikel-landa|es|8|50|26|2:29
+18|207|25|Tulett Ben|rider/ben-tulett|gb|15|50|24|2:51
+19|101|26|Fancellu Alessandro|rider/alessandro-fancellu|it|16|50|22|2:51
+20|42|23|Maisonobe Sam|rider/sam-maisonobe|fr|17|50|20|2:51
+21|211|29|Storer Michael|rider/michael-storer|au|9|30|19|3:52
+22|63|22|Leonard Michael|rider/michael-leonard1|ca|11|30|18|3:53
+23|206|27|Jorgenson Matteo|rider/matteo-jorgenson|us|15|30|17|4:23
+24|43|28|Moniquet Sylvain|rider/sylvain-moniquet|be|17|30|16|4:27
+25|175|30|O'Connor Ben|rider/ben-o-connor|au|18|30|15|4:33
+26|131|36|Bennett George|rider/george-bennett|nz|19|30|14|4:52
+27|91|25|Van Eetvelt Lennert|rider/lennert-van-eetvelt|be|12|30|13|4:52
+28|3|22|del Toro Isaac|rider/isaac-del-toro|mx|4|30|12|4:59
+29|7|34|Yates Adam|rider/adam-yates|gb|4|30|11|4:59
+30|247|30|Velasco Simone|rider/simone-velasco|it|7|30|10|5:29
+31|21|23|Martinez Lenny|rider/lenny-martinez|fr|6|15|9|6:19
+32|93|21|Gualdi Simone|rider/simone-gualdi|it|12|15|8|6:58
+33|17|24|Verstrynge Emiel|rider/emiel-verstrynge|be|10|15|7|6:58
+34|166|33|Vervaeke Louis|rider/louis-vervaeke|be|8|15|6|6:58
+35|67|22|Rodriguez Juan Felipe|rider/juan-felipe-rodriguez|co|11|15|5|6:58
+36|83|34|Bernard Julien|rider/julien-bernard|fr|2|15|5|6:58
+37|156|22|Pellizzari Giulio|rider/giulio-pellizzari|it|3|15|5|7:05
+38|121|26|Arensman Thymen|rider/thymen-arensman|nl|13|15|5|7:43
+39|162|24|Garofoli Gianmarco|rider/gianmarco-garofoli|it|8|15|5|7:51
+40|203|26|Barré Louis|rider/louis-barre|fr|15|15|5|7:51
+41|37|20|Turconi Filippo|rider/filippo-turconi|it|20|15|5|7:54
+42|12|23|Busatto Francesco|rider/francesco-busatto|it|10|15|5|8:06
+43|242|29|Conci Nicola|rider/nicola-conci|it|7|15|5|8:06
+44|114|25|Canal Carlos|rider/carlos-canal|es|1|15|5|8:06
+45|192|22|Crescioli Ludovico|rider/ludovico-crescioli|it|21|15|5|8:06
+46|216|36|Warbasse Larry|rider/lawrence-warbasse|us|9|15|5|8:06
+47|45|31|Samitier Sergio|rider/sergio-samitier|es|17|15|5|8:06
+48|75|30|Madouas Valentin|rider/valentin-madouas|fr|14|15|5|8:06
+49|176|25|Porter Rudy|rider/rudy-porter|au|18|15|5|8:06
+50|164|32|Schachmann Maximilian|rider/maximilian-schachmann|de|8|15|5|8:06
+51|36|26|Tolio Alex|rider/alex-tolio|it|20|10|5|8:06
+52|212|25|Jasch Lennart|rider/lennart-jasch|de|9|10|5|8:06
+53|135|21|Martí Pau|rider/pau-marti-soriano|es|19|10|5|8:06
+54|112|28|Adrià Roger|rider/roger-adria|es|1|10|5|8:06
+55|44|23|Rouland Louis|rider/louis-rouland|fr|17|10|5|8:06
+56|233|23|Dalby Simon|rider/simon-dalby|dk|22|5|5|8:06
+57|74|24|Germani Lorenzo|rider/lorenzo-germani|it|14|5|5|8:06
+58|97|28|Zimmermann Georg|rider/georg-zimmermann|de|12|5 -25|5|8:06
+59|23|27|Buitrago Santiago|rider/santiago-buitrago-sanchez|co|6|5|5|8:06
+60|76|34|Pacher Quentin|rider/quentin-pacher|fr|14|5|5|8:06
+61|55|29|Prodhomme Nicolas|rider/nicolas-prodhomme|fr|0||5|8:06
+62|71|37|Molard Rudy|rider/rudy-molard|fr|14||5|8:06
+63|125|25|Laurance Axel|rider/axel-laurance|fr|13||5|8:52
+64|122|33|Haig Jack|rider/jack-haig|au|13||5|8:52
+65|104|32|Masnada Fausto|rider/fausto-masnada|it|16||5|8:52
+66|117|28|Rubio Einer|rider/einer-rubio|co|1||5|8:52
+67|25|20|Omrzel Jakob|rider/jakob-omrzel|si|6||5|8:52
+68|157|36|Roglič Primož|rider/primoz-roglic|si|3||5|9:08
+69|172|28|Covi Alessandro|rider/alessandro-covi|it|18||5|9:38
+70|115|29|López Juan Pedro|rider/juan-pedro-lopez|es|1||5|9:38
+71|27|25|Zambanini Edoardo|rider/edoardo-zambanini|it|6||5|9:38
+72|86|31|Oomen Sam|rider/sam-oomen|nl|2||5|9:47
+73|82|24|Ayuso Juan|rider/juan-ayuso-pesquera|es|2||5|10:33
+74|185|26|Leemreize Gijs|rider/gijs-leemreize|nl|23||5|12:14
+75|133|35|Hirt Jan|rider/jan-hirt|cz|19||5|12:14
+76|52|32|Benoot Tiesj|rider/tiesj-benoot|be|0||5|12:14
+77|142|25|Calzoni Walter|rider/walter-calzoni|it|5||5|13:03
+78|16|29|Vergallito Luca|rider/luca-vergallito|it|10||5|13:30
+79|243|30|Fortunato Lorenzo|rider/lorenzo-fortunato|it|7||5|13:30
+80|4|32|Großschartner Felix|rider/felix-grossschartner|at|4||5|13:30
+81|195|27|Mifsud Andrea|rider/andrea-mifsud|mt|21||5|13:44
+82|6|29|Sivakov Pavel|rider/pavel-sivakov|fr|4||5|13:44
+83|152|27|Aleotti Giovanni|rider/giovanni-aleotti|it|3||5|13:44
+84|231|27|Johannessen Tobias Halland|rider/tobias-halland-johannessen|no|22||5|13:47
+85|235|22|Kulset Johannes|rider/johannes-kulset|no|22||5|13:47
+86|41|37|Izagirre Ion|rider/ion-izagirre|es|17||5|13:47
+87|92|24|Craps Lars|rider/lars-craps|be|12||5|14:21
+88|215|33|Thalmann Roland|rider/roland-thalmann|ch|9||5|15:42
+89|246|37|Ulissi Diego|rider/diego-ulissi|it|7||5|15:42
+90|205|23|Graat Tijmen|rider/tijmen-graat|nl|15||5|15:42
+91|204|34|Campenaerts Victor|rider/victor-campenaerts|be|15||5|15:42
+92|232|28|Charmig Anthon|rider/anthon-charmig|dk|22||5|16:30
+93|73|21|Decomble Maxime|rider/maxime-decomble|fr|14||5|16:30
+94|223|31|Eiking Odd Christian|rider/odd-christian-eiking|no|24||5|16:56
+95|147|34|Meurisse Xandro|rider/xandro-meurisse|be|5||5|16:56
+96|173|27|Hellemose Asbjørn|rider/asbjorn-hellemose|dk|18||5|18:30
+97|103|23|Kajamini Florian Samuel|rider/florian-samuel-kajamini|it|16||5|18:30
+98|221|23|Verschuren Killian|rider/killian-verschuren|fr|24||5|18:30
+99|217|24|Wilksch Hannes|rider/hannes-wilksch|de|9||5|18:30
+100|227|25|Peter Jannis|rider/jannis-peter|de|24||5|18:30
+101|134|24|Kretschy Moritz|rider/moritz-kretschy|de|19||5|18:30
+102|47|23|Zamperini Edoardo|rider/edoardo-zamperini|it|17||5|18:33
+103|87|25|Simmons Quinn|rider/quinn-simmons|us|2||5|18:33
+104|127|24|Sheffield Magnus|rider/magnus-sheffield|us|13||5|18:33
+105|66|26|Quinn Sean|rider/sean-quinn|us|11||5|18:33
+106|222|24|Christophersen Cedrik Bakke|rider/cedrik-bakke-christophersen|no|24||5|18:33
+107|107|24|Verre Alessandro|rider/alessandro-verre|it|16||5|18:33
+108|46|34|Teuns Dylan|rider/dylan-teuns|be|17||5|18:33
+109|165|27|Vansevenant Mauri|rider/mauri-vansevenant|be|8||5|18:33
+110|174|37|Juul-Jensen Christopher|rider/christopher-juul-jensen|dk|18||5|18:33
+111|237|31|Skaarseth Anders|rider/anders-skaarseth|no|22||5|18:33
+112|181|34|Barguil Warren|rider/warren-barguil|fr|23||5|18:33
+113|226|25|Meris Sergio|rider/sergio-meris|it|24||5|21:03
+114|85|39|Mollema Bauke|rider/bauke-mollema|nl|2||5|21:16
+DNF|184|30|Knox James|rider/james-knox|gb|23|||
+DNF|13|22|Dockx Aaron|rider/aaron-dockx|be|10|||
+DNF|35|24|Rojas Vicente|rider/vicente-rojas|cl|20|||
+DNF|163|23|Gelders Gil|rider/gil-gelders|be|8|||
+DNF|186|21|Martinez Juan Guillermo|rider/guillermo-juan-martinez|co|23|||
+DNF|143|25|Camprubí Marcel|rider/marcel-camprubi|es|5|||
+DNF|136|33|Smith Dion|rider/dion-smith|nz|19|||
+DNF|31|28|Tarozzi Manuele|rider/manuele-tarozzi|it|20|||
+DNF|106|22|Valent Márk|rider/mark-valent|hu|16|||
+DNF|102|30|Dina Márton|rider/marton-dina|hu|16|||
+DNF|145|30|Dunbar Eddie|rider/edward-irl-dunbar|ie|5|||
+DNF|187|25|van den Broek Frank|rider/frank-van-den-broek|nl|23|||
+DNF|2|22|Christen Jan|rider/jan-christen|ch|4|||
+DNF|5|31|Novak Domen|rider/domen-novak|si|4|||
+DNF|14|32|Gogl Michael|rider/michael-gogl|at|10|||
+DNF|15|36|Houle Hugo|rider/hugo-houle|ca|10|||
+DNF|24|24|Miholjević Fran|rider/fran-miholjevic|hr|6|||
+DNF|26|25|Tiberi Antonio|rider/antonio-tiberi|it|6|||
+DNF|32|20|Cruz Edward|rider/edward-martinez-cruz|co|20|||
+DNF|33|20|Herreño Martin Santiago|rider/martin-santiago-herreno|co|20|||
+DNF|34|26|Marcellusi Martin|rider/martin-marcellusi|it|20|||
+DNF|53|21|L'Hote Antoine|rider/antoine-l-hote|fr|0|||
+DNF|54|24|Labrosse Jordan|rider/jordan-labrosse|fr|0|||
+DNF|56|24|Riccitello Matthew|rider/matthew-riccitello|us|0|||
+DNF|57|30|Scotson Callum|rider/callum-scotson|au|0|||
+DNF|62|25|Baudin Alex|rider/alex-baudin|fr|11|||
+DNF|64|22|Nerurkar Lukas|rider/lukas-nerurkar|gb|11|||
+DNF|65|34|Valgren Michael|rider/michael-valgren-andersen|dk|11|||
+DNF|77|23|Rolland Brieuc|rider/brieuc-rolland|fr|14|||
+DNF|84|34|Konrad Patrick|rider/patrick-konrad|at|2|||
+DNF|94|31|Rota Lorenzo|rider/lorenzo-rota|it|12|||
+DNF|95|25|Thompson Reuben|rider/reuben-thompson|nz|12|||
+DNF|105|25|Cretti Luca|rider/luca-cretti|it|16|||
+DNF|113|34|Arcas Jorge|rider/jorge-arcas|es|1|||
+DNF|116|24|Milesi Lorenzo|rider/lorenzo-milesi|it|1|||
+DNF|123|30|Hamilton Lucas|rider/lucas-hamilton|au|13|||
+DNF|124|36|Kwiatkowski Michał|rider/michal-kwiatkowski|pl|13|||
+DNF|132|29|Côté Pier-André|rider/pier-andre-cote|ca|19|||
+DNF|137|26|Strong Corbin|rider/corbin-strong|nz|19|||
+DNF|144|27|Donovan Mark|rider/mark-donovan|gb|5|||
+DNF|146|31|Hermans Quinten|rider/quinten-hermans|be|5|||
+DNF|153|35|Cattaneo Mattia|rider/mattia-cattaneo|it|3|||
+DNF|154|30|Hindley Jai|rider/jai-hindley|au|3|||
+DNF|171|36|Matthews Michael|rider/michael-matthews|au|18|||
+DNF|177|32|Vendrame Andrea|rider/andrea-vendrame|it|18|||
+DNF|182|22|Faure Prost Alexy|rider/alexy-faure-prost|fr|23|||
+DNF|183|33|Roosen Timo|rider/timo-roosen|nl|23|||
+DNF|191|29|Bais Mattia|rider/mattia-bais|it|21|||
+DNF|193|21|Crozzolo Fabrizio|rider/fabrizio-crozzolo|ar|21|||
+DNF|194|25|Gómez Germán Darío|rider/german-dario-gomez|co|21|||
+DNF|196|25|Muñoz Francisco|rider/francisco-munoz-llana|es|21|||
+DNF|197|26|Pesenti Thomas|rider/thomas-pesenti|it|21|||
+DNF|202|32|Armirail Bruno|rider/bruno-armirail|fr|15|||
+DNF|214|29|Stork Florian|rider/florian-stork|de|9|||
+DNF|225|25|Geleijn Owen|rider/owen-geleijn|nl|24|||
+DNF|234|32|Kamp Alexander|rider/alexander-kamp|dk|22|||
+DNF|236|27|Leknessund Andreas|rider/andreas-leknessund|no|22|||
+DNF|244|29|Higuita Sergio|rider/sergio-higuita|co|7|||
+DNF|245|29|Tejada Harold|rider/harold-tejada|co|7|||
+DNF|155|32|Moscon Gianni|rider/gianni-moscon|it|3|||
