@@ -254,6 +254,8 @@ flowchart TD
   | `views/overview.ts` | Race Overview (per-stage distance/elevation/difficulty bars) |
   | `views/allRaces.ts` | All Races Overview (4-panel cross-year comparison) |
   | `views/stageChart.ts` | By Stage bump chart rendering (`drawChart`) and its hover tooltip. Split 2026-10-17 from one 1,043-line file into five; the pieces below form an acyclic graph: rankings <- highlight <- legend <- filters, with the chart importing all but filters |
+  | `views/riderCareerChart.ts` | The cross-race career chart on the rider detail page (`createCareerChart`). Draws only; navigation comes back through a callback. Split 2026-10-17 from `riderDetail.ts`, which keeps loading and the header/toggle chrome |
+  | `views/ridersFilter.ts` | Which riders the Riders grid shows: race-set merge, search and filters. No DOM. Split 2026-10-17 from `riders.ts` |
   | `views/stageRankings.ts` | Per-stage sprint/KOM rank maps, the series each metric plots (`getDisplayPoints`), gap bridges, `effectiveFinalRank`, default selection. State only, no DOM |
   | `views/stageHighlight.ts` | Restyling lines/dots/end labels for selection and hover, end-label de-collision, `cssEscape` |
   | `views/stageLegend.ts` | Sidebar legend rows and their selected state |
