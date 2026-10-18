@@ -3,7 +3,7 @@
 // Sprint / KOM value is currently selected via the same toggle buttons the
 // graph view uses (state.gcDisplayMode / sprintDisplayMode / komDisplayMode).
 import type { RiderSeries, RiderStagePoint } from "../types";
-import { state, raceConfig } from "../state";
+import { state, raceConfig, dataset } from "../state";
 import { stageTableEl, chartAreaEl, gcTimeToggleBtn, sprintModeToggleBtn, komModeToggleBtn } from "../dom";
 import { compareNames, displayName, nationalityFlagEl } from "../riderDisplay";
 import { fmtGapHM } from "../formatters";
@@ -371,7 +371,7 @@ export function drawStageTable() {
   }
   stageTableEl.innerHTML = "";
 
-  const stages = state.dataset.stages;
+  const stages = dataset().stages;
   // An aggregate race groups by team and hides the bib column: bib numbers are
   // reassigned per race and two teams can legitimately share a range, so they
   // are neither a stable identity nor a useful ordering here.
@@ -379,8 +379,8 @@ export function drawStageTable() {
 
   // Sort keys computed once per rider rather than rebuilt twice on every
   // comparison.
-  const teamOrder = groupByTeam ? buildTeamOrder(state.dataset.riders) : null;
-  const sortKeys = new Map(state.dataset.riders.map((r) => {
+  const teamOrder = groupByTeam ? buildTeamOrder(dataset().riders) : null;
+  const sortKeys = new Map(dataset().riders.map((r) => {
     if (!teamOrder) return [r.id, riderSortKey(r)] as const;
     // Team block first (medal-table order), then the team's best rider at the
     // top of its block, then name.
@@ -391,7 +391,7 @@ export function drawStageTable() {
     ];
     return [r.id, key] as const;
   }));
-  const allRiders = [...state.dataset.riders].sort((a, b) => {
+  const allRiders = [...dataset().riders].sort((a, b) => {
     const ka = sortKeys.get(a.id)!;
     const kb = sortKeys.get(b.id)!;
     if (ka[0] !== kb[0]) return ka[0] - kb[0];

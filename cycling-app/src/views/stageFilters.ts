@@ -1,5 +1,5 @@
 // By Stage Team/Nation filter dropdowns and the selection they drive.
-import { state } from "../state";
+import { state, dataset } from "../state";
 import { teamFilterBtn, teamFilterPanel, nationFilterBtn, nationFilterPanel } from "../dom";
 import { compareNames, nationalityFlagEl } from "../riderDisplay";
 import { updateLineClasses } from "./stageHighlight";
@@ -12,7 +12,7 @@ export function applyStageTeamNationFilter() {
   if (!state.dataset) return;
   if (state.stageFilterTeams.size === 0 && state.stageFilterNations.size === 0) return;
   state.selected = new Set(
-    state.dataset.riders
+    dataset().riders
       .filter(
         (r) =>
           (state.stageFilterTeams.size === 0 || (r.team && state.stageFilterTeams.has(r.team))) &&
@@ -106,8 +106,8 @@ export function buildStageFilters() {
   if (!state.dataset) return;
   const hadActiveFilter = state.stageFilterTeams.size > 0 || state.stageFilterNations.size > 0;
 
-  const teams = [...new Set(state.dataset.riders.map((r) => r.team).filter((t): t is string => !!t))].sort(compareNames);
-  const nations = [...new Set(state.dataset.riders.map((r) => r.nationality).filter((n): n is string => !!n))].sort(compareNames);
+  const teams = [...new Set(dataset().riders.map((r) => r.team).filter((t): t is string => !!t))].sort(compareNames);
+  const nations = [...new Set(dataset().riders.map((r) => r.nationality).filter((n): n is string => !!n))].sort(compareNames);
 
   // Carry the filter *values* over across a year change, dropping only the
   // ones that don't exist in the new year's teams/nations (e.g. a team name

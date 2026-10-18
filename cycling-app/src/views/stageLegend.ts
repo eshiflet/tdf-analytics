@@ -1,6 +1,6 @@
 // By Stage sidebar legend: one row per rider, sorted by final rank, with
 // swatch toggle, hover highlight and link to the rider page.
-import { state } from "../state";
+import { state, dataset, colorScale } from "../state";
 import { legendEl } from "../dom";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
 import { effectiveFinalRank } from "./stageRankings";
@@ -10,7 +10,7 @@ export function buildLegend() {
   if (!state.dataset) return; // initial fetch in flight; loadDataset() rebuilds
   legendEl.innerHTML = "";
   // Sort legend by effective final rank for the current metric
-  const sorted = [...state.dataset.riders].sort((a, b) => effectiveFinalRank(a) - effectiveFinalRank(b));
+  const sorted = [...dataset().riders].sort((a, b) => effectiveFinalRank(a) - effectiveFinalRank(b));
   for (const rider of sorted) {
     const row = document.createElement("div");
     row.className = "legend-item";
@@ -105,6 +105,6 @@ export function refreshLegendState() {
     const isSelected = state.selected.has(id);
     row.classList.toggle("active", isSelected);
     const swatch = row.querySelector<HTMLSpanElement>(".legend-swatch")!;
-    swatch.style.background = isSelected ? state.colorScale(id) : "var(--line-dim)";
+    swatch.style.background = isSelected ? colorScale()(id) : "var(--line-dim)";
   });
 }

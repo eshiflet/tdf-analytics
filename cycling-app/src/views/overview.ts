@@ -2,7 +2,7 @@
 // difficulty score for the selected year, colored by route type.
 import type { StageInfo } from "../types";
 import { d3 } from "../d3";
-import { state } from "../state";
+import { state, dataset } from "../state";
 import { overviewChartEl, overviewSummaryEl, tooltipEl } from "../dom";
 import { positionTooltip, hideTooltip } from "../tooltip";
 import { ROUTE_COLOR, ROUTE_LABEL, difficultyScore, stageTitle } from "../formatters";
@@ -21,7 +21,7 @@ const ELEVATION_MIN_COVERAGE = 0.5;
 export function drawOverview() {
   if (!state.dataset) return; // initial fetch in flight; loadDataset() redraws
   overviewChartEl.innerHTML = "";
-  const stages = state.dataset.stages;
+  const stages = dataset().stages;
   if (!stages.length) return;
 
   const imperial = state.overviewUnit === "imperial";

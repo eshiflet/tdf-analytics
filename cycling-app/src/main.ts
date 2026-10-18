@@ -8,7 +8,7 @@
 import { d3 } from "./d3";
 import type { RaceId } from "./raceRegistry";
 import { RACE_IDS, RACES, isRaceId, URLS_BY_RACE, getYearsForRace } from "./raceRegistry";
-import { state, raceConfig } from "./state";
+import { state, raceConfig, dataset } from "./state";
 import {
   raceSelectEl, chartEl, overviewChartEl, legendEl, sidebarEl, searchEl,
   yearSelectEl, metricSelectEl, stageViewSelectEl, stageTableEl,
@@ -249,17 +249,17 @@ const datasetLoad = createLatestGuard();
 
 export async function loadDataset(year: string) {
   const token = datasetLoad.begin();
-  const dataset = await getDataset(year);
+  const ds = await getDataset(year);
   if (!datasetLoad.isCurrent(token)) return;
-  state.dataset = dataset;
+  state.dataset = ds;
   state.colorScale = d3
     .scaleOrdinal<string, string>()
-    .domain(state.dataset.riders.map((r) => r.id))
+    .domain(ds.riders.map((r) => r.id))
     .range(PALETTE);
 
   computePointsRankings();
   if (state.currentPreset === "all") {
-    state.selected = new Set(state.dataset.riders.map((r) => r.id));
+    state.selected = new Set(ds.riders.map((r) => r.id));
   } else if (state.currentPreset === "none") {
     state.selected = new Set();
   } else {
@@ -393,7 +393,7 @@ function wireControls() {
       const preset = btn.dataset.preset;
       state.currentPreset = preset ?? "20";
       if (preset === "all") {
-        state.selected = new Set(state.dataset.riders.map((r) => r.id));
+        state.selected = new Set(dataset().riders.map((r) => r.id));
         // "All" already selects every rider, which subsumes any Team/Nation
         // filter — clear both so the filter buttons don't show a stale state.
         clearStageTeamNationFilters();
@@ -436,7 +436,7 @@ function wireControls() {
       refreshLegendState();
       return;
     }
-    const match = state.dataset.riders.find(
+    const match = dataset().riders.find(
       (r) => searchHaystack(`${r.name}\n${displayName(r)}`).includes(q),
     );
     if (match) {

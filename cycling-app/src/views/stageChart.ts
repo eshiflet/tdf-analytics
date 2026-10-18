@@ -5,7 +5,7 @@
 import type { NumberValue } from "../d3";
 import { d3 } from "../d3";
 import type { RiderSeries } from "../types";
-import { state, raceConfig } from "../state";
+import { state, raceConfig, dataset, xScale as xScaleOf } from "../state";
 import { chartEl, tooltipEl } from "../dom";
 import { showStageTooltip, hideTooltip, positionTooltip } from "../tooltip";
 import { displayName } from "../riderDisplay";
@@ -41,7 +41,7 @@ export function drawChart() {
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
-  const stages = state.dataset.stages;
+  const stages = dataset().stages;
   const minStage = d3.min(stages, (s) => s.stage_number) ?? 0;
   const maxStage = d3.max(stages, (s) => s.stage_number) ?? 21;
   const isGcTime = state.currentMetric === "gc" && state.gcDisplayMode === "time";
@@ -55,7 +55,7 @@ export function drawChart() {
   // "Still racing, no time recorded" connectors — GC-only, see buildGapBridges.
   const bridgesById = new Map<string, Array<[DisplayPoint, DisplayPoint]>>();
   let maxRank = 1;
-  for (const r of state.dataset.riders) {
+  for (const r of dataset().riders) {
     const dp = getDisplayPoints(r);
     displayPointsById.set(r.id, dp);
     let last: DisplayPoint | null = null;
@@ -69,10 +69,12 @@ export function drawChart() {
     }
   }
 
-  state.xScale = d3.scaleLinear().domain([minStage, maxStage]).range([0, innerWidth]);
-  state.yScale = d3.scaleLinear()
+  const xScale = d3.scaleLinear().domain([minStage, maxStage]).range([0, innerWidth]);
+  state.xScale = xScale;
+  const yScale = d3.scaleLinear()
     .domain(isGcTime ? [0, maxRank] : (isSprintPoints || isKomPoints) ? [maxRank, 0] : [1, maxRank])
     .range([0, innerHeight]);
+  state.yScale = yScale;
 
   // A screen reader announces an unlabelled <svg> as nothing at all, and this
   // one IS the page. role="img" plus a name at least says what is being shown
@@ -130,7 +132,7 @@ export function drawChart() {
     .attr("class", "grid grid-y")
     .call(
       d3
-        .axisLeft(state.yScale)
+        .axisLeft(yScale)
         .tickValues(yTickValues)
         .tickSize(-innerWidth)
         .tickFormat(() => ""),
@@ -142,7 +144,7 @@ export function drawChart() {
     .attr("transform", `translate(0,${innerHeight})`)
     .call(
       d3
-        .axisBottom(state.xScale)
+        .axisBottom(xScale)
         .tickValues(d3.range(minStage, maxStage + 1))
         .tickSize(-innerHeight)
         .tickFormat(() => ""),
@@ -161,7 +163,7 @@ export function drawChart() {
     .attr("transform", `translate(0,${innerHeight})`)
     .call(
       d3
-        .axisBottom(state.xScale)
+        .axisBottom(xScale)
         .ticks(maxStage)
         .tickFormat(stageLabelFmt),
     );
@@ -172,7 +174,7 @@ export function drawChart() {
     .attr("class", "axis x-axis x-axis-top")
     .call(
       d3
-        .axisTop(state.xScale)
+        .axisTop(xScale)
         .ticks(maxStage)
         .tickFormat(stageLabelFmt),
     );
@@ -197,7 +199,7 @@ export function drawChart() {
     .attr("class", "axis y-axis")
     .call(
       d3
-        .axisLeft(state.yScale)
+        .axisLeft(yScale)
         .tickValues(isGcTime || isSprintPoints || isKomPoints ? [0, ...yTickValues] : [1, ...yTickValues])
         .tickFormat((d) => isGcTime ? fmtHms(d as number) : (isSprintPoints || isKomPoints) ? String(d) : `#${d}`),
     );
@@ -206,8 +208,8 @@ export function drawChart() {
   const lineGen = d3
     .line<DisplayPoint>()
     .defined((d) => d.rank !== null)
-    .x((d) => state.xScale(d.stage))
-    .y((d) => state.yScale(d.rank as number))
+    .x((d) => xScale(d.stage))
+    .y((d) => yScale(d.rank as number))
     .curve(d3.curveMonotoneX);
 
   const lineLayer = g.append("g").attr("class", "lines");
@@ -216,7 +218,7 @@ export function drawChart() {
 
   lineLayer
     .selectAll<SVGPathElement, RiderSeries>("path")
-    .data(state.dataset.riders, (r) => r.id)
+    .data(dataset().riders, (r) => r.id)
     .join("path")
     .attr("class", "rider-line")
     .attr("data-id", (r) => r.id)
@@ -245,7 +247,7 @@ export function drawChart() {
   // invisible wide hit-path per rider, for easier hover targeting
   hitLayer
     .selectAll<SVGPathElement, RiderSeries>("path")
-    .data(state.dataset.riders, (r) => r.id)
+    .data(dataset().riders, (r) => r.id)
     .join("path")
     .attr("fill", "none")
     .attr("stroke", "transparent")
@@ -282,7 +284,7 @@ export function drawChart() {
     .style("cursor", "pointer")
     .on("mouseenter", (_event, b) => setHighlight(b.riderId))
     .on("mousemove", (event, b) => {
-      const rider = state.dataset.riders.find((r) => r.id === b.riderId);
+      const rider = dataset().riders.find((r) => r.id === b.riderId);
       if (!rider) return;
       const gapStages = [];
       for (let s = b.from.stage + 1; s < b.to.stage; s++) gapStages.push(stageLabel(s));
@@ -313,41 +315,41 @@ export function drawChart() {
   // end-of-line dots + labels for selected riders
   dotLayer
     .selectAll<SVGCircleElement, RiderSeries>("circle")
-    .data(state.dataset.riders, (r) => r.id)
+    .data(dataset().riders, (r) => r.id)
     .join("circle")
     .attr("class", "rider-dot")
     .attr("data-id", (r) => r.id)
     .attr("r", 3)
     .attr("cx", (r) => {
       const last = lastDefinedById.get(r.id);
-      return last ? state.xScale(last.stage) : -100;
+      return last ? xScale(last.stage) : -100;
     })
     .attr("cy", (r) => {
       const last = lastDefinedById.get(r.id);
-      return last ? state.yScale(last.rank as number) : -100;
+      return last ? yScale(last.rank as number) : -100;
     });
 
   const labelLayer = g.append("g").attr("class", "labels");
   labelLayer
     .selectAll<SVGTextElement, RiderSeries>("text")
-    .data(state.dataset.riders, (r) => r.id)
+    .data(dataset().riders, (r) => r.id)
     .join("text")
     .attr("class", "rider-end-label")
     .attr("data-id", (r) => r.id)
     .attr("x", (r) => {
       const last = lastDefinedById.get(r.id);
-      return last ? state.xScale(last.stage) + 6 : -100;
+      return last ? xScale(last.stage) + 6 : -100;
     })
     .attr("y", (r) => {
       const last = lastDefinedById.get(r.id);
-      return last ? state.yScale(last.rank as number) + 3 : -100;
+      return last ? yScale(last.rank as number) + 3 : -100;
     })
     // The y a label WANTS, kept so layoutEndLabels() can re-spread from the
     // original positions every time instead of nudging already-nudged ones
     // further on each selection change.
     .attr("data-y0", (r) => {
       const last = lastDefinedById.get(r.id);
-      return last ? state.yScale(last.rank as number) + 3 : -100;
+      return last ? yScale(last.rank as number) + 3 : -100;
     })
     .style("font-size", "10px")
     .text((r) => {
@@ -374,8 +376,8 @@ export function drawChart() {
         // Coppi's 4:51:45 for a 3,000 km race. Prefer the rank-1 rider who
         // actually carries a total; that is the rider whose time is the
         // official winning time.
-        const gcWinner = state.dataset.riders.find((rd) => rd.finalRank === 1 && rd.totalTimeSeconds != null)
-          ?? state.dataset.riders.find((rd) => rd.finalRank === 1);
+        const gcWinner = dataset().riders.find((rd) => rd.finalRank === 1 && rd.totalTimeSeconds != null)
+          ?? dataset().riders.find((rd) => rd.finalRank === 1);
         const winnerTime = fmtTotalTime(gcWinner?.totalTimeSeconds ?? null);
         const timeStr = gap === 0 || gcRank === 1
           ? winnerTime
@@ -425,7 +427,7 @@ function endLabelMargin(width: number): number {
   const MIN = 36;             // the previous fixed margin
   if (!state.dataset) return MIN;
   let longest = "";
-  for (const r of state.dataset.riders) {
+  for (const r of dataset().riders) {
     const label = riderLabel(r);
     if (label.length > longest.length) longest = label;
   }
@@ -471,7 +473,7 @@ function showTooltip(event: MouseEvent, rider: RiderSeries) {
   const containerRect = chartEl.getBoundingClientRect();
   const margin = { left: state.currentMetric === "gc" ? 72 : 44, top: 16 };
   const mouseX = event.clientX - containerRect.left - margin.left;
-  const stageGuess = Math.round(state.xScale.invert(mouseX));
+  const stageGuess = Math.round(xScaleOf().invert(mouseX));
 
   if (state.currentMetric === "gc") {
     const point =

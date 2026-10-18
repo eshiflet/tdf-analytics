@@ -2,7 +2,7 @@
 // rankings, the value each metric plots, gap bridges, and final-rank lookups.
 // Split out of stageChart.ts; depends on state only.
 import type { RiderSeries, RiderStagePoint } from "../types";
-import { state, raceConfig } from "../state";
+import { state, raceConfig, dataset } from "../state";
 
 function buildRankMapsFromField(
   getRank: (sp: RiderStagePoint) => number | null | undefined,
@@ -15,8 +15,8 @@ function buildRankMapsFromField(
   // One pass over each rider's byStage array instead of a per-stage
   // rider.byStage.find() scan (which was O(stages × riders × stages)).
   const rankAtStage = new Map<number, Map<string, number>>();
-  for (const stage of state.dataset.stages) rankAtStage.set(stage.stage_number, new Map());
-  for (const rider of state.dataset.riders) {
+  for (const stage of dataset().stages) rankAtStage.set(stage.stage_number, new Map());
+  for (const rider of dataset().riders) {
     for (const sp of rider.byStage) {
       const rank = getRank(sp);
       if (rank != null) rankAtStage.get(sp.stage)?.set(rider.id, rank);
@@ -25,7 +25,7 @@ function buildRankMapsFromField(
   // Build finalRank only for riders who reached the final stage; DNF riders
   // keep their mid-race rank in rankAtStage but are excluded from finalRank
   // so they don't pollute "Top N" selection or the legend ordering.
-  const finalStageNum = Math.max(...state.dataset.stages.map((s) => s.stage_number));
+  const finalStageNum = Math.max(...dataset().stages.map((s) => s.stage_number));
   // Requiring presence at the final stage is right for a stage race — a rider
   // who abandoned has no final GC. It is wrong for a SEASON: skipping the last
   // classic does not remove you from the standings. Mathieu van der Poel
@@ -38,7 +38,7 @@ function buildRankMapsFromField(
     // race — otherwise everyone who ever led shows as #1 (2024 listed both
     // Pogacar and van der Poel there, since each led when they stopped).
     const totals: Array<[string, number]> = [];
-    for (const rider of state.dataset.riders) {
+    for (const rider of dataset().riders) {
       if (rider.byStage.length === 0) continue;
       const pts = getCumPts(rider.byStage[rider.byStage.length - 1]);
       if (pts > 0) totals.push([rider.id, pts]);
@@ -52,7 +52,7 @@ function buildRankMapsFromField(
       prevPts = pts;
     });
   } else {
-    for (const rider of state.dataset.riders) {
+    for (const rider of dataset().riders) {
       if (rider.byStage.length === 0) continue;
       const lastSp = rider.byStage[rider.byStage.length - 1];
       if (lastSp.stage !== finalStageNum) continue;
@@ -61,7 +61,7 @@ function buildRankMapsFromField(
     }
   }
   const ridersAtFinal = new Map<number, { riders: RiderSeries[]; points: number }>();
-  for (const rider of state.dataset.riders) {
+  for (const rider of dataset().riders) {
     const rank = finalRank.get(rider.id);
     if (rank === undefined) continue;
     const lastSp = rider.byStage.length > 0 ? rider.byStage[rider.byStage.length - 1] : undefined;
@@ -161,5 +161,5 @@ export function effectiveFinalRank(rider: RiderSeries): number {
 
 export function applyDefaultSelection(preset = 20) {
   if (!state.dataset) return; // initial fetch in flight; loadDataset() reapplies
-  state.selected = new Set(state.dataset.riders.filter((r) => effectiveFinalRank(r) <= preset).map((r) => r.id));
+  state.selected = new Set(dataset().riders.filter((r) => effectiveFinalRank(r) <= preset).map((r) => r.id));
 }

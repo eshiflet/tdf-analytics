@@ -2,7 +2,7 @@
 // hover, plus end-label de-collision. Split out of stageChart.ts so the legend
 // can drive highlighting without importing the whole chart.
 import { d3 } from "../d3";
-import { state } from "../state";
+import { state, colorScale, yScale } from "../state";
 import { chartEl } from "../dom";
 
 export function cssEscape(s: string): string {
@@ -18,7 +18,7 @@ function styleRiderLine(pathEl: SVGPathElement) {
   el.classed("hidden-line", false);
   el.classed("dimmed", !isSelected && !isHighlighted);
   el.classed("highlighted", isHighlighted);
-  el.attr("stroke", isSelected || isHighlighted ? state.colorScale(id) : "var(--line-dim)");
+  el.attr("stroke", isSelected || isHighlighted ? colorScale()(id) : "var(--line-dim)");
   el.style("stroke-opacity", isHighlighted ? 1 : isSelected ? 0.95 : 0.12);
 }
 
@@ -29,7 +29,7 @@ function styleRiderMarker(el: SVGCircleElement | SVGTextElement) {
   const isHighlighted = state.highlighted === id;
   d3.select(el)
     .style("opacity", isSelected || isHighlighted ? 1 : 0)
-    .attr("fill", isSelected || isHighlighted ? state.colorScale(id) : "var(--line-dim)");
+    .attr("fill", isSelected || isHighlighted ? colorScale()(id) : "var(--line-dim)");
 }
 
 // Full sweep across every rider — needed when the selection set changes
@@ -88,7 +88,7 @@ function layoutEndLabels() {
   });
   if (labels.length === 0) return;
 
-  const bottom = state.yScale.range()[1];
+  const bottom = yScale().range()[1];
   labels.sort((a, b) => a.y0 - b.y0);
 
   // y0 ascends with rank in every metric this chart draws, so "the first that

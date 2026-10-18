@@ -24,7 +24,10 @@ export const state = {
   // chart between ranking-based ("position") and gap-to-leader-based ("time").
   gcDisplayMode: "position" as "position" | "time",
 
-  dataset: undefined as unknown as GcDataset,
+  // Undefined until the first year's data arrives. Read it through dataset()
+  // from code that only runs once something is drawn; read it directly (and
+  // bail out) from code that can run before then.
+  dataset: undefined as GcDataset | undefined,
   selected: new Set<string>(),
   highlighted: null as string | null,
   // Team/Nation filter state for the "by Stage" view — reset whenever the
@@ -42,7 +45,7 @@ export const state = {
   // Rider whose career chart is open on the Riders view (null = grid). Only
   // consulted for hash routing while currentView === "riders".
   currentRiderId: null as string | null,
-  colorScale: undefined as unknown as ScaleOrdinal<string, string>,
+  colorScale: undefined as ScaleOrdinal<string, string> | undefined,
 
   // Per-dataset points/KOM rankings, recomputed on year change.
   pointsRankAtStage: new Map<number, Map<string, number>>(),
@@ -63,8 +66,8 @@ export const state = {
 
   // Chart x/y scales from the last drawChart() — read by showTooltip() to map
   // a hover's pixel position back to a stage number.
-  xScale: undefined as unknown as ScaleLinear<number, number>,
-  yScale: undefined as unknown as ScaleLinear<number, number>,
+  xScale: undefined as ScaleLinear<number, number> | undefined,
+  yScale: undefined as ScaleLinear<number, number> | undefined,
 
   // ── Riders page filter state ──────────────────────────────────────────────
   ridersSearchQuery: "",
@@ -90,3 +93,19 @@ state.currentYear = state.YEARS[0];
 export function raceConfig() {
   return RACES[state.currentRace];
 }
+
+// ── Accessors for state that is empty until the first load ───────────────────
+// These used to be declared `undefined as unknown as T`, which told the type
+// checker they were always set and made every "is it loaded yet?" guard
+// invisible to it. Now the fields say what they are, and code that is only
+// reachable once data exists reads them through here: a clear error at the
+// point of misuse instead of "cannot read properties of undefined" three calls
+// away.
+function loaded<T>(value: T | undefined, what: string): T {
+  if (value === undefined) throw new Error(`state.${what} read before it was loaded`);
+  return value;
+}
+export const dataset = () => loaded(state.dataset, "dataset");
+export const colorScale = () => loaded(state.colorScale, "colorScale");
+export const xScale = () => loaded(state.xScale, "xScale");
+export const yScale = () => loaded(state.yScale, "yScale");
