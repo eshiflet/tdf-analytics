@@ -253,7 +253,11 @@ flowchart TD
   | `hashRouting.ts` | `computeHash`/`updateHash` only — `applyHash()` stays in `main.ts` (see below). An unrecognized hash at RUNTIME snaps the URL back to `computeHash()` via `replaceState`: `applyHash()` returns false and renders nothing, so without that the previous view stays on screen under a URL describing something else (editing `#1914` to `#1915`, a war year, left the 1914 chart up labelled 1915) |
   | `views/overview.ts` | Race Overview (per-stage distance/elevation/difficulty bars) |
   | `views/allRaces.ts` | All Races Overview (4-panel cross-year comparison) |
-  | `views/stageChart.ts` | By Stage bump chart + its legend and Team/Nation filters — the app's biggest, most state-coupled view, kept as one file since ranking computation, rendering, legend, and filters are genuinely one unit |
+  | `views/stageChart.ts` | By Stage bump chart rendering (`drawChart`) and its hover tooltip. Split 2026-10-17 from one 1,043-line file into five; the pieces below form an acyclic graph: rankings <- highlight <- legend <- filters, with the chart importing all but filters |
+  | `views/stageRankings.ts` | Per-stage sprint/KOM rank maps, the series each metric plots (`getDisplayPoints`), gap bridges, `effectiveFinalRank`, default selection. State only, no DOM |
+  | `views/stageHighlight.ts` | Restyling lines/dots/end labels for selection and hover, end-label de-collision, `cssEscape` |
+  | `views/stageLegend.ts` | Sidebar legend rows and their selected state |
+  | `views/stageFilters.ts` | Team/Nation filter dropdowns and the selection they drive |
   | `views/stageTable.ts` | By Stage spreadsheet grid (riders x stages), its per-column colour ramp, and — for aggregate races only — the Top 10 / Top 20 / All / Nation row filters in the column to its left |
   | `views/riders.ts` | Riders grid: search/filter, and the merged-index cache — which tracks which races have been **folded in**, not just which are selected, so the grid can draw before every index has landed. **Virtualised** (2026-09-11): only the rows in view plus overscan are in the DOM, held open by row-spanning spacers. `renderWindow()` restores both `scrollTop` *and* keyboard focus across its `replaceChildren` — losing focus ejected tab users to the top of the document and locked them out of the grid entirely |
   | `views/riderDetail.ts` | Cross-race rider career chart (446 lines — was the single largest function in the old `main.ts`) |

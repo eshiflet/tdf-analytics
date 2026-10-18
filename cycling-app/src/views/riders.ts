@@ -20,7 +20,7 @@ import {
 } from "../riderIndexData";
 import type { JerseyCategory } from "../jerseyIcons";
 import { jerseyCategoriesForRace, jerseyIconSvgForRace, jerseyIconTitle, jerseyIconsElMultiRace, jerseyYearsWon } from "../jerseyIcons";
-import { cssEscape } from "./stageChart";
+import { cssEscape } from "./stageHighlight";
 import { drawRiderDetail } from "./riderDetail";
 
 export function selectedRacesForRiders(): RaceId[] {

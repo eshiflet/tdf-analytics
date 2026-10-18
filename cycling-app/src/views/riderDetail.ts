@@ -15,7 +15,7 @@ import { positionTooltip, hideTooltip } from "../tooltip";
 import { displayName, nationalityFlagEl } from "../riderDisplay";
 import type { RiderEntry } from "../riderIndexData";
 import { fieldDefinitionByRace, riderIndexByRace, ensureRiderIndexFor, crossRaceFor } from "../riderIndexData";
-import { buildLegend } from "./stageChart";
+import { buildLegend } from "./stageLegend";
 import { setRace, loadDataset, switchView, showLoadError } from "../main";
 import { drawRidersPage } from "./riders";
 

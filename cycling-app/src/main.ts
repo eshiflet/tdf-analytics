@@ -22,11 +22,13 @@ import { PALETTE } from "./formatters";
 import { computeHash, updateHash } from "./hashRouting";
 import { debounce } from "./utils";
 import { displayName, foldForSearch, searchHaystack } from "./riderDisplay";
+import { drawChart } from "./views/stageChart";
+import { computePointsRankings, applyDefaultSelection } from "./views/stageRankings";
+import { cssEscape, updateLineClasses } from "./views/stageHighlight";
+import { buildLegend, refreshLegendState } from "./views/stageLegend";
 import {
-  drawChart, buildLegend, refreshLegendState, updateLineClasses, applyDefaultSelection,
-  computePointsRankings, buildStageFilters, closeFilterPanels, clearStageTeamNationFilters,
-  applyStageTeamNationFilter, cssEscape,
-} from "./views/stageChart";
+  buildStageFilters, closeFilterPanels, clearStageTeamNationFilters, applyStageTeamNationFilter,
+} from "./views/stageFilters";
 import { drawStageTable } from "./views/stageTable";
 import { drawOverview } from "./views/overview";
 import { drawAllRacesOverview } from "./views/allRaces";
